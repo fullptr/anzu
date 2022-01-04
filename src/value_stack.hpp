@@ -16,6 +16,7 @@ private:
 public:
     auto pop() -> type;
     auto push(const type& value) -> void;
+    auto peek() const -> type;
 
     [[nodiscard]] auto empty() const -> bool;
 };

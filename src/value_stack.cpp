@@ -14,6 +14,11 @@ auto value_stack::push(const type& value) -> void
     d_values.push(value);
 }
 
+auto value_stack::peek() const -> type
+{
+    return d_values.top();
+}
+
 auto value_stack::empty() const -> bool
 {
     return d_values.empty();
