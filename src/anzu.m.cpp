@@ -9,31 +9,37 @@
 #include <unordered_map>
 #include <tuple>
 #include <utility>
-#include <fstream> 
+#include <fstream>
 
-bool is_int(const std::string& token)
+int to_int(const std::string& token)
 {
-    return token.find_first_not_of( "0123456789" ) == std::string::npos;
+    if (token.find_first_not_of("0123456789") != std::string::npos) {
+        fmt::print("[Fatal] Could not parse int: {}\n", token);
+    };
+    return std::stoi(token);
 }
 
-int fetch_int(const std::string& token, const std::unordered_map<std::string, int>& symbols)
+std::vector<std::string> load_file(const std::string& file)
 {
-    if (is_int(token)) {
-        return std::stoi(token);
-    } else if (symbols.contains(token)) {
-        return symbols.at(token);
-    } else {
-        fmt::print("Error: Unknown int");
-        std::exit(1);
+    std::ifstream program{file};
+    std::vector<std::string> tokens;
+    for (const auto& token : std::ranges::istream_view<std::string>(program)) {
+        tokens.push_back(token);
     }
+    return tokens;
 }
 
-constexpr auto OP_PRINT     = std::string_view{"pr"};
-constexpr auto OP_PUSH_INT  = std::string_view{"pi"};
-constexpr auto OP_STORE_INT = std::string_view{"si"};
-constexpr auto OP_ADD       = std::string_view{"+"};
-constexpr auto OP_SUB       = std::string_view{"-"};
-constexpr auto OP_DUP       = std::string_view{"dup"};
+constexpr auto OP_PRINT        = std::string_view{"pr"};
+constexpr auto OP_PUSH_INT     = std::string_view{"pi"};
+constexpr auto OP_STORE_INT    = std::string_view{"si"};
+constexpr auto OP_PUSH_VAR     = std::string_view{"pv"};
+constexpr auto OP_STORE_VAR    = std::string_view{"sv"};
+constexpr auto OP_ADD          = std::string_view{"+"};
+constexpr auto OP_SUB          = std::string_view{"-"};
+constexpr auto OP_DUP          = std::string_view{"dup"};
+constexpr auto OP_FUNC_BEGIN   = std::string_view{"func"};
+constexpr auto OP_FUNC_END     = std::string_view{"end"};
+
 
 int main(int argc, char** argv)
 {
@@ -43,43 +49,65 @@ int main(int argc, char** argv)
     }
     auto file = std::string{argv[1]};
     fmt::print("Running file {}\n", file);
-    std::ifstream program{file};
+    auto tokens = load_file(file);
 
-    anzu::value_stack vs;
-    std::unordered_map<std::string, int> symbol_table;
+    anzu::value_stack frame;
 
-    auto tokens = std::ranges::istream_view<std::string>(program);
     auto it = tokens.begin();
     while (it != tokens.end()) {
         const auto token = *it;
 
         if (token == OP_PRINT) {
-            fmt::print("{}\n", vs.pop());
+            fmt::print("{}\n", frame.pop());
         }
         else if (token == OP_PUSH_INT) {
             ++it;
             const auto value = *it;
-            vs.push(fetch_int(value, symbol_table));
+            frame.push(to_int(value));
+        }
+        else if (token == OP_PUSH_VAR) {
+            ++it;
+            const auto value = *it;
+            frame.push(frame.fetch(value));
         }
         else if (token == OP_ADD) {
-            const auto b = vs.pop();
-            const auto a = vs.pop();
-            vs.push(a + b);
+            const auto b = frame.pop();
+            const auto a = frame.pop();
+            frame.push(a + b);
         }
         else if (token == OP_SUB) {
-            const auto b = vs.pop();
-            const auto a = vs.pop();
-            vs.push(a - b);
+            const auto b = frame.pop();
+            const auto a = frame.pop();
+            frame.push(a - b);
         }
         else if (token == OP_STORE_INT) {
             ++it;
             const auto name = *it;
             ++it;
             const auto value = *it;
-            symbol_table[name] = fetch_int(value, symbol_table);
+            frame.load(name, to_int(value));
+        }
+        else if (token == OP_STORE_VAR) {
+            ++it;
+            const auto name = *it;
+            ++it;
+            const auto value = *it;
+            frame.load(name, frame.fetch(value));
         }
         else if (token == OP_DUP) {
-            vs.push(vs.peek());
+            frame.push(frame.peek());
+        }
+        else if (token == OP_FUNC_BEGIN) {
+            std::vector<std::string> function;
+            ++it;
+            while (*it != OP_FUNC_END) {
+                function.push_back(*it);
+                ++it;
+            }
+            fmt::print("Loaded function:\n");
+            for (const auto& f : function) {
+                fmt::print(" - {}\n", f);
+            }
         }
         else {
             fmt::print("Unknown op code: {}\n", token);
@@ -89,7 +117,7 @@ int main(int argc, char** argv)
         ++it;
     }
 
-    if (vs.empty()) {
+    if (frame.empty()) {
         fmt::print("OK\n");
     }
 }
