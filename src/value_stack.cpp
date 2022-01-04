@@ -15,19 +15,19 @@ bool is_int(const std::string& token)
 
 auto value_stack::pop() -> type
 {
-    auto value = d_values.top();
-    d_values.pop();
+    auto value = d_values.back();
+    d_values.pop_back();
     return value;
 }
 
 auto value_stack::push(const type& value) -> void
 {
-    d_values.push(value);
+    d_values.push_back(value);
 }
 
 auto value_stack::peek() const -> type
 {
-    return d_values.top();
+    return d_values.back();
 }
 
 auto value_stack::empty() const -> bool
@@ -47,6 +47,18 @@ auto value_stack::fetch(const std::string& token) const -> type
 auto value_stack::load(const std::string& name, const type& value) -> void
 {
     d_symbols[name] = value;
+}
+
+auto value_stack::print() const -> void
+{
+    fmt::print("Values:\n");
+    for (const auto& val : d_values) {
+        fmt::print(" - {}\n", val);
+    }
+    fmt::print("Symbols:\n");
+    for (const auto& [key, val] : d_symbols) {
+        fmt::print(" - {} -> {}\n", key, val);
+    }
 }
 
 }

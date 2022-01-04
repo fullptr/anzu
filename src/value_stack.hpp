@@ -13,7 +13,7 @@ public:
     using type = int; // Will become a variant
     
 private:
-    std::stack<type>                      d_values;
+    std::vector<type>                     d_values;
     std::unordered_map<std::string, type> d_symbols;
 
 public:
@@ -25,6 +25,8 @@ public:
     auto load(const std::string& name, const type& value) -> void;
 
     [[nodiscard]] auto empty() const -> bool;
+
+    auto print() const -> void;
 };
 
 }
