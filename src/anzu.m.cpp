@@ -1,4 +1,4 @@
-#include "value_stack.hpp"
+#include "stack_frame.hpp"
 
 #include <fmt/format.h>
 #include <array>
@@ -59,7 +59,7 @@ int main(int argc, char** argv)
     fmt::print("Running file {}\n", file);
     auto tokens = load_file(file);
 
-    anzu::value_stack frame;
+    anzu::stack_frame frame;
 
     auto it = tokens.begin();
     while (it != tokens.end()) {
