@@ -1,0 +1,11 @@
+si x 7
+
+pv x dup + .
+
+pi 6 .
+
+pi 1
+pi 2
+pv x
+frame
+p p p
