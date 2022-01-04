@@ -1,3 +1,5 @@
+#include "value_stack.hpp"
+
 #include <fmt/format.h>
 #include <stack>
 #include <string_view>
@@ -23,8 +25,7 @@ constexpr auto OP_ADD      = std::string_view{"+"};
 
 int main()
 {
-    // The stack for computing values. Later on will not be just ints.
-    std::stack<int> registry;
+    anzu::value_stack vs;
 
     // The stack of scopes for names values.
     //std::vector<scope> scopes;
@@ -39,31 +40,28 @@ int main()
         const auto token = *it;
 
         if (token == OP_PRINT) {
-            fmt::print("{}\n", registry.top());
-            registry.pop();
+            fmt::print("{}\n", vs.pop());
         }
         else if (token == OP_PUSH_INT) {
             ++it;
             const auto value = *it;
             if (is_int(value)) {
-                registry.push(std::stoi(value));
+                vs.push(std::stoi(value));
             } else {
                 fmt::print("Cannot currently load ints from scopes");
                 std::exit(1);
             }
         }
         else if (token == OP_ADD) {
-            const auto a = registry.top();
-            registry.pop();
-            const auto b = registry.top();
-            registry.pop();
-            registry.push(a + b);
+            const auto a = vs.pop();
+            const auto b = vs.pop();
+            vs.push(a + b);
         }
 
         ++it;
     }
 
-    if (registry.empty()) {
+    if (vs.empty()) {
         fmt::print("OK\n");
     }
 }
