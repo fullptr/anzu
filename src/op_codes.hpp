@@ -5,7 +5,6 @@
 #include <variant>
 
 namespace anzu {
-namespace op {
 
 struct op_dump
 {
@@ -117,24 +116,22 @@ struct op_equals
     int apply(anzu::stack_frame& frame) const;
 };
 
-}
-
 using opcode = std::variant<
-    op::op_dump,
-    op::op_pop,
-    op::op_push_const,
-    op::op_store_const,
-    op::op_push_var,
-    op::op_store_var,
-    op::op_add,
-    op::op_sub,
-    op::op_dup,
-    op::op_print_frame,
-    op::op_if,
-    op::op_do,
-    op::op_else,
-    op::op_end,
-    op::op_equals
+    op_dump,
+    op_pop,
+    op_push_const,
+    op_store_const,
+    op_push_var,
+    op_store_var,
+    op_add,
+    op_sub,
+    op_dup,
+    op_print_frame,
+    op_if,
+    op_do,
+    op_else,
+    op_end,
+    op_equals
 >;
 
 }

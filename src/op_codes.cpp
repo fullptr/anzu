@@ -1,7 +1,6 @@
 #include "op_codes.hpp"
 
 namespace anzu {
-namespace op {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
@@ -128,5 +127,4 @@ int op_equals::apply(anzu::stack_frame& frame) const
     return 1;
 }
 
-}
 }
