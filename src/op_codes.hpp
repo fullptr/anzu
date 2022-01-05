@@ -99,6 +99,12 @@ struct end_if
     int apply(anzu::stack_frame& frame) const;
 };
 
+struct equals
+{
+    void print() const { fmt::print("OP_EQUALS\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 }
 
 using opcode = std::variant<
@@ -114,7 +120,8 @@ using opcode = std::variant<
     op::print_frame,
     op::begin_if,
     op::else_if,
-    op::end_if
+    op::end_if,
+    op::equals
 >;
 
 }

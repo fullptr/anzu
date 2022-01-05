@@ -36,10 +36,10 @@ constexpr auto OP_ADD          = std::string_view{"+"};
 constexpr auto OP_SUB          = std::string_view{"-"};
 constexpr auto OP_DUP          = std::string_view{"dup"};
 constexpr auto OP_PRINT_FRAME  = std::string_view{"frame"};
-
 constexpr auto OP_BEGIN_IF     = std::string_view{"if"};
 constexpr auto OP_ELSE_IF      = std::string_view{"else"};
 constexpr auto OP_END_IF       = std::string_view{"end"};
+constexpr auto OP_EQUALS       = std::string_view{"=="};
 
 std::vector<anzu::opcode> load_program(const std::string& file)
 {
@@ -133,6 +133,9 @@ std::vector<anzu::opcode> load_program(const std::string& file)
             if_stack.pop();
 
             program.push_back(anzu::op::end_if{});
+        }
+        else if (token == OP_EQUALS) {
+            program.push_back(anzu::op::equals{});
         }
         else {
             fmt::print("Unknown op code: {}\n", token);
