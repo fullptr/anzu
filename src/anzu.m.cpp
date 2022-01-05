@@ -38,6 +38,7 @@ constexpr auto OP_DUP          = std::string_view{"dup"};
 constexpr auto OP_PRINT_FRAME  = std::string_view{"frame"};
 
 constexpr auto OP_BEGIN_IF     = std::string_view{"if"};
+constexpr auto OP_ELSE_IF      = std::string_view{"else"};
 constexpr auto OP_END_IF       = std::string_view{"end"};
 
 std::vector<anzu::opcode> load_program(const std::string& file)
@@ -101,10 +102,32 @@ std::vector<anzu::opcode> load_program(const std::string& file)
                 .jump = -1
             });
         }
-        else if (token == OP_END_IF) {
+        else if (token == OP_ELSE_IF) {
+            // Fetch the if from the top of the stack. Set it to jump to one-past this
+            // new "else" token so flow enters the else block. Replace the "if" in if
+            // stack with this new token so that the end can update it to jump to the end.
             auto begin_if = if_statements.top();
             if (auto* begin = std::get_if<anzu::op::begin_if>(&program[begin_if])) {
-                begin->jump = static_cast<int>(program.size() - begin_if);
+                begin->jump = static_cast<int>(program.size() - begin_if + 1);
+            } else {
+                fmt::print("No if statement to attach to!\n");
+                std::exit(1);
+            }
+            if_statements.pop();
+            if_statements.push(program.size());
+            program.push_back(anzu::op::else_if{
+                .jump = -1
+            });
+        }
+        else if (token == OP_END_IF) {
+            // Get the top element of the if stack. If its an if or an else, make them
+            // jump to one past us.
+            const auto index = if_statements.top();
+            const auto jump = static_cast<int>(program.size() - index + 1);
+            if (auto* stmt = std::get_if<anzu::op::begin_if>(&program[index])) {
+                stmt->jump = jump;
+            } else if (auto* stmt = std::get_if<anzu::op::else_if>(&program[index])) {
+                stmt->jump = jump;
             } else {
                 fmt::print("No if statement to close!\n");
                 std::exit(1);

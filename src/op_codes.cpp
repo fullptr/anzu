@@ -73,6 +73,11 @@ int begin_if::apply(anzu::stack_frame& frame) const
     return val ? 1 : jump;
 }
 
+int else_if::apply(anzu::stack_frame& frame) const
+{
+    return jump;
+}
+
 int end_if::apply(anzu::stack_frame& frame) const
 {
     return 1;

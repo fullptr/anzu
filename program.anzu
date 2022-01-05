@@ -1,16 +1,7 @@
-si x 7
 
-pv x dup + .
 
-pi 6 .
-
-pi 1
-pi 2
-pv x
-frame
-p p p
-
-pi 0 if
+pi 1 if
     pi 2 .
+else
+    pi 3 .
 end
-pi 3 .
