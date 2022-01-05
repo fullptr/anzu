@@ -42,8 +42,7 @@ std::string next(std::vector<std::string>::iterator& it)
 
 constexpr auto OP_DUMP         = std::string_view{"."};
 constexpr auto OP_POP          = std::string_view{"p"};
-constexpr auto OP_PUSH_CONST   = std::string_view{"pc"};
-constexpr auto OP_STORE_CONST  = std::string_view{"sc"};
+constexpr auto OP_STORE_CONST  = std::string_view{"let"};
 constexpr auto OP_PUSH_VAR     = std::string_view{"pv"};
 constexpr auto OP_STORE_VAR    = std::string_view{"sv"};
 constexpr auto OP_ADD          = std::string_view{"+"};
@@ -75,11 +74,6 @@ std::vector<anzu::opcode> load_program(const std::string& file)
         }
         else if (token == OP_POP) {
             program.push_back(anzu::op::pop{});
-        }
-        else if (token == OP_PUSH_CONST) {
-            program.push_back(anzu::op::push_const{
-                .value=parse_literal(next(it))
-            });
         }
         else if (token == OP_STORE_CONST) {
             program.push_back(anzu::op::store_const{

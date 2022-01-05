@@ -1,7 +1,7 @@
 
-sc x 5
+let x 5
 
-pv x if
+x if
     x .
 else
     6 .
