@@ -33,6 +33,21 @@ bool to_bool(const std::string& token)
     std::exit(1);
 }
 
+anzu::stack_frame::type parse_const(const std::string& token)
+{
+    if (token == "true") {
+        return true;
+    }
+    if (token == "false") {
+        return false;
+    }
+    if (token.find_first_not_of("0123456789") == std::string::npos) {
+        return std::stoi(token);
+    }
+    fmt::print("[Fatal] Could not parse constant: {}\n", token);
+    std::exit(1);
+}
+
 std::string next(std::vector<std::string>::iterator& it)
 {
     ++it;
@@ -41,6 +56,8 @@ std::string next(std::vector<std::string>::iterator& it)
 
 constexpr auto OP_DUMP         = std::string_view{"."};
 constexpr auto OP_POP          = std::string_view{"p"};
+constexpr auto OP_PUSH_CONST   = std::string_view{"pc"};
+constexpr auto OP_STORE_CONST  = std::string_view{"sc"};
 constexpr auto OP_PUSH_INT     = std::string_view{"pi"};
 constexpr auto OP_STORE_INT    = std::string_view{"si"};
 constexpr auto OP_PUSH_VAR     = std::string_view{"pv"};
@@ -76,6 +93,17 @@ std::vector<anzu::opcode> load_program(const std::string& file)
         }
         else if (token == OP_POP) {
             program.push_back(anzu::op::pop{});
+        }
+        else if (token == OP_PUSH_CONST) {
+            program.push_back(anzu::op::push_const{
+                .value=parse_const(next(it))
+            });
+        }
+        else if (token == OP_STORE_CONST) {
+            program.push_back(anzu::op::store_const{
+                .name=next(it),
+                .value=parse_const(next(it))
+            });
         }
         else if (token == OP_PUSH_INT) {
             program.push_back(anzu::op::push_int{

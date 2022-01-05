@@ -30,6 +30,18 @@ int store_int::apply(anzu::stack_frame& frame) const
     return 1;
 }
 
+int push_const::apply(anzu::stack_frame& frame) const
+{
+    frame.push(value);
+    return 1;
+}
+
+int store_const::apply(anzu::stack_frame& frame) const
+{
+    frame.load(name, value);
+    return 1;
+}
+
 int push_var::apply(anzu::stack_frame& frame) const
 {
     frame.push(frame.fetch(name));

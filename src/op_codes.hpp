@@ -19,6 +19,29 @@ struct pop
     int apply(anzu::stack_frame& frame) const;
 };
 
+struct push_const
+{
+    anzu::stack_frame::type value;
+
+    void print() const {
+        fmt::print("OP_PUSH_CONST(");
+        anzu::print_value(value);
+        fmt::print(")\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct store_const
+{
+    std::string name;
+    anzu::stack_frame::type value;
+
+    void print() const {
+        fmt::print("OP_STORE_CONST({}, ", name);
+        anzu::print_value(value);
+        fmt::print(")\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 struct push_int
 {
     int value;
@@ -127,6 +150,8 @@ struct equals
 using opcode = std::variant<
     op::dump,
     op::pop,
+    op::push_const,
+    op::store_const,
     op::push_int,
     op::store_int,
     op::push_var,

@@ -1,6 +1,6 @@
 
-pb false if
-    pi 2 .
+pc false if
+    pc 2 .
 else
-    pi 3 .
+    pc 3 .
 end
