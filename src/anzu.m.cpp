@@ -58,12 +58,8 @@ constexpr auto OP_DUMP         = std::string_view{"."};
 constexpr auto OP_POP          = std::string_view{"p"};
 constexpr auto OP_PUSH_CONST   = std::string_view{"pc"};
 constexpr auto OP_STORE_CONST  = std::string_view{"sc"};
-constexpr auto OP_PUSH_INT     = std::string_view{"pi"};
-constexpr auto OP_STORE_INT    = std::string_view{"si"};
 constexpr auto OP_PUSH_VAR     = std::string_view{"pv"};
 constexpr auto OP_STORE_VAR    = std::string_view{"sv"};
-constexpr auto OP_PUSH_BOOL    = std::string_view{"pb"};
-constexpr auto OP_STORE_BOOL   = std::string_view{"sb"};
 constexpr auto OP_ADD          = std::string_view{"+"};
 constexpr auto OP_SUB          = std::string_view{"-"};
 constexpr auto OP_DUP          = std::string_view{"dup"};
@@ -105,17 +101,6 @@ std::vector<anzu::opcode> load_program(const std::string& file)
                 .value=parse_const(next(it))
             });
         }
-        else if (token == OP_PUSH_INT) {
-            program.push_back(anzu::op::push_int{
-                .value=to_int(next(it))
-            });
-        }
-        else if (token == OP_STORE_INT) {
-            program.push_back(anzu::op::store_int{
-                .name=next(it),
-                .value=to_int(next(it))
-            });
-        }
         else if (token == OP_PUSH_VAR) {
             program.push_back(anzu::op::push_var{
                 .name=next(it)
@@ -125,17 +110,6 @@ std::vector<anzu::opcode> load_program(const std::string& file)
             program.push_back(anzu::op::store_var{
                 .name=next(it),
                 .source=next(it)
-            });
-        }
-        else if (token == OP_PUSH_BOOL) {
-            program.push_back(anzu::op::push_int{
-                .value=to_bool(next(it))
-            });
-        }
-        else if (token == OP_STORE_BOOL) {
-            program.push_back(anzu::op::store_int{
-                .name=next(it),
-                .value=to_bool(next(it))
             });
         }
         else if (token == OP_ADD) {

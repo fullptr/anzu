@@ -18,18 +18,6 @@ int pop::apply(anzu::stack_frame& frame) const
     return 1;
 }
 
-int push_int::apply(anzu::stack_frame& frame) const
-{
-    frame.push(value);
-    return 1;
-}
-
-int store_int::apply(anzu::stack_frame& frame) const
-{
-    frame.load(name, value);
-    return 1;
-}
-
 int push_const::apply(anzu::stack_frame& frame) const
 {
     frame.push(value);
@@ -52,18 +40,6 @@ int store_var::apply(anzu::stack_frame& frame) const
 {
     frame.load(name, frame.fetch(source));
     return 1;
-}
-
-int push_bool::apply(anzu::stack_frame& frame) const
-{
-    frame.push(value);
-    return 1;   
-}
-
-int store_bool::apply(anzu::stack_frame& frame) const
-{
-    frame.load(name, value);
-    return 1;   
 }
 
 int add::apply(anzu::stack_frame& frame) const

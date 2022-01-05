@@ -42,23 +42,6 @@ struct store_const
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct push_int
-{
-    int value;
-
-    void print() const { fmt::print("OP_PUSH_INT({})\n", value); }
-    int apply(anzu::stack_frame& frame) const;
-};
-
-struct store_int
-{
-    std::string name;
-    int value;
-
-    void print() const { fmt::print("OP_STORE_INT({}, {})\n", name, value); }
-    int apply(anzu::stack_frame& frame) const;
-};
-
 struct push_var
 {
     std::string name;
@@ -73,23 +56,6 @@ struct store_var
     std::string source; 
 
     void print() const { fmt::print("OP_STORE_VAR({}, {})\n", name, source); }
-    int apply(anzu::stack_frame& frame) const;
-};
-
-struct push_bool
-{
-    bool value;
-
-    void print() const { fmt::print("OP_PUSH_BOOL({})\n", value); }
-    int apply(anzu::stack_frame& frame) const;
-};
-
-struct store_bool
-{
-    std::string name;
-    bool value;
-
-    void print() const { fmt::print("OP_STORE_BOOL({}, {})\n", name, value); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -152,8 +118,6 @@ using opcode = std::variant<
     op::pop,
     op::push_const,
     op::store_const,
-    op::push_int,
-    op::store_int,
     op::push_var,
     op::store_var,
     op::add,
