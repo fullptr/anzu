@@ -47,12 +47,15 @@ constexpr auto OP_ADD          = std::string_view{"+"};
 constexpr auto OP_SUB          = std::string_view{"-"};
 constexpr auto OP_DUP          = std::string_view{"dup"};
 constexpr auto OP_PRINT_FRAME  = std::string_view{"frame"};
-constexpr auto OP_BEGIN_IF     = std::string_view{"if"};
-constexpr auto OP_ELSE_IF      = std::string_view{"else"};
-constexpr auto OP_END_IF       = std::string_view{"end"};
+constexpr auto OP_DO           = std::string_view{"do"};
+constexpr auto OP_WHILE        = std::string_view{"while"};
+constexpr auto OP_IF           = std::string_view{"if"};
+constexpr auto OP_ELSE         = std::string_view{"else"};
+constexpr auto OP_END          = std::string_view{"end"};
 constexpr auto OP_EQUALS       = std::string_view{"=="};
+constexpr auto OP_NOT_EQUALS   = std::string_view{"!="};
 
-std::vector<anzu::opcode> load_program(const std::string& file)
+std::vector<anzu::op> load_program(const std::string& file)
 {
     std::ifstream stream{file};
     std::vector<std::string> tokens;
@@ -60,94 +63,160 @@ std::vector<anzu::opcode> load_program(const std::string& file)
         tokens.push_back(token);
     }
 
-    std::vector<anzu::opcode> program;
-    std::stack<std::size_t> if_stack;
+    std::vector<anzu::op> program;
+
+    // Contains a stack of indices to previous control flow statements suchs as
+    // 'if', 'do' and 'else' so the jumps can be set up correctly.
+    std::stack<std::size_t> control_flow;
 
     auto it = tokens.begin();
     while (it != tokens.end()) {
         const auto& token = *it;
 
         if (token == OP_DUMP) {
-            program.push_back(anzu::op::dump{});
+            program.push_back(anzu::op_dump{});
         }
         else if (token == OP_POP) {
-            program.push_back(anzu::op::pop{});
+            program.push_back(anzu::op_pop{});
         }
         else if (token == OP_STORE) {
             auto name = next(it);
             auto val = next(it);
             if (is_literal(val)) {
-                program.push_back(anzu::op::store_const{
+                program.push_back(anzu::op_store_const{
                     .name=name,
                     .value=parse_literal(val)
                 });
             } else {
-                program.push_back(anzu::op::store_var{
+                program.push_back(anzu::op_store_var{
                     .name=name,
                     .source=val
                 });
             }
         }
         else if (token == OP_ADD) {
-            program.push_back(anzu::op::add{});
+            program.push_back(anzu::op_add{});
         }
         else if (token == OP_SUB) {
-            program.push_back(anzu::op::sub{});
+            program.push_back(anzu::op_sub{});
         }
         else if (token == OP_DUP) {
-            program.push_back(anzu::op::dup{});
+            program.push_back(anzu::op_dup{});
         }
         else if (token == OP_PRINT_FRAME) {
-            program.push_back(anzu::op::print_frame{});
+            program.push_back(anzu::op_print_frame{});
         }
-        else if (token == OP_BEGIN_IF) {
-            if_stack.push(program.size());
-            program.push_back(anzu::op::begin_if{
-                .jump = -1
-            });
+        else if (token == OP_WHILE) {
+            control_flow.push(program.size());
+            program.push_back(anzu::op_while{});
         }
-        else if (token == OP_ELSE_IF) {
+        else if (token == OP_IF) {
+            control_flow.push(program.size());
+            program.push_back(anzu::op_if{});
+        }
+        else if (token == OP_DO) {
+            // Verify that the 'do' is preceeded by a valid keyword
+            if (control_flow.empty()) {
+                fmt::print("'do' does not match any preceeding statement!\n");
+                std::exit(1);
+            }
+            auto index = control_flow.top();
+            if (auto* begin = std::get_if<anzu::op_if>(&program[index])) {
+                // Pass
+            } else if (auto* begin = std::get_if<anzu::op_while>(&program[index])) {
+                // Pass
+            } else {
+                fmt::print("'do' does not match any preceeding statement!\n");
+                std::exit(1);
+            }
+
+            control_flow.push(program.size());
+            program.push_back(anzu::op_do{ .jump=-1 });
+            // After this, the top of the control_flow stack is either 'if/do'
+            // or 'while/do'.
+        }
+        else if (token == OP_ELSE) {
             // Fetch the if from the top of the stack. Set it to jump to one-past this
             // new "else" token so flow enters the else block. Replace the "if" in if
             // stack with this new token so that the end can update it to jump to the end.
-            auto index = if_stack.top();
-            if (auto* begin = std::get_if<anzu::op::begin_if>(&program[index])) {
+            if (control_flow.empty()) {
+                fmt::print("'else' does not close a preceeding 'do'!\n");
+                std::exit(1);
+            }
+            auto index = control_flow.top();
+            if (auto* begin = std::get_if<anzu::op_do>(&program[index])) {
                 begin->jump = static_cast<int>(program.size() - index + 1);
             } else {
-                fmt::print("No if statement to attach to!\n");
+                fmt::print("'else' does not close a preceeding 'do'!\n");
                 std::exit(1);
             }
-            if_stack.top() = program.size();
-
-            program.push_back(anzu::op::else_if{ .jump = -1 });
+            control_flow.pop(); // Pop 'do'
+            control_flow.push(program.size()); // Push 'else'
+            program.push_back(anzu::op_else{ .jump=-1 });
+            // After this, the top of the control_flow stack is now 'if/else'.
         }
-        else if (token == OP_END_IF) {
+        else if (token == OP_END) {
             // Get the top element of the if stack. If its an if or an else, make them
             // jump to one past us.
-            const auto index = if_stack.top();
-            const auto jump = static_cast<int>(program.size() - index + 1);
-            if (auto* stmt = std::get_if<anzu::op::begin_if>(&program[index])) {
-                stmt->jump = jump;
-            } else if (auto* stmt = std::get_if<anzu::op::else_if>(&program[index])) {
-                stmt->jump = jump;
-            } else {
-                fmt::print("No if statement to close!\n");
+            if (control_flow.size() < 2) {
+                fmt::print("'end' does not enclose any control flow block!\n");
                 std::exit(1);
             }
-            if_stack.pop();
 
-            program.push_back(anzu::op::end_if{});
+            // 'end' is preceeded by either 'if/do', 'if/else', 'while/do'
+            const auto idx_clause = control_flow.top();
+            control_flow.pop(); // do or else
+            
+            const auto idx_block = control_flow.top();
+            control_flow.pop(); // if or while
+
+            if (auto* op_if = std::get_if<anzu::op_if>(&program[idx_block])) {
+                // for 'if/do' and 'if/else', the do and else blocks both jump
+                // to one past the end. 
+                if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
+                    op_do->jump = static_cast<int>(program.size() - idx_clause + 1);
+                    program.push_back(anzu::op_end{ .jump=1 });
+                }
+                else if (auto* op_else = std::get_if<anzu::op_else>(&program[idx_clause])) {
+                    // 'if/else' case
+                    op_else->jump = static_cast<int>(program.size() - idx_clause + 1);
+                    program.push_back(anzu::op_end{ .jump=1 });
+                }
+                else {
+                    fmt::print("'end' does not enclose any control flow block!\n");
+                    std::exit(1);
+                }
+            }
+            else if (auto* op_while = std::get_if<anzu::op_while>(&program[idx_block])) {
+                if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
+                    op_do->jump = static_cast<int>(program.size() - idx_clause + 1);
+                    program.push_back(anzu::op_end{
+                        .jump=static_cast<int>(idx_block - program.size())
+                    });
+                }
+                else {
+                    fmt::print("'end' does not enclose any control flow block!\n");
+                    std::exit(1);
+                }
+            }
+            else {
+                fmt::print("'end' does not enclose any control flow block!\n");
+                std::exit(1);
+            }
         }
         else if (token == OP_EQUALS) {
-            program.push_back(anzu::op::equals{});
+            program.push_back(anzu::op_equals{});
+        }
+        else if (token == OP_NOT_EQUALS) {
+            program.push_back(anzu::op_not_equals{});
         }
         else if (is_literal(token)) {
-            program.push_back(anzu::op::push_const{
+            program.push_back(anzu::op_push_const{
                 .value=parse_literal(token)
             });
         }
         else {
-            program.push_back(anzu::op::push_var{
+            program.push_back(anzu::op_push_var{
                 .name=token
             });
         }
@@ -156,7 +225,7 @@ std::vector<anzu::opcode> load_program(const std::string& file)
     return program;
 }
 
-void run_program(const std::vector<anzu::opcode>& program)
+void run_program(const std::vector<anzu::op>& program)
 {
     anzu::stack_frame frame;
     std::size_t ptr = 0;
