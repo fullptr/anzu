@@ -10,13 +10,13 @@ namespace op {
 struct dump
 {
     void print() const { fmt::print("OP_DUMP\n"); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct pop
 {
     void print() const { fmt::print("OP_POP\n"); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct push_int
@@ -24,7 +24,7 @@ struct push_int
     int value;
 
     void print() const { fmt::print("OP_PUSH_INT({})\n", value); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct store_int
@@ -33,7 +33,7 @@ struct store_int
     int value;
 
     void print() const { fmt::print("OP_STORE_INT({}, {})\n", name, value); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct push_var
@@ -41,7 +41,7 @@ struct push_var
     std::string name;
 
     void print() const { fmt::print("OP_PUSH_VAR({})\n", name); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct store_var
@@ -50,31 +50,31 @@ struct store_var
     std::string source; 
 
     void print() const { fmt::print("OP_STORE_VAR({}, {})\n", name, source); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct add
 {
     void print() const { fmt::print("OP_ADD\n"); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct sub
 {
     void print() const { fmt::print("OP_SUB\n"); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct dup
 {
     void print() const { fmt::print("OP_DUP\n"); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct print_frame
 {
     void print() const { fmt::print("OP_PRINT_FRAME\n"); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct begin_if
@@ -82,13 +82,13 @@ struct begin_if
     int jump;
 
     void print() const { fmt::print("OP_BEGIN_IF({})\n", jump); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 struct end_if
 {
     void print() const { fmt::print("OP_END_IF\n"); }
-    void apply(anzu::stack_frame& frame) const;
+    int apply(anzu::stack_frame& frame) const;
 };
 
 }

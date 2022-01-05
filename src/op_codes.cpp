@@ -3,66 +3,78 @@
 namespace anzu {
 namespace op {
 
-void dump::apply(anzu::stack_frame& frame) const
+int dump::apply(anzu::stack_frame& frame) const
 {
     fmt::print("{}\n", frame.pop());
+    return 1;
 }
 
-void pop::apply(anzu::stack_frame& frame) const
+int pop::apply(anzu::stack_frame& frame) const
 {
     frame.pop();
+    return 1;
 }
 
-void push_int::apply(anzu::stack_frame& frame) const
+int push_int::apply(anzu::stack_frame& frame) const
 {
     frame.push(value);
+    return 1;
 }
 
-void store_int::apply(anzu::stack_frame& frame) const
+int store_int::apply(anzu::stack_frame& frame) const
 {
     frame.load(name, value);
+    return 1;
 }
 
-void push_var::apply(anzu::stack_frame& frame) const
+int push_var::apply(anzu::stack_frame& frame) const
 {
     frame.push(frame.fetch(name));
+    return 1;
 }
 
-void store_var::apply(anzu::stack_frame& frame) const
+int store_var::apply(anzu::stack_frame& frame) const
 {
     frame.load(name, frame.fetch(source));
+    return 1;
 }
 
-void add::apply(anzu::stack_frame& frame) const
+int add::apply(anzu::stack_frame& frame) const
 {
     auto b = frame.pop();
     auto a = frame.pop();
     frame.push(a + b);
+    return 1;
 }
 
-void sub::apply(anzu::stack_frame& frame) const
+int sub::apply(anzu::stack_frame& frame) const
 {
     auto b = frame.pop();
     auto a = frame.pop();
     frame.push(a - b);
+    return 1;
 }
 
-void dup::apply(anzu::stack_frame& frame) const
+int dup::apply(anzu::stack_frame& frame) const
 {
     frame.push(frame.peek());
+    return 1;
 }
 
-void print_frame::apply(anzu::stack_frame& frame) const
+int print_frame::apply(anzu::stack_frame& frame) const
 {
     frame.print();
+    return 1;
 }
 
-void begin_if::apply(anzu::stack_frame& frame) const
+int begin_if::apply(anzu::stack_frame& frame) const
 {
+    return 1;
 }
 
-void end_if::apply(anzu::stack_frame& frame) const
+int end_if::apply(anzu::stack_frame& frame) const
 {
+    return 1;
 }
 
 }

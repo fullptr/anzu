@@ -127,7 +127,7 @@ void run_program(const std::vector<anzu::opcode>& program)
     std::size_t ptr = 0;
 
     while (ptr < program.size()) {
-        std::visit([&](auto&& o) { o.apply(frame); ++ptr; }, program[ptr]);
+        std::visit([&](auto&& o) { ptr += o.apply(frame); }, program[ptr]);
     }
 
     if (frame.empty()) {
@@ -141,6 +141,7 @@ int main(int argc, char** argv)
         fmt::print("Print usage\n");
         return 0;
     }
+
     auto file = std::string{argv[1]};
     fmt::print("Running file {}\n", file);
     auto program = load_program(file);
@@ -149,6 +150,6 @@ int main(int argc, char** argv)
     //for (const auto& op : program) {
     //    std::visit([](auto&& o) { o.print(); }, op);
     //}
-    
+
     return 0;
 }
