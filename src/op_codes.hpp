@@ -7,19 +7,19 @@
 namespace anzu {
 namespace op {
 
-struct dump
+struct op_dump
 {
     void print() const { fmt::print("OP_DUMP\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct pop
+struct op_pop
 {
     void print() const { fmt::print("OP_POP\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct push_const
+struct op_push_const
 {
     anzu::stack_frame::type value;
 
@@ -30,7 +30,7 @@ struct push_const
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct store_const
+struct op_store_const
 {
     std::string name;
     anzu::stack_frame::type value;
@@ -42,7 +42,7 @@ struct store_const
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct push_var
+struct op_push_var
 {
     std::string name;
 
@@ -50,7 +50,7 @@ struct push_var
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct store_var
+struct op_store_var
 {
     std::string name;
     std::string source; 
@@ -59,37 +59,37 @@ struct store_var
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct add
+struct op_add
 {
     void print() const { fmt::print("OP_ADD\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct sub
+struct op_sub
 {
     void print() const { fmt::print("OP_SUB\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct dup
+struct op_dup
 {
     void print() const { fmt::print("OP_DUP\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct print_frame
+struct op_print_frame
 {
     void print() const { fmt::print("OP_PRINT_FRAME\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct begin_if
+struct op_if
 {
     void print() const { fmt::print("OP_BEGIN_IF\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct do_stmt // TODO: Improve name
+struct op_do // TODO: Improve name
 {
     int jump;
 
@@ -97,7 +97,7 @@ struct do_stmt // TODO: Improve name
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct else_if
+struct op_else
 {
     int jump;
 
@@ -105,13 +105,13 @@ struct else_if
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct end_if
+struct op_end
 {
     void print() const { fmt::print("OP_END_IF\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct equals
+struct op_equals
 {
     void print() const { fmt::print("OP_EQUALS\n"); }
     int apply(anzu::stack_frame& frame) const;
@@ -120,21 +120,21 @@ struct equals
 }
 
 using opcode = std::variant<
-    op::dump,
-    op::pop,
-    op::push_const,
-    op::store_const,
-    op::push_var,
-    op::store_var,
-    op::add,
-    op::sub,
-    op::dup,
-    op::print_frame,
-    op::begin_if,
-    op::do_stmt,
-    op::else_if,
-    op::end_if,
-    op::equals
+    op::op_dump,
+    op::op_pop,
+    op::op_push_const,
+    op::op_store_const,
+    op::op_push_var,
+    op::op_store_var,
+    op::op_add,
+    op::op_sub,
+    op::op_dup,
+    op::op_print_frame,
+    op::op_if,
+    op::op_do,
+    op::op_else,
+    op::op_end,
+    op::op_equals
 >;
 
 }
