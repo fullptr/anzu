@@ -53,6 +53,7 @@ constexpr auto OP_IF           = std::string_view{"if"};
 constexpr auto OP_ELSE         = std::string_view{"else"};
 constexpr auto OP_END          = std::string_view{"end"};
 constexpr auto OP_EQUALS       = std::string_view{"=="};
+constexpr auto OP_NOT_EQUALS   = std::string_view{"!="};
 
 std::vector<anzu::op> load_program(const std::string& file)
 {
@@ -157,7 +158,7 @@ std::vector<anzu::op> load_program(const std::string& file)
         else if (token == OP_END) {
             // Get the top element of the if stack. If its an if or an else, make them
             // jump to one past us.
-            if (control_flow.empty()) {
+            if (control_flow.size() < 2) {
                 fmt::print("'end' does not enclose any control flow block!\n");
                 std::exit(1);
             }
@@ -186,7 +187,17 @@ std::vector<anzu::op> load_program(const std::string& file)
                     std::exit(1);
                 }
             }
-            else if (auto* block = std::get_if<anzu::op_while>(&program[idx_block])) {
+            else if (auto* op_while = std::get_if<anzu::op_while>(&program[idx_block])) {
+                if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
+                    op_do->jump = static_cast<int>(program.size() - idx_clause + 1);
+                    program.push_back(anzu::op_end{
+                        .jump=static_cast<int>(idx_block - program.size())
+                    });
+                }
+                else {
+                    fmt::print("'end' does not enclose any control flow block!\n");
+                    std::exit(1);
+                }
             }
             else {
                 fmt::print("'end' does not enclose any control flow block!\n");
@@ -195,6 +206,9 @@ std::vector<anzu::op> load_program(const std::string& file)
         }
         else if (token == OP_EQUALS) {
             program.push_back(anzu::op_equals{});
+        }
+        else if (token == OP_NOT_EQUALS) {
+            program.push_back(anzu::op_not_equals{});
         }
         else if (is_literal(token)) {
             program.push_back(anzu::op_push_const{

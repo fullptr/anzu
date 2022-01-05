@@ -124,6 +124,12 @@ struct op_equals
     int apply(anzu::stack_frame& frame) const;
 };
 
+struct op_not_equals
+{
+    void print() const { fmt::print("OP_NOT_EQUALS\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 using op = std::variant<
     op_dump,
     op_pop,
@@ -140,7 +146,8 @@ using op = std::variant<
     op_do,
     op_else,
     op_end,
-    op_equals
+    op_equals,
+    op_not_equals
 >;
 
 }
