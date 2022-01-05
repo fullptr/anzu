@@ -1,6 +1,10 @@
 
-pc false if
-    pc 2 .
+0 5 -
+
+7 + .
+
+true if
+    true .
 else
-    pc 3 .
+    6 .
 end
