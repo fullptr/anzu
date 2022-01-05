@@ -124,9 +124,10 @@ std::vector<anzu::opcode> load_program(const std::string& file)
 void run_program(const std::vector<anzu::opcode>& program)
 {
     anzu::stack_frame frame;
+    std::size_t ptr = 0;
 
-    for (const auto& op : program) {
-        std::visit([&](auto&& o) { o.apply(frame); }, op);
+    while (ptr < program.size()) {
+        std::visit([&](auto&& o) { o.apply(frame); ++ptr; }, program[ptr]);
     }
 
     if (frame.empty()) {
@@ -143,10 +144,11 @@ int main(int argc, char** argv)
     auto file = std::string{argv[1]};
     fmt::print("Running file {}\n", file);
     auto program = load_program(file);
-    //run_program(program);
+    run_program(program);
     
-    for (const auto& op : program) {
-        std::visit([](auto&& o) { o.print(); }, op);
-    }
+    //for (const auto& op : program) {
+    //    std::visit([](auto&& o) { o.print(); }, op);
+    //}
+    
     return 0;
 }
