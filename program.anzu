@@ -1,5 +1,5 @@
 
-pi 1 pi 1 == if
+pb false if
     pi 2 .
 else
     pi 3 .

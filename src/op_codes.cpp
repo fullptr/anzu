@@ -42,6 +42,18 @@ int store_var::apply(anzu::stack_frame& frame) const
     return 1;
 }
 
+int push_bool::apply(anzu::stack_frame& frame) const
+{
+    frame.push(value);
+    return 1;   
+}
+
+int store_bool::apply(anzu::stack_frame& frame) const
+{
+    frame.load(name, value);
+    return 1;   
+}
+
 int add::apply(anzu::stack_frame& frame) const
 {
     auto b = frame.pop();

@@ -53,6 +53,23 @@ struct store_var
     int apply(anzu::stack_frame& frame) const;
 };
 
+struct push_bool
+{
+    bool value;
+
+    void print() const { fmt::print("OP_PUSH_BOOL({})\n", value); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct store_bool
+{
+    std::string name;
+    bool value;
+
+    void print() const { fmt::print("OP_STORE_BOOL({}, {})\n", name, value); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 struct add
 {
     void print() const { fmt::print("OP_ADD\n"); }

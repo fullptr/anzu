@@ -16,8 +16,21 @@ int to_int(const std::string& token)
 {
     if (token.find_first_not_of("0123456789") != std::string::npos) {
         fmt::print("[Fatal] Could not parse int: {}\n", token);
-    };
+        std::exit(1);
+    }
     return std::stoi(token);
+}
+
+bool to_bool(const std::string& token)
+{
+    if (token == "true") {
+        return true;
+    }
+    if (token == "false") {
+        return false;
+    }
+    fmt::print("[Fatal] Could not parse bool: {}\n", token);
+    std::exit(1);
 }
 
 std::string next(std::vector<std::string>::iterator& it)
@@ -32,6 +45,8 @@ constexpr auto OP_PUSH_INT     = std::string_view{"pi"};
 constexpr auto OP_STORE_INT    = std::string_view{"si"};
 constexpr auto OP_PUSH_VAR     = std::string_view{"pv"};
 constexpr auto OP_STORE_VAR    = std::string_view{"sv"};
+constexpr auto OP_PUSH_BOOL    = std::string_view{"pb"};
+constexpr auto OP_STORE_BOOL   = std::string_view{"sb"};
 constexpr auto OP_ADD          = std::string_view{"+"};
 constexpr auto OP_SUB          = std::string_view{"-"};
 constexpr auto OP_DUP          = std::string_view{"dup"};
@@ -67,21 +82,15 @@ std::vector<anzu::opcode> load_program(const std::string& file)
                 .value=to_int(next(it))
             });
         }
-        else if (token == OP_PUSH_VAR) {
-            program.push_back(anzu::op::push_var{
-                .name=next(it)
-            });
-        }
-        else if (token == OP_ADD) {
-            program.push_back(anzu::op::add{});
-        }
-        else if (token == OP_SUB) {
-            program.push_back(anzu::op::sub{});
-        }
         else if (token == OP_STORE_INT) {
             program.push_back(anzu::op::store_int{
                 .name=next(it),
                 .value=to_int(next(it))
+            });
+        }
+        else if (token == OP_PUSH_VAR) {
+            program.push_back(anzu::op::push_var{
+                .name=next(it)
             });
         }
         else if (token == OP_STORE_VAR) {
@@ -89,6 +98,23 @@ std::vector<anzu::opcode> load_program(const std::string& file)
                 .name=next(it),
                 .source=next(it)
             });
+        }
+        else if (token == OP_PUSH_BOOL) {
+            program.push_back(anzu::op::push_int{
+                .value=to_bool(next(it))
+            });
+        }
+        else if (token == OP_STORE_BOOL) {
+            program.push_back(anzu::op::store_int{
+                .name=next(it),
+                .value=to_bool(next(it))
+            });
+        }
+        else if (token == OP_ADD) {
+            program.push_back(anzu::op::add{});
+        }
+        else if (token == OP_SUB) {
+            program.push_back(anzu::op::sub{});
         }
         else if (token == OP_DUP) {
             program.push_back(anzu::op::dup{});
