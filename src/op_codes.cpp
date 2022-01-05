@@ -69,7 +69,8 @@ int print_frame::apply(anzu::stack_frame& frame) const
 
 int begin_if::apply(anzu::stack_frame& frame) const
 {
-    return 1;
+    auto val = frame.pop();
+    return val ? 1 : jump;
 }
 
 int end_if::apply(anzu::stack_frame& frame) const
