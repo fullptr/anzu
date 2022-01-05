@@ -2,8 +2,6 @@
 let x 5
 let y x
 
-x if
-    y .
-else
-    6 .
-end
+x if y else 6 end
+
+.
