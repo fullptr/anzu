@@ -106,6 +106,18 @@ std::vector<anzu::opcode> load_program(const std::string& file)
             program.push_back(anzu::op::begin_if{});
         }
         else if (token == OP_DO) {
+            if (if_stack.empty()) {
+                fmt::print("'do' does not match any preceeding statement!\n");
+                std::exit(1);
+            }
+            auto index = if_stack.top();
+            if (auto* begin = std::get_if<anzu::op::begin_if>(&program[index])) {
+                if_stack.top() = program.size(); // Replace the top of the stack with this.
+            } else {
+                fmt::print("'do' does not match any preceeding statement!\n");
+                std::exit(1);
+            }
+
             if_stack.push(program.size());
             program.push_back(anzu::op::do_stmt{
                 .jump = -1
@@ -115,20 +127,28 @@ std::vector<anzu::opcode> load_program(const std::string& file)
             // Fetch the if from the top of the stack. Set it to jump to one-past this
             // new "else" token so flow enters the else block. Replace the "if" in if
             // stack with this new token so that the end can update it to jump to the end.
+            if (if_stack.empty()) {
+                fmt::print("'else' does not close a preceeding 'do'!\n");
+                std::exit(1);
+            }
             auto index = if_stack.top();
             if (auto* begin = std::get_if<anzu::op::do_stmt>(&program[index])) {
                 begin->jump = static_cast<int>(program.size() - index + 1);
             } else {
-                fmt::print("No if statement to attach to!\n");
+                fmt::print("'else' does not close a preceeding 'do'!\n");
                 std::exit(1);
             }
-            if_stack.top() = program.size();
+            if_stack.top() = program.size(); // Replace the top of the stack with this.
 
             program.push_back(anzu::op::else_if{ .jump = -1 });
         }
         else if (token == OP_END_IF) {
             // Get the top element of the if stack. If its an if or an else, make them
             // jump to one past us.
+            if (if_stack.empty()) {
+                fmt::print("'end' does not enclose any control flow block!\n");
+                std::exit(1);
+            }
             const auto index = if_stack.top();
             const auto jump = static_cast<int>(program.size() - index + 1);
             if (auto* stmt = std::get_if<anzu::op::do_stmt>(&program[index])) {
@@ -136,7 +156,7 @@ std::vector<anzu::opcode> load_program(const std::string& file)
             } else if (auto* stmt = std::get_if<anzu::op::else_if>(&program[index])) {
                 stmt->jump = jump;
             } else {
-                fmt::print("No if statement to close!\n");
+                fmt::print("'end' does not enclose any control flow block!\n");
                 std::exit(1);
             }
             if_stack.pop();
