@@ -167,11 +167,9 @@ int main(int argc, char** argv)
     auto file = std::string{argv[1]};
     fmt::print("Running file {}\n", file);
     auto program = load_program(file);
-    run_program(program);
     
-    //for (const auto& op : program) {
-    //    std::visit([](auto&& o) { o.print(); }, op);
-    //}
+    run_program(program);
+    //for (const auto& op : program) { std::visit([](auto&& o) { o.print(); }, op); }
 
     return 0;
 }

@@ -3,9 +3,12 @@
 namespace anzu {
 namespace op {
 
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+
 int dump::apply(anzu::stack_frame& frame) const
 {
-    fmt::print("{}\n", frame.pop());
+    anzu::print_value(frame.pop());
+    fmt::print("\n");
     return 1;
 }
 
@@ -43,7 +46,14 @@ int add::apply(anzu::stack_frame& frame) const
 {
     auto b = frame.pop();
     auto a = frame.pop();
-    frame.push(a + b);
+    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
+        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
+            frame.push(a + b);
+        } else {
+            fmt::print("Can only add integers\n");
+            std::exit(1);
+        }
+    }, a, b);
     return 1;
 }
 
@@ -51,7 +61,14 @@ int sub::apply(anzu::stack_frame& frame) const
 {
     auto b = frame.pop();
     auto a = frame.pop();
-    frame.push(a - b);
+    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
+        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
+            frame.push(a - b);
+        } else {
+            fmt::print("Can only sub integers\n");
+            std::exit(1);
+        }
+    }, a, b);
     return 1;
 }
 
@@ -69,8 +86,11 @@ int print_frame::apply(anzu::stack_frame& frame) const
 
 int begin_if::apply(anzu::stack_frame& frame) const
 {
-    auto val = frame.pop();
-    return val ? 1 : jump;
+    auto condition = std::visit(overloaded {
+        [](int v) { return v != 0; },
+        [](bool v) { return v; }
+    }, frame.pop());
+    return condition ? 1 : jump;
 }
 
 int else_if::apply(anzu::stack_frame& frame) const

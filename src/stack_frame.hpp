@@ -11,7 +11,7 @@ namespace anzu {
 class stack_frame
 {
 public:
-    using type = int;
+    using type = std::variant<int, bool>;
     
 private:
     std::vector<type>                     d_values;
@@ -29,5 +29,7 @@ public:
 
     auto print() const -> void;
 };
+
+void print_value(const stack_frame::type& val);
 
 }
