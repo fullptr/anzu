@@ -12,28 +12,14 @@
 #include <utility>
 #include <fstream>
 
-int to_int(const std::string& token)
+bool is_literal(const std::string& token)
 {
-    if (token.find_first_not_of("0123456789") != std::string::npos) {
-        fmt::print("[Fatal] Could not parse int: {}\n", token);
-        std::exit(1);
-    }
-    return std::stoi(token);
+    return token == "false"
+        || token == "true"
+        || token.find_first_not_of("0123456789") == std::string::npos;
 }
 
-bool to_bool(const std::string& token)
-{
-    if (token == "true") {
-        return true;
-    }
-    if (token == "false") {
-        return false;
-    }
-    fmt::print("[Fatal] Could not parse bool: {}\n", token);
-    std::exit(1);
-}
-
-anzu::stack_frame::type parse_const(const std::string& token)
+anzu::stack_frame::type parse_literal(const std::string& token)
 {
     if (token == "true") {
         return true;
@@ -55,11 +41,8 @@ std::string next(std::vector<std::string>::iterator& it)
 }
 
 constexpr auto OP_DUMP         = std::string_view{"."};
-constexpr auto OP_POP          = std::string_view{"p"};
-constexpr auto OP_PUSH_CONST   = std::string_view{"pc"};
-constexpr auto OP_STORE_CONST  = std::string_view{"sc"};
-constexpr auto OP_PUSH_VAR     = std::string_view{"pv"};
-constexpr auto OP_STORE_VAR    = std::string_view{"sv"};
+constexpr auto OP_STORE        = std::string_view{"let"};
+constexpr auto OP_POP          = std::string_view{"pop"};
 constexpr auto OP_ADD          = std::string_view{"+"};
 constexpr auto OP_SUB          = std::string_view{"-"};
 constexpr auto OP_DUP          = std::string_view{"dup"};
@@ -90,27 +73,20 @@ std::vector<anzu::opcode> load_program(const std::string& file)
         else if (token == OP_POP) {
             program.push_back(anzu::op::pop{});
         }
-        else if (token == OP_PUSH_CONST) {
-            program.push_back(anzu::op::push_const{
-                .value=parse_const(next(it))
-            });
-        }
-        else if (token == OP_STORE_CONST) {
-            program.push_back(anzu::op::store_const{
-                .name=next(it),
-                .value=parse_const(next(it))
-            });
-        }
-        else if (token == OP_PUSH_VAR) {
-            program.push_back(anzu::op::push_var{
-                .name=next(it)
-            });
-        }
-        else if (token == OP_STORE_VAR) {
-            program.push_back(anzu::op::store_var{
-                .name=next(it),
-                .source=next(it)
-            });
+        else if (token == OP_STORE) {
+            auto name = next(it);
+            auto val = next(it);
+            if (is_literal(val)) {
+                program.push_back(anzu::op::store_const{
+                    .name=name,
+                    .value=parse_literal(val)
+                });
+            } else {
+                program.push_back(anzu::op::store_var{
+                    .name=name,
+                    .source=val
+                });
+            }
         }
         else if (token == OP_ADD) {
             program.push_back(anzu::op::add{});
@@ -165,9 +141,15 @@ std::vector<anzu::opcode> load_program(const std::string& file)
         else if (token == OP_EQUALS) {
             program.push_back(anzu::op::equals{});
         }
+        else if (is_literal(token)) {
+            program.push_back(anzu::op::push_const{
+                .value=parse_literal(token)
+            });
+        }
         else {
-            fmt::print("Unknown op code: {}\n", token);
-            std::exit(1);
+            program.push_back(anzu::op::push_var{
+                .name=token
+            });
         }
         ++it;
     }

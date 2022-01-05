@@ -1,6 +1,7 @@
 
-pc false if
-    pc 2 .
-else
-    pc 3 .
-end
+let x 5
+let y x
+
+x if y else 6 end
+
+.
