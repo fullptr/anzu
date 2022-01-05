@@ -116,7 +116,7 @@ struct op_equals
     int apply(anzu::stack_frame& frame) const;
 };
 
-using opcode = std::variant<
+using op = std::variant<
     op_dump,
     op_pop,
     op_push_const,

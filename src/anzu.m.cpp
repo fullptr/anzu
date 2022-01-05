@@ -53,7 +53,7 @@ constexpr auto OP_ELSE_IF      = std::string_view{"else"};
 constexpr auto OP_END_IF       = std::string_view{"end"};
 constexpr auto OP_EQUALS       = std::string_view{"=="};
 
-std::vector<anzu::opcode> load_program(const std::string& file)
+std::vector<anzu::op> load_program(const std::string& file)
 {
     std::ifstream stream{file};
     std::vector<std::string> tokens;
@@ -61,7 +61,7 @@ std::vector<anzu::opcode> load_program(const std::string& file)
         tokens.push_back(token);
     }
 
-    std::vector<anzu::opcode> program;
+    std::vector<anzu::op> program;
 
     // Contains a stack of indices to previous control flow statements suchs as
     // 'if', 'do' and 'else' so the jumps can be set up correctly.
@@ -184,7 +184,7 @@ std::vector<anzu::opcode> load_program(const std::string& file)
     return program;
 }
 
-void run_program(const std::vector<anzu::opcode>& program)
+void run_program(const std::vector<anzu::op>& program)
 {
     anzu::stack_frame frame;
     std::size_t ptr = 0;
