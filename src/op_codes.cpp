@@ -86,11 +86,11 @@ int op_print_frame::apply(anzu::stack_frame& frame) const
 int op_if::apply(anzu::stack_frame& frame) const
 {
     return 1;
-    //auto condition = std::visit(overloaded {
-    //    [](int v) { return v != 0; },
-    //    [](bool v) { return v; }
-    //}, frame.pop());
-    //return condition ? 1 : jump;
+}
+
+int op_while::apply(anzu::stack_frame& frame) const
+{
+    return 1;
 }
 
 int op_do::apply(anzu::stack_frame& frame) const
@@ -109,7 +109,7 @@ int op_else::apply(anzu::stack_frame& frame) const
 
 int op_end::apply(anzu::stack_frame& frame) const
 {
-    return 1;
+    return jump;
 }
 
 int op_equals::apply(anzu::stack_frame& frame) const

@@ -84,7 +84,13 @@ struct op_print_frame
 
 struct op_if
 {
-    void print() const { fmt::print("OP_BEGIN_IF\n"); }
+    void print() const { fmt::print("OP_IF\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_while
+{
+    void print() const { fmt::print("OP_WHILE\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -100,13 +106,15 @@ struct op_else
 {
     int jump;
 
-    void print() const { fmt::print("OP_ELSE_IF({})\n", jump); }
+    void print() const { fmt::print("OP_ELSE({})\n", jump); }
     int apply(anzu::stack_frame& frame) const;
 };
 
 struct op_end
 {
-    void print() const { fmt::print("OP_END_IF\n"); }
+    int jump;
+
+    void print() const { fmt::print("OP_END({})\n", jump); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -128,6 +136,7 @@ using op = std::variant<
     op_dup,
     op_print_frame,
     op_if,
+    op_while,
     op_do,
     op_else,
     op_end,
