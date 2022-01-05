@@ -1,10 +1,8 @@
 
-0 5 -
+sc x 5
 
-7 + .
-
-true if
-    true .
+pv x if
+    x .
 else
     6 .
 end

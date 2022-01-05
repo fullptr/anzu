@@ -157,8 +157,9 @@ std::vector<anzu::opcode> load_program(const std::string& file)
             });
         }
         else {
-            fmt::print("Unknown op code: {}\n", token);
-            std::exit(1);
+            program.push_back(anzu::op::push_var{
+                .name=token
+            });
         }
         ++it;
     }

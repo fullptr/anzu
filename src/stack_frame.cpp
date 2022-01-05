@@ -27,6 +27,11 @@ auto stack_frame::empty() const -> bool
     return d_values.empty();
 }
 
+auto stack_frame::has(const std::string& name) const -> bool
+{
+    return d_symbols.contains(name);
+}
+
 auto stack_frame::fetch(const std::string& token) const -> type
 {
     if (!d_symbols.contains(token)) {
