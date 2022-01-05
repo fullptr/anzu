@@ -85,9 +85,15 @@ struct print_frame
 
 struct begin_if
 {
+    void print() const { fmt::print("OP_BEGIN_IF\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct do_stmt // TODO: Improve name
+{
     int jump;
 
-    void print() const { fmt::print("OP_BEGIN_IF({})\n", jump); }
+    void print() const { fmt::print("OP_DO({})\n", jump); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -125,6 +131,7 @@ using opcode = std::variant<
     op::dup,
     op::print_frame,
     op::begin_if,
+    op::do_stmt,
     op::else_if,
     op::end_if,
     op::equals

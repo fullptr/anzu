@@ -2,6 +2,10 @@
 let x 5
 let y x
 
-x if y else 6 end
+if x do
+    y
+else
+    6
+end
 
 .

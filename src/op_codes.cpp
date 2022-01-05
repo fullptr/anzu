@@ -86,6 +86,16 @@ int print_frame::apply(anzu::stack_frame& frame) const
 
 int begin_if::apply(anzu::stack_frame& frame) const
 {
+    return 1;
+    //auto condition = std::visit(overloaded {
+    //    [](int v) { return v != 0; },
+    //    [](bool v) { return v; }
+    //}, frame.pop());
+    //return condition ? 1 : jump;
+}
+
+int do_stmt::apply(anzu::stack_frame& frame) const
+{
     auto condition = std::visit(overloaded {
         [](int v) { return v != 0; },
         [](bool v) { return v; }

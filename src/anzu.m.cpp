@@ -48,6 +48,7 @@ constexpr auto OP_SUB          = std::string_view{"-"};
 constexpr auto OP_DUP          = std::string_view{"dup"};
 constexpr auto OP_PRINT_FRAME  = std::string_view{"frame"};
 constexpr auto OP_BEGIN_IF     = std::string_view{"if"};
+constexpr auto OP_DO           = std::string_view{"do"};
 constexpr auto OP_ELSE_IF      = std::string_view{"else"};
 constexpr auto OP_END_IF       = std::string_view{"end"};
 constexpr auto OP_EQUALS       = std::string_view{"=="};
@@ -102,7 +103,11 @@ std::vector<anzu::opcode> load_program(const std::string& file)
         }
         else if (token == OP_BEGIN_IF) {
             if_stack.push(program.size());
-            program.push_back(anzu::op::begin_if{
+            program.push_back(anzu::op::begin_if{});
+        }
+        else if (token == OP_DO) {
+            if_stack.push(program.size());
+            program.push_back(anzu::op::do_stmt{
                 .jump = -1
             });
         }
@@ -111,7 +116,7 @@ std::vector<anzu::opcode> load_program(const std::string& file)
             // new "else" token so flow enters the else block. Replace the "if" in if
             // stack with this new token so that the end can update it to jump to the end.
             auto index = if_stack.top();
-            if (auto* begin = std::get_if<anzu::op::begin_if>(&program[index])) {
+            if (auto* begin = std::get_if<anzu::op::do_stmt>(&program[index])) {
                 begin->jump = static_cast<int>(program.size() - index + 1);
             } else {
                 fmt::print("No if statement to attach to!\n");
@@ -126,7 +131,7 @@ std::vector<anzu::opcode> load_program(const std::string& file)
             // jump to one past us.
             const auto index = if_stack.top();
             const auto jump = static_cast<int>(program.size() - index + 1);
-            if (auto* stmt = std::get_if<anzu::op::begin_if>(&program[index])) {
+            if (auto* stmt = std::get_if<anzu::op::do_stmt>(&program[index])) {
                 stmt->jump = jump;
             } else if (auto* stmt = std::get_if<anzu::op::else_if>(&program[index])) {
                 stmt->jump = jump;
@@ -181,8 +186,8 @@ int main(int argc, char** argv)
     fmt::print("Running file {}\n", file);
     auto program = load_program(file);
     
-    run_program(program);
-    //for (const auto& op : program) { std::visit([](auto&& o) { o.print(); }, op); }
+    //run_program(program);
+    for (const auto& op : program) { std::visit([](auto&& o) { o.print(); }, op); }
 
     return 0;
 }
