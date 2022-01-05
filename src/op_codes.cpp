@@ -57,5 +57,13 @@ void print_frame::apply(anzu::stack_frame& frame) const
     frame.print();
 }
 
+void begin_if::apply(anzu::stack_frame& frame) const
+{
+}
+
+void end_if::apply(anzu::stack_frame& frame) const
+{
+}
+
 }
 }

@@ -77,6 +77,20 @@ struct print_frame
     void apply(anzu::stack_frame& frame) const;
 };
 
+struct begin_if
+{
+    int jump;
+
+    void print() const { fmt::print("OP_BEGIN_IF({})\n", jump); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct end_if
+{
+    void print() const { fmt::print("OP_END_IF\n"); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
 }
 
 using opcode = std::variant<
@@ -89,7 +103,9 @@ using opcode = std::variant<
     op::add,
     op::sub,
     op::dup,
-    op::print_frame
+    op::print_frame,
+    op::begin_if,
+    op::end_if
 >;
 
 }
