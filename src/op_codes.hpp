@@ -82,9 +82,11 @@ struct op_print_frame
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct op_if
+struct op_do
 {
-    void print() const { fmt::print("OP_IF\n"); }
+    int jump;
+
+    void print() const { fmt::print("OP_DO({})\n", jump); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -94,11 +96,9 @@ struct op_while
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct op_do // TODO: Improve name
+struct op_if
 {
-    int jump;
-
-    void print() const { fmt::print("OP_DO({})\n", jump); }
+    void print() const { fmt::print("OP_IF\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -135,8 +135,8 @@ using op = std::variant<
     op_sub,
     op_dup,
     op_print_frame,
-    op_if,
     op_while,
+    op_if,
     op_do,
     op_else,
     op_end,
