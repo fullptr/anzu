@@ -282,24 +282,47 @@ void run_program(const std::vector<anzu::op>& program)
     }
 }
 
-int main(int argc, char** argv)
+void print_program(const std::vector<anzu::op>& program)
 {
-    if (argc != 2) {
-        fmt::print("Print usage\n");
-        return 0;
-    }
-
-    auto file = std::string{argv[1]};
-    fmt::print("Running file {}\n", file);
-    auto program = load_program(file);
-    
-    //run_program(program);
     int lineno = 0;
     for (const auto& op : program) {
         std::visit([&](auto&& o) {
             fmt::print("{:>4} - ", lineno++);
             o.print();
         }, op);
+    }
+}
+
+void print_usage()
+{
+    fmt::print("usage: anzu.exe (run|print) <program_file>\n\n");
+    fmt::print("The Anzu Programming Language\n\n");
+    fmt::print("run:   executes the program\n");
+    fmt::print("print: prints the program as a series of op codes\n");
+}
+
+int main(int argc, char** argv)
+{
+    if (argc != 3) {
+        print_usage();
+        return 1;
+    }
+
+    const auto mode = std::string{argv[1]};
+    const auto file = std::string{argv[2]};
+
+    fmt::print("Loading file {}\n", file);
+    const auto program = load_program(file);
+    
+    if (mode == "print") {
+        print_program(program);
+    }
+    else if (mode == "run") {
+        run_program(program);
+    }
+    else {
+        print_usage();
+        return 1;
     }
 
     return 0;
