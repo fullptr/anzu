@@ -159,6 +159,18 @@ struct op_ge
     int apply(anzu::stack_frame& frame) const;
 };
 
+struct op_or
+{
+    void print() const { fmt::print("OP_OR\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_and
+{
+    void print() const { fmt::print("OP_AND\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 using op = std::variant<
     op_store,
     op_dump,
@@ -182,7 +194,9 @@ using op = std::variant<
     op_lt,
     op_le,
     op_gt,
-    op_ge
+    op_ge,
+    op_or,
+    op_and
 >;
 
 }

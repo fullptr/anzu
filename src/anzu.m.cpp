@@ -62,6 +62,8 @@ constexpr auto OP_LT          = std::string_view{"<"};
 constexpr auto OP_LE          = std::string_view{"<="};
 constexpr auto OP_GT          = std::string_view{">"};
 constexpr auto OP_GE          = std::string_view{">="};
+constexpr auto OP_OR          = std::string_view{"or"};
+constexpr auto OP_AND         = std::string_view{"and"};
 
 std::vector<anzu::op> load_program(const std::string& file)
 {
@@ -236,6 +238,12 @@ std::vector<anzu::op> load_program(const std::string& file)
         }
         else if (token == OP_GE) {
             program.push_back(anzu::op_ge{});
+        }
+        else if (token == OP_OR) {
+            program.push_back(anzu::op_or{});
+        }
+        else if (token == OP_AND) {
+            program.push_back(anzu::op_and{});
         }
         else if (is_literal(token)) {
             program.push_back(anzu::op_push_const{

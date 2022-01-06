@@ -241,4 +241,34 @@ int op_ge::apply(anzu::stack_frame& frame) const
     return 1;
 }
 
+int op_or::apply(anzu::stack_frame& frame) const
+{
+    auto b = frame.pop();
+    auto a = frame.pop();
+    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
+        if constexpr (std::is_same_v<A, bool> && std::is_same_v<B, bool>) {
+            frame.push(a || b);
+        } else {
+            fmt::print("Logical OR can only be used on bools\n");
+            std::exit(1);
+        }
+    }, a, b);
+    return 1;
+}
+
+int op_and::apply(anzu::stack_frame& frame) const
+{
+    auto b = frame.pop();
+    auto a = frame.pop();
+    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
+        if constexpr (std::is_same_v<A, bool> && std::is_same_v<B, bool>) {
+            frame.push(a && b);
+        } else {
+            fmt::print("Logical AND can only be used on bools\n");
+            std::exit(1);
+        }
+    }, a, b);
+    return 1;
+}
+
 }

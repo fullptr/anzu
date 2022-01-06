@@ -1,4 +1,4 @@
-// Program for Project Euler #1
+// Project Euler #1 No OR operator, index stored in stack
 0 -> count
 
 0 while dup 1000 < do
@@ -10,6 +10,19 @@
         end 
     end
     1 +
+end
+
+count .
+
+// Project Euler #1 Using OR operator, index stored in heap
+0 -> count
+0 -> index
+
+while index 1000 < do
+    if index 3 % 0 == index 5 % 0 == or do
+        index count + -> count
+    end
+    index 1 + -> index
 end
 
 count .
