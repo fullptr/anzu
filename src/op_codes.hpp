@@ -171,6 +171,12 @@ struct op_and
     int apply(anzu::stack_frame& frame) const;
 };
 
+struct op_input
+{
+    void print() const { fmt::print("OP_INPUT\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 using op = std::variant<
     op_store,
     op_dump,
@@ -196,7 +202,8 @@ using op = std::variant<
     op_gt,
     op_ge,
     op_or,
-    op_and
+    op_and,
+    op_input
 >;
 
 }

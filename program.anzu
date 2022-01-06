@@ -13,16 +13,3 @@
 end
 
 count .
-
-// Project Euler #1 Using OR operator, index stored in heap
-0 -> count
-0 -> index
-
-while index 1000 < do
-    if index 3 % 0 == index 5 % 0 == or do
-        index count + -> count
-    end
-    index 1 + -> index
-end
-
-count .

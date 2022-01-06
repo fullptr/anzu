@@ -13,6 +13,8 @@
 #include <fstream>
 #include <sstream>
 
+namespace {
+
 bool is_literal(const std::string& token)
 {
     return token == "false"
@@ -41,6 +43,8 @@ std::string next(std::vector<std::string>::iterator& it)
     return *it;
 }
 
+}
+
 constexpr auto OP_STORE       = std::string_view{"->"};
 constexpr auto OP_DUMP        = std::string_view{"."};
 constexpr auto OP_POP         = std::string_view{"pop"};
@@ -64,6 +68,7 @@ constexpr auto OP_GT          = std::string_view{">"};
 constexpr auto OP_GE          = std::string_view{">="};
 constexpr auto OP_OR          = std::string_view{"or"};
 constexpr auto OP_AND         = std::string_view{"and"};
+constexpr auto OP_INPUT       = std::string_view{"input"};
 
 std::vector<anzu::op> load_program(const std::string& file)
 {
@@ -245,6 +250,9 @@ std::vector<anzu::op> load_program(const std::string& file)
         else if (token == OP_AND) {
             program.push_back(anzu::op_and{});
         }
+        else if (token == OP_INPUT) {
+            program.push_back(anzu::op_input{});
+        }
         else if (is_literal(token)) {
             program.push_back(anzu::op_push_const{
                 .value=parse_literal(token)
@@ -285,8 +293,14 @@ int main(int argc, char** argv)
     fmt::print("Running file {}\n", file);
     auto program = load_program(file);
     
-    run_program(program);
-    //for (const auto& op : program) { std::visit([](auto&& o) { o.print(); }, op); }
+    //run_program(program);
+    int lineno = 0;
+    for (const auto& op : program) {
+        std::visit([&](auto&& o) {
+            fmt::print("{:>4} - ", lineno++);
+            o.print();
+        }, op);
+    }
 
     return 0;
 }
