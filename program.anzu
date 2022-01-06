@@ -1,6 +1,14 @@
-0 -> x
+0 -> count
 
-while x 10 < do
-    x .
-    x 1 + -> x
+0 while dup 1000 < do
+    if dup 3 % 0 == do
+        dup count + -> count
+    else
+        if dup 5 % 0 == do
+            dup count + -> count
+        end 
+    end
+    1 +
 end
+
+count .

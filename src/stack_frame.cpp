@@ -30,7 +30,7 @@ auto stack_frame::empty() const -> bool
 auto stack_frame::fetch(const std::string& token) const -> type
 {
     if (!d_symbols.contains(token)) {
-        fmt::print("Error: Unknown int");
+        fmt::print("Error: Unknown value '{}'", token);
         std::exit(1);
     }
     return d_symbols.at(token);

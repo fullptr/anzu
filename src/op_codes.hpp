@@ -37,32 +37,11 @@ struct op_push_const
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct op_store_const
-{
-    std::string name;
-    anzu::stack_frame::type value;
-
-    void print() const {
-        fmt::print("OP_STORE_CONST({}, ", name);
-        anzu::print_value(value);
-        fmt::print(")\n"); }
-    int apply(anzu::stack_frame& frame) const;
-};
-
 struct op_push_var
 {
     std::string name;
 
     void print() const { fmt::print("OP_PUSH_VAR({})\n", name); }
-    int apply(anzu::stack_frame& frame) const;
-};
-
-struct op_store_var
-{
-    std::string name;
-    std::string source; 
-
-    void print() const { fmt::print("OP_STORE_VAR({}, {})\n", name, source); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -87,6 +66,12 @@ struct op_mul
 struct op_div
 {
     void print() const { fmt::print("OP_DIV\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_mod
+{
+    void print() const { fmt::print("OP_MOD\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -179,13 +164,12 @@ using op = std::variant<
     op_dump,
     op_pop,
     op_push_const,
-    op_store_const,
     op_push_var,
-    op_store_var,
     op_add,
     op_sub,
     op_mul,
     op_div,
+    op_mod,
     op_dup,
     op_print_frame,
     op_while,

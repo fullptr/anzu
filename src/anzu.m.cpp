@@ -40,14 +40,14 @@ std::string next(std::vector<std::string>::iterator& it)
     return *it;
 }
 
-constexpr auto OP_STORE_NEW   = std::string_view{"->"};
+constexpr auto OP_STORE       = std::string_view{"->"};
 constexpr auto OP_DUMP        = std::string_view{"."};
-constexpr auto OP_STORE       = std::string_view{"let"};
 constexpr auto OP_POP         = std::string_view{"pop"};
 constexpr auto OP_ADD         = std::string_view{"+"};
 constexpr auto OP_SUB         = std::string_view{"-"};
 constexpr auto OP_MUL         = std::string_view{"*"};
 constexpr auto OP_DIV         = std::string_view{"/"};
+constexpr auto OP_MOD         = std::string_view{"%"};
 constexpr auto OP_DUP         = std::string_view{"dup"};
 constexpr auto OP_PRINT_FRAME = std::string_view{"frame"};
 constexpr auto OP_DO          = std::string_view{"do"};
@@ -80,7 +80,7 @@ std::vector<anzu::op> load_program(const std::string& file)
     while (it != tokens.end()) {
         const auto& token = *it;
 
-        if (token == OP_STORE_NEW) {
+        if (token == OP_STORE) {
             program.push_back(anzu::op_store{
                 .name=next(it)
             });
@@ -90,21 +90,6 @@ std::vector<anzu::op> load_program(const std::string& file)
         }
         else if (token == OP_POP) {
             program.push_back(anzu::op_pop{});
-        }
-        else if (token == OP_STORE) {
-            auto name = next(it);
-            auto val = next(it);
-            if (is_literal(val)) {
-                program.push_back(anzu::op_store_const{
-                    .name=name,
-                    .value=parse_literal(val)
-                });
-            } else {
-                program.push_back(anzu::op_store_var{
-                    .name=name,
-                    .source=val
-                });
-            }
         }
         else if (token == OP_ADD) {
             program.push_back(anzu::op_add{});
@@ -117,6 +102,9 @@ std::vector<anzu::op> load_program(const std::string& file)
         }
         else if (token == OP_DIV) {
             program.push_back(anzu::op_div{});
+        }
+        else if (token == OP_MOD) {
+            program.push_back(anzu::op_mod{});
         }
         else if (token == OP_DUP) {
             program.push_back(anzu::op_dup{});

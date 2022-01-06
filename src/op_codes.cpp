@@ -29,21 +29,9 @@ int op_push_const::apply(anzu::stack_frame& frame) const
     return 1;
 }
 
-int op_store_const::apply(anzu::stack_frame& frame) const
-{
-    frame.load(name, value);
-    return 1;
-}
-
 int op_push_var::apply(anzu::stack_frame& frame) const
 {
     frame.push(frame.fetch(name));
-    return 1;
-}
-
-int op_store_var::apply(anzu::stack_frame& frame) const
-{
-    frame.load(name, frame.fetch(source));
     return 1;
 }
 
@@ -99,6 +87,21 @@ int op_div::apply(anzu::stack_frame& frame) const
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
         if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
             frame.push(a / b);
+        } else {
+            fmt::print("Can only sub integers\n");
+            std::exit(1);
+        }
+    }, a, b);
+    return 1;
+}
+
+int op_mod::apply(anzu::stack_frame& frame) const
+{
+    auto b = frame.pop();
+    auto a = frame.pop();
+    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
+        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
+            frame.push(a % b);
         } else {
             fmt::print("Can only sub integers\n");
             std::exit(1);
