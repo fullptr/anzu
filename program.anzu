@@ -1,6 +1,6 @@
 
 
-0 while dup 10 < do
+20 while dup 10 >= do
     dup .
-    1 +
+    1 -
 end

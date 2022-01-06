@@ -70,6 +70,18 @@ struct op_sub
     int apply(anzu::stack_frame& frame) const;
 };
 
+struct op_mul
+{
+    void print() const { fmt::print("OP_MUL\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_div
+{
+    void print() const { fmt::print("OP_DIV\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 struct op_dup
 {
     void print() const { fmt::print("OP_DUP\n"); }
@@ -163,6 +175,8 @@ using op = std::variant<
     op_store_var,
     op_add,
     op_sub,
+    op_mul,
+    op_div,
     op_dup,
     op_print_frame,
     op_while,
@@ -173,7 +187,9 @@ using op = std::variant<
     op_eq,
     op_ne,
     op_lt,
-    op_le
+    op_le,
+    op_gt,
+    op_ge
 >;
 
 }

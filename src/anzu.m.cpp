@@ -45,6 +45,8 @@ constexpr auto OP_STORE       = std::string_view{"let"};
 constexpr auto OP_POP         = std::string_view{"pop"};
 constexpr auto OP_ADD         = std::string_view{"+"};
 constexpr auto OP_SUB         = std::string_view{"-"};
+constexpr auto OP_MUL         = std::string_view{"*"};
+constexpr auto OP_DIV         = std::string_view{"/"};
 constexpr auto OP_DUP         = std::string_view{"dup"};
 constexpr auto OP_PRINT_FRAME = std::string_view{"frame"};
 constexpr auto OP_DO          = std::string_view{"do"};
@@ -103,6 +105,12 @@ std::vector<anzu::op> load_program(const std::string& file)
         }
         else if (token == OP_SUB) {
             program.push_back(anzu::op_sub{});
+        }
+        else if (token == OP_MUL) {
+            program.push_back(anzu::op_mul{});
+        }
+        else if (token == OP_DIV) {
+            program.push_back(anzu::op_div{});
         }
         else if (token == OP_DUP) {
             program.push_back(anzu::op_dup{});
