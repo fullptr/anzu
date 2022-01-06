@@ -312,7 +312,7 @@ int main(int argc, char** argv)
     const auto mode = std::string{argv[1]};
     const auto file = std::string{argv[2]};
 
-    fmt::print("Loading file {}\n", file);
+    fmt::print("loading file '{}'\n", file);
     const auto program = load_program(file);
     
     if (mode == "print") {
@@ -322,6 +322,7 @@ int main(int argc, char** argv)
         run_program(program);
     }
     else {
+        fmt::print("unknown mode: '{}'\n", mode);
         print_usage();
         return 1;
     }
