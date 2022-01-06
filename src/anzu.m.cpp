@@ -40,20 +40,21 @@ std::string next(std::vector<std::string>::iterator& it)
     return *it;
 }
 
-constexpr auto OP_DUMP         = std::string_view{"."};
-constexpr auto OP_STORE        = std::string_view{"let"};
-constexpr auto OP_POP          = std::string_view{"pop"};
-constexpr auto OP_ADD          = std::string_view{"+"};
-constexpr auto OP_SUB          = std::string_view{"-"};
-constexpr auto OP_DUP          = std::string_view{"dup"};
-constexpr auto OP_PRINT_FRAME  = std::string_view{"frame"};
-constexpr auto OP_DO           = std::string_view{"do"};
-constexpr auto OP_WHILE        = std::string_view{"while"};
-constexpr auto OP_IF           = std::string_view{"if"};
-constexpr auto OP_ELSE         = std::string_view{"else"};
-constexpr auto OP_END          = std::string_view{"end"};
-constexpr auto OP_EQUALS       = std::string_view{"=="};
-constexpr auto OP_NOT_EQUALS   = std::string_view{"!="};
+constexpr auto OP_DUMP        = std::string_view{"."};
+constexpr auto OP_STORE       = std::string_view{"let"};
+constexpr auto OP_POP         = std::string_view{"pop"};
+constexpr auto OP_ADD         = std::string_view{"+"};
+constexpr auto OP_SUB         = std::string_view{"-"};
+constexpr auto OP_DUP         = std::string_view{"dup"};
+constexpr auto OP_PRINT_FRAME = std::string_view{"frame"};
+constexpr auto OP_DO          = std::string_view{"do"};
+constexpr auto OP_WHILE       = std::string_view{"while"};
+constexpr auto OP_IF          = std::string_view{"if"};
+constexpr auto OP_ELSE        = std::string_view{"else"};
+constexpr auto OP_END         = std::string_view{"end"};
+constexpr auto OP_EQ          = std::string_view{"=="};
+constexpr auto OP_NE          = std::string_view{"!="};
+constexpr auto OP_LT          = std::string_view{"<"};
 
 std::vector<anzu::op> load_program(const std::string& file)
 {
@@ -204,11 +205,14 @@ std::vector<anzu::op> load_program(const std::string& file)
                 std::exit(1);
             }
         }
-        else if (token == OP_EQUALS) {
-            program.push_back(anzu::op_equals{});
+        else if (token == OP_EQ) {
+            program.push_back(anzu::op_eq{});
         }
-        else if (token == OP_NOT_EQUALS) {
-            program.push_back(anzu::op_not_equals{});
+        else if (token == OP_NE) {
+            program.push_back(anzu::op_ne{});
+        }
+        else if (token == OP_LT) {
+            program.push_back(anzu::op_lt{});
         }
         else if (is_literal(token)) {
             program.push_back(anzu::op_push_const{

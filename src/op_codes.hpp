@@ -118,15 +118,21 @@ struct op_end
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct op_equals
+struct op_eq
 {
-    void print() const { fmt::print("OP_EQUALS\n"); }
+    void print() const { fmt::print("OP_EQ\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct op_not_equals
+struct op_ne
 {
-    void print() const { fmt::print("OP_NOT_EQUALS\n"); }
+    void print() const { fmt::print("OP_NE\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_lt
+{
+    void print() const { fmt::print("OP_LT\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -146,8 +152,9 @@ using op = std::variant<
     op_do,
     op_else,
     op_end,
-    op_equals,
-    op_not_equals
+    op_eq,
+    op_ne,
+    op_lt
 >;
 
 }

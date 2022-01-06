@@ -1,5 +1,6 @@
 
 
-0 while dup 10 != do
-    dup . 1 +
+0 while dup 10 < do
+    dup .
+    1 +
 end
