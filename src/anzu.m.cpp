@@ -11,6 +11,7 @@
 #include <tuple>
 #include <utility>
 #include <fstream>
+#include <sstream>
 
 bool is_literal(const std::string& token)
 {
@@ -64,10 +65,18 @@ constexpr auto OP_GE          = std::string_view{">="};
 
 std::vector<anzu::op> load_program(const std::string& file)
 {
-    std::ifstream stream{file};
+    // Loop over the lines in the program, and then split each line into tokens.
+    // If a '//' comment symbol is hit, the rest of the line is ignored.
     std::vector<std::string> tokens;
-    for (const auto& token : std::ranges::istream_view<std::string>(stream)) {
-        tokens.push_back(token);
+    std::ifstream file_stream{file};
+    std::string line;
+    while (std::getline(file_stream, line)) {
+        std::istringstream line_stream{line};
+        for (const auto& token : std::ranges::istream_view<std::string>(line_stream)
+                               | std::views::take_while([](auto&& tok) { return tok != "//"; }))
+        {
+            tokens.push_back(token);
+        }
     }
 
     std::vector<anzu::op> program;
