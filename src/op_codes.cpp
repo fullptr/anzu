@@ -157,4 +157,49 @@ int op_lt::apply(anzu::stack_frame& frame) const
     return 1;
 }
 
+int op_le::apply(anzu::stack_frame& frame) const
+{
+    auto b = frame.pop();
+    auto a = frame.pop();
+    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
+        if constexpr (std::is_same_v<A, B>) {
+            frame.push(a <= b);
+        } else {
+            fmt::print("Can only compare values of the same type\n");
+            std::exit(1);
+        }
+    }, a, b);
+    return 1;
+}
+
+int op_gt::apply(anzu::stack_frame& frame) const
+{
+    auto b = frame.pop();
+    auto a = frame.pop();
+    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
+        if constexpr (std::is_same_v<A, B>) {
+            frame.push(a > b);
+        } else {
+            fmt::print("Can only compare values of the same type\n");
+            std::exit(1);
+        }
+    }, a, b);
+    return 1;
+}
+
+int op_ge::apply(anzu::stack_frame& frame) const
+{
+    auto b = frame.pop();
+    auto a = frame.pop();
+    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
+        if constexpr (std::is_same_v<A, B>) {
+            frame.push(a >= b);
+        } else {
+            fmt::print("Can only compare values of the same type\n");
+            std::exit(1);
+        }
+    }, a, b);
+    return 1;
+}
+
 }

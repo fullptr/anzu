@@ -136,6 +136,24 @@ struct op_lt
     int apply(anzu::stack_frame& frame) const;
 };
 
+struct op_le
+{
+    void print() const { fmt::print("OP_LE\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_gt
+{
+    void print() const { fmt::print("OP_GT\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_ge
+{
+    void print() const { fmt::print("OP_GE\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 using op = std::variant<
     op_dump,
     op_pop,
@@ -154,7 +172,8 @@ using op = std::variant<
     op_end,
     op_eq,
     op_ne,
-    op_lt
+    op_lt,
+    op_le
 >;
 
 }
