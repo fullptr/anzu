@@ -6,6 +6,14 @@
 
 namespace anzu {
 
+struct op_store
+{
+    std::string name;
+
+    void print() const { fmt::print("OP_STORE({})\n", name); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 struct op_dump
 {
     void print() const { fmt::print("OP_DUMP\n"); }
@@ -167,6 +175,7 @@ struct op_ge
 };
 
 using op = std::variant<
+    op_store,
     op_dump,
     op_pop,
     op_push_const,

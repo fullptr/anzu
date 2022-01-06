@@ -40,6 +40,7 @@ std::string next(std::vector<std::string>::iterator& it)
     return *it;
 }
 
+constexpr auto OP_STORE_NEW   = std::string_view{"->"};
 constexpr auto OP_DUMP        = std::string_view{"."};
 constexpr auto OP_STORE       = std::string_view{"let"};
 constexpr auto OP_POP         = std::string_view{"pop"};
@@ -79,7 +80,12 @@ std::vector<anzu::op> load_program(const std::string& file)
     while (it != tokens.end()) {
         const auto& token = *it;
 
-        if (token == OP_DUMP) {
+        if (token == OP_STORE_NEW) {
+            program.push_back(anzu::op_store{
+                .name=next(it)
+            });
+        }
+        else if (token == OP_DUMP) {
             program.push_back(anzu::op_dump{});
         }
         else if (token == OP_POP) {

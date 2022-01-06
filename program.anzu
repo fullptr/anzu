@@ -1,6 +1,6 @@
+0 -> x
 
-
-20 while dup 10 >= do
-    dup .
-    1 -
+while x 10 < do
+    x .
+    x 1 + -> x
 end

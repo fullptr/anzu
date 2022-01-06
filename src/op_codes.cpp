@@ -4,6 +4,12 @@ namespace anzu {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
+int op_store::apply(anzu::stack_frame& frame) const
+{
+    frame.load(name, frame.pop());
+    return 1;
+}
+
 int op_dump::apply(anzu::stack_frame& frame) const
 {
     anzu::print_value(frame.pop());
