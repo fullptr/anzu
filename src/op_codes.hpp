@@ -6,6 +6,14 @@
 
 namespace anzu {
 
+struct op_store
+{
+    std::string name;
+
+    void print() const { fmt::print("OP_STORE({})\n", name); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
 struct op_dump
 {
     void print() const { fmt::print("OP_DUMP\n"); }
@@ -29,32 +37,11 @@ struct op_push_const
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct op_store_const
-{
-    std::string name;
-    anzu::stack_frame::type value;
-
-    void print() const {
-        fmt::print("OP_STORE_CONST({}, ", name);
-        anzu::print_value(value);
-        fmt::print(")\n"); }
-    int apply(anzu::stack_frame& frame) const;
-};
-
 struct op_push_var
 {
     std::string name;
 
     void print() const { fmt::print("OP_PUSH_VAR({})\n", name); }
-    int apply(anzu::stack_frame& frame) const;
-};
-
-struct op_store_var
-{
-    std::string name;
-    std::string source; 
-
-    void print() const { fmt::print("OP_STORE_VAR({}, {})\n", name, source); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -67,6 +54,24 @@ struct op_add
 struct op_sub
 {
     void print() const { fmt::print("OP_SUB\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_mul
+{
+    void print() const { fmt::print("OP_MUL\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_div
+{
+    void print() const { fmt::print("OP_DIV\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_mod
+{
+    void print() const { fmt::print("OP_MOD\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
@@ -118,27 +123,71 @@ struct op_end
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct op_equals
+struct op_eq
 {
-    void print() const { fmt::print("OP_EQUALS\n"); }
+    void print() const { fmt::print("OP_EQ\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
-struct op_not_equals
+struct op_ne
 {
-    void print() const { fmt::print("OP_NOT_EQUALS\n"); }
+    void print() const { fmt::print("OP_NE\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_lt
+{
+    void print() const { fmt::print("OP_LT\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_le
+{
+    void print() const { fmt::print("OP_LE\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_gt
+{
+    void print() const { fmt::print("OP_GT\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_ge
+{
+    void print() const { fmt::print("OP_GE\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_or
+{
+    void print() const { fmt::print("OP_OR\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_and
+{
+    void print() const { fmt::print("OP_AND\n"); }
+    int apply(anzu::stack_frame& frame) const;
+};
+
+struct op_input
+{
+    void print() const { fmt::print("OP_INPUT\n"); }
     int apply(anzu::stack_frame& frame) const;
 };
 
 using op = std::variant<
+    op_store,
     op_dump,
     op_pop,
     op_push_const,
-    op_store_const,
     op_push_var,
-    op_store_var,
     op_add,
     op_sub,
+    op_mul,
+    op_div,
+    op_mod,
     op_dup,
     op_print_frame,
     op_while,
@@ -146,8 +195,15 @@ using op = std::variant<
     op_do,
     op_else,
     op_end,
-    op_equals,
-    op_not_equals
+    op_eq,
+    op_ne,
+    op_lt,
+    op_le,
+    op_gt,
+    op_ge,
+    op_or,
+    op_and,
+    op_input
 >;
 
 }

@@ -1,5 +1,15 @@
+// Project Euler #1 No OR operator, index stored in stack
+0 -> count
 
-
-0 while dup 10 != do
-    dup . 1 +
+0 while dup 1000 < do
+    if dup 3 % 0 == do
+        dup count + -> count
+    else
+        if dup 5 % 0 == do
+            dup count + -> count
+        end 
+    end
+    1 +
 end
+
+count .
