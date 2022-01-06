@@ -297,8 +297,9 @@ void print_usage()
 {
     fmt::print("usage: anzu.exe (run|print) <program_file>\n\n");
     fmt::print("The Anzu Programming Language\n\n");
-    fmt::print("run:   executes the program\n");
-    fmt::print("print: prints the program as a series of op codes\n");
+    fmt::print("options:\n");
+    fmt::print("    run   - executes the program\n");
+    fmt::print("    print - displays the program bytecode\n");
 }
 
 int main(int argc, char** argv)
