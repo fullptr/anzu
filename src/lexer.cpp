@@ -31,10 +31,9 @@ auto drop_front_back(int front, int back)
     return sv::drop(front) | sv::reverse | sv::drop(back) | sv::reverse;
 }
 
-std::vector<std::ptrdiff_t> process_if_block(
-    std::vector<anzu::op>& program,
-    const std::vector<std::ptrdiff_t>& block_raw)
+void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>& block)
 {
+    /*
     // We need to first strip out and breaks and continues to pass them back as they
     // are not part of this block.
     std::vector<std::ptrdiff_t> block;
@@ -82,12 +81,12 @@ std::vector<std::ptrdiff_t> process_if_block(
     end_op->jump = end_op_ptr + 1;
 
     return ret;
+    */
 }
 
-void process_while_block(
-    std::vector<anzu::op>& program,
-    const std::vector<std::ptrdiff_t>& block)
+void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>& block)
 {
+/*
     if (block.size() >= 3) { // while -> do -> [ break -> continue -> ...] -> end
         std::ptrdiff_t while_op_ptr = block.back();
         std::ptrdiff_t do_op_ptr    = block.at(block.size() - 2);
@@ -119,8 +118,10 @@ void process_while_block(
         fmt::print("invalid while-statement {}\n", block.size());
         std::exit(1);
     }
+*/
 }
 
+/*
 void process_control_block(
     std::vector<anzu::op>& program,
     std::stack<std::ptrdiff_t>& control_flow)
@@ -153,6 +154,7 @@ void process_control_block(
         std::exit(1);
     }
 }
+*/
 
 }
 
@@ -176,7 +178,9 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
 
     // Contains a stack of indices to previous control flow statements suchs as
     // 'if', 'do' and 'else' so the jumps can be set up correctly.
-    std::stack<std::ptrdiff_t> control_flow;
+    std::stack<std::ptrdiff_t> if_stack;
+    std::stack<std::ptrdiff_t> while_stack;
+    std::stack<std::string>    blocks;
 
     auto it = tokens.begin();
     while (it != tokens.end()) {
@@ -215,33 +219,56 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
             program.push_back(anzu::op_print_frame{});
         }
         else if (token == IF) {
-            control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_block_begin{ .type="IF" });
+            if_stack.push(std::ssize(program));
+            blocks.push("IF");
+            program.push_back(anzu::op_if{});
         }
         else if (token == ELSE) {
-            control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_block_jump{ .type="ELSE", .jump=-1 });
+            if_stack.push(std::ssize(program));
+            program.push_back(anzu::op_else{});
         }
         else if (token == WHILE) {
-            control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_block_begin{ .type="WHILE" });
+            while_stack.push(std::ssize(program));
+            blocks.push("WHILE");
+            program.push_back(anzu::op_while{});
         }
         else if (token == BREAK) {
-            control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_block_jump{ .type="BREAK" });
+            while_stack.push(std::ssize(program));
+            program.push_back(anzu::op_break{});
         }
         else if (token == CONTINUE) {
-            control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_block_jump{ .type="CONTINUE" });
+            while_stack.push(std::ssize(program));
+            program.push_back(anzu::op_continue{});
         }
         else if (token == DO) {
-            control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_block_jump_if_false{ .jump=-1 });
+            if (blocks.top() == "IF") {
+                if_stack.push(std::ssize(program));
+            }
+            else if (blocks.top() == "WHILE") {
+                while_stack.push(std::ssize(program));
+            }
+            else {
+                fmt::print("bad 'do', is not in a control flow block\n");
+                std::exit(1);
+            }
+            program.push_back(anzu::op_do{});
         }
         else if (token == END) {
-            control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_block_end{ .jump=-1 });
-            process_control_block(program, control_flow);
+            if (blocks.top() == "IF") {
+                if_stack.push(std::ssize(program));
+                program.push_back(anzu::op_end_if{});
+                process_if_block(program, if_stack);
+            }
+            else if (blocks.top() == "WHILE") {
+                while_stack.push(std::ssize(program));
+                program.push_back(anzu::op_end_while{});
+                process_while_block(program, while_stack);
+            }
+            else {
+                fmt::print("bad 'end', is not in a control flow block\n");
+                std::exit(1);
+            }
+            blocks.pop();
         }
         else if (token == EQ) {
             program.push_back(anzu::op_eq{});

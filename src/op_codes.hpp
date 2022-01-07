@@ -94,7 +94,7 @@ struct op_block_begin
 
 struct op_block_end
 {
-    std::ptrdiff_t jump;
+    std::ptrdiff_t jump = -1;
 
     void print() const { fmt::print("OP_BLOCK_END (to {})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -102,7 +102,7 @@ struct op_block_end
 
 struct op_block_jump_if_false
 {
-    std::ptrdiff_t jump;
+    std::ptrdiff_t jump = -1;
 
     void print() const { fmt::print("OP_BLOCK_JUMP_IF_FALSE (to {})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -111,7 +111,7 @@ struct op_block_jump_if_false
 struct op_block_jump
 {
     std::string    type;
-    std::ptrdiff_t jump;
+    std::ptrdiff_t jump = -1;
 
     void print() const { fmt::print("OP_BLOCK_JUMP ({}) (to {})\n", type, jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -185,7 +185,7 @@ struct op_end_if
 
 struct op_else
 {
-    std::ptrdiff_t jump;
+    std::ptrdiff_t jump = -1;
 
     void print() const { fmt::print("OP_ELSE (to {})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -199,7 +199,7 @@ struct op_while
 
 struct op_end_while
 {
-    std::ptrdiff_t jump;
+    std::ptrdiff_t jump = -1;
 
     void print() const { fmt::print("OP_END_WHILE (to {})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -207,7 +207,7 @@ struct op_end_while
 
 struct op_break
 {
-    std::ptrdiff_t jump;
+    std::ptrdiff_t jump = -1;
 
     void print() const { fmt::print("OP_BREAK (to {})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -215,7 +215,7 @@ struct op_break
 
 struct op_continue
 {
-    std::ptrdiff_t jump;
+    std::ptrdiff_t jump = -1;
 
     void print() const { fmt::print("OP_CONTINUE (to {})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -223,7 +223,7 @@ struct op_continue
 
 struct op_do
 {
-    std::ptrdiff_t jump;
+    std::ptrdiff_t jump = -1;
 
     void print() const { fmt::print("OP_DO (to {} if false)\n", jump); }
     void apply(anzu::stack_frame& frame) const;
