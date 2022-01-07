@@ -11,38 +11,44 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 }
 
-void op_store::apply(anzu::stack_frame& frame) const
+void op_store::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.load(name, frame.pop());
     frame.ptr() += 1;
 }
 
-void op_dump::apply(anzu::stack_frame& frame) const
+void op_dump::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     fmt::print("{}\n", frame.pop());
     frame.ptr() += 1;
 }
 
-void op_pop::apply(anzu::stack_frame& frame) const
+void op_pop::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.pop();
     frame.ptr() += 1;
 }
 
-void op_push_const::apply(anzu::stack_frame& frame) const
+void op_push_const::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.push(value);
     frame.ptr() += 1;
 }
 
-void op_push_var::apply(anzu::stack_frame& frame) const
+void op_push_var::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.push(frame.fetch(name));
     frame.ptr() += 1;
 }
 
-void op_add::apply(anzu::stack_frame& frame) const
+void op_add::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -56,8 +62,9 @@ void op_add::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_sub::apply(anzu::stack_frame& frame) const
+void op_sub::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -71,8 +78,9 @@ void op_sub::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_mul::apply(anzu::stack_frame& frame) const
+void op_mul::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -86,8 +94,9 @@ void op_mul::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_div::apply(anzu::stack_frame& frame) const
+void op_div::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -101,8 +110,9 @@ void op_div::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_mod::apply(anzu::stack_frame& frame) const
+void op_mod::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -116,20 +126,23 @@ void op_mod::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_dup::apply(anzu::stack_frame& frame) const
+void op_dup::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.push(frame.peek());
     frame.ptr() += 1;
 }
 
-void op_print_frame::apply(anzu::stack_frame& frame) const
+void op_print_frame::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.print();
     frame.ptr() += 1;
 }
 
-void op_eq::apply(anzu::stack_frame& frame) const
+void op_eq::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -143,8 +156,9 @@ void op_eq::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_ne::apply(anzu::stack_frame& frame) const
+void op_ne::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -158,8 +172,9 @@ void op_ne::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_lt::apply(anzu::stack_frame& frame) const
+void op_lt::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -173,8 +188,9 @@ void op_lt::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_le::apply(anzu::stack_frame& frame) const
+void op_le::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -188,8 +204,9 @@ void op_le::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_gt::apply(anzu::stack_frame& frame) const
+void op_gt::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -203,8 +220,9 @@ void op_gt::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_ge::apply(anzu::stack_frame& frame) const
+void op_ge::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -218,8 +236,9 @@ void op_ge::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_or::apply(anzu::stack_frame& frame) const
+void op_or::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -233,8 +252,9 @@ void op_or::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_and::apply(anzu::stack_frame& frame) const
+void op_and::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -248,8 +268,9 @@ void op_and::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_input::apply(anzu::stack_frame& frame) const
+void op_input::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     fmt::print("Input: ");
     std::string in;
     std::cin >> in;
@@ -261,48 +282,57 @@ void op_input::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_if::apply(anzu::stack_frame& frame) const
+void op_if::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.ptr() += 1;
 }
 
-void op_end_if::apply(anzu::stack_frame& frame) const
+void op_end_if::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.ptr() += 1;
 }
 
-void op_elif::apply(anzu::stack_frame& frame) const
+void op_elif::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.ptr() = jump;
 }
 
-void op_else::apply(anzu::stack_frame& frame) const
+void op_else::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.ptr() = jump;
 }
 
-void op_while::apply(anzu::stack_frame& frame) const
+void op_while::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.ptr() += 1;
 }
 
-void op_end_while::apply(anzu::stack_frame& frame) const
+void op_end_while::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.ptr() = jump;
 }
 
-void op_break::apply(anzu::stack_frame& frame) const
+void op_break::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.ptr() = jump;
 }
 
-void op_continue::apply(anzu::stack_frame& frame) const
+void op_continue::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     frame.ptr() = jump;
 }
 
-void op_do::apply(anzu::stack_frame& frame) const
+void op_do::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
     auto condition = std::visit(overloaded {
         [](int v) { return v != 0; },
         [](bool v) { return v; }
@@ -315,16 +345,19 @@ void op_do::apply(anzu::stack_frame& frame) const
     }
 }
 
-void op_function::apply(anzu::stack_frame& frame) const
+void op_function::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
 }
 
-void op_function_end::apply(anzu::stack_frame& frame) const
+void op_function_end::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
 }
 
-void op_return::apply(anzu::stack_frame& frame) const
+void op_return::apply(anzu::context& ctx) const
 {
+    auto& frame = ctx.top();
 }
 
 }

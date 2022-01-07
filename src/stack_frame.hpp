@@ -10,7 +10,7 @@ namespace anzu {
 
 // A small wrapper for the value stack. This will eventually handle error
 // checking and checking that values are available.
-class stack_frame
+class frame
 {
     std::vector<anzu::object>                     d_values;
     std::unordered_map<std::string, anzu::object> d_symbols;
@@ -32,5 +32,7 @@ public:
     std::ptrdiff_t& ptr() { return d_ptr; }
     std::ptrdiff_t ptr() const { return d_ptr; }
 };
+
+using context = std::stack<anzu::frame>;
 
 }
