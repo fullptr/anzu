@@ -15,40 +15,46 @@
 
 namespace {
 
+template <typename... Args>
+void exit_bad(std::string_view format, Args&&... args)
+{
+    fmt::print(format, std::forward<Args>(args)...);
+    std::exit(1);
+}
+
 void process_if_block(
     std::vector<anzu::op>& program,
     std::vector<std::ptrdiff_t> block)
 {
+    std::ptrdiff_t end_op_ptr = block[0];
+
     if (block.size() == 3) { // if -> do -> end
-        std::ptrdiff_t if_op_ptr   = block[2];
         std::ptrdiff_t do_op_ptr   = block[1];
-        std::ptrdiff_t end_op_ptr  = block[0];
 
         auto* do_op = std::get_if<anzu::op_block_jump_if_false>(&program[do_op_ptr]);
+        if (!do_op) { exit_bad("invalid block at index {}", do_op_ptr); }
         do_op->jump = end_op_ptr + 1;
-
-        auto* end_op = std::get_if<anzu::op_block_end>(&program[end_op_ptr]);
-        end_op->jump = end_op_ptr + 1;
     }
     else if (block.size() == 4) { // if -> do -> else -> end
-        std::ptrdiff_t if_op_ptr   = block[3];
         std::ptrdiff_t do_op_ptr   = block[2];
         std::ptrdiff_t else_op_ptr = block[1];
-        std::ptrdiff_t end_op_ptr  = block[0];
 
         auto* do_op = std::get_if<anzu::op_block_jump_if_false>(&program[do_op_ptr]);
+        if (!do_op) { exit_bad("invalid block at index {}", do_op_ptr); }
         do_op->jump = else_op_ptr + 1;
 
         auto* else_op = std::get_if<anzu::op_block_jump>(&program[else_op_ptr]);
+        if (!else_op) { exit_bad("invalid block at index {}", else_op_ptr); }
         else_op->jump = end_op_ptr + 1;
-
-        auto* end_op = std::get_if<anzu::op_block_end>(&program[end_op_ptr]);
-        end_op->jump = end_op_ptr + 1;
     }
     else {
         fmt::print("invalid if-statement\n");
         std::exit(1);
     }
+
+    auto* end_op = std::get_if<anzu::op_block_end>(&program[end_op_ptr]);
+    if (!end_op) { exit_bad("invalid block at index {}", end_op_ptr); }
+    end_op->jump = end_op_ptr + 1;
 }
 
 void process_while_block(
@@ -77,7 +83,7 @@ void process_control_block(
     std::stack<std::ptrdiff_t>& control_flow)
 {
     std::vector<std::ptrdiff_t> block;
-    while (!std::get_if<anzu::op_block_begin>(&program[control_flow.top()])) {
+    while (!control_flow.empty() && !std::get_if<anzu::op_block_begin>(&program[control_flow.top()])) {
         block.push_back(control_flow.top());
         control_flow.pop();
     }
