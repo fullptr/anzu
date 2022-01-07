@@ -28,7 +28,7 @@ struct op_pop
 
 struct op_push_const
 {
-    anzu::stack_frame::type value;
+    anzu::object value;
 
     void print() const {
         fmt::print("OP_PUSH_CONST(");
