@@ -167,7 +167,7 @@ std::vector<anzu::op> load_program(const std::string& file)
             }
             auto index = control_flow.top();
             if (auto* begin = std::get_if<anzu::op_do>(&program[index])) {
-                begin->jump = static_cast<int>(program.size() - index + 1);
+                begin->jump = static_cast<int>(program.size() + 1);
             } else {
                 fmt::print("'else' does not close a preceeding 'do'!\n");
                 std::exit(1);
@@ -196,7 +196,7 @@ std::vector<anzu::op> load_program(const std::string& file)
                 // for 'if/do' and 'if/else', the do and else blocks both jump
                 // to one past the end. 
                 if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
-                    op_do->jump = static_cast<int>(program.size() - idx_clause + 1);
+                    op_do->jump = static_cast<int>(program.size() + 1);
                     program.push_back(anzu::op_end{ .jump=1 });
                 }
                 else if (auto* op_else = std::get_if<anzu::op_else>(&program[idx_clause])) {
@@ -211,7 +211,7 @@ std::vector<anzu::op> load_program(const std::string& file)
             }
             else if (auto* op_while = std::get_if<anzu::op_while>(&program[idx_block])) {
                 if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
-                    op_do->jump = static_cast<int>(program.size() - idx_clause + 1);
+                    op_do->jump = static_cast<int>(program.size() + 1);
                     program.push_back(anzu::op_end{
                         .jump=static_cast<int>(idx_block - program.size())
                     });

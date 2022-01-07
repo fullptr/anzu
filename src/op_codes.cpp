@@ -167,7 +167,12 @@ void op_do::apply(anzu::stack_frame& frame) const
         [](int v) { return v != 0; },
         [](bool v) { return v; }
     }, frame.pop());
-    frame.ptr() += condition ? 1 : jump;
+    
+    if (condition) {
+        frame.ptr() += 1;
+    } else {
+        frame.ptr() = jump;
+    }
 }
 
 void op_else::apply(anzu::stack_frame& frame) const
