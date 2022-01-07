@@ -8,6 +8,40 @@
 
 namespace anzu {
 
+template <typename T>
+class stack
+{
+    std::vector<T> d_values;
+
+public:
+    auto pop() -> T
+    {
+        T val = d_values.back();
+        d_values.pop_back();
+        return val;
+    }
+
+    auto push(const T& value) -> void
+    {
+        d_values.push_back(value);
+    }
+
+    auto top(std::size_t index = 0) const -> const T&
+    {
+        return d_values[d_values.size() - index - 1];
+    }
+
+    auto top(std::size_t index = 0) -> T&
+    {
+        return d_values[d_values.size() - index - 1];
+    }
+
+    auto size() const -> std::size_t
+    {
+        return d_values.size();
+    }
+};
+
 // A small wrapper for the value stack. This will eventually handle error
 // checking and checking that values are available.
 class frame
@@ -33,6 +67,6 @@ public:
     std::ptrdiff_t ptr() const { return d_ptr; }
 };
 
-using context = std::stack<anzu::frame>;
+using context = anzu::stack<anzu::frame>;
 
 }
