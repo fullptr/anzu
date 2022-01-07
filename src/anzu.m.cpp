@@ -197,12 +197,12 @@ std::vector<anzu::op> load_program(const std::string& file)
                 // to one past the end. 
                 if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
                     op_do->jump = static_cast<int>(program.size() + 1);
-                    program.push_back(anzu::op_end{ .jump=1 });
+                    program.push_back(anzu::op_end{ .jump=static_cast<int>(program.size() + 1) });
                 }
                 else if (auto* op_else = std::get_if<anzu::op_else>(&program[idx_clause])) {
                     // 'if/else' case
-                    op_else->jump = static_cast<int>(program.size() - idx_clause + 1);
-                    program.push_back(anzu::op_end{ .jump=1 });
+                    op_else->jump = static_cast<int>(program.size() + 1);
+                    program.push_back(anzu::op_end{ .jump=static_cast<int>(program.size() + 1) });
                 }
                 else {
                     fmt::print("'end' does not enclose any control flow block!\n");
@@ -213,7 +213,7 @@ std::vector<anzu::op> load_program(const std::string& file)
                 if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
                     op_do->jump = static_cast<int>(program.size() + 1);
                     program.push_back(anzu::op_end{
-                        .jump=static_cast<int>(idx_block - program.size())
+                        .jump=static_cast<int>(idx_block)
                     });
                 }
                 else {
