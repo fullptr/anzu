@@ -10,7 +10,7 @@ void run_program(const std::vector<anzu::op>& program)
 {
     anzu::stack_frame frame;
     while (frame.ptr() < std::ssize(program)) {
-        std::visit([&](auto&& o) { o.apply(frame); }, program[frame.ptr()]);
+        program[frame.ptr()].apply(frame);
     }
 }
 
@@ -18,10 +18,8 @@ void print_program(const std::vector<anzu::op>& program)
 {
     int lineno = 0;
     for (const auto& op : program) {
-        std::visit([&](auto&& o) {
-            fmt::print("{:>4} - ", lineno++);
-            o.print();
-        }, op);
+        fmt::print("{:>4} - ", lineno++);
+        op.print();
     }
 }
 

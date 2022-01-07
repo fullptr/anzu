@@ -36,7 +36,7 @@ inline T pop_top(std::stack<T>& stack)
 void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>& stmt_stack)
 {
     std::deque<std::ptrdiff_t> block;
-    while (!std::get_if<anzu::op_if>(&program[stmt_stack.top()])) {
+    while (!program[stmt_stack.top()].get_if<anzu::op_if>()) {
         block.push_front(pop_top(stmt_stack)); // do/else/elif/end
     }
 
@@ -45,18 +45,19 @@ void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>
 
     for (std::size_t i = 0; i != block.size(); ++i) {
         std::ptrdiff_t ptr = block[i];
+        auto& op = program[ptr];
 
-        if (auto* op = std::get_if<anzu::op_do>(&program[ptr])) {
+        if (auto* data = op.get_if<anzu::op_do>()) {
             std::ptrdiff_t next_ptr = block[i+1]; // end or else
-            op->jump = next_ptr + 1;
+            data->jump = next_ptr + 1;
         }
-        else if (auto* op = std::get_if<anzu::op_elif>(&program[ptr])) {
-            op->jump = end_ptr;
+        else if (auto* data = op.get_if<anzu::op_elif>()) {
+            data->jump = end_ptr;
         }
-        else if (auto* op = std::get_if<anzu::op_else>(&program[ptr])) {
-            op->jump = end_ptr;
+        else if (auto* data = op.get_if<anzu::op_else>()) {
+            data->jump = end_ptr;
         }
-        else if (auto* op = std::get_if<anzu::op_end_if>(&program[ptr])) {
+        else if (auto* data = op.get_if<anzu::op_end_if>()) {
             // pass
         }
         else {
@@ -68,7 +69,7 @@ void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>
 void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>& stmt_stack)
 {
     std::deque<std::ptrdiff_t> block;
-    while (!std::get_if<anzu::op_while>(&program[stmt_stack.top()])) {
+    while (!program[stmt_stack.top()].get_if<anzu::op_while>()) {
         block.push_front(pop_top(stmt_stack)); // do/break/continue/end
     }
 
@@ -76,17 +77,19 @@ void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff
     auto end_ptr = block.back();
 
     for (std::ptrdiff_t ptr : block) {
-        if (auto* op = std::get_if<anzu::op_do>(&program[ptr])) {
-            op->jump = end_ptr + 1;
+        auto& op = program[ptr];
+
+        if (auto* data = op.get_if<anzu::op_do>()) {
+            data->jump = end_ptr + 1;
         }
-        else if (auto* op = std::get_if<anzu::op_break>(&program[ptr])) {
-            op->jump = end_ptr + 1;
+        else if (auto* data = op.get_if<anzu::op_break>()) {
+            data->jump = end_ptr + 1;
         }
-        else if (auto* op = std::get_if<anzu::op_continue>(&program[ptr])) {
-            op->jump = begin_ptr;
+        else if (auto* data = op.get_if<anzu::op_continue>()) {
+            data->jump = begin_ptr;
         }
-        else if (auto* op = std::get_if<anzu::op_end_while>(&program[ptr])) {
-            op->jump = begin_ptr;
+        else if (auto* data = op.get_if<anzu::op_end_while>()) {
+            data->jump = begin_ptr;
         }
         else {
             exit_bad("unexepected op in while-statement\n");
@@ -108,7 +111,7 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
         for (const auto& token : std::ranges::istream_view<std::string>(line_stream)
                                | std::views::take_while([](auto&& tok) { return tok != "//"; }))
         {
-            tokens.push_back(token);
+            tokens.emplace_back(token);
         }
     }
 
@@ -125,62 +128,62 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
         const auto& token = *it;
 
         if (token == STORE) {
-            program.push_back(anzu::op_store{
+            program.emplace_back(anzu::op_store{
                 .name=next(it)
             });
         }
         else if (token == DUMP) {
-            program.push_back(anzu::op_dump{});
+            program.emplace_back(anzu::op_dump{});
         }
         else if (token == POP) {
-            program.push_back(anzu::op_pop{});
+            program.emplace_back(anzu::op_pop{});
         }
         else if (token == ADD) {
-            program.push_back(anzu::op_add{});
+            program.emplace_back(anzu::op_add{});
         }
         else if (token == SUB) {
-            program.push_back(anzu::op_sub{});
+            program.emplace_back(anzu::op_sub{});
         }
         else if (token == MUL) {
-            program.push_back(anzu::op_mul{});
+            program.emplace_back(anzu::op_mul{});
         }
         else if (token == DIV) {
-            program.push_back(anzu::op_div{});
+            program.emplace_back(anzu::op_div{});
         }
         else if (token == MOD) {
-            program.push_back(anzu::op_mod{});
+            program.emplace_back(anzu::op_mod{});
         }
         else if (token == DUP) {
-            program.push_back(anzu::op_dup{});
+            program.emplace_back(anzu::op_dup{});
         }
         else if (token == PRINT_FRAME) {
-            program.push_back(anzu::op_print_frame{});
+            program.emplace_back(anzu::op_print_frame{});
         }
         else if (token == IF) {
             if_stack.push(std::ssize(program));
             blocks.push("IF");
-            program.push_back(anzu::op_if{});
+            program.emplace_back(anzu::op_if{});
         }
         else if (token == ELIF) {
             if_stack.push(std::ssize(program));
-            program.push_back(anzu::op_elif{});
+            program.emplace_back(anzu::op_elif{});
         }
         else if (token == ELSE) {
             if_stack.push(std::ssize(program));
-            program.push_back(anzu::op_else{});
+            program.emplace_back(anzu::op_else{});
         }
         else if (token == WHILE) {
             while_stack.push(std::ssize(program));
             blocks.push("WHILE");
-            program.push_back(anzu::op_while{});
+            program.emplace_back(anzu::op_while{});
         }
         else if (token == BREAK) {
             while_stack.push(std::ssize(program));
-            program.push_back(anzu::op_break{});
+            program.emplace_back(anzu::op_break{});
         }
         else if (token == CONTINUE) {
             while_stack.push(std::ssize(program));
-            program.push_back(anzu::op_continue{});
+            program.emplace_back(anzu::op_continue{});
         }
         else if (token == DO) {
             if (blocks.top() == "IF") {
@@ -193,17 +196,17 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
                 fmt::print("bad 'do', is not in a control flow block\n");
                 std::exit(1);
             }
-            program.push_back(anzu::op_do{});
+            program.emplace_back(anzu::op_do{});
         }
         else if (token == END) {
             if (blocks.top() == "IF") {
                 if_stack.push(std::ssize(program));
-                program.push_back(anzu::op_end_if{});
+                program.emplace_back(anzu::op_end_if{});
                 process_if_block(program, if_stack);
             }
             else if (blocks.top() == "WHILE") {
                 while_stack.push(std::ssize(program));
-                program.push_back(anzu::op_end_while{});
+                program.emplace_back(anzu::op_end_while{});
                 process_while_block(program, while_stack);
             }
             else {
@@ -213,39 +216,39 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
             blocks.pop();
         }
         else if (token == EQ) {
-            program.push_back(anzu::op_eq{});
+            program.emplace_back(anzu::op_eq{});
         }
         else if (token == NE) {
-            program.push_back(anzu::op_ne{});
+            program.emplace_back(anzu::op_ne{});
         }
         else if (token == LT) {
-            program.push_back(anzu::op_lt{});
+            program.emplace_back(anzu::op_lt{});
         }
         else if (token == LE) {
-            program.push_back(anzu::op_le{});
+            program.emplace_back(anzu::op_le{});
         }
         else if (token == GT) {
-            program.push_back(anzu::op_gt{});
+            program.emplace_back(anzu::op_gt{});
         }
         else if (token == GE) {
-            program.push_back(anzu::op_ge{});
+            program.emplace_back(anzu::op_ge{});
         }
         else if (token == OR) {
-            program.push_back(anzu::op_or{});
+            program.emplace_back(anzu::op_or{});
         }
         else if (token == AND) {
-            program.push_back(anzu::op_and{});
+            program.emplace_back(anzu::op_and{});
         }
         else if (token == INPUT) {
-            program.push_back(anzu::op_input{});
+            program.emplace_back(anzu::op_input{});
         }
         else if (anzu::is_literal(token)) {
-            program.push_back(anzu::op_push_const{
+            program.emplace_back(anzu::op_push_const{
                 .value=anzu::parse_literal(token)
             });
         }
         else {
-            program.push_back(anzu::op_push_var{
+            program.emplace_back(anzu::op_push_var{
                 .name=token
             });
         }

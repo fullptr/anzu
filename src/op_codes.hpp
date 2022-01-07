@@ -207,39 +207,64 @@ struct op_do
     void apply(anzu::stack_frame& frame) const;
 };
 
-using op = std::variant<
-    op_store,
-    op_dump,
-    op_pop,
-    op_push_const,
-    op_push_var,
-    op_add,
-    op_sub,
-    op_mul,
-    op_div,
-    op_mod,
-    op_dup,
-    op_print_frame,
-    op_eq,
-    op_ne,
-    op_lt,
-    op_le,
-    op_gt,
-    op_ge,
-    op_or,
-    op_and,
-    op_input,
+class op
+{
+    using op_type = std::variant<
+        op_store,
+        op_dump,
+        op_pop,
+        op_push_const,
+        op_push_var,
+        op_add,
+        op_sub,
+        op_mul,
+        op_div,
+        op_mod,
+        op_dup,
+        op_print_frame,
+        op_eq,
+        op_ne,
+        op_lt,
+        op_le,
+        op_gt,
+        op_ge,
+        op_or,
+        op_and,
+        op_input,
 
-    // Control Flow
-    op_if,
-    op_end_if,
-    op_elif,
-    op_else,
-    op_while,
-    op_end_while,
-    op_break,
-    op_continue,
-    op_do
->;
+        // Control Flow
+        op_if,
+        op_end_if,
+        op_elif,
+        op_else,
+        op_while,
+        op_end_while,
+        op_break,
+        op_continue,
+        op_do
+    >;
+
+    op_type d_type;
+
+    template <typename Visitor>
+    decltype(auto) visit(Visitor&& f) const {
+        return std::visit(std::forward<Visitor>(f), d_type);
+    }
+
+public:
+    template <typename Op>
+    op(const Op& op_type) : d_type(op_type) {}
+
+    template <typename Op>
+    Op* get_if() { return std::get_if<Op>(&d_type); }
+
+    void print() const {
+        visit([](auto&& o) { o.print(); });
+    }
+
+    void apply(anzu::stack_frame& frame) const {
+        visit([&](auto&& o) { o.apply(frame); });
+    }
+};
 
 }
