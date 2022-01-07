@@ -111,11 +111,12 @@ struct op_block_jump_if_false
     void apply(anzu::stack_frame& frame) const;
 };
 
-struct op_else
+struct op_block_jump
 {
+    std::string    type;
     std::ptrdiff_t jump;
 
-    void print() const { fmt::print("OP_ELSE({})\n", jump); }
+    void print() const { fmt::print("OP_BLOCK_JUMP ({}) (to {})\n", type, jump); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -189,7 +190,7 @@ using op = std::variant<
     op_block_begin,
     op_block_end,
     op_block_jump_if_false,
-    op_else,
+    op_block_jump,
     op_eq,
     op_ne,
     op_lt,

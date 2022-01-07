@@ -171,7 +171,7 @@ std::vector<anzu::op> load_program(const std::string& file)
             }
             control_flow.pop(); // Pop 'do'
             control_flow.push(std::ssize(program)); // Push 'else'
-            program.push_back(anzu::op_else{ .jump=-1 });
+            program.push_back(anzu::op_block_jump{ .type="ELSE", .jump=-1 });
             // After this, the top of the control_flow stack is now 'if/else'.
         }
         else if (token == OP_END) {
@@ -198,7 +198,7 @@ std::vector<anzu::op> load_program(const std::string& file)
                     op_do->jump = past_end;
                     program.push_back(anzu::op_block_end{ .jump=past_end });
                 }
-                else if (auto* op_else = std::get_if<anzu::op_else>(&program[idx_clause])) {
+                else if (auto* op_else = std::get_if<anzu::op_block_jump>(&program[idx_clause])) {
                     // 'if/else' case
                     op_else->jump = past_end;
                     program.push_back(anzu::op_block_end{ .jump=past_end });

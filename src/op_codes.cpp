@@ -175,7 +175,7 @@ void op_block_jump_if_false::apply(anzu::stack_frame& frame) const
     }
 }
 
-void op_else::apply(anzu::stack_frame& frame) const
+void op_block_jump::apply(anzu::stack_frame& frame) const
 {
     frame.ptr() = jump;
 }
