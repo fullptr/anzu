@@ -103,19 +103,19 @@ struct op_block_begin
     void apply(anzu::stack_frame& frame) const;
 };
 
+struct op_block_end
+{
+    std::ptrdiff_t jump;
+
+    void print() const { fmt::print("OP_BLOCK_END (jump to {})\n", jump); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
 struct op_else
 {
     std::ptrdiff_t jump;
 
     void print() const { fmt::print("OP_ELSE({})\n", jump); }
-    void apply(anzu::stack_frame& frame) const;
-};
-
-struct op_end
-{
-    std::ptrdiff_t jump;
-
-    void print() const { fmt::print("OP_END({})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -187,9 +187,9 @@ using op = std::variant<
     op_dup,
     op_print_frame,
     op_block_begin,
+    op_block_end,
     op_do,
     op_else,
-    op_end,
     op_eq,
     op_ne,
     op_lt,

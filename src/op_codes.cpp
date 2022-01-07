@@ -156,6 +156,11 @@ void op_block_begin::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
+void op_block_end::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() = jump;
+}
+
 void op_do::apply(anzu::stack_frame& frame) const
 {
     auto condition = std::visit(overloaded {
@@ -171,11 +176,6 @@ void op_do::apply(anzu::stack_frame& frame) const
 }
 
 void op_else::apply(anzu::stack_frame& frame) const
-{
-    frame.ptr() = jump;
-}
-
-void op_end::apply(anzu::stack_frame& frame) const
 {
     frame.ptr() = jump;
 }
