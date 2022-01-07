@@ -218,7 +218,17 @@ struct op_function
 
 struct op_function_end
 {
-    std::string to_string() const { return fmt::format("OP_FUNCTION_END"); }
+    std::string to_string() const { return fmt::format("OP_FUNCTION_END   JUMP -> CALLSITE"); }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_function_call
+{
+    std::string    name;
+    int            argc;
+    std::ptrdiff_t jump;
+
+    std::string to_string() const { return fmt::format("OP_FUNCTION_CALL({}, {}) JUMP -> {}", name, argc, jump); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -267,6 +277,7 @@ class op
         // Functions
         op_function,
         op_function_end,
+        op_function_call,
         op_return
     >;
 

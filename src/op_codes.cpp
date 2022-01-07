@@ -284,50 +284,42 @@ void op_input::apply(anzu::context& ctx) const
 
 void op_if::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() += 1;
+    ctx.top().ptr() += 1;
 }
 
 void op_end_if::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() += 1;
+    ctx.top().ptr() += 1;
 }
 
 void op_elif::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() = jump;
+    ctx.top().ptr() = jump;
 }
 
 void op_else::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() = jump;
+    ctx.top().ptr() += 1;
 }
 
 void op_while::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() += 1;
+    ctx.top().ptr() += 1;
 }
 
 void op_end_while::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() = jump;
+    ctx.top().ptr() = jump;
 }
 
 void op_break::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() = jump;
+    ctx.top().ptr() = jump;
 }
 
 void op_continue::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() = jump;
+    ctx.top().ptr() = jump;
 }
 
 void op_do::apply(anzu::context& ctx) const
@@ -347,17 +339,40 @@ void op_do::apply(anzu::context& ctx) const
 
 void op_function::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
+    ctx.top().ptr() += 1;
 }
 
 void op_function_end::apply(anzu::context& ctx) const
 {
+    ctx.pop(); // Remove stack frame
+}
+
+void op_function_call::apply(anzu::context& ctx) const
+{
     auto& frame = ctx.top();
+    frame.ptr() += 1; // The position in the program where it will resume.
+
+    anzu::frame new_frame;
+
+    // Move the required number of arguments over to the new frame
+    std::stack<anzu::object> tmp;
+    for (int i = 0; i != argc; ++i) {
+        tmp.push(frame.pop());
+    }
+    for (int i = 0; i != argc; ++i) {
+        new_frame.push(tmp.top());
+        tmp.pop();
+    }
+
+    ctx.push(new_frame);
+    ctx.top().ptr() = jump;
 }
 
 void op_return::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
+    auto ret_val = ctx.top().pop();
+    ctx.pop(); // Remove stack frame
+    ctx.top().push(ret_val);
 }
 
 }
