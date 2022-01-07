@@ -1,33 +1,11 @@
 #include "op_codes.hpp"
+#include "object.hpp"
 
 #include <iostream>
 #include <string>
 
 namespace anzu {
 namespace {
-
-// Move these elsewhere
-bool is_literal(const std::string& token)
-{
-    return token == "false"
-        || token == "true"
-        || token.find_first_not_of("0123456789") == std::string::npos;
-}
-
-anzu::stack_frame::type parse_literal(const std::string& token)
-{
-    if (token == "true") {
-        return true;
-    }
-    if (token == "false") {
-        return false;
-    }
-    if (token.find_first_not_of("0123456789") == std::string::npos) {
-        return std::stoi(token);
-    }
-    fmt::print("[Fatal] Could not parse constant: {}\n", token);
-    std::exit(1);
-}
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
@@ -306,11 +284,11 @@ void op_input::apply(anzu::stack_frame& frame) const
     fmt::print("Input: ");
     std::string in;
     std::cin >> in;
-    if (!is_literal(in)) {
+    if (!anzu::is_literal(in)) {
         fmt::print("[BAD INPUT]\n");
         std::exit(1);
     }
-    frame.push(parse_literal(in));
+    frame.push(anzu::parse_literal(in));
     frame.ptr() += 1;
 }
 
