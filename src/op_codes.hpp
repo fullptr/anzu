@@ -30,10 +30,7 @@ struct op_push_const
 {
     anzu::object value;
 
-    void print() const {
-        fmt::print("OP_PUSH_CONST(");
-        anzu::print_value(value);
-        fmt::print(")\n"); }
+    void print() const { fmt::print("OP_PUSH_CONST({})\n", value); }
     void apply(anzu::stack_frame& frame) const;
 };
 

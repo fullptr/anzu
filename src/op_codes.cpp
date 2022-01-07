@@ -19,8 +19,7 @@ void op_store::apply(anzu::stack_frame& frame) const
 
 void op_dump::apply(anzu::stack_frame& frame) const
 {
-    anzu::print_value(frame.pop());
-    fmt::print("\n");
+    fmt::print("{}\n", frame.pop());
     frame.ptr() += 1;
 }
 

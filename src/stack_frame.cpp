@@ -45,21 +45,12 @@ auto stack_frame::print() const -> void
 {
     fmt::print("Values:\n");
     for (const auto& val : d_values) {
-        fmt::print(" - ");
-        anzu::print_value(val);
-        fmt::print("\n");
+        fmt::print(" - {}\n", val);
     }
     fmt::print("Symbols:\n");
     for (const auto& [key, val] : d_symbols) {
-        fmt::print(" - {} -> ", key);
-        anzu::print_value(val);
-        fmt::print("\n");
+        fmt::print(" - {} -> {}\n", key, val);
     }
-}
-
-void print_value(const anzu::object& val)
-{
-    std::visit([](const auto& v) { fmt::print("{}", v); }, val);
 }
 
 }

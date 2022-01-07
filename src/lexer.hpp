@@ -4,7 +4,8 @@
 #include <vector>
 #include <string>
 
-namespace anzu::lexer {
+namespace anzu {
+namespace lexer {
 
 constexpr auto STORE       = std::string_view{"->"};
 constexpr auto DUMP        = std::string_view{"."};
@@ -33,4 +34,5 @@ constexpr auto INPUT       = std::string_view{"input"};
 
 auto parse_file(const std::string& file) -> std::vector<anzu::op>;
 
+}
 }

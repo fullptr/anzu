@@ -33,6 +33,4 @@ public:
     std::ptrdiff_t ptr() const { return d_ptr; }
 };
 
-void print_value(const anzu::object& val);
-
 }

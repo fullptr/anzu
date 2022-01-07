@@ -9,7 +9,8 @@
 #include <fstream>
 #include <sstream>
 
-namespace anzu::lexer {
+namespace anzu {
+namespace lexer {
 namespace {
 
 std::string next(std::vector<std::string>::iterator& it)
@@ -233,4 +234,5 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
     return program;
 }
 
+}
 }
