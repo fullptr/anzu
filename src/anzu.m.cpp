@@ -9,7 +9,7 @@
 void run_program(const std::vector<anzu::op>& program)
 {
     anzu::stack_frame frame;
-    while (frame.ptr() < program.size()) {
+    while (frame.ptr() < std::ssize(program)) {
         std::visit([&](auto&& o) { o.apply(frame); }, program[frame.ptr()]);
     }
 }

@@ -4,10 +4,8 @@
 0 while dup 1000 < do
     if dup 3 % 0 == do
         dup count + -> count
-    else
-        if dup 5 % 0 == do
-            dup count + -> count
-        end 
+    elif dup 5 % 0 == do
+        dup count + -> count
     end
     1 +
 end

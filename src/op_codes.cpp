@@ -128,35 +128,6 @@ void op_print_frame::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_block_begin::apply(anzu::stack_frame& frame) const
-{
-    frame.ptr() += 1;
-}
-
-void op_block_end::apply(anzu::stack_frame& frame) const
-{
-    frame.ptr() = jump;
-}
-
-void op_block_jump_if_false::apply(anzu::stack_frame& frame) const
-{
-    auto condition = std::visit(overloaded {
-        [](int v) { return v != 0; },
-        [](bool v) { return v; }
-    }, frame.pop());
-
-    if (condition) {
-        frame.ptr() += 1;
-    } else {
-        frame.ptr() = jump;
-    }
-}
-
-void op_block_jump::apply(anzu::stack_frame& frame) const
-{
-    frame.ptr() = jump;
-}
-
 void op_eq::apply(anzu::stack_frame& frame) const
 {
     auto b = frame.pop();
@@ -279,7 +250,6 @@ void op_and::apply(anzu::stack_frame& frame) const
 
 void op_input::apply(anzu::stack_frame& frame) const
 {
-    frame.pop();
     fmt::print("Input: ");
     std::string in;
     std::cin >> in;
@@ -289,6 +259,60 @@ void op_input::apply(anzu::stack_frame& frame) const
     }
     frame.push(anzu::parse_literal(in));
     frame.ptr() += 1;
+}
+
+void op_if::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() += 1;
+}
+
+void op_end_if::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() += 1;
+}
+
+void op_elif::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() = jump;
+}
+
+void op_else::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() = jump;
+}
+
+void op_while::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() += 1;
+}
+
+void op_end_while::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() = jump;
+}
+
+void op_break::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() = jump;
+}
+
+void op_continue::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() = jump;
+}
+
+void op_do::apply(anzu::stack_frame& frame) const
+{
+    auto condition = std::visit(overloaded {
+        [](int v) { return v != 0; },
+        [](bool v) { return v; }
+    }, frame.pop());
+
+    if (condition) {
+        frame.ptr() += 1;
+    } else {
+        frame.ptr() = jump;
+    }
 }
 
 }
