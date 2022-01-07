@@ -161,7 +161,7 @@ void op_block_end::apply(anzu::stack_frame& frame) const
     frame.ptr() = jump;
 }
 
-void op_do::apply(anzu::stack_frame& frame) const
+void op_block_jump_if_false::apply(anzu::stack_frame& frame) const
 {
     auto condition = std::visit(overloaded {
         [](int v) { return v != 0; },

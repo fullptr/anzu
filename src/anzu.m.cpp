@@ -149,7 +149,7 @@ std::vector<anzu::op> load_program(const std::string& file)
             }
 
             control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_do{ .jump=-1 });
+            program.push_back(anzu::op_block_jump_if_false{ .jump=-1 });
             // After this, the top of the control_flow stack is either 'if/do'
             // or 'while/do'.
         }
@@ -162,7 +162,7 @@ std::vector<anzu::op> load_program(const std::string& file)
                 std::exit(1);
             }
             auto index = control_flow.top();
-            if (auto* begin = std::get_if<anzu::op_do>(&program[index])) {
+            if (auto* begin = std::get_if<anzu::op_block_jump_if_false>(&program[index])) {
                 std::ptrdiff_t into_else = std::ssize(program) + 1;
                 begin->jump = into_else;
             } else {
@@ -194,7 +194,7 @@ std::vector<anzu::op> load_program(const std::string& file)
             if (block_begin->type == "IF") {
                 // for 'if/do' and 'if/else', the do and else blocks both jump
                 // to one past the end. 
-                if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
+                if (auto* op_do = std::get_if<anzu::op_block_jump_if_false>(&program[idx_clause])) {
                     op_do->jump = past_end;
                     program.push_back(anzu::op_block_end{ .jump=past_end });
                 }
@@ -209,7 +209,7 @@ std::vector<anzu::op> load_program(const std::string& file)
                 }
             }
             else if (block_begin->type == "WHILE") {
-                if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
+                if (auto* op_do = std::get_if<anzu::op_block_jump_if_false>(&program[idx_clause])) {
                     op_do->jump = past_end;
                     program.push_back(anzu::op_block_end{ .jump=block_begin_idx });
                 }
