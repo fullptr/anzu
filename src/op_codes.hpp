@@ -95,15 +95,11 @@ struct op_do
     void apply(anzu::stack_frame& frame) const;
 };
 
-struct op_while
+struct op_block_begin
 {
-    void print() const { fmt::print("OP_WHILE\n"); }
-    void apply(anzu::stack_frame& frame) const;
-};
+    std::string type;
 
-struct op_if
-{
-    void print() const { fmt::print("OP_IF\n"); }
+    void print() const { fmt::print("OP_BLOCK_BEGIN ({})\n", type); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -190,8 +186,7 @@ using op = std::variant<
     op_mod,
     op_dup,
     op_print_frame,
-    op_while,
-    op_if,
+    op_block_begin,
     op_do,
     op_else,
     op_end,

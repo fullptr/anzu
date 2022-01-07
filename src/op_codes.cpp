@@ -151,12 +151,7 @@ void op_print_frame::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_if::apply(anzu::stack_frame& frame) const
-{
-    frame.ptr() += 1;
-}
-
-void op_while::apply(anzu::stack_frame& frame) const
+void op_block_begin::apply(anzu::stack_frame& frame) const
 {
     frame.ptr() += 1;
 }

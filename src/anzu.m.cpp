@@ -130,11 +130,11 @@ std::vector<anzu::op> load_program(const std::string& file)
         }
         else if (token == OP_WHILE) {
             control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_while{});
+            program.push_back(anzu::op_block_begin{ .type="WHILE" });
         }
         else if (token == OP_IF) {
             control_flow.push(std::ssize(program));
-            program.push_back(anzu::op_if{});
+            program.push_back(anzu::op_block_begin{ .type="IF" });
         }
         else if (token == OP_DO) {
             // Verify that the 'do' is preceeded by a valid keyword
@@ -143,11 +143,7 @@ std::vector<anzu::op> load_program(const std::string& file)
                 std::exit(1);
             }
             auto index = control_flow.top();
-            if (auto* begin = std::get_if<anzu::op_if>(&program[index])) {
-                // Pass
-            } else if (auto* begin = std::get_if<anzu::op_while>(&program[index])) {
-                // Pass
-            } else {
+            if (!std::get_if<anzu::op_block_begin>(&program[index])) {
                 fmt::print("'do' does not match any preceeding statement!\n");
                 std::exit(1);
             }
@@ -190,11 +186,12 @@ std::vector<anzu::op> load_program(const std::string& file)
             const auto idx_clause = control_flow.top();
             control_flow.pop(); // do or else
             
-            const auto idx_block = control_flow.top();
+            const auto block_begin_idx = control_flow.top();
             control_flow.pop(); // if or while
+            auto* block_begin = std::get_if<anzu::op_block_begin>(&program[block_begin_idx]);
 
             std::ptrdiff_t past_end = std::ssize(program) + 1;
-            if (auto* op_if = std::get_if<anzu::op_if>(&program[idx_block])) {
+            if (block_begin->type == "IF") {
                 // for 'if/do' and 'if/else', the do and else blocks both jump
                 // to one past the end. 
                 if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
@@ -211,12 +208,10 @@ std::vector<anzu::op> load_program(const std::string& file)
                     std::exit(1);
                 }
             }
-            else if (auto* op_while = std::get_if<anzu::op_while>(&program[idx_block])) {
+            else if (block_begin->type == "WHILE") {
                 if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
                     op_do->jump = past_end;
-                    program.push_back(anzu::op_end{
-                        .jump=static_cast<std::ptrdiff_t>(idx_block)
-                    });
+                    program.push_back(anzu::op_end{ .jump=block_begin_idx });
                 }
                 else {
                     fmt::print("'end' does not enclose any control flow block!\n");
@@ -224,7 +219,7 @@ std::vector<anzu::op> load_program(const std::string& file)
                 }
             }
             else {
-                fmt::print("'end' does not enclose any control flow block!\n");
+                fmt::print("unknown control block begin ({})\n", block_begin->type);
                 std::exit(1);
             }
         }
