@@ -90,7 +90,7 @@ std::vector<anzu::op> load_program(const std::string& file)
 
     // Contains a stack of indices to previous control flow statements suchs as
     // 'if', 'do' and 'else' so the jumps can be set up correctly.
-    std::stack<std::size_t> control_flow;
+    std::stack<std::ptrdiff_t> control_flow;
 
     auto it = tokens.begin();
     while (it != tokens.end()) {
@@ -129,11 +129,11 @@ std::vector<anzu::op> load_program(const std::string& file)
             program.push_back(anzu::op_print_frame{});
         }
         else if (token == OP_WHILE) {
-            control_flow.push(program.size());
+            control_flow.push(std::ssize(program));
             program.push_back(anzu::op_while{});
         }
         else if (token == OP_IF) {
-            control_flow.push(program.size());
+            control_flow.push(std::ssize(program));
             program.push_back(anzu::op_if{});
         }
         else if (token == OP_DO) {
@@ -152,7 +152,7 @@ std::vector<anzu::op> load_program(const std::string& file)
                 std::exit(1);
             }
 
-            control_flow.push(program.size());
+            control_flow.push(std::ssize(program));
             program.push_back(anzu::op_do{ .jump=-1 });
             // After this, the top of the control_flow stack is either 'if/do'
             // or 'while/do'.
@@ -167,13 +167,14 @@ std::vector<anzu::op> load_program(const std::string& file)
             }
             auto index = control_flow.top();
             if (auto* begin = std::get_if<anzu::op_do>(&program[index])) {
-                begin->jump = static_cast<int>(program.size() + 1);
+                std::ptrdiff_t into_else = std::ssize(program) + 1;
+                begin->jump = into_else;
             } else {
                 fmt::print("'else' does not close a preceeding 'do'!\n");
                 std::exit(1);
             }
             control_flow.pop(); // Pop 'do'
-            control_flow.push(program.size()); // Push 'else'
+            control_flow.push(std::ssize(program)); // Push 'else'
             program.push_back(anzu::op_else{ .jump=-1 });
             // After this, the top of the control_flow stack is now 'if/else'.
         }
@@ -192,17 +193,18 @@ std::vector<anzu::op> load_program(const std::string& file)
             const auto idx_block = control_flow.top();
             control_flow.pop(); // if or while
 
+            std::ptrdiff_t past_end = std::ssize(program) + 1;
             if (auto* op_if = std::get_if<anzu::op_if>(&program[idx_block])) {
                 // for 'if/do' and 'if/else', the do and else blocks both jump
                 // to one past the end. 
                 if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
-                    op_do->jump = static_cast<int>(program.size() + 1);
-                    program.push_back(anzu::op_end{ .jump=static_cast<int>(program.size() + 1) });
+                    op_do->jump = past_end;
+                    program.push_back(anzu::op_end{ .jump=past_end });
                 }
                 else if (auto* op_else = std::get_if<anzu::op_else>(&program[idx_clause])) {
                     // 'if/else' case
-                    op_else->jump = static_cast<int>(program.size() + 1);
-                    program.push_back(anzu::op_end{ .jump=static_cast<int>(program.size() + 1) });
+                    op_else->jump = past_end;
+                    program.push_back(anzu::op_end{ .jump=past_end });
                 }
                 else {
                     fmt::print("'end' does not enclose any control flow block!\n");
@@ -211,9 +213,9 @@ std::vector<anzu::op> load_program(const std::string& file)
             }
             else if (auto* op_while = std::get_if<anzu::op_while>(&program[idx_block])) {
                 if (auto* op_do = std::get_if<anzu::op_do>(&program[idx_clause])) {
-                    op_do->jump = static_cast<int>(program.size() + 1);
+                    op_do->jump = past_end;
                     program.push_back(anzu::op_end{
-                        .jump=static_cast<int>(idx_block)
+                        .jump=static_cast<std::ptrdiff_t>(idx_block)
                     });
                 }
                 else {

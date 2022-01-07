@@ -89,7 +89,7 @@ struct op_print_frame
 
 struct op_do
 {
-    int jump;
+    std::ptrdiff_t jump;
 
     void print() const { fmt::print("OP_DO({})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -109,7 +109,7 @@ struct op_if
 
 struct op_else
 {
-    int jump;
+    std::ptrdiff_t jump;
 
     void print() const { fmt::print("OP_ELSE({})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
@@ -117,7 +117,7 @@ struct op_else
 
 struct op_end
 {
-    int jump;
+    std::ptrdiff_t jump;
 
     void print() const { fmt::print("OP_END({})\n", jump); }
     void apply(anzu::stack_frame& frame) const;
