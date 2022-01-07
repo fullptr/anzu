@@ -8,7 +8,9 @@ find_package(fmt CONFIG REQUIRED)
 add_executable(anzu
                anzu.m.cpp
                stack_frame.cpp
-               op_codes.cpp)
+               op_codes.cpp
+               lexer.cpp
+               object.cpp)
 
 target_link_libraries(anzu PRIVATE fmt::fmt)
 target_include_directories(anzu PRIVATE .)

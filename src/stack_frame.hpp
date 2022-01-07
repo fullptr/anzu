@@ -1,4 +1,6 @@
 #pragma once
+#include "object.hpp"
+
 #include <stack>
 #include <unordered_map>
 #include <string>
@@ -10,26 +12,25 @@ namespace anzu {
 // checking and checking that values are available.
 class stack_frame
 {
-public:
-    using type = std::variant<int, bool>;
-    
-private:
-    std::vector<type>                     d_values;
-    std::unordered_map<std::string, type> d_symbols;
+    std::vector<anzu::object>                     d_values;
+    std::unordered_map<std::string, anzu::object> d_symbols;
+
+    std::ptrdiff_t d_ptr = 0;
 
 public:
-    auto pop() -> type;
-    auto push(const type& value) -> void;
-    auto peek() const -> type;
+    auto pop() -> anzu::object;
+    auto push(const anzu::object& value) -> void;
+    auto peek() const -> anzu::object;
 
-    auto fetch(const std::string& name) const -> type;
-    auto load(const std::string& name, const type& value) -> void;
+    auto fetch(const std::string& name) const -> anzu::object;
+    auto load(const std::string& name, const anzu::object& value) -> void;
 
     [[nodiscard]] auto empty() const -> bool;
 
     auto print() const -> void;
-};
 
-void print_value(const stack_frame::type& val);
+    std::ptrdiff_t& ptr() { return d_ptr; }
+    std::ptrdiff_t ptr() const { return d_ptr; }
+};
 
 }
