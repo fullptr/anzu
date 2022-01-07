@@ -16,6 +16,7 @@ public:
 private:
     std::vector<type>                     d_values;
     std::unordered_map<std::string, type> d_symbols;
+    std::size_t                           d_ptr = 0;
 
 public:
     auto pop() -> type;
@@ -28,6 +29,9 @@ public:
     [[nodiscard]] auto empty() const -> bool;
 
     auto print() const -> void;
+
+    std::size_t& ptr() { return d_ptr; }
+    std::size_t ptr() const { return d_ptr; }
 };
 
 void print_value(const stack_frame::type& val);

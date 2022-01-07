@@ -271,10 +271,9 @@ std::vector<anzu::op> load_program(const std::string& file)
 void run_program(const std::vector<anzu::op>& program)
 {
     anzu::stack_frame frame;
-    std::size_t ptr = 0;
 
-    while (ptr < program.size()) {
-        std::visit([&](auto&& o) { ptr += o.apply(frame); }, program[ptr]);
+    while (frame.ptr() < program.size()) {
+        std::visit([&](auto&& o) { o.apply(frame); }, program[frame.ptr()]);
     }
 
     if (frame.empty()) {
