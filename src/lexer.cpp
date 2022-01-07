@@ -13,20 +13,20 @@ namespace anzu {
 namespace lexer {
 namespace {
 
-std::string next(std::vector<std::string>::iterator& it)
+inline std::string next(std::vector<std::string>::iterator& it)
 {
     return *(++it);
 }
 
 template <typename... Args>
-void exit_bad(std::string_view format, Args&&... args)
+inline void exit_bad(std::string_view format, Args&&... args)
 {
     fmt::print(format, std::forward<Args>(args)...);
     std::exit(1);
 }
 
 template <typename T>
-T pop_top(std::stack<T>& stack)
+inline T pop_top(std::stack<T>& stack)
 {
     T ret = stack.top();
     stack.pop();
