@@ -1,7 +1,8 @@
 // Project Euler #1 No OR operator, index stored in stack
 0 -> count
+input -> max
 
-0 while dup 1000 < do
+0 while dup max < do
     if dup 3 % 0 == do
         dup count + -> count
     else

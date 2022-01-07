@@ -171,6 +171,64 @@ struct op_input
     void apply(anzu::stack_frame& frame) const;
 };
 
+struct op_if
+{
+    void print() const { fmt::print("OP_IF\n"); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_end_if
+{
+    void print() const { fmt::print("OP_END_IF\n"); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_else
+{
+    std::ptrdiff_t jump;
+
+    void print() const { fmt::print("OP_ELSE (to {})\n", jump); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_while
+{
+    void print() const { fmt::print("OP_WHILE\n"); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_end_while
+{
+    std::ptrdiff_t jump;
+
+    void print() const { fmt::print("OP_END_WHILE (to {})\n", jump); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_break
+{
+    std::ptrdiff_t jump;
+
+    void print() const { fmt::print("OP_BREAK (to {})\n", jump); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_continue
+{
+    std::ptrdiff_t jump;
+
+    void print() const { fmt::print("OP_CONTINUE (to {})\n", jump); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_do
+{
+    std::ptrdiff_t jump;
+
+    void print() const { fmt::print("OP_DO (to {} if false)\n", jump); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
 using op = std::variant<
     op_store,
     op_dump,
@@ -196,7 +254,17 @@ using op = std::variant<
     op_ge,
     op_or,
     op_and,
-    op_input
+    op_input,
+
+    // Control Flow
+    op_if,
+    op_end_if,
+    op_else,
+    op_while,
+    op_end_while,
+    op_break,
+    op_continue,
+    op_do
 >;
 
 }
