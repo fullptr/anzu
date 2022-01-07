@@ -18,8 +18,7 @@ void print_program(const std::vector<anzu::op>& program)
 {
     int lineno = 0;
     for (const auto& op : program) {
-        fmt::print("{:>4} - ", lineno++);
-        op.print();
+        fmt::print("{:>4} - {}\n", lineno++, op.to_string());
     }
 }
 
