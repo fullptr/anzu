@@ -315,4 +315,16 @@ void op_do::apply(anzu::stack_frame& frame) const
     }
 }
 
+void op_function::apply(anzu::stack_frame& frame) const
+{
+}
+
+void op_function_end::apply(anzu::stack_frame& frame) const
+{
+}
+
+void op_return::apply(anzu::stack_frame& frame) const
+{
+}
+
 }

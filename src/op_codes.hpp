@@ -207,6 +207,27 @@ struct op_do
     void apply(anzu::stack_frame& frame) const;
 };
 
+struct op_function
+{
+    std::string name;
+    int         argc;
+
+    std::string to_string() const { return fmt::format("OP_FUNCTION({}, {})", name, argc); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_function_end
+{
+    std::string to_string() const { return fmt::format("OP_FUNCTION_END"); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
+struct op_return
+{
+    std::string to_string() const { return fmt::format("OP_RETURN"); }
+    void apply(anzu::stack_frame& frame) const;
+};
+
 class op
 {
     using op_type = std::variant<
@@ -241,7 +262,12 @@ class op
         op_end_while,
         op_break,
         op_continue,
-        op_do
+        op_do,
+
+        // Functions
+        op_function,
+        op_function_end,
+        op_return
     >;
 
     op_type d_type;
