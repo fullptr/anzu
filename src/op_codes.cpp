@@ -339,7 +339,7 @@ void op_do::apply(anzu::context& ctx) const
 
 void op_function::apply(anzu::context& ctx) const
 {
-    ctx.top().ptr() += 1;
+    ctx.top().ptr() = jump;
 }
 
 void op_function_end::apply(anzu::context& ctx) const

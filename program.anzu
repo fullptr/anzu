@@ -1,13 +1,8 @@
 // Project Euler #1 No OR operator, index stored in stack
-0 -> count
 
-0 while dup 1000 < do
-    if dup 3 % 0 == do
-        dup count + -> count
-    elif dup 5 % 0 == do
-        dup count + -> count
-    end
-    1 +
+function double 1
+    dup + return
 end
 
-count .
+2 double .
+3 double .
