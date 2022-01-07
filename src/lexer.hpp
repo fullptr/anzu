@@ -29,6 +29,7 @@ constexpr auto INPUT       = std::string_view{"input"};
 
 // Control Flow
 constexpr auto IF          = std::string_view{"if"};
+constexpr auto ELIF        = std::string_view{"elif"};
 constexpr auto ELSE        = std::string_view{"else"};
 
 constexpr auto WHILE       = std::string_view{"while"};

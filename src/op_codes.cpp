@@ -271,6 +271,11 @@ void op_end_if::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
+void op_elif::apply(anzu::stack_frame& frame) const
+{
+    frame.ptr() = jump;
+}
+
 void op_else::apply(anzu::stack_frame& frame) const
 {
     frame.ptr() = jump;
