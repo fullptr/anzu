@@ -52,12 +52,12 @@ void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>
             data->jump = next_ptr + 1;
         }
         else if (auto* data = op.get_if<anzu::op_elif>()) {
-            data->jump = end_ptr;
+            data->jump = end_ptr + 1;
         }
         else if (auto* data = op.get_if<anzu::op_else>()) {
-            data->jump = end_ptr;
+            data->jump = end_ptr + 1;
         }
-        else if (auto* data = op.get_if<anzu::op_end_if>()) {
+        else if (auto* data = op.get_if<anzu::op_if_end>()) {
             // pass
         }
         else {
@@ -88,7 +88,7 @@ void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff
         else if (auto* data = op.get_if<anzu::op_continue>()) {
             data->jump = begin_ptr;
         }
-        else if (auto* data = op.get_if<anzu::op_end_while>()) {
+        else if (auto* data = op.get_if<anzu::op_while_end>()) {
             data->jump = begin_ptr;
         }
         else {
@@ -213,12 +213,12 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
         else if (token == END) {
             if (blocks.top() == "IF") {
                 if_stack.push(std::ssize(program));
-                program.emplace_back(anzu::op_end_if{});
+                program.emplace_back(anzu::op_if_end{});
                 process_if_block(program, if_stack);
             }
             else if (blocks.top() == "WHILE") {
                 while_stack.push(std::ssize(program));
-                program.emplace_back(anzu::op_end_while{});
+                program.emplace_back(anzu::op_while_end{});
                 process_while_block(program, while_stack);
             }
             else if (blocks.top() == "FUNCTION") {

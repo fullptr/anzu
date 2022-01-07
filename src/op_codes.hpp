@@ -147,7 +147,7 @@ struct op_if
     void apply(anzu::context& ctx) const;
 };
 
-struct op_end_if
+struct op_if_end
 {
     std::string to_string() const { return fmt::format("OP_END_IF"); }
     void apply(anzu::context& ctx) const;
@@ -175,7 +175,7 @@ struct op_while
     void apply(anzu::context& ctx) const;
 };
 
-struct op_end_while
+struct op_while_end
 {
     std::ptrdiff_t jump = -1;
 
@@ -218,7 +218,7 @@ struct op_function
 
 struct op_function_end
 {
-    std::string to_string() const{ return fmt::format(PRINT_JUMP, "OP_FUNCTION_END", "[CALLSITE]"); }
+    std::string to_string() const{ return fmt::format(PRINT_JUMP, "OP_END_FUNCTION", "[CALLSITE]"); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -270,11 +270,11 @@ class op
 
         // Control Flow
         op_if,
-        op_end_if,
+        op_if_end,
         op_elif,
         op_else,
         op_while,
-        op_end_while,
+        op_while_end,
         op_break,
         op_continue,
         op_do,

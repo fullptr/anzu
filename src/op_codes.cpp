@@ -287,7 +287,7 @@ void op_if::apply(anzu::context& ctx) const
     ctx.top().ptr() += 1;
 }
 
-void op_end_if::apply(anzu::context& ctx) const
+void op_if_end::apply(anzu::context& ctx) const
 {
     ctx.top().ptr() += 1;
 }
@@ -299,7 +299,7 @@ void op_elif::apply(anzu::context& ctx) const
 
 void op_else::apply(anzu::context& ctx) const
 {
-    ctx.top().ptr() += 1;
+    ctx.top().ptr() = jump;
 }
 
 void op_while::apply(anzu::context& ctx) const
@@ -307,7 +307,7 @@ void op_while::apply(anzu::context& ctx) const
     ctx.top().ptr() += 1;
 }
 
-void op_end_while::apply(anzu::context& ctx) const
+void op_while_end::apply(anzu::context& ctx) const
 {
     ctx.top().ptr() = jump;
 }
