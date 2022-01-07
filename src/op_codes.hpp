@@ -6,26 +6,26 @@
 
 namespace anzu {
 
-constexpr auto PRINT_JUMP          = std::string_view{"{:<25} JUMP -> {}\n"};
-constexpr auto PRINT_JUMP_IF_FALSE = std::string_view{"{:<25} JUMP -> {} (IF FALSE)\n"};
+constexpr auto PRINT_JUMP          = std::string_view{"{:<25} JUMP -> {}"};
+constexpr auto PRINT_JUMP_IF_FALSE = std::string_view{"{:<25} JUMP -> {} (IF FALSE)"};
 
 struct op_store
 {
     std::string name;
 
-    void print() const { fmt::print("OP_STORE({})\n", name); }
+    std::string to_string() const { return fmt::format("OP_STORE({})", name); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_dump
 {
-    void print() const { fmt::print("OP_DUMP\n"); }
+    std::string to_string() const { return fmt::format("OP_DUMP"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_pop
 {
-    void print() const { fmt::print("OP_POP\n"); }
+    std::string to_string() const { return fmt::format("OP_POP"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -33,7 +33,7 @@ struct op_push_const
 {
     anzu::object value;
 
-    void print() const { fmt::print("OP_PUSH_CONST({})\n", value); }
+    std::string to_string() const { return fmt::format("OP_PUSH_CONST({})", value); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -41,115 +41,115 @@ struct op_push_var
 {
     std::string name;
 
-    void print() const { fmt::print("OP_PUSH_VAR({})\n", name); }
+    std::string to_string() const { return fmt::format("OP_PUSH_VAR({})", name); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_add
 {
-    void print() const { fmt::print("OP_ADD\n"); }
+    std::string to_string() const { return fmt::format("OP_ADD"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_sub
 {
-    void print() const { fmt::print("OP_SUB\n"); }
+    std::string to_string() const { return fmt::format("OP_SUB"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_mul
 {
-    void print() const { fmt::print("OP_MUL\n"); }
+    std::string to_string() const { return fmt::format("OP_MUL"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_div
 {
-    void print() const { fmt::print("OP_DIV\n"); }
+    std::string to_string() const { return fmt::format("OP_DIV"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_mod
 {
-    void print() const { fmt::print("OP_MOD\n"); }
+    std::string to_string() const { return fmt::format("OP_MOD"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_dup
 {
-    void print() const { fmt::print("OP_DUP\n"); }
+    std::string to_string() const { return fmt::format("OP_DUP"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_print_frame
 {
-    void print() const { fmt::print("OP_PRINT_FRAME\n"); }
+    std::string to_string() const { return fmt::format("OP_PRINT_FRAME"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_eq
 {
-    void print() const { fmt::print("OP_EQ\n"); }
+    std::string to_string() const { return fmt::format("OP_EQ"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_ne
 {
-    void print() const { fmt::print("OP_NE\n"); }
+    std::string to_string() const { return fmt::format("OP_NE"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_lt
 {
-    void print() const { fmt::print("OP_LT\n"); }
+    std::string to_string() const { return fmt::format("OP_LT"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_le
 {
-    void print() const { fmt::print("OP_LE\n"); }
+    std::string to_string() const { return fmt::format("OP_LE"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_gt
 {
-    void print() const { fmt::print("OP_GT\n"); }
+    std::string to_string() const { return fmt::format("OP_GT"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_ge
 {
-    void print() const { fmt::print("OP_GE\n"); }
+    std::string to_string() const { return fmt::format("OP_GE"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_or
 {
-    void print() const { fmt::print("OP_OR\n"); }
+    std::string to_string() const { return fmt::format("OP_OR"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_and
 {
-    void print() const { fmt::print("OP_AND\n"); }
+    std::string to_string() const { return fmt::format("OP_AND"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_input
 {
-    void print() const { fmt::print("OP_INPUT\n"); }
+    std::string to_string() const { return fmt::format("OP_INPUT"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_if
 {
-    void print() const { fmt::print("OP_IF\n"); }
+    std::string to_string() const { return fmt::format("OP_IF"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_end_if
 {
-    void print() const { fmt::print("OP_END_IF\n"); }
+    std::string to_string() const { return fmt::format("OP_END_IF"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -157,7 +157,7 @@ struct op_elif
 {
     std::ptrdiff_t jump = -1;
 
-    void print() const { fmt::print(PRINT_JUMP, "OP_ELIF", jump); }
+    std::string to_string() const { return fmt::format(PRINT_JUMP, "OP_ELIF", jump); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -165,13 +165,13 @@ struct op_else
 {
     std::ptrdiff_t jump = -1;
 
-    void print() const { fmt::print(PRINT_JUMP, "OP_ELSE", jump); }
+    std::string to_string() const { return fmt::format(PRINT_JUMP, "OP_ELSE", jump); }
     void apply(anzu::stack_frame& frame) const;
 };
 
 struct op_while
 {
-    void print() const { fmt::print("OP_WHILE\n"); }
+    std::string to_string() const { return fmt::format("OP_WHILE"); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -179,7 +179,7 @@ struct op_end_while
 {
     std::ptrdiff_t jump = -1;
 
-    void print() const { fmt::print(PRINT_JUMP, "OP_END_WHILE", jump); }
+    std::string to_string() const { return fmt::format(PRINT_JUMP, "OP_END_WHILE", jump); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -187,7 +187,7 @@ struct op_break
 {
     std::ptrdiff_t jump = -1;
 
-    void print() const { fmt::print(PRINT_JUMP, "OP_BREAK", jump); }
+    std::string to_string() const { return fmt::format(PRINT_JUMP, "OP_BREAK", jump); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -195,7 +195,7 @@ struct op_continue
 {
     std::ptrdiff_t jump = -1;
 
-    void print() const { fmt::print(PRINT_JUMP, "OP_CONTINUE", jump); }
+    std::string to_string() const { return fmt::format(PRINT_JUMP, "OP_CONTINUE", jump); }
     void apply(anzu::stack_frame& frame) const;
 };
 
@@ -203,43 +203,70 @@ struct op_do
 {
     std::ptrdiff_t jump = -1;
 
-    void print() const { fmt::print(PRINT_JUMP_IF_FALSE, "OP_DO", jump); }
+    std::string to_string() const { return fmt::format(PRINT_JUMP_IF_FALSE, "OP_DO", jump); }
     void apply(anzu::stack_frame& frame) const;
 };
 
-using op = std::variant<
-    op_store,
-    op_dump,
-    op_pop,
-    op_push_const,
-    op_push_var,
-    op_add,
-    op_sub,
-    op_mul,
-    op_div,
-    op_mod,
-    op_dup,
-    op_print_frame,
-    op_eq,
-    op_ne,
-    op_lt,
-    op_le,
-    op_gt,
-    op_ge,
-    op_or,
-    op_and,
-    op_input,
+class op
+{
+    using op_type = std::variant<
+        op_store,
+        op_dump,
+        op_pop,
+        op_push_const,
+        op_push_var,
+        op_add,
+        op_sub,
+        op_mul,
+        op_div,
+        op_mod,
+        op_dup,
+        op_print_frame,
+        op_eq,
+        op_ne,
+        op_lt,
+        op_le,
+        op_gt,
+        op_ge,
+        op_or,
+        op_and,
+        op_input,
 
-    // Control Flow
-    op_if,
-    op_end_if,
-    op_elif,
-    op_else,
-    op_while,
-    op_end_while,
-    op_break,
-    op_continue,
-    op_do
->;
+        // Control Flow
+        op_if,
+        op_end_if,
+        op_elif,
+        op_else,
+        op_while,
+        op_end_while,
+        op_break,
+        op_continue,
+        op_do
+    >;
+
+    op_type d_type;
+
+public:
+    template <typename Op>
+    op(const Op& op_type) : d_type(op_type) {}
+
+    template <typename Op>
+    Op* get_if() { return std::get_if<Op>(&d_type); }
+
+    inline std::string to_string() const {
+        return std::visit([](auto&& o) { return o.to_string(); }, d_type);
+    }
+
+    inline void apply(anzu::stack_frame& frame) const {
+        return std::visit([&](auto&& o) { o.apply(frame); }, d_type);
+    }
+};
 
 }
+
+template <> struct fmt::formatter<anzu::op> {
+    constexpr auto parse(format_parse_context& ctx) { return ctx.end(); }
+    auto format(const anzu::op& op, auto& ctx) {
+        return format_to(ctx.out(), "{}", op.to_string());
+    }
+};
