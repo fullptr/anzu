@@ -263,3 +263,10 @@ public:
 };
 
 }
+
+template <> struct fmt::formatter<anzu::op> {
+    constexpr auto parse(format_parse_context& ctx) { return ctx.end(); }
+    auto format(const anzu::op& op, auto& ctx) {
+        return format_to(ctx.out(), "{}", op.to_string());
+    }
+};

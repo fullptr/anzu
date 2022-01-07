@@ -61,7 +61,7 @@ void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>
             // pass
         }
         else {
-            exit_bad("unexepected op in if-statement\n");
+            exit_bad("unexepected op in if-statement: '{}'\n", op);
         }
     }
 }
@@ -92,7 +92,7 @@ void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff
             data->jump = begin_ptr;
         }
         else {
-            exit_bad("unexepected op in while-statement\n");
+            exit_bad("unexepected op in while-statement: '{}'\n", op);
         }
     }
 }
