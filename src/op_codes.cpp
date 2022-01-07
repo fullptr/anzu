@@ -128,35 +128,6 @@ void op_print_frame::apply(anzu::stack_frame& frame) const
     frame.ptr() += 1;
 }
 
-void op_block_begin::apply(anzu::stack_frame& frame) const
-{
-    frame.ptr() += 1;
-}
-
-void op_block_end::apply(anzu::stack_frame& frame) const
-{
-    frame.ptr() = jump;
-}
-
-void op_block_jump_if_false::apply(anzu::stack_frame& frame) const
-{
-    auto condition = std::visit(overloaded {
-        [](int v) { return v != 0; },
-        [](bool v) { return v; }
-    }, frame.pop());
-
-    if (condition) {
-        frame.ptr() += 1;
-    } else {
-        frame.ptr() = jump;
-    }
-}
-
-void op_block_jump::apply(anzu::stack_frame& frame) const
-{
-    frame.ptr() = jump;
-}
-
 void op_eq::apply(anzu::stack_frame& frame) const
 {
     auto b = frame.pop();
