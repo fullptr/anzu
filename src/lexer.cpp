@@ -21,14 +21,29 @@ auto end_of_line(const std::string& line) -> std::string::const_iterator
     return line.end();
 }
 
+// If there is a bad backspace encountered while lexing, fail and exit.
+auto bad_backspace()
+{
+    fmt::print("Backspace character did not escape anything\n");
+    std::exit(1);
+};
+
 auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
 {
     std::string token;
     bool parsing_string_literal = false;
     for (auto it = line.begin(); it != end_of_line(line); ++it) {
+        // Backspace chars escape the next char, which must be of a certain group
         if (*it == '\\') {
-            ++it;
-            token.push_back(*it);
+            if (++it == line.end()) { bad_backspace(); }
+            switch (*it) {
+                break; case '\\': token.push_back('\\');
+                break; case '"': token.push_back('"');
+                break; case 'n': token.push_back('\n');
+                break; case 't': token.push_back('\t');
+                break; case 'r': token.push_back('\r');
+                break; default: bad_backspace();
+            }
         }
         else if (parsing_string_literal) {
             if (*it == '"') {
@@ -40,6 +55,7 @@ auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
                 token.push_back(*it);
             }
         }
+
         else if (*it == '"') {
             if (!token.empty()) {
                 tokens.push_back(token);
@@ -48,9 +64,11 @@ auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
             tokens.push_back("__literal");
             parsing_string_literal = true;
         }
+
         else if (!std::isspace(*it)) {
             token += *it;
         }
+
         else if (!token.empty()) {
             tokens.push_back(token);
             token.clear();
