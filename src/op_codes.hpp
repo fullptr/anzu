@@ -45,6 +45,12 @@ struct op_swap
     void apply(anzu::context& ctx) const;
 };
 
+struct op_rot
+{
+    std::string to_string() const { return "OP_ROT"; }
+    void apply(anzu::context& ctx) const;
+};
+
 // Store Manipulation
 
 struct op_store
@@ -314,7 +320,7 @@ class op
         op_pop,
         op_dup,
         op_swap,
-        // op_rot,   rotate 3rd to top:   a b c -> b c a
+        op_rot,
         // op_over,  copy 2nd elem:       a b -> a b a
 
         // Store Manipulation

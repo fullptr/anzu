@@ -52,9 +52,19 @@ void op_swap::apply(anzu::context& ctx) const
         fmt::print("cannot swap, not enough elements on stack\n");
         std::exit(1);
     }
-    auto tmp = frame.top(0);
-    frame.top(0) = frame.top(1);
-    frame.top(1) = tmp;
+    swap(frame.top(0), frame.top(1));
+    frame.ptr() += 1;
+}
+
+void op_rot::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    if (frame.stack_size() < 3) {
+        fmt::print("cannot rot, not enough elements on stack\n");
+        std::exit(1);
+    }
+    swap(frame.top(0), frame.top(1));
+    swap(frame.top(1), frame.top(2));
     frame.ptr() += 1;
 }
 
