@@ -210,7 +210,7 @@ struct op_do
 struct op_function
 {
     std::string    name;
-    std::ptrdiff_t jump = -1;  // Jumps to end of function is it isnt invoked when running.
+    std::ptrdiff_t jump = -1;  // Jumps to end of function so it isnt invoked when running.
 
     std::string to_string() const { return fmt::format(PRINT_JUMP, fmt::format("OP_FUNCTION({})", name), jump); }
     void apply(anzu::context& ctx) const;
@@ -232,9 +232,7 @@ struct op_function_call
 
     std::string to_string() const
     {
-        return fmt::format(
-            PRINT_JUMP, fmt::format("OP_FUNCTION_CALL({}, {})", name, argc), jump
-        ); 
+        return fmt::format(PRINT_JUMP, fmt::format("OP_FUNCTION_CALL({}, {})", name, argc), jump); 
     }
     void apply(anzu::context& ctx) const;
 };

@@ -8,6 +8,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <optional>
 
 namespace anzu {
 namespace lexer {
@@ -128,10 +129,10 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
     // 'if', 'do' and 'else' so the jumps can be set up correctly.
     std::stack<std::ptrdiff_t> if_stack;
     std::stack<std::ptrdiff_t> while_stack;
-    std::stack<function_def> function_stack;
 
-    // Pointers into function definitions.
-    std::unordered_map<std::string, function_def> functions;
+    // Functions info
+    std::optional<std::string> curr_func;
+    std::unordered_map<std::string, function_def> all_functions;
 
     // Keeps a stack of if/else/function blocks to handle 'end' and 'do' keywords
     std::stack<std::string> blocks;
@@ -223,8 +224,8 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
                 process_while_block(program, while_stack);
             }
             else if (blocks.top() == "FUNCTION") {
-                auto def = function_stack.top();
-                function_stack.pop();
+                auto def = all_functions[*curr_func];
+                curr_func.reset();
                 program[def.ptr].get_if<anzu::op_function>()->jump = std::ssize(program) + 1;
                 program.emplace_back(anzu::op_function_end{ .retc=def.retc });
             }
@@ -262,20 +263,24 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
             program.emplace_back(anzu::op_input{});
         }
         else if (token == FUNCTION) {
-            blocks.push("FUNCTION");
+            if (curr_func.has_value()) {
+                fmt::print("error: cannot nest functions, '{}' has not been completed\n", *curr_func);
+                std::exit(1);
+            }
 
+            blocks.push("FUNCTION");
             std::string name = next(it);
             function_def def = {
                 .argc=anzu::parse_int(next(it)),
                 .retc=anzu::parse_int(next(it)),
                 .ptr=std::ssize(program)
             };
-            functions.emplace(name, def);
-            function_stack.push(def);
+            all_functions.emplace(name, def);
+            curr_func = name;
             program.emplace_back(anzu::op_function{ .name=name });
         }
         else if (token == RETURN) {
-            const auto& def = function_stack.top();
+            const auto& def = all_functions[*curr_func];
             program.emplace_back(anzu::op_return{ .retc=def.retc });
         }
         else if (anzu::is_literal(token)) {
@@ -283,8 +288,8 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
                 .value=anzu::parse_literal(token)
             });
         }
-        else if (functions.contains(token)) {
-            auto [argc, retc, ptr] = functions[token];
+        else if (all_functions.contains(token)) {
+            auto [argc, retc, ptr] = all_functions[token];
             program.emplace_back(anzu::op_function_call{
                 .name=token, .argc=argc, .jump=ptr + 1
             });
