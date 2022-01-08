@@ -15,6 +15,11 @@ auto frame::push(const anzu::object& value) -> void
     d_values.push(value);
 }
 
+auto frame::top(std::size_t index) -> anzu::object&
+{
+    return d_values.top(index);
+}
+
 auto frame::top(std::size_t index) const -> const anzu::object&
 {
     return d_values.top(index);
