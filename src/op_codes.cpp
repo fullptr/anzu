@@ -350,9 +350,7 @@ void op_function::apply(anzu::context& ctx) const
 
 void op_function_end::apply(anzu::context& ctx) const
 {
-    // Move the required number of arguments back to the underlying frame
     transfer_values(ctx.top(0), ctx.top(1), retc);
-    
     ctx.pop(); // Remove stack frame
 }
 
@@ -364,15 +362,12 @@ void op_function_call::apply(anzu::context& ctx) const
     curr.ptr() = jump; // Jump into the function
     prev.ptr() += 1;   // The position in the program where it will resume
 
-    // Move the required number of arguments over to the new frame
     transfer_values(prev, curr, argc);
 }
 
 void op_return::apply(anzu::context& ctx) const
 {
-    // Move the required number of arguments back to the underlying frame
     transfer_values(ctx.top(0), ctx.top(1), retc);
-
     ctx.pop(); // Remove stack frame
 }
 
