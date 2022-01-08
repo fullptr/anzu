@@ -406,11 +406,7 @@ void op_input::apply(anzu::context& ctx) const
     fmt::print("Input: ");
     std::string in;
     std::cin >> in;
-    if (!anzu::is_literal(in)) {
-        fmt::print("[BAD INPUT]\n");
-        std::exit(1);
-    }
-    frame.push(anzu::parse_literal(in));
+    frame.push(in);
     frame.ptr() += 1;
 }
 

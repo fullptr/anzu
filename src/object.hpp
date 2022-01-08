@@ -7,10 +7,8 @@ namespace anzu {
 
 using object = std::variant<int, bool, std::string>;
 
-bool is_literal(const std::string& token);
-anzu::object parse_literal(const std::string& token);
-
-int parse_int(const std::string& token);
+auto is_int(const std::string& token) -> bool;
+auto to_int(const std::string& token) -> int;
 
 }
 

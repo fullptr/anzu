@@ -185,8 +185,8 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
             curr_func = name;
 
             function_def def = {
-                .argc=anzu::parse_int(next(it)),
-                .retc=anzu::parse_int(next(it)),
+                .argc=anzu::to_int(next(it)),
+                .retc=anzu::to_int(next(it)),
                 .ptr=std::ssize(program)
             };
             all_functions.emplace(name, def);
@@ -284,7 +284,22 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
             program.emplace_back(anzu::op_dump{});
         }
 
-        // Lexer Specials
+        // Literals
+        else if (anzu::is_int(token)) {
+            program.emplace_back(anzu::op_push_const{
+                .value=anzu::to_int(token)
+            });
+        }
+        else if (token == TRUE_LIT) {
+            program.emplace_back(anzu::op_push_const{
+                .value=true
+            });
+        }
+        else if (token == FALSE_LIT) {
+            program.emplace_back(anzu::op_push_const{
+                .value=false
+            });
+        }
         else if (token == STRING_LIT) {
             program.emplace_back(anzu::op_push_const{
                 .value=next(it)
@@ -297,11 +312,6 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
         }
 
         // Rest
-        else if (anzu::is_literal(token)) {
-            program.emplace_back(anzu::op_push_const{
-                .value=anzu::parse_literal(token)
-            });
-        }
         else if (all_functions.contains(token)) {
             auto [argc, retc, ptr] = all_functions[token];
             program.emplace_back(anzu::op_function_call{
