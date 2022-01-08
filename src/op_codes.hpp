@@ -9,103 +9,7 @@ namespace anzu {
 constexpr auto FORMAT2 = std::string_view{"{:<30} {}"};
 constexpr auto FORMAT3 = std::string_view{"{:<30} {:<20} {}"};
 
-struct op_store
-{
-    std::string name;
-
-    std::string to_string() const { return fmt::format("OP_STORE({})", name); }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_add
-{
-    std::string to_string() const { return "OP_ADD"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_sub
-{
-    std::string to_string() const { return "OP_SUB"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_mul
-{
-    std::string to_string() const { return "OP_MUL"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_div
-{
-    std::string to_string() const { return "OP_DIV"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_mod
-{
-    std::string to_string() const { return "OP_MOD"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_print_frame
-{
-    std::string to_string() const { return "OP_PRINT_FRAME"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_eq
-{
-    std::string to_string() const { return "OP_EQ"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_ne
-{
-    std::string to_string() const { return "OP_NE"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_lt
-{
-    std::string to_string() const { return "OP_LT"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_le
-{
-    std::string to_string() const { return "OP_LE"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_gt
-{
-    std::string to_string() const { return "OP_GT"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_ge
-{
-    std::string to_string() const { return "OP_GE"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_or
-{
-    std::string to_string() const { return "OP_OR"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_and
-{
-    std::string to_string() const { return "OP_AND"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_input
-{
-    std::string to_string() const { return "OP_INPUT"; }
-    void apply(anzu::context& ctx) const;
-};
+// Stack Manipulation
 
 struct op_push_const
 {
@@ -141,11 +45,17 @@ struct op_swap
     void apply(anzu::context& ctx) const;
 };
 
-struct op_dump
+// Store Manipulation
+
+struct op_store
 {
-    std::string to_string() const { return "OP_DUMP"; }
+    std::string name;
+
+    std::string to_string() const { return fmt::format("OP_STORE({})", name); }
     void apply(anzu::context& ctx) const;
 };
+
+// Control Flow / Functions
 
 struct op_if
 {
@@ -291,33 +201,122 @@ struct op_return
     void apply(anzu::context& ctx) const;
 };
 
+// Numerical Operators
+
+struct op_add
+{
+    std::string to_string() const { return "OP_ADD"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_sub
+{
+    std::string to_string() const { return "OP_SUB"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_mul
+{
+    std::string to_string() const { return "OP_MUL"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_div
+{
+    std::string to_string() const { return "OP_DIV"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_mod
+{
+    std::string to_string() const { return "OP_MOD"; }
+    void apply(anzu::context& ctx) const;
+};
+
+// Logical Operators
+
+struct op_eq
+{
+    std::string to_string() const { return "OP_EQ"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_ne
+{
+    std::string to_string() const { return "OP_NE"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_lt
+{
+    std::string to_string() const { return "OP_LT"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_le
+{
+    std::string to_string() const { return "OP_LE"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_gt
+{
+    std::string to_string() const { return "OP_GT"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_ge
+{
+    std::string to_string() const { return "OP_GE"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_or
+{
+    std::string to_string() const { return "OP_OR"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_and
+{
+    std::string to_string() const { return "OP_AND"; }
+    void apply(anzu::context& ctx) const;
+};
+
+// IO
+
+struct op_input
+{
+    std::string to_string() const { return "OP_INPUT"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_dump
+{
+    std::string to_string() const { return "OP_DUMP"; }
+    void apply(anzu::context& ctx) const;
+};
+
+// Debug
+
+struct op_print_frame
+{
+    std::string to_string() const { return "OP_PRINT_FRAME"; }
+    void apply(anzu::context& ctx) const;
+};
+
 class op
 {
     using op_type = std::variant<
-        op_store,
-        op_add,
-        op_sub,
-        op_mul,
-        op_div,
-        op_mod,
-        op_print_frame,
-        op_eq,
-        op_ne,
-        op_lt,
-        op_le,
-        op_gt,
-        op_ge,
-        op_or,
-        op_and,
-        op_input,
-
         // Stack Manipulation
         op_push_const,
         op_push_var,
         op_pop,
         op_dup,
         op_swap,
-        op_dump,
+
+        // Store Manipulation
+        op_store,
 
         // Control Flow
         op_if,
@@ -332,9 +331,33 @@ class op
 
         // Functions
         op_function,
-        op_function_end,
         op_function_call,
-        op_return
+        op_function_end,
+        op_return,
+
+        // Numerical Operators
+        op_add,
+        op_sub,
+        op_mul,
+        op_div,
+        op_mod,
+
+        // Logical Operators
+        op_eq,
+        op_ne,
+        op_lt,
+        op_le,
+        op_gt,
+        op_ge,
+        op_or,
+        op_and,
+
+        // IO
+        op_input,
+        op_dump,
+
+        // Debug
+        op_print_frame
     >;
 
     op_type d_type;
