@@ -141,32 +141,26 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
     while (it != tokens.end()) {
         const auto& token = *it;
 
-        if (token == STORE) {
-            program.emplace_back(anzu::op_store{
-                .name=next(it)
-            });
+        // Stack Manipulation
+        if (token == POP) {
+            program.emplace_back(anzu::op_pop{});
         }
-        else if (token == ADD) {
-            program.emplace_back(anzu::op_add{});
+        else if (token == DUP) {
+            program.emplace_back(anzu::op_dup{});
         }
-        else if (token == SUB) {
-            program.emplace_back(anzu::op_sub{});
+        else if (token == SWAP) {
+            program.emplace_back(anzu::op_swap{});
         }
-        else if (token == MUL) {
-            program.emplace_back(anzu::op_mul{});
+
+        // Store Manipulation
+        else if (token == STORE) {
+            program.emplace_back(anzu::op_store{ .name=next(it) });
         }
-        else if (token == DIV) {
-            program.emplace_back(anzu::op_div{});
-        }
-        else if (token == MOD) {
-            program.emplace_back(anzu::op_mod{});
-        }
-        else if (token == PRINT_FRAME) {
-            program.emplace_back(anzu::op_print_frame{});
-        }
+
+        // Control Flow
         else if (token == IF) {
-            if_stack.push(std::ssize(program));
             blocks.push("IF");
+            if_stack.push(std::ssize(program));
             program.emplace_back(anzu::op_if{});
         }
         else if (token == ELIF) {
@@ -178,8 +172,8 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
             program.emplace_back(anzu::op_else{});
         }
         else if (token == WHILE) {
-            while_stack.push(std::ssize(program));
             blocks.push("WHILE");
+            while_stack.push(std::ssize(program));
             program.emplace_back(anzu::op_while{});
         }
         else if (token == BREAK) {
@@ -189,6 +183,27 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
         else if (token == CONTINUE) {
             while_stack.push(std::ssize(program));
             program.emplace_back(anzu::op_continue{});
+        }
+        else if (token == FUNCTION) {
+            blocks.push("FUNCTION");
+            if (curr_func.has_value()) {
+                fmt::print("error: cannot nest functions, '{}' has not been completed\n", *curr_func);
+                std::exit(1);
+            }
+            std::string name = next(it);
+            curr_func = name;
+
+            function_def def = {
+                .argc=anzu::parse_int(next(it)),
+                .retc=anzu::parse_int(next(it)),
+                .ptr=std::ssize(program)
+            };
+            all_functions.emplace(name, def);
+            program.emplace_back(anzu::op_function{ .name=name });
+        }
+        else if (token == RETURN) {
+            const auto& def = all_functions[*curr_func];
+            program.emplace_back(anzu::op_return{ .retc=def.retc });
         }
         else if (token == DO) {
             if (blocks.top() == "IF") {
@@ -226,6 +241,25 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
             }
             blocks.pop();
         }
+
+        // Numerical Operators
+        else if (token == ADD) {
+            program.emplace_back(anzu::op_add{});
+        }
+        else if (token == SUB) {
+            program.emplace_back(anzu::op_sub{});
+        }
+        else if (token == MUL) {
+            program.emplace_back(anzu::op_mul{});
+        }
+        else if (token == DIV) {
+            program.emplace_back(anzu::op_div{});
+        }
+        else if (token == MOD) {
+            program.emplace_back(anzu::op_mod{});
+        }
+
+        // Logical Operators
         else if (token == EQ) {
             program.emplace_back(anzu::op_eq{});
         }
@@ -250,42 +284,21 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
         else if (token == AND) {
             program.emplace_back(anzu::op_and{});
         }
+
+        // IO
         else if (token == INPUT) {
             program.emplace_back(anzu::op_input{});
-        }
-        else if (token == POP) {
-            program.emplace_back(anzu::op_pop{});
-        }
-        else if (token == DUP) {
-            program.emplace_back(anzu::op_dup{});
-        }
-        else if (token == SWAP) {
-            program.emplace_back(anzu::op_swap{});
         }
         else if (token == DUMP) {
             program.emplace_back(anzu::op_dump{});
         }
-        else if (token == FUNCTION) {
-            if (curr_func.has_value()) {
-                fmt::print("error: cannot nest functions, '{}' has not been completed\n", *curr_func);
-                std::exit(1);
-            }
 
-            blocks.push("FUNCTION");
-            std::string name = next(it);
-            function_def def = {
-                .argc=anzu::parse_int(next(it)),
-                .retc=anzu::parse_int(next(it)),
-                .ptr=std::ssize(program)
-            };
-            all_functions.emplace(name, def);
-            curr_func = name;
-            program.emplace_back(anzu::op_function{ .name=name });
+        // Debug
+        else if (token == PRINT_FRAME) {
+            program.emplace_back(anzu::op_print_frame{});
         }
-        else if (token == RETURN) {
-            const auto& def = all_functions[*curr_func];
-            program.emplace_back(anzu::op_return{ .retc=def.retc });
-        }
+
+        // Rest
         else if (anzu::is_literal(token)) {
             program.emplace_back(anzu::op_push_const{
                 .value=anzu::parse_literal(token)
