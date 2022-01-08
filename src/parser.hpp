@@ -62,6 +62,6 @@ constexpr auto DUMP        = std::string_view{"."};
 
 constexpr auto PRINT_FRAME = std::string_view{"frame"};
 
-auto parse(const std::string& file) -> std::vector<anzu::op>;
+auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>;
 
 }

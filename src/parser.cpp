@@ -13,7 +13,7 @@
 namespace anzu {
 namespace {
 
-inline std::string next(std::vector<std::string>::iterator& it)
+inline std::string next(std::vector<std::string>::const_iterator& it)
 {
     return *(++it);
 }
@@ -97,24 +97,6 @@ void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff
     }
 }
 
-std::vector<std::string> tokenize(const std::string& file)
-{
-    // Loop over the lines in the program, and then split each line into tokens.
-    // If a '//' comment symbol is hit, the rest of the line is ignored.
-    std::vector<std::string> tokens;
-    std::ifstream file_stream{file};
-    std::string line;
-    while (std::getline(file_stream, line)) {
-        std::istringstream line_stream{line};
-        for (const auto& token : std::ranges::istream_view<std::string>(line_stream)
-                               | std::views::take_while([](auto&& tok) { return tok != "//"; }))
-        {
-            tokens.emplace_back(token);
-        }
-    }
-    return tokens;
-}
-
 }
 
 struct function_def
@@ -124,9 +106,8 @@ struct function_def
     std::ptrdiff_t ptr;
 };
 
-auto parse(const std::string& file) -> std::vector<anzu::op>
+auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
 {
-    std::vector<std::string> tokens = tokenize(file);
     std::vector<anzu::op> program;
 
     // Contains a stack of indices to previous control flow statements suchs as
