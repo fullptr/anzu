@@ -102,6 +102,7 @@ void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff
 struct function_def
 {
     int            argc;
+    int            retc;
     std::ptrdiff_t ptr;
 };
 
@@ -266,14 +267,17 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
             std::string name = next(it);
             function_def def = {
                 .argc=anzu::parse_int(next(it)),
+                .retc=anzu::parse_int(next(it)),
                 .ptr=std::ssize(program) + 1
             };
             functions.emplace(name, def);
             function_stack.push(std::ssize(program));
-            program.emplace_back(anzu::op_function{});
+            program.emplace_back(anzu::op_function{ .name=name });
         }
         else if (token == RETURN) {
-            program.emplace_back(anzu::op_return{});
+            auto f_name = program[function_stack.top()].get_if<anzu::op_function>()->name;
+            const auto& f_data = functions.at(f_name);
+            program.emplace_back(anzu::op_return{ .retc=f_data.retc });
         }
         else if (anzu::is_literal(token)) {
             program.emplace_back(anzu::op_push_const{
@@ -281,7 +285,7 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
             });
         }
         else if (functions.contains(token)) {
-            auto [argc, ptr] = functions[token];
+            auto [argc, retc, ptr] = functions[token];
             program.emplace_back(anzu::op_function_call{
                 .name=token, .argc=argc, .jump=ptr
             });

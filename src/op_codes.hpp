@@ -239,7 +239,9 @@ struct op_function_call
 
 struct op_return
 {
-    std::string to_string() const { return fmt::format(PRINT_JUMP, "OP_RETURN", "[CALLSITE] (WITH VALUE)"); }
+    int retc;
+
+    std::string to_string() const { return fmt::format(PRINT_JUMP, fmt::format("OP_RETURN({})", retc), "[CALLSITE]"); }
     void apply(anzu::context& ctx) const;
 };
 

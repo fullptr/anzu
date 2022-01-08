@@ -1,15 +1,15 @@
 // fibbonacci to demonstrate functions and recursion
 
-function fibb 1
+function fibb 1 1
     if dup 0 == do
         0 return
     elif dup 1 == do
         1 return
-    else
-        dup 1 - -> a
-        dup 2 - -> b
-        a fibb b fibb + return
     end
+    
+    dup 1 - -> a
+    dup 2 - -> b
+    a fibb b fibb + return
 end
 
 0 while dup 10 < do
