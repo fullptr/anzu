@@ -5,7 +5,7 @@
 
 namespace anzu {
 
-using object = std::variant<int, bool>;
+using object = std::variant<int, bool, std::string>;
 
 bool is_literal(const std::string& token);
 anzu::object parse_literal(const std::string& token);
