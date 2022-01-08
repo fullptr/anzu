@@ -8,9 +8,11 @@
 
 void run_program(const std::vector<anzu::op>& program)
 {
-    anzu::stack_frame frame;
-    while (frame.ptr() < std::ssize(program)) {
-        program[frame.ptr()].apply(frame);
+    anzu::context ctx;
+    ctx.push({});
+
+    while (ctx.top().ptr() < std::ssize(program)) {
+        program[ctx.top().ptr()].apply(ctx);
     }
 }
 

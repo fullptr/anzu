@@ -39,6 +39,10 @@ constexpr auto CONTINUE    = std::string_view{"continue"};
 constexpr auto DO          = std::string_view{"do"};
 constexpr auto END         = std::string_view{"end"};
 
+// Functions
+constexpr auto FUNCTION    = std::string_view{"function"};
+constexpr auto RETURN      = std::string_view{"return"};
+
 auto parse_file(const std::string& file) -> std::vector<anzu::op>;
 
 }

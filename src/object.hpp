@@ -10,6 +10,8 @@ using object = std::variant<int, bool>;
 bool is_literal(const std::string& token);
 anzu::object parse_literal(const std::string& token);
 
+int parse_int(const std::string& token);
+
 }
 
 template <> struct fmt::formatter<anzu::object> {

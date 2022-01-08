@@ -1,4 +1,5 @@
-// Project Euler #1 No OR operator, index stored in stack
+// project euler #1, sum of multiple of 3 and 5 below 1000
+
 0 -> count
 
 0 while dup 1000 < do
@@ -7,7 +8,7 @@
     elif dup 5 % 0 == do
         dup count + -> count
     end
-    1 +
+    1 + 
 end
 
 count .
