@@ -418,7 +418,7 @@ void op_dump::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
     anzu::verify_stack(frame, 1, ".");
-    fmt::print("{}\n", frame.pop());
+    fmt::print("{}", frame.pop());
     frame.ptr() += 1;
 }
 
