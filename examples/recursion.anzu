@@ -9,7 +9,7 @@ function fibb 1 1
 
     dup 1 - -> a
     dup 2 - -> b
-    a fibb b fibb + return
+    a fibb b fibb +
 end
 
 0 while dup 10 < do

@@ -140,7 +140,8 @@ void op_do::apply(anzu::context& ctx) const
     auto& frame = ctx.top();
     auto condition = std::visit(overloaded {
         [](int v) { return v != 0; },
-        [](bool v) { return v; }
+        [](bool v) { return v; },
+        [](const std::string& v) { return v.size() > 0; }
     }, frame.pop());
 
     if (condition) {
