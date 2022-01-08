@@ -58,6 +58,10 @@ constexpr auto AND         = std::string_view{"and"};
 constexpr auto INPUT       = std::string_view{"input"};
 constexpr auto DUMP        = std::string_view{"."};
 
+// Lexer Specials
+
+constexpr auto STRING_LIT  = std::string_view{"__string"};
+
 // Debug
 
 constexpr auto PRINT_FRAME = std::string_view{"frame"};

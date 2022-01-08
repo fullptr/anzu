@@ -60,7 +60,7 @@ auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
                 fmt::print("unknown string type: {}\n", token);
                 std::exit(1);
             }
-            tokens.push_back("__literal");
+            tokens.push_back("__string");
             parsing_string_literal = true;
         }
 

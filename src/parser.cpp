@@ -284,6 +284,13 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
             program.emplace_back(anzu::op_dump{});
         }
 
+        // Lexer Specials
+        else if (token == STRING_LIT) {
+            program.emplace_back(anzu::op_push_const{
+                .value=next(it)
+            });
+        }
+
         // Debug
         else if (token == PRINT_FRAME) {
             program.emplace_back(anzu::op_print_frame{});
