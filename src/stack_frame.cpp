@@ -20,6 +20,11 @@ auto frame::peek() const -> anzu::object
     return d_values.top();
 }
 
+auto frame::top(std::size_t index) const -> const anzu::object&
+{
+    return d_values.top(index);
+}
+
 auto frame::empty() const -> bool
 {
     return d_values.size() == 0;
