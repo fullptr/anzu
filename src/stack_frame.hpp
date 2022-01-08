@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <string>
 #include <variant>
+#include <ranges>
 
 namespace anzu {
 
@@ -41,13 +42,15 @@ public:
     {
         return d_values.size();
     }
+
+    auto all() const { return d_values | std::views::reverse; }
 };
 
 // A small wrapper for the value stack. This will eventually handle error
 // checking and checking that values are available.
 class frame
 {
-    std::vector<anzu::object>                     d_values;
+    anzu::stack<anzu::object>                     d_values;
     std::unordered_map<std::string, anzu::object> d_symbols;
 
     std::ptrdiff_t d_ptr = 0;

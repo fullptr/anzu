@@ -352,8 +352,8 @@ void op_function_call::apply(anzu::context& ctx) const
     auto& curr = ctx.push({}); // New frame
     auto& prev = ctx.top(1);   // One under the top
 
-    // The position in the program where it will resume.
-    prev.ptr() += 1;
+    curr.ptr() = jump; // Jump into the function
+    prev.ptr() += 1;   // The position in the program where it will resume
 
     // Move the required number of arguments over to the new frame
     std::stack<anzu::object> tmp;
@@ -365,7 +365,6 @@ void op_function_call::apply(anzu::context& ctx) const
         tmp.pop();
     }
 
-    curr.ptr() = jump;
 }
 
 void op_return::apply(anzu::context& ctx) const
