@@ -68,6 +68,17 @@ void op_rot::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
+void op_over::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    if (frame.stack_size() < 2) {
+        fmt::print("cannot over, not enough elements on stack\n");
+        std::exit(1);
+    }
+    frame.push(frame.top(1));
+    frame.ptr() += 1;
+}
+
 void op_store::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();

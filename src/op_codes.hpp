@@ -51,6 +51,12 @@ struct op_rot
     void apply(anzu::context& ctx) const;
 };
 
+struct op_over
+{
+    std::string to_string() const { return "OP_OVER"; }
+    void apply(anzu::context& ctx) const;
+};
+
 // Store Manipulation
 
 struct op_store
@@ -321,7 +327,7 @@ class op
         op_dup,
         op_swap,
         op_rot,
-        // op_over,  copy 2nd elem:       a b -> a b a
+        op_over,
 
         // Store Manipulation
         op_store,

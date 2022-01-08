@@ -154,6 +154,9 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
         else if (token == ROT) {
             program.emplace_back(anzu::op_rot{});
         }
+        else if (token == OVER) {
+            program.emplace_back(anzu::op_over{});
+        }
 
         // Store Manipulation
         else if (token == STORE) {

@@ -13,6 +13,7 @@ constexpr auto POP         = std::string_view{"pop"};
 constexpr auto DUP         = std::string_view{"dup"};
 constexpr auto SWAP        = std::string_view{"swap"};
 constexpr auto ROT         = std::string_view{"rot"};
+constexpr auto OVER        = std::string_view{"over"};
 
 // Store Manipulation
 
