@@ -1,3 +1,3 @@
 // test file to manually testing new features
 
-"\r" . a\\a\\a
+ar "abc\t d"    \r   . a\\a\\a

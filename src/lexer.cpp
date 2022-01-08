@@ -33,33 +33,32 @@ auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
     std::string token;
     bool parsing_string_literal = false;
     for (auto it = line.begin(); it != end_of_line(line); ++it) {
-        // Backspace chars escape the next char, which must be of a certain group
-        if (*it == '\\') {
-            if (++it == line.end()) { bad_backspace(); }
-            switch (*it) {
-                break; case '\\': token.push_back('\\');
-                break; case '"': token.push_back('"');
-                break; case 'n': token.push_back('\n');
-                break; case 't': token.push_back('\t');
-                break; case 'r': token.push_back('\r');
-                break; default: bad_backspace();
-            }
-        }
-        else if (parsing_string_literal) {
-            if (*it == '"') {
+        
+        if (parsing_string_literal) {
+            if (*it == '"') { // End of literal
                 tokens.push_back(token);
                 token.clear();
                 parsing_string_literal = false;
+            }
+            else if (*it == '\\') { // Special character
+                if (++it == line.end()) { bad_backspace(); }
+                switch (*it) {
+                    break; case '\\': token.push_back('\\');
+                    break; case '"': token.push_back('"');
+                    break; case 'n': token.push_back('\n');
+                    break; case 't': token.push_back('\t');
+                    break; case 'r': token.push_back('\r');
+                    break; default: bad_backspace();
+                }
             }
             else {
                 token.push_back(*it);
             }
         }
-
-        else if (*it == '"') {
+        else if (*it == '"') { // Start of literal
             if (!token.empty()) {
-                tokens.push_back(token);
-                token.clear();
+                fmt::print("unknown string type: {}\n", token);
+                std::exit(1);
             }
             tokens.push_back("__literal");
             parsing_string_literal = true;
