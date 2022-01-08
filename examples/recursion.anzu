@@ -1,4 +1,4 @@
-// fibbonacci to demonstrate functions and recursion
+# fibbonacci to demonstrate functions and recursion
 
 function fibb 1 1
     if dup 0 == do
