@@ -7,10 +7,27 @@
 namespace anzu {
 namespace {
 
+template <typename... Args>
+void verify(bool condition, std::string_view msg, Args&&... args)
+{
+    if (!condition) {
+        fmt::print(msg, std::forward<Args>(args)...);
+        std::exit(1);
+    }
+}
+
+void verify_stack(const anzu::frame& frame, int count, std::string_view name)
+{
+    const auto type = count != 1 ? "args" : "arg";
+    const auto err = "stack underflow: '{}' requires {} {}";
+    anzu::verify(frame.stack_size() >= count, err, name, count, type);
+}
+
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 void transfer_values(anzu::frame& src, anzu::frame& dst, int count)
 {
+    anzu::verify(src.stack_size() >= count, "could not transfer {} args\n", count);
     for (int i = 0; i != count; ++i) { dst.push(src.top(count - 1 - i)); }
     for (int i = 0; i != count; ++i) { src.pop(); }
 }
@@ -48,10 +65,7 @@ void op_dup::apply(anzu::context& ctx) const
 void op_swap::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    if (frame.stack_size() < 2) {
-        fmt::print("cannot swap, not enough elements on stack\n");
-        std::exit(1);
-    }
+    anzu::verify_stack(frame, 2, "swap");
     swap(frame.top(0), frame.top(1));
     frame.ptr() += 1;
 }
@@ -59,10 +73,7 @@ void op_swap::apply(anzu::context& ctx) const
 void op_rot::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    if (frame.stack_size() < 3) {
-        fmt::print("cannot rot, not enough elements on stack\n");
-        std::exit(1);
-    }
+    anzu::verify_stack(frame, 3, "rot");
     swap(frame.top(0), frame.top(1));
     swap(frame.top(1), frame.top(2));
     frame.ptr() += 1;
@@ -71,10 +82,7 @@ void op_rot::apply(anzu::context& ctx) const
 void op_over::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    if (frame.stack_size() < 2) {
-        fmt::print("cannot over, not enough elements on stack\n");
-        std::exit(1);
-    }
+    anzu::verify_stack(frame, 2, "over");
     frame.push(frame.top(1));
     frame.ptr() += 1;
 }
@@ -82,6 +90,7 @@ void op_over::apply(anzu::context& ctx) const
 void op_store::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 1, "store");
     frame.load(name, frame.pop());
     frame.ptr() += 1;
 }
@@ -172,6 +181,7 @@ void op_return::apply(anzu::context& ctx) const
 void op_add::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "+");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -188,6 +198,7 @@ void op_add::apply(anzu::context& ctx) const
 void op_sub::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "-");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -204,6 +215,7 @@ void op_sub::apply(anzu::context& ctx) const
 void op_mul::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "*");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -220,6 +232,7 @@ void op_mul::apply(anzu::context& ctx) const
 void op_div::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "/");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -236,6 +249,7 @@ void op_div::apply(anzu::context& ctx) const
 void op_mod::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "%");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -252,6 +266,7 @@ void op_mod::apply(anzu::context& ctx) const
 void op_eq::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "==");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -268,6 +283,7 @@ void op_eq::apply(anzu::context& ctx) const
 void op_ne::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "!=");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -284,6 +300,7 @@ void op_ne::apply(anzu::context& ctx) const
 void op_lt::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "<");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -300,6 +317,7 @@ void op_lt::apply(anzu::context& ctx) const
 void op_le::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "<=");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -316,6 +334,7 @@ void op_le::apply(anzu::context& ctx) const
 void op_gt::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, ">");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -332,6 +351,7 @@ void op_gt::apply(anzu::context& ctx) const
 void op_ge::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, ">=");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -348,6 +368,7 @@ void op_ge::apply(anzu::context& ctx) const
 void op_or::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "or");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -364,6 +385,7 @@ void op_or::apply(anzu::context& ctx) const
 void op_and::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 2, "and");
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
@@ -394,6 +416,7 @@ void op_input::apply(anzu::context& ctx) const
 void op_dump::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    anzu::verify_stack(frame, 1, ".");
     fmt::print("{}\n", frame.pop());
     frame.ptr() += 1;
 }
