@@ -212,13 +212,15 @@ struct op_function
     std::string    name;
     std::ptrdiff_t jump = -1;  // Jumps to end of function is it isnt invoked when running.
 
-    std::string to_string() const { return fmt::format(PRINT_JUMP, "OP_FUNCTION", jump); }
+    std::string to_string() const { return fmt::format(PRINT_JUMP, fmt::format("OP_FUNCTION({})", name), jump); }
     void apply(anzu::context& ctx) const;
 };
 
 struct op_function_end
 {
-    std::string to_string() const{ return fmt::format(PRINT_JUMP, "OP_END_FUNCTION", "[CALLSITE]"); }
+    int retc;
+
+    std::string to_string() const{ return fmt::format(PRINT_JUMP, fmt::format("OP_END_FUNCTION({})", retc), "[CALLSITE]"); }
     void apply(anzu::context& ctx) const;
 };
 
