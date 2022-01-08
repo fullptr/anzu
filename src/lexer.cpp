@@ -1,5 +1,6 @@
 #include "lexer.hpp"
 
+#include <algorithm>
 #include <ranges>
 #include <fstream>
 #include <sstream>
@@ -22,9 +23,27 @@ auto end_of_line(const std::string& line) -> std::string::const_iterator
 auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
 {
     std::string token;
+    bool parsing_string_literal = false;
     for (auto it = line.begin(); it != end_of_line(line); ++it) {
-
-        if (!std::isspace(*it)) {
+        if (parsing_string_literal) {
+            if (*it == '"') {
+                tokens.push_back(token);
+                token.clear();
+                parsing_string_literal = false;
+            }
+            else {
+                token.push_back(*it);
+            }
+        }
+        else if (*it == '"') {
+            if (!token.empty()) {
+                tokens.push_back(token);
+                token.clear();
+            }
+            tokens.push_back("__literal");
+            parsing_string_literal = true;
+        }
+        else if (!std::isspace(*it)) {
             token += *it;
         }
         else if (!token.empty()) {
