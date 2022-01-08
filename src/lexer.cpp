@@ -7,13 +7,22 @@
 namespace anzu {
 namespace {
 
+// Returns an iterator to one past the end of the line (ignores comments)
+auto end_of_line(const std::string& line) -> std::string::const_iterator
+{
+    const auto line_end = line.find_first_of("//");
+    if (line_end != std::string::npos) {
+        auto it = line.begin();
+        std::advance(it, line_end);
+        return it;
+    }
+    return line.end();
+}
+
 auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
 {
     std::string token;
-    for (auto it = line.begin(); it != line.end(); ++it) {
-        if (*it == '#') { // Ignore comments
-            break;
-        }
+    for (auto it = line.begin(); it != end_of_line(line); ++it) {
 
         if (!std::isspace(*it)) {
             token += *it;
