@@ -58,7 +58,6 @@ class frame
 public:
     auto pop() -> anzu::object;
     auto push(const anzu::object& value) -> void;
-    auto peek() const -> anzu::object;
     auto top(std::size_t index = 0) const -> const anzu::object&;
 
     auto fetch(const std::string& name) const -> anzu::object;

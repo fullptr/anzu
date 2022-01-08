@@ -129,7 +129,7 @@ void op_mod::apply(anzu::context& ctx) const
 void op_dup::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    frame.push(frame.peek());
+    frame.push(frame.top());
     frame.ptr() += 1;
 }
 
