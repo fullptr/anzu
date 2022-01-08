@@ -349,23 +349,23 @@ void op_function_end::apply(anzu::context& ctx) const
 
 void op_function_call::apply(anzu::context& ctx) const
 {
-    auto& frame = ctx.top();
-    frame.ptr() += 1; // The position in the program where it will resume.
+    auto& curr = ctx.push({}); // New frame
+    auto& prev = ctx.top(1);   // One under the top
 
-    anzu::frame new_frame;
+    // The position in the program where it will resume.
+    prev.ptr() += 1;
 
     // Move the required number of arguments over to the new frame
     std::stack<anzu::object> tmp;
     for (int i = 0; i != argc; ++i) {
-        tmp.push(frame.pop());
+        tmp.push(prev.pop());
     }
     for (int i = 0; i != argc; ++i) {
-        new_frame.push(tmp.top());
+        curr.push(tmp.top());
         tmp.pop();
     }
 
-    ctx.push(new_frame);
-    ctx.top().ptr() = jump;
+    curr.ptr() = jump;
 }
 
 void op_return::apply(anzu::context& ctx) const

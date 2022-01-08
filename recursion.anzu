@@ -12,7 +12,7 @@ function fibb 1
     end
 end
 
-0 while dup 20 < do
+0 while dup 10 < do
     dup fibb .
     1 + 
 end

@@ -21,9 +21,10 @@ public:
         return val;
     }
 
-    auto push(const T& value) -> void
+    auto push(const T& value) -> T&
     {
         d_values.push_back(value);
+        return d_values.back();
     }
 
     auto top(std::size_t index = 0) const -> const T&
