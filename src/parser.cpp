@@ -1,4 +1,4 @@
-#include "lexer.hpp"
+#include "parser.hpp"
 #include "op_codes.hpp"
 #include "object.hpp"
 
@@ -11,7 +11,6 @@
 #include <optional>
 
 namespace anzu {
-namespace lexer {
 namespace {
 
 inline std::string next(std::vector<std::string>::iterator& it)
@@ -98,16 +97,7 @@ void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff
     }
 }
 
-}
-
-struct function_def
-{
-    int            argc;
-    int            retc;
-    std::ptrdiff_t ptr;
-};
-
-auto parse_file(const std::string& file) -> std::vector<anzu::op>
+std::vector<std::string> tokenize(const std::string& file)
 {
     // Loop over the lines in the program, and then split each line into tokens.
     // If a '//' comment symbol is hit, the rest of the line is ignored.
@@ -122,7 +112,21 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
             tokens.emplace_back(token);
         }
     }
+    return tokens;
+}
 
+}
+
+struct function_def
+{
+    int            argc;
+    int            retc;
+    std::ptrdiff_t ptr;
+};
+
+auto parse(const std::string& file) -> std::vector<anzu::op>
+{
+    std::vector<std::string> tokens = tokenize(file);
     std::vector<anzu::op> program;
 
     // Contains a stack of indices to previous control flow statements suchs as
@@ -326,5 +330,4 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
     return program;
 }
 
-}
 }

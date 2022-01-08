@@ -5,7 +5,6 @@
 #include <string>
 
 namespace anzu {
-namespace lexer {
 
 // Stack Manipulation
 
@@ -63,7 +62,6 @@ constexpr auto DUMP        = std::string_view{"."};
 
 constexpr auto PRINT_FRAME = std::string_view{"frame"};
 
-auto parse_file(const std::string& file) -> std::vector<anzu::op>;
+auto parse(const std::string& file) -> std::vector<anzu::op>;
 
-}
 }

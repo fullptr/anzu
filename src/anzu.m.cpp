@@ -1,6 +1,6 @@
 #include "stack_frame.hpp"
 #include "op_codes.hpp"
-#include "lexer.hpp"
+#include "parser.hpp"
 
 #include <fmt/format.h>
 #include <string>
@@ -44,7 +44,7 @@ int main(int argc, char** argv)
     const auto file = std::string{argv[2]};
 
     fmt::print("loading file '{}'\n", file);
-    const auto program = anzu::lexer::parse_file(file);
+    const auto program = anzu::parse(file);
     
     if (mode == "print") {
         print_program(program);

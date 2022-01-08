@@ -9,7 +9,7 @@ add_executable(anzu
                anzu.m.cpp
                stack_frame.cpp
                op_codes.cpp
-               lexer.cpp
+               parser.cpp
                object.cpp)
 
 target_link_libraries(anzu PRIVATE fmt::fmt)
