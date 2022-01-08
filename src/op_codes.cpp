@@ -9,6 +9,12 @@ namespace {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
+void transfer_values(anzu::frame& src, anzu::frame& dst, int count)
+{
+    for (int i = 0; i != count; ++i) { dst.push(src.top(count - 1 - i)); }
+    for (int i = 0; i != count; ++i) { src.pop(); }
+}
+
 }
 
 void op_store::apply(anzu::context& ctx) const
@@ -344,6 +350,9 @@ void op_function::apply(anzu::context& ctx) const
 
 void op_function_end::apply(anzu::context& ctx) const
 {
+    // Move the required number of arguments back to the underlying frame
+    transfer_values(ctx.top(0), ctx.top(1), retc);
+    
     ctx.pop(); // Remove stack frame
 }
 
@@ -356,15 +365,15 @@ void op_function_call::apply(anzu::context& ctx) const
     prev.ptr() += 1;   // The position in the program where it will resume
 
     // Move the required number of arguments over to the new frame
-    for (int i = 0; i != argc; ++i) { curr.push(prev.top(argc - 1 - i)); }
-    for (int i = 0; i != argc; ++i) { prev.pop(); }
+    transfer_values(prev, curr, argc);
 }
 
 void op_return::apply(anzu::context& ctx) const
 {
-    auto ret_val = ctx.top().pop();
+    // Move the required number of arguments back to the underlying frame
+    transfer_values(ctx.top(0), ctx.top(1), retc);
+
     ctx.pop(); // Remove stack frame
-    ctx.top().push(ret_val);
 }
 
 }

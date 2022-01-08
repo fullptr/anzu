@@ -6,7 +6,7 @@ function fibb 1 1
     elif dup 1 == do
         1 return
     end
-    
+
     dup 1 - -> a
     dup 2 - -> b
     a fibb b fibb + return
