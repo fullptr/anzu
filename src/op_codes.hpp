@@ -17,34 +17,6 @@ struct op_store
     void apply(anzu::context& ctx) const;
 };
 
-struct op_dump
-{
-    std::string to_string() const { return "OP_DUMP"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_pop
-{
-    std::string to_string() const { return "OP_POP"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_push_const
-{
-    anzu::object value;
-
-    std::string to_string() const { return fmt::format("OP_PUSH_CONST({})", value); }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_push_var
-{
-    std::string name;
-
-    std::string to_string() const { return fmt::format("OP_PUSH_VAR({})", name); }
-    void apply(anzu::context& ctx) const;
-};
-
 struct op_add
 {
     std::string to_string() const { return "OP_ADD"; }
@@ -72,12 +44,6 @@ struct op_div
 struct op_mod
 {
     std::string to_string() const { return "OP_MOD"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_dup
-{
-    std::string to_string() const { return "OP_DUP"; }
     void apply(anzu::context& ctx) const;
 };
 
@@ -138,6 +104,46 @@ struct op_and
 struct op_input
 {
     std::string to_string() const { return "OP_INPUT"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_push_const
+{
+    anzu::object value;
+
+    std::string to_string() const { return fmt::format("OP_PUSH_CONST({})", value); }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_push_var
+{
+    std::string name;
+
+    std::string to_string() const { return fmt::format("OP_PUSH_VAR({})", name); }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_pop
+{
+    std::string to_string() const { return "OP_POP"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_dup
+{
+    std::string to_string() const { return "OP_DUP"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_swap
+{
+    std::string to_string() const { return "OP_SWAP"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_dump
+{
+    std::string to_string() const { return "OP_DUMP"; }
     void apply(anzu::context& ctx) const;
 };
 
@@ -289,16 +295,11 @@ class op
 {
     using op_type = std::variant<
         op_store,
-        op_dump,
-        op_pop,
-        op_push_const,
-        op_push_var,
         op_add,
         op_sub,
         op_mul,
         op_div,
         op_mod,
-        op_dup,
         op_print_frame,
         op_eq,
         op_ne,
@@ -309,6 +310,14 @@ class op
         op_or,
         op_and,
         op_input,
+
+        // Stack Manipulation
+        op_push_const,
+        op_push_var,
+        op_pop,
+        op_dup,
+        op_swap,
+        op_dump,
 
         // Control Flow
         op_if,

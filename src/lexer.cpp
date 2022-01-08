@@ -146,12 +146,6 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
                 .name=next(it)
             });
         }
-        else if (token == DUMP) {
-            program.emplace_back(anzu::op_dump{});
-        }
-        else if (token == POP) {
-            program.emplace_back(anzu::op_pop{});
-        }
         else if (token == ADD) {
             program.emplace_back(anzu::op_add{});
         }
@@ -166,9 +160,6 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
         }
         else if (token == MOD) {
             program.emplace_back(anzu::op_mod{});
-        }
-        else if (token == DUP) {
-            program.emplace_back(anzu::op_dup{});
         }
         else if (token == PRINT_FRAME) {
             program.emplace_back(anzu::op_print_frame{});
@@ -261,6 +252,18 @@ auto parse_file(const std::string& file) -> std::vector<anzu::op>
         }
         else if (token == INPUT) {
             program.emplace_back(anzu::op_input{});
+        }
+        else if (token == POP) {
+            program.emplace_back(anzu::op_pop{});
+        }
+        else if (token == DUP) {
+            program.emplace_back(anzu::op_dup{});
+        }
+        else if (token == SWAP) {
+            program.emplace_back(anzu::op_swap{});
+        }
+        else if (token == DUMP) {
+            program.emplace_back(anzu::op_dump{});
         }
         else if (token == FUNCTION) {
             if (curr_func.has_value()) {

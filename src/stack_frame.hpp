@@ -58,7 +58,9 @@ class frame
 public:
     auto pop() -> anzu::object;
     auto push(const anzu::object& value) -> void;
+    auto top(std::size_t index = 0) -> anzu::object&;
     auto top(std::size_t index = 0) const -> const anzu::object&;
+    auto stack_size() const -> std::size_t { return d_values.size(); }
 
     auto fetch(const std::string& name) const -> anzu::object;
     auto load(const std::string& name, const anzu::object& value) -> void;

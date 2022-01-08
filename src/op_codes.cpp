@@ -24,34 +24,6 @@ void op_store::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
-void op_dump::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    fmt::print("{}\n", frame.pop());
-    frame.ptr() += 1;
-}
-
-void op_pop::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.pop();
-    frame.ptr() += 1;
-}
-
-void op_push_const::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(value);
-    frame.ptr() += 1;
-}
-
-void op_push_var::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.fetch(name));
-    frame.ptr() += 1;
-}
-
 void op_add::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
@@ -129,13 +101,6 @@ void op_mod::apply(anzu::context& ctx) const
             std::exit(1);
         }
     }, a, b);
-    frame.ptr() += 1;
-}
-
-void op_dup::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.top());
     frame.ptr() += 1;
 }
 
@@ -285,6 +250,54 @@ void op_input::apply(anzu::context& ctx) const
         std::exit(1);
     }
     frame.push(anzu::parse_literal(in));
+    frame.ptr() += 1;
+}
+
+void op_push_const::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    frame.push(value);
+    frame.ptr() += 1;
+}
+
+void op_push_var::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    frame.push(frame.fetch(name));
+    frame.ptr() += 1;
+}
+
+void op_pop::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    frame.pop();
+    frame.ptr() += 1;
+}
+
+void op_dup::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    frame.push(frame.top());
+    frame.ptr() += 1;
+}
+
+void op_swap::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    if (frame.stack_size() < 2) {
+        fmt::print("cannot swap, not enough elements on stack\n");
+        std::exit(1);
+    }
+    auto tmp = frame.top(0);
+    frame.top(0) = frame.top(1);
+    frame.top(1) = tmp;
+    frame.ptr() += 1;
+}
+
+void op_dump::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    fmt::print("{}\n", frame.pop());
     frame.ptr() += 1;
 }
 

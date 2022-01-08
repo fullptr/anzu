@@ -8,14 +8,11 @@ namespace anzu {
 namespace lexer {
 
 constexpr auto STORE       = std::string_view{"->"};
-constexpr auto DUMP        = std::string_view{"."};
-constexpr auto POP         = std::string_view{"pop"};
 constexpr auto ADD         = std::string_view{"+"};
 constexpr auto SUB         = std::string_view{"-"};
 constexpr auto MUL         = std::string_view{"*"};
 constexpr auto DIV         = std::string_view{"/"};
 constexpr auto MOD         = std::string_view{"%"};
-constexpr auto DUP         = std::string_view{"dup"};
 constexpr auto PRINT_FRAME = std::string_view{"frame"};
 constexpr auto EQ          = std::string_view{"=="};
 constexpr auto NE          = std::string_view{"!="};
@@ -26,6 +23,12 @@ constexpr auto GE          = std::string_view{">="};
 constexpr auto OR          = std::string_view{"or"};
 constexpr auto AND         = std::string_view{"and"};
 constexpr auto INPUT       = std::string_view{"input"};
+
+// Stack Manipulation
+constexpr auto POP         = std::string_view{"pop"};
+constexpr auto DUP         = std::string_view{"dup"};
+constexpr auto SWAP        = std::string_view{"swap"};
+constexpr auto DUMP        = std::string_view{"."};
 
 // Control Flow
 constexpr auto IF          = std::string_view{"if"};
