@@ -34,7 +34,7 @@ void run_program(const std::vector<anzu::op>& program)
 
 void print_usage()
 {
-    fmt::print("usage: anzu.exe (run|print) <program_file>\n\n");
+    fmt::print("usage: anzu.exe <program_file> (lex|parse|run)\n\n");
     fmt::print("The Anzu Programming Language\n\n");
     fmt::print("options:\n");
     fmt::print("    lex   - displays the program after lexing into tokens\n");
@@ -49,8 +49,8 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    const auto mode = std::string{argv[1]};
-    const auto file = std::string{argv[2]};
+    const auto file = std::string{argv[1]};
+    const auto mode = std::string{argv[2]};
 
     fmt::print("loading file '{}'\n", file);
 
