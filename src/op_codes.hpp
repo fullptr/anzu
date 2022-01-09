@@ -83,7 +83,7 @@ struct op_if_end
 
 struct op_elif
 {
-    std::ptrdiff_t jump = -1;
+    std::intptr_t jump = -1;
 
     std::string to_string() const
     {
@@ -95,7 +95,7 @@ struct op_elif
 
 struct op_else
 {
-    std::ptrdiff_t jump = -1;
+    std::intptr_t jump = -1;
 
     std::string to_string() const
     {
@@ -113,7 +113,7 @@ struct op_while
 
 struct op_while_end
 {
-    std::ptrdiff_t jump = -1;
+    std::intptr_t jump = -1;
 
     std::string to_string() const
     {
@@ -125,7 +125,7 @@ struct op_while_end
 
 struct op_break
 {
-    std::ptrdiff_t jump = -1;
+    std::intptr_t jump = -1;
 
     std::string to_string() const
     {
@@ -137,7 +137,7 @@ struct op_break
 
 struct op_continue
 {
-    std::ptrdiff_t jump = -1;
+    std::intptr_t jump = -1;
 
     std::string to_string() const
     {
@@ -149,7 +149,7 @@ struct op_continue
 
 struct op_do
 {
-    std::ptrdiff_t jump = -1;
+    std::intptr_t jump = -1;
 
     std::string to_string() const
     {
@@ -162,7 +162,7 @@ struct op_do
 struct op_function
 {
     std::string    name;
-    std::ptrdiff_t jump = -1;  // Jumps to end of function so it isnt invoked when running.
+    std::intptr_t jump = -1;  // Jumps to end of function so it isnt invoked when running.
 
     std::string to_string() const
     {
@@ -187,9 +187,9 @@ struct op_function_end
 
 struct op_function_call
 {
-    std::string    name;
-    int            argc;
-    std::ptrdiff_t jump;
+    std::string   name;
+    int           argc;
+    std::intptr_t jump;
 
     std::string to_string() const
     {

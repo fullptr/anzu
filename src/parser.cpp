@@ -33,9 +33,9 @@ inline T pop_top(std::stack<T>& stack)
     return ret;
 }
 
-void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>& stmt_stack)
+void process_if_block(std::vector<anzu::op>& program, std::stack<std::intptr_t>& stmt_stack)
 {
-    std::deque<std::ptrdiff_t> block;
+    std::deque<std::intptr_t> block;
     while (!program[stmt_stack.top()].get_if<anzu::op_if>()) {
         block.push_front(pop_top(stmt_stack)); // do/else/elif/end
     }
@@ -44,11 +44,11 @@ void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>
     auto end_ptr = block.back();
 
     for (std::size_t i = 0; i != block.size(); ++i) {
-        std::ptrdiff_t ptr = block[i];
+        std::intptr_t ptr = block[i];
         auto& op = program[ptr];
 
         if (auto* data = op.get_if<anzu::op_do>()) {
-            std::ptrdiff_t next_ptr = block[i+1]; // end or else
+            std::intptr_t next_ptr = block[i+1]; // end or else
             data->jump = next_ptr + 1;
         }
         else if (auto* data = op.get_if<anzu::op_elif>()) {
@@ -66,9 +66,9 @@ void process_if_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>
     }
 }
 
-void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff_t>& stmt_stack)
+void process_while_block(std::vector<anzu::op>& program, std::stack<std::intptr_t>& stmt_stack)
 {
-    std::deque<std::ptrdiff_t> block;
+    std::deque<std::intptr_t> block;
     while (!program[stmt_stack.top()].get_if<anzu::op_while>()) {
         block.push_front(pop_top(stmt_stack)); // do/break/continue/end
     }
@@ -76,7 +76,7 @@ void process_while_block(std::vector<anzu::op>& program, std::stack<std::ptrdiff
     auto begin_ptr = pop_top(stmt_stack); // while
     auto end_ptr = block.back();
 
-    for (std::ptrdiff_t ptr : block) {
+    for (std::intptr_t ptr : block) {
         auto& op = program[ptr];
 
         if (auto* data = op.get_if<anzu::op_do>()) {
@@ -103,7 +103,7 @@ struct function_def
 {
     int            argc;
     int            retc;
-    std::ptrdiff_t ptr;
+    std::intptr_t ptr;
 };
 
 auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
@@ -112,8 +112,8 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
 
     // Contains a stack of indices to previous control flow statements suchs as
     // 'if', 'do' and 'else' so the jumps can be set up correctly.
-    std::stack<std::ptrdiff_t> if_stack;
-    std::stack<std::ptrdiff_t> while_stack;
+    std::stack<std::intptr_t> if_stack;
+    std::stack<std::intptr_t> while_stack;
 
     // Functions info
     std::optional<std::string> curr_func;
