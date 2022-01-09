@@ -177,7 +177,11 @@ void swap(object& lhs, object& rhs)
 
 auto is_int(const std::string& token) -> bool
 {
-    return token.find_first_not_of("0123456789") == std::string::npos;
+    auto it = token.begin();
+    if (token.starts_with("-")) {
+        std::advance(it, 1);
+    }
+    return std::all_of(it, token.end(), std::isdigit);
 }
 
 auto to_int(const std::string& token) -> int
