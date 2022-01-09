@@ -4,6 +4,13 @@
 
 namespace anzu {
 
-auto lex(const std::string& file) -> std::vector<std::string>;
+struct token
+{
+    std::string text;
+    int         line;
+    int         col;
+};
+
+auto lex(const std::string& file) -> std::vector<anzu::token>;
 
 }

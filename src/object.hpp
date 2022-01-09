@@ -48,6 +48,9 @@ public:
 auto is_int(const std::string& token) -> bool;
 auto to_int(const std::string& token) -> int;
 
+
+auto convert_special_characters(const std::string& str) -> std::string;
+
 }
 
 template <> struct fmt::formatter<anzu::object> {

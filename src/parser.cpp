@@ -13,11 +13,6 @@
 namespace anzu {
 namespace {
 
-inline std::string next(std::vector<std::string>::const_iterator& it)
-{
-    return *(++it);
-}
-
 template <typename... Args>
 inline void exit_bad(std::string_view format, Args&&... args)
 {
@@ -106,7 +101,7 @@ struct function_def
     std::intptr_t ptr;
 };
 
-auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
+auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
 {
     std::vector<anzu::op> program;
 
@@ -124,7 +119,7 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
 
     auto it = tokens.begin();
     while (it != tokens.end()) {
-        const auto& token = *it;
+        const auto& token = it->text;
 
         // Stack Manipulation
         if (token == POP) {
@@ -145,7 +140,7 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
 
         // Store Manipulation
         else if (token == STORE) {
-            program.emplace_back(anzu::op_store{ .name=next(it) });
+            program.emplace_back(anzu::op_store{ .name=(++it)->text });
         }
 
         // Control Flow
@@ -181,12 +176,12 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
                 fmt::print("error: cannot nest functions, '{}' has not been completed\n", *curr_func);
                 std::exit(1);
             }
-            std::string name = next(it);
+            std::string name = (++it)->text;
             curr_func = name;
 
             function_def def = {
-                .argc=anzu::to_int(next(it)),
-                .retc=anzu::to_int(next(it)),
+                .argc=anzu::to_int((++it)->text),
+                .retc=anzu::to_int((++it)->text),
                 .ptr=std::ssize(program)
             };
             all_functions.emplace(name, def);
@@ -302,7 +297,7 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
         }
         else if (token == STRING_LIT) {
             program.emplace_back(anzu::op_push_const{
-                .value=next(it)
+                .value=(++it)->text
             });
         }
 
