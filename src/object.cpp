@@ -3,34 +3,45 @@
 #include <fmt/format.h>
 
 namespace anzu {
+namespace {
 
-bool is_literal(const std::string& token)
-{
-    return token == "false"
-        || token == "true"
-        || token.find_first_not_of("0123456789") == std::string::npos;
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+
 }
 
-anzu::object parse_literal(const std::string& token)
+auto is_int(const std::string& token) -> bool
 {
-    if (token == "true") {
-        return true;
-    }
-    if (token == "false") {
-        return false;
-    }
-    return parse_int(token);
-    fmt::print("[Fatal] Could not parse constant: {}\n", token);
-    std::exit(1);
+    return token.find_first_not_of("0123456789") == std::string::npos;
 }
 
-int parse_int(const std::string& token)
+auto to_int(const std::string& token) -> int
 {
-    if (token.find_first_not_of("0123456789") == std::string::npos) {
-        return std::stoi(token);
+    if (!is_int(token)) {
+        fmt::print("type error: cannot convert '{}' to int\n", token);
+        std::exit(1);
     }
-    fmt::print("[Fatal] Could not parse constant: {}\n", token);
-    std::exit(1);
+    return std::stoi(token);
+}
+
+auto to_repr(const anzu::object& obj) -> std::string
+{
+    return std::visit(overloaded {
+        [](int val) { return std::to_string(val); },
+        [](bool val) { return std::string{val ? "true" : "false"}; },
+        [](const std::string& val) {
+            std::string ret{'"'};
+            for (char c : val) {
+                switch (c) {
+                    break; case '\n': ret += "\\n";
+                    break; case '\t': ret += "\\t";
+                    break; case '\r': ret += "\\r";
+                    break; default: ret += c;
+                }
+            }
+            ret += '"';
+            return ret;
+        }
+    }, obj);
 }
 
 }

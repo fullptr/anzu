@@ -7,10 +7,13 @@ namespace anzu {
 
 using object = std::variant<int, bool, std::string>;
 
-bool is_literal(const std::string& token);
-anzu::object parse_literal(const std::string& token);
+auto is_int(const std::string& token) -> bool;
+auto to_int(const std::string& token) -> int;
 
-int parse_int(const std::string& token);
+// Returns a printable representation of an object. Should not be used
+// to convert to an anzu::object storing a string at it puts quotation marks
+// around string and escapes special charcters.
+auto to_repr(const anzu::object& obj) -> std::string;
 
 }
 

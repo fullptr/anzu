@@ -15,7 +15,7 @@ struct op_push_const
 {
     anzu::object value;
 
-    std::string to_string() const { return fmt::format("OP_PUSH_CONST({})", value); }
+    std::string to_string() const { return fmt::format("OP_PUSH_CONST({})", anzu::to_repr(value)); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -295,6 +295,26 @@ struct op_and
     void apply(anzu::context& ctx) const;
 };
 
+// Casts
+
+struct op_to_int
+{
+    std::string to_string() const { return "OP_TO_INT"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_to_bool
+{
+    std::string to_string() const { return "OP_TO_BOOL"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_to_str
+{
+    std::string to_string() const { return "OP_STR"; }
+    void apply(anzu::context& ctx) const;
+};
+
 // IO
 
 struct op_input
@@ -365,6 +385,11 @@ class op
         op_ge,
         op_or,
         op_and,
+
+        // Casts
+        op_to_int,
+        op_to_bool,
+        op_to_str,
 
         // IO
         op_input,
