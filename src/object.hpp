@@ -5,8 +5,6 @@
 
 namespace anzu {
 
-class invalid {};
-
 class object
 {
     using value_type = std::variant<
