@@ -32,13 +32,26 @@ void run_program(const std::vector<anzu::op>& program)
     }
 }
 
+void run_program_debug(const std::vector<anzu::op>& program)
+{
+    anzu::context ctx;
+    ctx.push({});
+
+    while (ctx.top().ptr() < std::ssize(program)) {
+        const auto& op = program[ctx.top().ptr()];
+        fmt::print("{:>4} - {}\n", ctx.top().ptr(), op);
+        op.apply(ctx);
+    }
+}
+
 void print_usage()
 {
-    fmt::print("usage: anzu.exe <program_file> (lex|parse|run)\n\n");
+    fmt::print("usage: anzu.exe <program_file> (lex|parse|debug|run)\n\n");
     fmt::print("The Anzu Programming Language\n\n");
     fmt::print("options:\n");
     fmt::print("    lex   - displays the program after lexing into tokens\n");
     fmt::print("    parse - displays the program after parsig to bytecode\n");
+    fmt::print("    debug - executes the program and prints each op code executed\n");
     fmt::print("    run   - executes the program\n");
 }
 
@@ -69,6 +82,10 @@ int main(int argc, char** argv)
 
     if (mode == "run") {
         run_program(program);
+        return 0;
+    }
+    else if (mode == "debug") {
+        run_program_debug(program);
         return 0;
     }
 

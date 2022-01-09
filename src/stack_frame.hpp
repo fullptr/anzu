@@ -53,7 +53,7 @@ class frame
     anzu::stack<anzu::object>                     d_values;
     std::unordered_map<std::string, anzu::object> d_symbols;
 
-    std::ptrdiff_t d_ptr = 0;
+    std::intptr_t d_ptr = 0;
 
 public:
     auto pop() -> anzu::object;
@@ -69,8 +69,8 @@ public:
 
     auto print() const -> void;
 
-    std::ptrdiff_t& ptr() { return d_ptr; }
-    std::ptrdiff_t ptr() const { return d_ptr; }
+    std::intptr_t& ptr() { return d_ptr; }
+    std::intptr_t ptr() const { return d_ptr; }
 };
 
 using context = anzu::stack<anzu::frame>;

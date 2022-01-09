@@ -138,13 +138,7 @@ void op_continue::apply(anzu::context& ctx) const
 void op_do::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    auto condition = std::visit(overloaded {
-        [](int v) { return v != 0; },
-        [](bool v) { return v; },
-        [](const std::string& v) { return v.size() > 0; }
-    }, frame.pop());
-
-    if (condition) {
+    if (frame.pop().to_bool()) {
         frame.ptr() += 1;
     } else {
         frame.ptr() = jump;
@@ -188,14 +182,7 @@ void op_add::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "+");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (addable<A, B>) {
-            frame.push(a + b);
-        } else {
-            fmt::print("cannot evaluate '{} {} +'\n", a, b);
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a + b);
     frame.ptr() += 1;
 }
 
@@ -208,14 +195,7 @@ void op_sub::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "-");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (subtractable<A, B>) {
-            frame.push(a - b);
-        } else {
-            fmt::print("cannot evaluate '{} {} -'\n", a, b);
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a - b);
     frame.ptr() += 1;
 }
 
@@ -228,14 +208,7 @@ void op_mul::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "*");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (multipliable<A, B>) {
-            frame.push(a * b);
-        } else {
-            fmt::print("cannot evaluate '{} {} *'\n", a, b);
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a * b);
     frame.ptr() += 1;
 }
 
@@ -245,14 +218,7 @@ void op_div::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "/");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
-            frame.push(a / b);
-        } else {
-            fmt::print("cannot evaluate '{} {} /'\n", a, b);
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a / b);
     frame.ptr() += 1;
 }
 
@@ -262,14 +228,7 @@ void op_mod::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "%");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
-            frame.push(a % b);
-        } else {
-            fmt::print("Can only sub integers\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a % b);
     frame.ptr() += 1;
 }
 
@@ -279,14 +238,7 @@ void op_eq::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "==");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, B>) {
-            frame.push(a == b);
-        } else {
-            fmt::print("Can only compare values of the same type\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a == b);
     frame.ptr() += 1;
 }
 
@@ -296,14 +248,7 @@ void op_ne::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "!=");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, B>) {
-            frame.push(a != b);
-        } else {
-            fmt::print("Can only compare values of the same type\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a != b);
     frame.ptr() += 1;
 }
 
@@ -313,14 +258,7 @@ void op_lt::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "<");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, B>) {
-            frame.push(a < b);
-        } else {
-            fmt::print("Can only compare values of the same type\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a < b);
     frame.ptr() += 1;
 }
 
@@ -330,14 +268,7 @@ void op_le::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "<=");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, B>) {
-            frame.push(a <= b);
-        } else {
-            fmt::print("Can only compare values of the same type\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a <= b);
     frame.ptr() += 1;
 }
 
@@ -347,14 +278,7 @@ void op_gt::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, ">");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, B>) {
-            frame.push(a > b);
-        } else {
-            fmt::print("Can only compare values of the same type\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a >b);
     frame.ptr() += 1;
 }
 
@@ -364,14 +288,7 @@ void op_ge::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, ">=");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, B>) {
-            frame.push(a >= b);
-        } else {
-            fmt::print("Can only compare values of the same type\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a >= b);
     frame.ptr() += 1;
 }
 
@@ -381,14 +298,7 @@ void op_or::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "or");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, bool> && std::is_same_v<B, bool>) {
-            frame.push(a || b);
-        } else {
-            fmt::print("Logical OR can only be used on bools\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a || b);
     frame.ptr() += 1;
 }
 
@@ -398,57 +308,34 @@ void op_and::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, "and");
     auto b = frame.pop();
     auto a = frame.pop();
-    std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, bool> && std::is_same_v<B, bool>) {
-            frame.push(a && b);
-        } else {
-            fmt::print("Logical AND can only be used on bools\n");
-            std::exit(1);
-        }
-    }, a, b);
+    frame.push(a && b);
     frame.ptr() += 1;
 }
 
 void op_to_int::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    auto new_val = std::visit(overloaded {
-        [](int v) { return v; },
-        [](bool v) { return v ? 1 : 0; },
-        [](const std::string& v) { return anzu::to_int(v); }
-    }, frame.pop());
-    frame.push(new_val);
+    frame.push(frame.pop().to_int());
     frame.ptr() += 1;
 }
 
 void op_to_bool::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    auto new_val = std::visit(overloaded {
-        [](int v) { return v != 0; },
-        [](bool v) { return v; },
-        [](const std::string& v) { return v.size() > 0; }
-    }, frame.pop());
-    frame.push(new_val);
+    frame.push(frame.pop().to_bool());
     frame.ptr() += 1;
 }
 
 void op_to_str::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    auto new_val = std::visit(overloaded {
-        [](int v) { return std::to_string(v); },
-        [](bool v) { return std::string{v ? "true" : "false"}; },
-        [](const std::string& v) { return v; }
-    }, frame.pop());
-    frame.push(new_val);
+    frame.push(frame.pop().to_str());
     frame.ptr() += 1;
 }
 
 void op_input::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    fmt::print("Input: ");
     std::string in;
     std::cin >> in;
     frame.push(in);

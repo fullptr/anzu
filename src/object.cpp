@@ -7,23 +7,63 @@ namespace {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
-}
-
-auto is_int(const std::string& token) -> bool
+auto type_error(const anzu::object& lhs, const anzu::object& rhs, std::string_view op) -> void
 {
-    return token.find_first_not_of("0123456789") == std::string::npos;
+    fmt::print("type error: cannot evaluate {} {} {}\n", lhs.to_repr(), rhs.to_repr(), op);
+    std::exit(1);
 }
 
-auto to_int(const std::string& token) -> int
+auto division_by_zero_error() -> void
 {
-    if (!is_int(token)) {
-        fmt::print("type error: cannot convert '{}' to int\n", token);
-        std::exit(1);
-    }
-    return std::stoi(token);
+    fmt::print("division by zero error\n");
+    std::exit(1);
 }
 
-auto to_repr(const anzu::object& obj) -> std::string
+}
+
+auto object::is_int() const -> bool
+{
+    return std::holds_alternative<int>(d_value);
+}
+
+auto object::is_bool() const -> bool
+{
+    return std::holds_alternative<bool>(d_value);
+}
+
+auto object::is_str() const -> bool
+{
+    return std::holds_alternative<std::string>(d_value);
+}
+
+auto object::to_int() const -> int
+{
+    return std::visit(overloaded {
+        [](int v) { return v; },
+        [](bool v) { return v ? 1 : 0; },
+        [](const std::string& v) { return anzu::to_int(v); }
+    }, d_value);
+}
+
+auto object::to_bool() const -> bool
+{
+    return std::visit(overloaded {
+        [](int v) { return v != 0; },
+        [](bool v) { return v; },
+        [](const std::string& v) { return v.size() > 0; }
+    }, d_value);
+}
+
+auto object::to_str() const -> std::string
+{
+    return std::visit(overloaded {
+        [](int v) { return std::to_string(v); },
+        [](bool v) { return std::string{v ? "true" : "false"}; },
+        [](const std::string& v) { return v; }
+    }, d_value);
+}
+
+auto object::to_repr() const -> std::string
 {
     return std::visit(overloaded {
         [](int val) { return std::to_string(val); },
@@ -41,7 +81,116 @@ auto to_repr(const anzu::object& obj) -> std::string
             ret += '"';
             return ret;
         }
-    }, obj);
+    }, d_value);
+}
+
+template <typename T>
+concept addable = requires(T a, T b) { { a + b }; };
+
+object operator+(const object& lhs, const object& rhs)
+{
+    return std::visit([]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
+        if constexpr (std::is_same_v<A, B> && addable<A>) {
+            return a + b;
+        } else {
+            anzu::type_error(a, b, "+");
+            return 0;
+        }
+    }, lhs.d_value, rhs.d_value);
+}
+
+template <typename T>
+concept subtractible = requires(T a, T b) { { a - b }; };
+
+object operator-(const object& lhs, const object& rhs)
+{
+    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
+        if constexpr (std::is_same_v<A, B> && subtractible<A>) {
+            return a - b;
+        } else {
+            anzu::type_error(a, b, "-");
+            return 0;
+        }
+    }, lhs.d_value, rhs.d_value);
+}
+
+template <typename T>
+concept multipliable = requires(T a, T b) { { a * b }; };
+
+object operator*(const object& lhs, const object& rhs)
+{
+    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
+        if constexpr (std::is_same_v<A, B> && multipliable<A>) {
+            return a * b;
+        } else {
+            anzu::type_error(a, b, "*");
+            return 0;
+        }
+    }, lhs.d_value, rhs.d_value);
+}
+
+object operator/(const object& lhs, const object& rhs)
+{
+    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
+        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
+            if (b != 0) {
+                return a / b;
+            }
+            anzu::division_by_zero_error();
+            return 0;
+        } else {
+            anzu::type_error(a, b, "/");
+            return 0;
+        }
+    }, lhs.d_value, rhs.d_value);
+}
+
+template <typename A, typename B>
+concept moddable = requires(A a, B b) { { a % b }; };
+
+object operator%(const object& lhs, const object& rhs)
+{
+    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
+        if constexpr (moddable<A, B>) {
+            return a % b;
+        } else {
+            anzu::type_error(a, b, "%");
+            return 0;
+        }
+    }, lhs.d_value, rhs.d_value);
+}
+
+bool operator||(const object& lhs, const object& rhs)
+{
+    return lhs.to_bool() || rhs.to_bool();
+}
+
+bool operator&&(const object& lhs, const object& rhs)
+{
+    return lhs.to_bool() && rhs.to_bool();
+}
+
+void swap(object& lhs, object& rhs)
+{
+    swap(lhs.d_value, rhs.d_value);
+}
+
+auto is_int(const std::string& token) -> bool
+{
+    auto it = token.begin();
+    if (token.starts_with("-")) {
+        std::advance(it, 1);
+    }
+    return std::all_of(it, token.end(), std::isdigit);
+}
+
+auto to_int(const std::string& token) -> int
+{
+    if (!is_int(token)) {
+        fmt::print("type error: cannot convert '{}' to int\n", token);
+        std::exit(1);
+    }
+    return std::stoi(token);
 }
 
 }
