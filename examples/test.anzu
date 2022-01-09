@@ -1,3 +1,4 @@
 // test file to manually testing new features
 
--5 (int) .
+"Input: " .
+input (int) .

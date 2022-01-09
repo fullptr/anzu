@@ -336,7 +336,6 @@ void op_to_str::apply(anzu::context& ctx) const
 void op_input::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    fmt::print("Input: ");
     std::string in;
     std::cin >> in;
     frame.push(in);

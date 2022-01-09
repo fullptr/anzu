@@ -55,6 +55,6 @@ auto to_int(const std::string& token) -> int;
 template <> struct fmt::formatter<anzu::object> {
     constexpr auto parse(format_parse_context& ctx) { return ctx.end(); }
     auto format(const anzu::object& obj, auto& ctx) {
-        return format_to(ctx.out(), obj.to_repr());
+        return format_to(ctx.out(), obj.to_str());
     }
 };
