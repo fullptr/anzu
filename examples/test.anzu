@@ -1,8 +1,5 @@
 // test file to manually testing new features
 
-function print 1 0
-    . "\n" .
-end
+"hello" 3 + .
 
-"hello" . " world\n" print
-"this is a string test" print 5 print 6 print
+

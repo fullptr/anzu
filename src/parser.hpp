@@ -64,6 +64,12 @@ constexpr auto TRUE_LIT    = std::string_view{"true"};
 constexpr auto FALSE_LIT   = std::string_view{"false"};
 constexpr auto STRING_LIT  = std::string_view{"__string"};
 
+// Casts
+
+constexpr auto TO_INT      = std::string_view{"(int)"};
+constexpr auto TO_BOOL     = std::string_view{"(bool)"};
+constexpr auto TO_STR      = std::string_view{"(str)"};
+
 // Debug
 
 constexpr auto PRINT_FRAME = std::string_view{"frame"};

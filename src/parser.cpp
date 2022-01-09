@@ -306,6 +306,17 @@ auto parse(const std::vector<std::string>& tokens) -> std::vector<anzu::op>
             });
         }
 
+        // Casts
+        else if (token == TO_INT) {
+            program.emplace_back(anzu::op_to_int{});
+        }
+        else if (token == TO_BOOL) {
+            program.emplace_back(anzu::op_to_bool{});
+        }
+        else if (token == TO_STR) {
+            program.emplace_back(anzu::op_to_str{});
+        }
+
         // Debug
         else if (token == PRINT_FRAME) {
             program.emplace_back(anzu::op_print_frame{});

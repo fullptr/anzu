@@ -12,7 +12,7 @@ auto is_int(const std::string& token) -> bool
 auto to_int(const std::string& token) -> int
 {
     if (!is_int(token)) {
-        fmt::print("cannot convert '{}' to int\n", token);
+        fmt::print("type error: cannot convert '{}' to int\n", token);
         std::exit(1);
     }
     return std::stoi(token);

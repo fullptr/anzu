@@ -179,6 +179,9 @@ void op_return::apply(anzu::context& ctx) const
     ctx.pop(); // Remove stack frame
 }
 
+template <typename A, typename B>
+concept addable = requires(A a, B b) { { a + b }; };
+
 void op_add::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
@@ -186,15 +189,18 @@ void op_add::apply(anzu::context& ctx) const
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
+        if constexpr (addable<A, B>) {
             frame.push(a + b);
         } else {
-            fmt::print("Can only add integers\n");
+            fmt::print("cannot evaluate '{} {} +'\n", a, b);
             std::exit(1);
         }
     }, a, b);
     frame.ptr() += 1;
 }
+
+template <typename A, typename B>
+concept subtractable = requires(A a, B b) { { a - b }; };
 
 void op_sub::apply(anzu::context& ctx) const
 {
@@ -203,15 +209,18 @@ void op_sub::apply(anzu::context& ctx) const
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
+        if constexpr (subtractable<A, B>) {
             frame.push(a - b);
         } else {
-            fmt::print("Can only sub integers\n");
+            fmt::print("cannot evaluate '{} {} -'\n", a, b);
             std::exit(1);
         }
     }, a, b);
     frame.ptr() += 1;
 }
+
+template <typename A, typename B>
+concept multipliable = requires(A a, B b) { { a * b }; };
 
 void op_mul::apply(anzu::context& ctx) const
 {
@@ -220,10 +229,10 @@ void op_mul::apply(anzu::context& ctx) const
     auto b = frame.pop();
     auto a = frame.pop();
     std::visit([&]<typename A, typename B>(const A& a, const B& b) {
-        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
+        if constexpr (multipliable<A, B>) {
             frame.push(a * b);
         } else {
-            fmt::print("Can only add integers\n");
+            fmt::print("cannot evaluate '{} {} *'\n", a, b);
             std::exit(1);
         }
     }, a, b);
@@ -240,7 +249,7 @@ void op_div::apply(anzu::context& ctx) const
         if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
             frame.push(a / b);
         } else {
-            fmt::print("Can only sub integers\n");
+            fmt::print("cannot evaluate '{} {} /'\n", a, b);
             std::exit(1);
         }
     }, a, b);
@@ -397,6 +406,42 @@ void op_and::apply(anzu::context& ctx) const
             std::exit(1);
         }
     }, a, b);
+    frame.ptr() += 1;
+}
+
+void op_to_int::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    auto new_val = std::visit(overloaded {
+        [](int v) { return v; },
+        [](bool v) { return v ? 1 : 0; },
+        [](const std::string& v) { return anzu::to_int(v); }
+    }, frame.pop());
+    frame.push(new_val);
+    frame.ptr() += 1;
+}
+
+void op_to_bool::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    auto new_val = std::visit(overloaded {
+        [](int v) { return v != 0; },
+        [](bool v) { return v; },
+        [](const std::string& v) { return v.size() > 0; }
+    }, frame.pop());
+    frame.push(new_val);
+    frame.ptr() += 1;
+}
+
+void op_to_str::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    auto new_val = std::visit(overloaded {
+        [](int v) { return std::to_string(v); },
+        [](bool v) { return std::string{v ? "true" : "false"}; },
+        [](const std::string& v) { return v; }
+    }, frame.pop());
+    frame.push(new_val);
     frame.ptr() += 1;
 }
 
