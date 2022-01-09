@@ -1,5 +1,5 @@
 // test file to manually testing new features
 
-"hello" 3 + .
+input (int) 10 != .
 
 

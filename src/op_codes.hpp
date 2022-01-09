@@ -15,7 +15,7 @@ struct op_push_const
 {
     anzu::object value;
 
-    std::string to_string() const { return fmt::format("OP_PUSH_CONST({})", anzu::to_repr(value)); }
+    std::string to_string() const { return fmt::format("OP_PUSH_CONST({})", value.to_repr()); }
     void apply(anzu::context& ctx) const;
 };
 
