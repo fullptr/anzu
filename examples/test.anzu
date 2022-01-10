@@ -1,8 +1,8 @@
 // test file to manually testing new features
 
+"hello world\n" .
 
-
-function euler 0 1
+function euler 0 1:
     0 -> count
 
     0 while dup 1000 < do

@@ -52,8 +52,30 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
     bool parsing_string_literal = false;
     int col = 1;
     int token_col = 1;
+
+    // Called when the current text should be processed as a token.
+    const auto& handle_token = [&]() {
+        if (keywords.contains(text)) {
+            tokens.push_back({
+                .text=text,
+                .line=lineno,
+                .col=token_col,
+                .type=token_type::keyword
+            });
+            text.clear();
+        }
+        else if (!text.empty()) {
+            tokens.push_back({
+                .text=text,
+                .line=lineno,
+                .col=token_col,
+                .type=get_token_type(text)
+            });
+            text.clear();
+        }
+    };
+
     for (auto it = line.begin(); it != end_of_line(line); ++it) {
-        ++col;
         if (parsing_string_literal) {
             if (*it == '"') { // End of literal
                 tokens.push_back({
@@ -85,35 +107,24 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
                 fmt::print("unknown string type: {}\n", text);
                 std::exit(1);
             }
+            token_col = col;
             parsing_string_literal = true;
         }
 
         else if (!std::isspace(*it)) {
+            if (text.empty()) {
+                token_col = col;
+            }
             text += *it;
         }
 
         else {
-            if (!text.empty()) {
-                tokens.push_back({
-                    .text=text,
-                    .line=lineno,
-                    .col=token_col,
-                    .type=get_token_type(text)
-                });
-                text.clear();
-            }
-            token_col = col;
+            handle_token();
         }
+        ++col;
     }
 
-    if (!text.empty()) {
-        tokens.push_back({
-            .text=text,
-            .line=lineno,
-            .col=token_col,
-            .type=get_token_type(text)
-        });
-    }
+    handle_token();
 
     if (parsing_string_literal) {
         fmt::print("lexing failed, string literal not closed\n");
