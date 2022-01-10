@@ -45,8 +45,10 @@ public:
     friend void swap(object& lhs, object& rhs);
 };
 
-auto is_int(const std::string& token) -> bool;
-auto to_int(const std::string& token) -> int;
+auto is_int(std::string_view token) -> bool;
+auto to_int(std::string_view token) -> int;
+
+auto foramt_special_chars(const std::string& str) -> std::string;
 
 }
 

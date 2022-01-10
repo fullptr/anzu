@@ -74,6 +74,7 @@
         "xutility": "cpp",
         "fstream": "cpp",
         "variant": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "unordered_set": "cpp"
     }
 }

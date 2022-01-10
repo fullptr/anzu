@@ -7,10 +7,14 @@
 #include <string>
 #include <variant>
 
-void print_tokens(const std::vector<std::string>& tokens)
+void print_tokens(const std::vector<anzu::token>& tokens)
 {
     for (const auto& token : tokens) {
-        fmt::print("'{}'\n", token);
+        const auto text = fmt::format("'{}'", token.text);
+        fmt::print(
+            "{:<10} - {:<20} {:<5} {:<5}\n",
+            anzu::to_string(token.type), text, token.line, token.col
+        );
     }
 }
 

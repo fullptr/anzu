@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include "object.hpp"
 
 #include <fmt/format.h>
 #include <algorithm>
@@ -9,74 +10,80 @@
 namespace anzu {
 namespace {
 
-// Returns an iterator to one past the end of the line (ignores comments)
-auto end_of_line(const std::string& line) -> std::string::const_iterator
+inline static constexpr auto enumerate = std::views::transform([i=0](const auto& elem) mutable {
+    return std::pair(i++, std::cref(elem));
+});
+
+auto get_token_type(std::string_view text) -> anzu::token_type
 {
-    const auto line_end = line.find_first_of("//");
-    if (line_end != std::string::npos) {
-        auto it = line.begin();
-        std::advance(it, line_end);
-        return it;
+    if (keywords.contains(text)) {
+        return anzu::token_type::keyword;
     }
-    return line.end();
+    if (bin_ops.contains(text)) {
+        return anzu::token_type::bin_op;
+    }
+    if (symbols.contains(text)) {
+        return anzu::token_type::symbol;
+    }
+    if (anzu::is_int(text)) {
+        return anzu::token_type::number;
+    }
+    return anzu::token_type::name;
 }
 
-// If there is a bad backspace encountered while lexing, fail and exit.
-auto bad_backspace()
+auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const int lineno) -> void
 {
-    fmt::print("Backspace character did not escape anything\n");
-    std::exit(1);
-};
-
-auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
-{
-    std::string token;
+    std::string text;
     bool parsing_string_literal = false;
-    for (auto it = line.begin(); it != end_of_line(line); ++it) {
-        
+    int token_col = 1;
+
+    const auto push_token = [&](token_type type) {
+        if (text.empty()) { return; }
+        tokens.push_back({
+            .text=text, .line=lineno, .col=token_col + 1, .type=type
+        });
+        text.clear();
+    };
+
+    for (auto [col, c] : line | enumerate) {
         if (parsing_string_literal) {
-            if (*it == '"') { // End of literal
-                tokens.push_back(token);
-                token.clear();
+            if (c == '"') { // End of literal
+                push_token(token_type::string);
                 parsing_string_literal = false;
             }
-            else if (*it == '\\') { // Special character
-                if (++it == line.end()) { bad_backspace(); }
-                switch (*it) {
-                    break; case '\\': token.push_back('\\');
-                    break; case '"': token.push_back('"');
-                    break; case 'n': token.push_back('\n');
-                    break; case 't': token.push_back('\t');
-                    break; case 'r': token.push_back('\r');
-                    break; default: bad_backspace();
-                }
-            }
             else {
-                token.push_back(*it);
+                text.push_back(c);
             }
         }
-        else if (*it == '"') { // Start of literal
-            if (!token.empty()) {
-                fmt::print("unknown string type: {}\n", token);
+        else if (c == '"') { // Start of literal
+            if (!text.empty()) {
+                fmt::print("unknown string type: {}\n", text);
                 std::exit(1);
             }
-            tokens.push_back("__string");
+            token_col = col;
             parsing_string_literal = true;
         }
-
-        else if (!std::isspace(*it)) {
-            token += *it;
+        else if (c == '#') {
+            break;
         }
-
-        else if (!token.empty()) {
-            tokens.push_back(token);
-            token.clear();
+        else if (symbols.contains(std::string{c})) {
+            push_token(get_token_type(text));
+            text += c;
+            token_col = col;
+            push_token(token_type::symbol);
+        }
+        else if (!std::isspace(c)) {
+            if (text.empty()) {
+                token_col = col;
+            }
+            text += c;
+        }
+        else {
+            push_token(get_token_type(text));
         }
     }
 
-    if (!token.empty()) {
-        tokens.push_back(token);
-    }
+    push_token(get_token_type(text));
 
     if (parsing_string_literal) {
         fmt::print("lexing failed, string literal not closed\n");
@@ -86,15 +93,30 @@ auto lex_line(std::vector<std::string>& tokens, const std::string& line) -> void
 
 }
 
-auto lex(const std::string& file) -> std::vector<std::string>
+auto to_string(token_type type) -> std::string
+{
+    switch (type) {
+        break; case token_type::keyword: { return "keyword"; };
+        break; case token_type::bin_op:  { return "bin_op"; };
+        break; case token_type::symbol:  { return "symbol"; };
+        break; case token_type::name:    { return "name"; };
+        break; case token_type::number:  { return "number"; };
+        break; case token_type::string:  { return "string"; };
+        break; default:                  { return "UNKNOWN"; };
+    }
+}
+
+auto lex(const std::string& file) -> std::vector<anzu::token>
 {
     // Loop over the lines in the program, and then split each line into tokens.
     // If a '//' comment symbol is hit, the rest of the line is ignored.
-    std::vector<std::string> tokens;
+    std::vector<anzu::token> tokens;
     std::ifstream file_stream{file};
     std::string line;
+    int lineno = 1;
     while (std::getline(file_stream, line)) {
-        lex_line(tokens, line);
+        lex_line(tokens, line, lineno);
+        ++lineno;
     }
     return tokens;
 }

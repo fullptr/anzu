@@ -9,7 +9,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/src/Debug/anzu.exe",
-            "args": ["run", "${workspaceFolder}/recursion.anzu"],
+            "args": ["${workspaceFolder}/examples/test.anzu", "run"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
