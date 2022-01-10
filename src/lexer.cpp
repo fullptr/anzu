@@ -66,6 +66,12 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
         else if (c == '#') {
             break;
         }
+        else if (symbols.contains(std::string{c})) {
+            push_token(get_token_type(text));
+            text += c;
+            token_col = col;
+            push_token(token_type::symbol);
+        }
         else if (!std::isspace(c)) {
             if (text.empty()) {
                 token_col = col;
