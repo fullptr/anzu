@@ -19,17 +19,29 @@ auto division_by_zero_error() -> void
     std::exit(1);
 }
 
+auto format_error(const std::string& str) -> void
+{
+    fmt::print("format error: could not format special chars in '{}'\n", str);
+    std::exit(1);
 }
 
-auto convert_to_raw(const std::string& str) -> std::string
+}
+
+auto format_special_chars(const std::string& str) -> std::string
 {
     std::string ret;
-    for (auto c : str) {
-        switch (c) {
-            break; case '\n': ret += "\\n";
-            break; case '\t': ret += "\\t";
-            break; case '\r': ret += "\\r";
-            break; default: ret += c;
+    for (auto it = str.begin(); it != str.end(); ++it) {
+        if (*it == '\\') {
+            if (++it == str.end()) { format_error(str); }
+            switch (*it) {
+                break; case 'n': ret += '\n';
+                break; case 't': ret += '\t';
+                break; case 'r': ret += '\r';
+                break; default: format_error(str);
+            }
+        }
+        else {
+            ret += *it;
         }
     }
     return ret;
@@ -73,7 +85,7 @@ auto object::to_str() const -> std::string
     return std::visit(overloaded {
         [](int v) { return std::to_string(v); },
         [](bool v) { return std::string{v ? "true" : "false"}; },
-        [](const std::string& v) { return v; }
+        [](const std::string& v) { return anzu::format_special_chars(v); }
     }, d_value);
 }
 
@@ -83,7 +95,7 @@ auto object::to_repr() const -> std::string
         [](int val) { return std::to_string(val); },
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& val) {
-            return fmt::format("'{}'", anzu::convert_to_raw(val));
+            return fmt::format("'{}'", val);
         }
     }, d_value);
 }

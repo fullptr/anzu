@@ -1,6 +1,6 @@
 # test file to manually testing new features
 
-
+"hello world\n" .
 
 function euler 0 1
     0 -> count

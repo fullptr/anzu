@@ -48,7 +48,7 @@ public:
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;
 
-auto convert_to_raw(const std::string& str) -> std::string;
+auto foramt_special_chars(const std::string& str) -> std::string;
 
 }
 
