@@ -63,7 +63,6 @@ constexpr auto DUMP        = std::string_view{"."};
 
 constexpr auto TRUE_LIT    = std::string_view{"true"};
 constexpr auto FALSE_LIT   = std::string_view{"false"};
-constexpr auto STRING_LIT  = std::string_view{"__string"};
 
 // Casts
 

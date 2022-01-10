@@ -121,8 +121,19 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
     while (it != tokens.end()) {
         const auto& token = it->text;
 
+        if (it->type == token_type::string) {
+            program.emplace_back(anzu::op_push_const{
+                .value=it->text
+            });
+        }
+        else if (it->type == token_type::number) {
+            program.emplace_back(anzu::op_push_const{
+                .value=anzu::to_int(it->text)
+            });
+        }
+
         // Stack Manipulation
-        if (token == POP) {
+        else if (token == POP) {
             program.emplace_back(anzu::op_pop{});
         }
         else if (token == DUP) {
@@ -173,7 +184,11 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
         else if (token == FUNCTION) {
             blocks.push("FUNCTION");
             if (curr_func.has_value()) {
-                fmt::print("error: cannot nest functions, '{}' has not been completed\n", *curr_func);
+                fmt::print(
+                    "syntax error line {} col {}: cannot nest functions, '{}' has not been completed\n",
+                    it->line,
+                    it->col,
+                    *curr_func);
                 std::exit(1);
             }
             std::string name = (++it)->text;
@@ -293,11 +308,6 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
         else if (token == FALSE_LIT) {
             program.emplace_back(anzu::op_push_const{
                 .value=false
-            });
-        }
-        else if (token == STRING_LIT) {
-            program.emplace_back(anzu::op_push_const{
-                .value=(++it)->text
             });
         }
 

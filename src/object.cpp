@@ -21,6 +21,20 @@ auto division_by_zero_error() -> void
 
 }
 
+auto convert_to_raw(const std::string& str) -> std::string
+{
+    std::string ret;
+    for (auto c : str) {
+        switch (c) {
+            break; case '\n': ret += "\\n";
+            break; case '\t': ret += "\\t";
+            break; case '\r': ret += "\\r";
+            break; default: ret += c;
+        }
+    }
+    return ret;
+}
+
 auto object::is_int() const -> bool
 {
     return std::holds_alternative<int>(d_value);
@@ -69,17 +83,7 @@ auto object::to_repr() const -> std::string
         [](int val) { return std::to_string(val); },
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& val) {
-            std::string ret{'"'};
-            for (char c : val) {
-                switch (c) {
-                    break; case '\n': ret += "\\n";
-                    break; case '\t': ret += "\\t";
-                    break; case '\r': ret += "\\r";
-                    break; default: ret += c;
-                }
-            }
-            ret += '"';
-            return ret;
+            return fmt::format("'{}'", anzu::convert_to_raw(val));
         }
     }, d_value);
 }

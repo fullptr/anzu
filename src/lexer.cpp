@@ -38,7 +38,12 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
         ++col;
         if (parsing_string_literal) {
             if (*it == '"') { // End of literal
-                tokens.push_back({ .text=text, .line=lineno, .col=token_col });
+                tokens.push_back({
+                    .text=text,
+                    .line=lineno,
+                    .col=token_col,
+                    .type=token_type::string
+                });
                 text.clear();
                 parsing_string_literal = false;
             }
@@ -62,7 +67,6 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
                 fmt::print("unknown string type: {}\n", text);
                 std::exit(1);
             }
-            tokens.push_back({ .text="__string", .line=lineno, .col=token_col });
             parsing_string_literal = true;
         }
 
@@ -72,7 +76,12 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
 
         else {
             if (!text.empty()) {
-                tokens.push_back({ .text=text, .line=lineno, .col=token_col });
+                tokens.push_back({
+                    .text=text,
+                    .line=lineno,
+                    .col=token_col,
+                    .type=token_type::symbol
+                });
                 text.clear();
             }
             token_col = col;
@@ -80,7 +89,12 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
     }
 
     if (!text.empty()) {
-        tokens.push_back({ .text=text, .line=lineno, .col=token_col });
+        tokens.push_back({
+            .text=text,
+            .line=lineno,
+            .col=token_col,
+            .type=token_type::symbol
+        });
     }
 
     if (parsing_string_literal) {
@@ -89,6 +103,19 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
     }
 }
 
+}
+
+auto to_string(token_type type) -> std::string
+{
+    switch (type) {
+        break; case token_type::keyword: { return "keyword"; };
+        break; case token_type::bin_op:  { return "bin_op"; };
+        break; case token_type::symbol:  { return "symbol"; };
+        break; case token_type::name:    { return "name"; };
+        break; case token_type::number:  { return "number"; };
+        break; case token_type::string:  { return "string"; };
+        break; default:                  { return "UNKNOWN"; };
+    }
 }
 
 auto lex(const std::string& file) -> std::vector<anzu::token>

@@ -10,8 +10,8 @@
 void print_tokens(const std::vector<anzu::token>& tokens)
 {
     for (const auto& token : tokens) {
-        const auto text = fmt::format("'{}'", token.text);
-        fmt::print("{:<20} {:<5} {:<5}\n", text, token.line, token.col);
+        const auto text = fmt::format("'{}'", anzu::convert_to_raw(token.text));
+        fmt::print("{:<10} - {:<20} {:<5} {:<5}\n", anzu::to_string(token.type), text, token.line, token.col);
     }
 }
 
