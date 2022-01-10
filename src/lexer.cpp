@@ -78,7 +78,6 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
             }
             text += c;
         }
-
         else {
             push_token(get_token_type(text));
         }

@@ -233,7 +233,8 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
             else if (blocks.top() == "FUNCTION") {
                 auto def = all_functions[*curr_func];
                 curr_func.reset();
-                program[def.ptr].get_if<anzu::op_function>()->jump = std::ssize(program) + 1;
+                auto func = program[def.ptr].get_if<anzu::op_function>();
+                func->jump = std::ssize(program) + 1;
                 program.emplace_back(anzu::op_function_end{ .retc=def.retc });
             }
             else {
@@ -340,6 +341,11 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
             });
         }
         ++it;
+    }
+
+    if (!blocks.empty()) {
+        fmt::print("syntax error: not all blocks have been closed\n");
+        std::exit(1);
     }
     return program;
 }

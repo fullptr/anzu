@@ -1,8 +1,8 @@
 # test file to manually testing new features
 
-"hello world\n" .
 
-function euler 0 1:
+
+function euler 0 1
     0 -> count
 
     0 while dup 1000 < do
@@ -10,10 +10,10 @@ function euler 0 1:
             dup count + -> count
         elif dup 5 % 0 == do
             dup count + -> count
-        else
+        end
         1 +
     end
     count
 end
 
-euler
+euler .
