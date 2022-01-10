@@ -44,7 +44,7 @@ static const std::unordered_set<std::string_view> bin_ops = {
     "->"
 };
 
-static const std::unordered_set<std::string_view> punctuation = {
+static const std::unordered_set<std::string_view> symbols = {
     "(",
     ")",
     ":",

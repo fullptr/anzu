@@ -179,7 +179,7 @@ void swap(object& lhs, object& rhs)
     swap(lhs.d_value, rhs.d_value);
 }
 
-auto is_int(const std::string& token) -> bool
+auto is_int(std::string_view token) -> bool
 {
     auto it = token.begin();
     if (token.starts_with("-")) {
@@ -188,13 +188,13 @@ auto is_int(const std::string& token) -> bool
     return std::all_of(it, token.end(), std::isdigit);
 }
 
-auto to_int(const std::string& token) -> int
+auto to_int(std::string_view token) -> int
 {
     if (!is_int(token)) {
         fmt::print("type error: cannot convert '{}' to int\n", token);
         std::exit(1);
     }
-    return std::stoi(token);
+    return std::stoi(std::string{token});
 }
 
 }

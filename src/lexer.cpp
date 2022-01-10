@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include "object.hpp"
 
 #include <fmt/format.h>
 #include <algorithm>
@@ -27,6 +28,23 @@ auto bad_backspace()
     fmt::print("Backspace character did not escape anything\n");
     std::exit(1);
 };
+
+auto get_token_type(std::string_view text) -> anzu::token_type
+{
+    if (keywords.contains(text)) {
+        return anzu::token_type::keyword;
+    }
+    if (bin_ops.contains(text)) {
+        return anzu::token_type::bin_op;
+    }
+    if (symbols.contains(text)) {
+        return anzu::token_type::symbol;
+    }
+    if (anzu::is_int(text)) {
+        return anzu::token_type::number;
+    }
+    return anzu::token_type::name;
+}
 
 auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const int lineno) -> void
 {
@@ -80,7 +98,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
                     .text=text,
                     .line=lineno,
                     .col=token_col,
-                    .type=token_type::symbol
+                    .type=get_token_type(text)
                 });
                 text.clear();
             }
@@ -93,7 +111,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
             .text=text,
             .line=lineno,
             .col=token_col,
-            .type=token_type::symbol
+            .type=get_token_type(text)
         });
     }
 
