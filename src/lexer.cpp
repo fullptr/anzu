@@ -10,24 +10,9 @@
 namespace anzu {
 namespace {
 
-// Returns an iterator to one past the end of the line (ignores comments)
-auto end_of_line(const std::string& line) -> std::string::const_iterator
-{
-    const auto line_end = line.find_first_of("//");
-    if (line_end != std::string::npos) {
-        auto it = line.begin();
-        std::advance(it, line_end);
-        return it;
-    }
-    return line.end();
-}
-
-// If there is a bad backspace encountered while lexing, fail and exit.
-auto bad_backspace()
-{
-    fmt::print("Backspace character did not escape anything\n");
-    std::exit(1);
-};
+inline static constexpr auto enumerate = std::views::transform([i=0](const auto& elem) mutable {
+    return std::pair(i++, std::cref(elem));
+});
 
 auto get_token_type(std::string_view text) -> anzu::token_type
 {
@@ -50,59 +35,27 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
 {
     std::string text;
     bool parsing_string_literal = false;
-    int col = 1;
     int token_col = 1;
 
-    // Called when the current text should be processed as a token.
-    const auto& handle_token = [&]() {
-        if (keywords.contains(text)) {
-            tokens.push_back({
-                .text=text,
-                .line=lineno,
-                .col=token_col,
-                .type=token_type::keyword
-            });
-            text.clear();
-        }
-        else if (!text.empty()) {
-            tokens.push_back({
-                .text=text,
-                .line=lineno,
-                .col=token_col,
-                .type=get_token_type(text)
-            });
-            text.clear();
-        }
+    const auto push_token = [&](token_type type) {
+        if (text.empty()) { return; }
+        tokens.push_back({
+            .text=text, .line=lineno, .col=token_col + 1, .type=type
+        });
+        text.clear();
     };
 
-    for (auto it = line.begin(); it != end_of_line(line); ++it) {
+    for (auto [col, c] : line | enumerate) {
         if (parsing_string_literal) {
-            if (*it == '"') { // End of literal
-                tokens.push_back({
-                    .text=text,
-                    .line=lineno,
-                    .col=token_col,
-                    .type=token_type::string
-                });
-                text.clear();
+            if (c == '"') { // End of literal
+                push_token(token_type::string);
                 parsing_string_literal = false;
             }
-            else if (*it == '\\') { // Special character
-                if (++it == line.end()) { bad_backspace(); }
-                switch (*it) {
-                    break; case '\\': text.push_back('\\');
-                    break; case '"': text.push_back('"');
-                    break; case 'n': text.push_back('\n');
-                    break; case 't': text.push_back('\t');
-                    break; case 'r': text.push_back('\r');
-                    break; default: bad_backspace();
-                }
-            }
             else {
-                text.push_back(*it);
+                text.push_back(c);
             }
         }
-        else if (*it == '"') { // Start of literal
+        else if (c == '"') { // Start of literal
             if (!text.empty()) {
                 fmt::print("unknown string type: {}\n", text);
                 std::exit(1);
@@ -110,21 +63,22 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
             token_col = col;
             parsing_string_literal = true;
         }
-
-        else if (!std::isspace(*it)) {
+        else if (c == '#') {
+            break;
+        }
+        else if (!std::isspace(c)) {
             if (text.empty()) {
                 token_col = col;
             }
-            text += *it;
+            text += c;
         }
 
         else {
-            handle_token();
+            push_token(get_token_type(text));
         }
-        ++col;
     }
 
-    handle_token();
+    push_token(get_token_type(text));
 
     if (parsing_string_literal) {
         fmt::print("lexing failed, string literal not closed\n");
