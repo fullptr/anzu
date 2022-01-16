@@ -1,7 +1,7 @@
 #include "lexer.hpp"
 #include "object.hpp"
+#include "print.hpp"
 
-#include <fmt/format.h>
 #include <algorithm>
 #include <ranges>
 #include <fstream>
@@ -57,7 +57,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
         }
         else if (c == '"') { // Start of literal
             if (!text.empty()) {
-                fmt::print("unknown string type: {}\n", text);
+                anzu::print("unknown string type: {}\n", text);
                 std::exit(1);
             }
             token_col = col;
@@ -86,7 +86,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
     push_token(get_token_type(text));
 
     if (parsing_string_literal) {
-        fmt::print("lexing failed, string literal not closed\n");
+        anzu::print("lexing failed, string literal not closed\n");
         std::exit(1);
     }
 }

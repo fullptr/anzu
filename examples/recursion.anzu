@@ -20,5 +20,3 @@ end
     dup fibb print
     1 + 
 end
-
-()

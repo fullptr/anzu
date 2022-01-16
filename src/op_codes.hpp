@@ -1,8 +1,8 @@
 #pragma once
 #include "stack_frame.hpp"
 
-#include <fmt/format.h>
 #include <variant>
+#include <format>
 
 namespace anzu {
 
@@ -15,7 +15,7 @@ struct op_push_const
 {
     anzu::object value;
 
-    std::string to_string() const { return fmt::format("OP_PUSH_CONST({})", value.to_repr()); }
+    std::string to_string() const { return std::format("OP_PUSH_CONST({})", value.to_repr()); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -23,7 +23,7 @@ struct op_push_var
 {
     std::string name;
 
-    std::string to_string() const { return fmt::format("OP_PUSH_VAR({})", name); }
+    std::string to_string() const { return std::format("OP_PUSH_VAR({})", name); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -63,7 +63,7 @@ struct op_store
 {
     std::string name;
 
-    std::string to_string() const { return fmt::format("OP_STORE({})", name); }
+    std::string to_string() const { return std::format("OP_STORE({})", name); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -87,8 +87,8 @@ struct op_elif
 
     std::string to_string() const
     {
-        const auto jump_str = fmt::format("JUMP -> {}", jump);
-        return fmt::format(FORMAT2, "OP_ELIF", jump_str);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, "OP_ELIF", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -99,8 +99,8 @@ struct op_else
 
     std::string to_string() const
     {
-        const auto jump_str = fmt::format("JUMP -> {}", jump);
-        return fmt::format(FORMAT2, "OP_ELSE", jump_str);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, "OP_ELSE", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -117,8 +117,8 @@ struct op_while_end
 
     std::string to_string() const
     {
-        const auto jump_str = fmt::format("JUMP -> {}", jump);
-        return fmt::format(FORMAT2, "OP_END_WHILE", jump_str);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, "OP_END_WHILE", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -129,8 +129,8 @@ struct op_break
 
     std::string to_string() const
     {
-        const auto jump_str = fmt::format("JUMP -> {}", jump);
-        return fmt::format(FORMAT2, "OP_BREAK", jump_str);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, "OP_BREAK", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -141,8 +141,8 @@ struct op_continue
 
     std::string to_string() const
     {
-        const auto jump_str = fmt::format("JUMP -> {}", jump);
-        return fmt::format(FORMAT2, "OP_CONTINUE", jump_str);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, "OP_CONTINUE", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -153,8 +153,8 @@ struct op_do
 
     std::string to_string() const
     {
-        const auto jump_str = fmt::format("JUMP -> {} IF FALSE", jump);
-        return fmt::format(FORMAT2, "OP_DO", jump_str);
+        const auto jump_str = std::format("JUMP -> {} IF FALSE", jump);
+        return std::format(FORMAT2, "OP_DO", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -166,9 +166,9 @@ struct op_function
 
     std::string to_string() const
     {
-        const auto func_str = fmt::format("OP_FUNCTION({})", name);
-        const auto jump_str = fmt::format("JUMP -> {}", jump);
-        return fmt::format(FORMAT2, func_str, jump_str);
+        const auto func_str = std::format("OP_FUNCTION({})", name);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, func_str, jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -179,8 +179,8 @@ struct op_function_end
 
     std::string to_string() const
     {
-        const auto retc_str = fmt::format("(RETC = {})", retc);
-        return fmt::format(FORMAT3, "OP_FUNCTION_END", "JUMP -> CALL", retc_str);
+        const auto retc_str = std::format("(RETC = {})", retc);
+        return std::format(FORMAT3, "OP_FUNCTION_END", "JUMP -> CALL", retc_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -193,10 +193,10 @@ struct op_function_call
 
     std::string to_string() const
     {
-        const auto func_str = fmt::format("OP_FUNCTION_CALL({})", name);
-        const auto jump_str = fmt::format("JUMP -> {}", jump);
-        const auto argc_str = fmt::format("(ARGC = {})", argc);
-        return fmt::format(FORMAT3, func_str, jump_str, argc_str);
+        const auto func_str = std::format("OP_FUNCTION_CALL({})", name);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        const auto argc_str = std::format("(ARGC = {})", argc);
+        return std::format(FORMAT3, func_str, jump_str, argc_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -207,8 +207,8 @@ struct op_return
 
     std::string to_string() const
     {
-        const auto retc_str = fmt::format("(RETC = {})", retc);
-        return fmt::format(FORMAT3, "OP_RETURN", "JUMP -> CALL", retc_str);
+        const auto retc_str = std::format("(RETC = {})", retc);
+        return std::format(FORMAT3, "OP_RETURN", "JUMP -> CALL", retc_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -419,9 +419,10 @@ public:
 
 }
 
-template <> struct fmt::formatter<anzu::op> {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.end(); }
+template <> struct std::formatter<anzu::op> : std::formatter<std::string> {
     auto format(const anzu::op& op, auto& ctx) {
-        return format_to(ctx.out(), "{}", op.to_string());
+        return std::formatter<std::string>::format(
+            std::format("{}", op.to_string()), ctx
+        );
     }
 };

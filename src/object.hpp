@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <variant>
-#include <fmt/format.h>
+#include <format>
 
 namespace anzu {
 
@@ -52,9 +52,10 @@ auto foramt_special_chars(const std::string& str) -> std::string;
 
 }
 
-template <> struct fmt::formatter<anzu::object> {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.end(); }
+template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
     auto format(const anzu::object& obj, auto& ctx) {
-        return format_to(ctx.out(), obj.to_str());
+        return std::formatter<std::string>::format(
+            std::format("{}", obj.to_str()), ctx
+        );
     }
 };

@@ -1,6 +1,7 @@
 #include "parser.hpp"
 #include "op_codes.hpp"
 #include "object.hpp"
+#include "print.hpp"
 
 #include <stack>
 #include <cstdint>
@@ -16,7 +17,7 @@ namespace {
 template <typename... Args>
 inline void exit_bad(std::string_view format, Args&&... args)
 {
-    fmt::print(format, std::forward<Args>(args)...);
+    anzu::print(format, std::forward<Args>(args)...);
     std::exit(1);
 }
 
@@ -145,7 +146,7 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
                 handle_expression(program, it);
             }
             else {
-                fmt::print("Could not handle symbol '{}'\n", it->text);
+                anzu::print("Could not handle symbol '{}'\n", it->text);
                 std::exit(1);
             }
         }
@@ -202,7 +203,7 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
         else if (token == FUNCTION) {
             blocks.push("FUNCTION");
             if (curr_func.has_value()) {
-                fmt::print(
+                anzu::print(
                     "syntax error line {} col {}: cannot nest functions, '{}' has not been completed\n",
                     it->line,
                     it->col,
@@ -232,7 +233,7 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
                 while_stack.push(std::ssize(program));
             }
             else {
-                fmt::print("bad 'do', is not in a control flow block\n");
+                anzu::print("bad 'do', is not in a control flow block\n");
                 std::exit(1);
             }
             program.emplace_back(anzu::op_do{});
@@ -256,7 +257,7 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
                 program.emplace_back(anzu::op_function_end{ .retc=def.retc });
             }
             else {
-                fmt::print("bad 'end', is not in a control flow block\n");
+                anzu::print("bad 'end', is not in a control flow block\n");
                 std::exit(1);
             }
             blocks.pop();
@@ -362,7 +363,7 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
     }
 
     if (!blocks.empty()) {
-        fmt::print("syntax error: not all blocks have been closed\n");
+        anzu::print("syntax error: not all blocks have been closed\n");
         std::exit(1);
     }
     return program;
