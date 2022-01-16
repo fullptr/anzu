@@ -5,7 +5,7 @@
 function euler 0 1
     0 -> count
 
-    0 while dup 1000 < do
+    0 while (dup 1000 <) do
         if dup 3 % 0 == do
             dup count + -> count
         elif dup 5 % 0 == do

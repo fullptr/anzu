@@ -1,4 +1,4 @@
-// fibbonacci to demonstrate functions and recursion
+# fibbonacci to demonstrate functions and recursion
 
 function print 1 0
     . "\n" .
@@ -20,3 +20,5 @@ end
     dup fibb print
     1 + 
 end
+
+()

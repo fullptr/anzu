@@ -92,6 +92,15 @@ void process_while_block(std::vector<anzu::op>& program, std::stack<std::intptr_
     }
 }
 
+auto handle_expression(
+    std::vector<anzu::op>& program,
+    std::vector<anzu::token>::const_iterator& it
+)
+    -> void
+{
+
+}
+
 }
 
 struct function_def
@@ -130,6 +139,15 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
             program.emplace_back(anzu::op_push_const{
                 .value=anzu::to_int(it->text)
             });
+        }
+        else if (it->type == token_type::symbol) {
+            if (it->text == "(") {
+                handle_expression(program, it);
+            }
+            else {
+                fmt::print("Could not handle symbol '{}'\n", it->text);
+                std::exit(1);
+            }
         }
 
         // Stack Manipulation
