@@ -2,16 +2,16 @@
 #include "op_codes.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "print.hpp"
 
-#include <fmt/format.h>
 #include <string>
 #include <variant>
 
 void print_tokens(const std::vector<anzu::token>& tokens)
 {
     for (const auto& token : tokens) {
-        const auto text = fmt::format("'{}'", token.text);
-        fmt::print(
+        const auto text = std::format("'{}'", token.text);
+        anzu::print(
             "{:<10} - {:<20} {:<5} {:<5}\n",
             anzu::to_string(token.type), text, token.line, token.col
         );
@@ -22,7 +22,7 @@ void print_program(const std::vector<anzu::op>& program)
 {
     int lineno = 0;
     for (const auto& op : program) {
-        fmt::print("{:>4} - {}\n", lineno++, op);
+        anzu::print("{:>4} - {}\n", lineno++, op);
     }
 }
 
@@ -43,20 +43,20 @@ void run_program_debug(const std::vector<anzu::op>& program)
 
     while (ctx.top().ptr() < std::ssize(program)) {
         const auto& op = program[ctx.top().ptr()];
-        fmt::print("{:>4} - {}\n", ctx.top().ptr(), op);
+        anzu::print("{:>4} - {}\n", ctx.top().ptr(), op);
         op.apply(ctx);
     }
 }
 
 void print_usage()
 {
-    fmt::print("usage: anzu.exe <program_file> (lex|parse|debug|run)\n\n");
-    fmt::print("The Anzu Programming Language\n\n");
-    fmt::print("options:\n");
-    fmt::print("    lex   - displays the program after lexing into tokens\n");
-    fmt::print("    parse - displays the program after parsig to bytecode\n");
-    fmt::print("    debug - executes the program and prints each op code executed\n");
-    fmt::print("    run   - executes the program\n");
+    anzu::print("usage: anzu.exe <program_file> (lex|parse|debug|run)\n\n");
+    anzu::print("The Anzu Programming Language\n\n");
+    anzu::print("options:\n");
+    anzu::print("    lex   - displays the program after lexing into tokens\n");
+    anzu::print("    parse - displays the program after parsig to bytecode\n");
+    anzu::print("    debug - executes the program and prints each op code executed\n");
+    anzu::print("    run   - executes the program\n");
 }
 
 int main(int argc, char** argv)
@@ -69,7 +69,7 @@ int main(int argc, char** argv)
     const auto file = std::string{argv[1]};
     const auto mode = std::string{argv[2]};
 
-    fmt::print("loading file '{}'\n", file);
+    anzu::print("loading file '{}'\n", file);
 
     const auto tokens = anzu::lex(file);
 
@@ -93,7 +93,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    fmt::print("unknown mode: '{}'\n", mode);
+    anzu::print("unknown mode: '{}'\n", mode);
     print_usage();
     return 1;
 }

@@ -1,6 +1,9 @@
 #include "object.hpp"
+#include "print.hpp"
+#include "print.hpp"
 
-#include <fmt/format.h>
+#include <algorithm>
+#include <string_view>
 
 namespace anzu {
 namespace {
@@ -9,19 +12,19 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 auto type_error(const anzu::object& lhs, const anzu::object& rhs, std::string_view op) -> void
 {
-    fmt::print("type error: cannot evaluate {} {} {}\n", lhs.to_repr(), rhs.to_repr(), op);
+    anzu::print("type error: cannot evaluate {} {} {}\n", lhs.to_repr(), rhs.to_repr(), op);
     std::exit(1);
 }
 
 auto division_by_zero_error() -> void
 {
-    fmt::print("division by zero error\n");
+    anzu::print("division by zero error\n");
     std::exit(1);
 }
 
 auto format_error(const std::string& str) -> void
 {
-    fmt::print("format error: could not format special chars in '{}'\n", str);
+    anzu::print("format error: could not format special chars in '{}'\n", str);
     std::exit(1);
 }
 
@@ -95,7 +98,7 @@ auto object::to_repr() const -> std::string
         [](int val) { return std::to_string(val); },
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& val) {
-            return fmt::format("'{}'", val);
+            return std::format("'{}'", val);
         }
     }, d_value);
 }
@@ -197,13 +200,13 @@ auto is_int(std::string_view token) -> bool
     if (token.starts_with("-")) {
         std::advance(it, 1);
     }
-    return std::all_of(it, token.end(), std::isdigit);
+    return std::all_of(it, token.end(), [](char c) { return std::isdigit(c); });
 }
 
 auto to_int(std::string_view token) -> int
 {
     if (!is_int(token)) {
-        fmt::print("type error: cannot convert '{}' to int\n", token);
+        anzu::print("type error: cannot convert '{}' to int\n", token);
         std::exit(1);
     }
     return std::stoi(std::string{token});

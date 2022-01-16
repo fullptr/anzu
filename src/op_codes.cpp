@@ -1,5 +1,6 @@
 #include "op_codes.hpp"
 #include "object.hpp"
+#include "print.hpp"
 
 #include <iostream>
 #include <string>
@@ -11,7 +12,7 @@ template <typename... Args>
 void verify(bool condition, std::string_view msg, Args&&... args)
 {
     if (!condition) {
-        fmt::print(msg, std::forward<Args>(args)...);
+        anzu::print(msg, std::forward<Args>(args)...);
         std::exit(1);
     }
 }
@@ -346,7 +347,7 @@ void op_dump::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
     anzu::verify_stack(frame, 1, ".");
-    fmt::print("{}", frame.pop());
+    anzu::print("{}", frame.pop());
     frame.ptr() += 1;
 }
 
