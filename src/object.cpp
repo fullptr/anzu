@@ -28,7 +28,7 @@ auto format_error(const std::string& str) -> void
     std::exit(1);
 }
 
-auto type_error_array_convversion(std::string_view type) -> void
+auto type_error_list_convversion(std::string_view type) -> void
 {
     anzu::print("type error: cannot convert list to {}\n", type);
     std::exit(1);
@@ -78,7 +78,7 @@ auto object::to_int() const -> int
         [](bool v) { return v ? 1 : 0; },
         [](const std::string& v) { return anzu::to_int(v); },
         [](const std::shared_ptr<std::vector<object>>& v) {
-            type_error_array_convversion("int");
+            type_error_list_convversion("int");
             return 0;
         }
     }, d_value);
@@ -101,7 +101,7 @@ auto object::to_str() const -> std::string
         [](bool v) { return std::string{v ? "true" : "false"}; },
         [](const std::string& v) { return anzu::format_special_chars(v); },
         [](const std::shared_ptr<std::vector<object>>& v) {
-            type_error_array_convversion("str");
+            type_error_list_convversion("str");
             return std::string{};
         }
     }, d_value);
@@ -113,7 +113,7 @@ auto object::to_repr() const -> std::string
         [](int val) { return std::to_string(val); },
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& val) { return std::format("'{}'", val); },
-        [](const std::shared_ptr<std::vector<object>>& v) { return std::string{"array (repr not implemented)"}; }
+        [](const std::shared_ptr<std::vector<object>>& v) { return std::string{"list (repr not implemented)"}; }
     }, d_value);
 }
 

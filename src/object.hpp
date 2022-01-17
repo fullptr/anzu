@@ -27,12 +27,12 @@ public:
     auto is_int() const -> bool;
     auto is_bool() const -> bool;
     auto is_str() const -> bool;
-    auto is_array() const -> bool;
+    auto is_list() const -> bool;
 
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
-    auto to_array() const -> std::shared_ptr<std::vector<object>>;
+    auto to_list() const -> std::shared_ptr<std::vector<object>>;
 
     auto to_repr() const -> std::string;
 
