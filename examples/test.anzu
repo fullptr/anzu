@@ -1,3 +1,13 @@
 # test file to manually testing new features
 
-array 5 arr.push
+l
+5 list_push
+6 list_push
+7 list_push
+
+l list_size .
+
+
+for x in l do
+
+end

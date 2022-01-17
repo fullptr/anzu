@@ -7,13 +7,16 @@
 
 namespace anzu {
 
+class object;
+using object_list = std::shared_ptr<std::vector<object>>;
+
 class object
 {
     using value_type = std::variant<
         int,
         bool,
         std::string,
-        std::shared_ptr<std::vector<object>>
+        object_list
     >;
 
     value_type d_value;
@@ -32,7 +35,7 @@ public:
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
-    auto to_list() const -> std::shared_ptr<std::vector<object>>;
+    auto to_list() const -> object_list;
 
     auto to_repr() const -> std::string;
 

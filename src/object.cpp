@@ -28,7 +28,7 @@ auto format_error(const std::string& str) -> void
     std::exit(1);
 }
 
-auto type_error_list_convversion(std::string_view type) -> void
+auto type_error_list_conversion(std::string_view type) -> void
 {
     anzu::print("type error: cannot convert list to {}\n", type);
     std::exit(1);
@@ -77,8 +77,8 @@ auto object::to_int() const -> int
         [](int v) { return v; },
         [](bool v) { return v ? 1 : 0; },
         [](const std::string& v) { return anzu::to_int(v); },
-        [](const std::shared_ptr<std::vector<object>>& v) {
-            type_error_list_convversion("int");
+        [](const object_list& v) {
+            type_error_list_conversion("int");
             return 0;
         }
     }, d_value);
@@ -90,7 +90,7 @@ auto object::to_bool() const -> bool
         [](int v) { return v != 0; },
         [](bool v) { return v; },
         [](const std::string& v) { return v.size() > 0; },
-        [](const std::shared_ptr<std::vector<object>>& v) { return v->size() > 0; }
+        [](const object_list& v) { return v->size() > 0; }
     }, d_value);
 }
 
@@ -100,8 +100,8 @@ auto object::to_str() const -> std::string
         [](int v) { return std::to_string(v); },
         [](bool v) { return std::string{v ? "true" : "false"}; },
         [](const std::string& v) { return anzu::format_special_chars(v); },
-        [](const std::shared_ptr<std::vector<object>>& v) {
-            type_error_list_convversion("str");
+        [](const object_list& v) {
+            type_error_list_conversion("str");
             return std::string{};
         }
     }, d_value);
@@ -113,7 +113,9 @@ auto object::to_repr() const -> std::string
         [](int val) { return std::to_string(val); },
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& val) { return std::format("'{}'", val); },
-        [](const std::shared_ptr<std::vector<object>>& v) { return std::string{"list (repr not implemented)"}; }
+        [](const object_list& v) {
+            return std::string{"list (repr not implemented)"};
+        }
     }, d_value);
 }
 
