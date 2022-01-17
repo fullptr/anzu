@@ -344,11 +344,6 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
             program.emplace_back(anzu::op_to_str{});
         }
 
-        // Debug
-        else if (token == PRINT_FRAME) {
-            program.emplace_back(anzu::op_print_frame{});
-        }
-
         // Rest
         else if (all_functions.contains(token)) {
             auto [argc, retc, ptr] = all_functions[token];

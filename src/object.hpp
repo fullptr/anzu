@@ -32,10 +32,13 @@ public:
     auto is_str() const -> bool;
     auto is_list() const -> bool;
 
+    // Casts, for certain types, converts the object to the requested type.
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
-    auto to_list() const -> object_list;
+    
+    // Only returns if the value is the correct type, otherwise exits.
+    auto as_list() -> object_list&;
 
     auto to_repr() const -> std::string;
 
@@ -63,7 +66,7 @@ auto foramt_special_chars(const std::string& str) -> std::string;
 template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
     auto format(const anzu::object& obj, auto& ctx) {
         return std::formatter<std::string>::format(
-            std::format("{}", obj.to_str()), ctx
+            std::format("{}", obj.to_repr()), ctx
         );
     }
 };

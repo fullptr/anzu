@@ -337,14 +337,6 @@ struct op_dump
     void apply(anzu::context& ctx) const;
 };
 
-// Debug
-
-struct op_print_frame
-{
-    std::string to_string() const { return "OP_PRINT_FRAME"; }
-    void apply(anzu::context& ctx) const;
-};
-
 class op
 {
     using op_type = std::variant<
@@ -402,10 +394,7 @@ class op
 
         // IO
         op_input,
-        op_dump,
-
-        // Debug
-        op_print_frame
+        op_dump
     >;
 
     op_type d_type;

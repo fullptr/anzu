@@ -357,11 +357,4 @@ void op_dump::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
-void op_print_frame::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.print();
-    frame.ptr() += 1;
-}
-
 }

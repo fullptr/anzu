@@ -70,10 +70,6 @@ constexpr auto TO_INT      = std::string_view{"(int)"};
 constexpr auto TO_BOOL     = std::string_view{"(bool)"};
 constexpr auto TO_STR      = std::string_view{"(str)"};
 
-// Debug
-
-constexpr auto PRINT_FRAME = std::string_view{"frame"};
-
 auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>;
 
 }

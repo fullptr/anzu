@@ -71,6 +71,11 @@ auto object::is_str() const -> bool
     return std::holds_alternative<std::string>(d_value);
 }
 
+auto object::is_list() const -> bool
+{
+    return std::holds_alternative<object_list>(d_value);
+}
+
 auto object::to_int() const -> int
 {
     return std::visit(overloaded {
@@ -107,6 +112,13 @@ auto object::to_str() const -> std::string
     }, d_value);
 }
 
+auto object::as_list() -> object_list&
+{
+    if (is_list()) {
+        return std::get<object_list>(d_value);
+    }
+}
+
 auto object::to_repr() const -> std::string
 {
     return std::visit(overloaded {
@@ -114,7 +126,12 @@ auto object::to_repr() const -> std::string
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& val) { return std::format("'{}'", val); },
         [](const object_list& v) {
-            return std::string{"list (repr not implemented)"};
+            std::string ret{"["};
+            for (const auto& obj : *v) {
+                ret += std::format("{}, ", obj);
+            }
+            ret += "]";
+            return ret;
         }
     }, d_value);
 }
