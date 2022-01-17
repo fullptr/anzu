@@ -117,6 +117,8 @@ auto object::as_list() -> object_list&
     if (is_list()) {
         return std::get<object_list>(d_value);
     }
+    anzu::print("error: {} is not a list\n", to_repr());
+    std::exit(1);
 }
 
 auto object::to_repr() const -> std::string
@@ -126,12 +128,11 @@ auto object::to_repr() const -> std::string
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& val) { return std::format("'{}'", val); },
         [](const object_list& v) {
-            std::string ret{"["};
+            std::string ret;
             for (const auto& obj : *v) {
                 ret += std::format("{}, ", obj);
             }
-            ret += "]";
-            return ret;
+            return std::format("[{}]", ret);
         }
     }, d_value);
 }
