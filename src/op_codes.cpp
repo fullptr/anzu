@@ -1,6 +1,7 @@
 #include "op_codes.hpp"
 #include "object.hpp"
 #include "print.hpp"
+#include "functions.hpp"
 
 #include <iostream>
 #include <string>
@@ -172,6 +173,11 @@ void op_return::apply(anzu::context& ctx) const
 {
     transfer_values(ctx.top(0), ctx.top(1), retc);
     ctx.pop(); // Remove stack frame
+}
+
+void op_builtin_function_call::apply(anzu::context& ctx) const
+{
+    anzu::call_builtin(name, ctx);
 }
 
 template <typename A, typename B>

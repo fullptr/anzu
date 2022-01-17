@@ -11,6 +11,8 @@
 #include <sstream>
 #include <optional>
 
+#include "functions.hpp"
+
 namespace anzu {
 namespace {
 
@@ -352,6 +354,11 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
             auto [argc, retc, ptr] = all_functions[token];
             program.emplace_back(anzu::op_function_call{
                 .name=token, .argc=argc, .jump=ptr + 1
+            });
+        }
+        else if (anzu::is_builtin(token)) {
+            program.emplace_back(anzu::op_builtin_function_call{
+                .name=token
             });
         }
         else {
