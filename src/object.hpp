@@ -1,7 +1,9 @@
 #pragma once
+#include <format>
+#include <memory>
 #include <string>
 #include <variant>
-#include <format>
+#include <vector>
 
 namespace anzu {
 
@@ -10,7 +12,8 @@ class object
     using value_type = std::variant<
         int,
         bool,
-        std::string
+        std::string,
+        std::shared_ptr<std::vector<object>>
     >;
 
     value_type d_value;
@@ -24,10 +27,12 @@ public:
     auto is_int() const -> bool;
     auto is_bool() const -> bool;
     auto is_str() const -> bool;
+    auto is_array() const -> bool;
 
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
+    auto to_array() const -> std::shared_ptr<std::vector<object>>;
 
     auto to_repr() const -> std::string;
 
