@@ -104,6 +104,42 @@ auto handle_expression(
 
 }
 
+auto handle_list_literal(
+    std::vector<anzu::op>& program,
+    std::vector<anzu::token>::const_iterator& it
+)
+    -> void
+{
+    auto list = std::make_shared<std::vector<anzu::object>>();
+
+    ++it; // Skip "["
+    while (it->text != "]") {
+        if (it->type == token_type::string) {
+            list->push_back(it->text);
+        }
+        else if (it->type == token_type::number) {
+            list->push_back(anzu::to_int(it->text));
+        }
+        else if (it->text == TRUE_LIT) {
+            list->push_back(true);
+        }
+        else if (it->text == FALSE_LIT) {
+            list->push_back(false);
+        }
+        else if (it->text == ",") {
+            // Pass, delimiters currently optional, will enforce after this workes
+        }
+        else {
+            anzu::print("could not recognise token while parsing list literal: {}\n", it->text);
+            std::exit(1);
+        }
+        ++it;
+    }
+    ++it; // Skip "]"
+
+    program.emplace_back(anzu::op_push_const{ .value=list });
+}
+
 }
 
 struct function_def
@@ -146,6 +182,9 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
         else if (it->type == token_type::symbol) {
             if (it->text == "(") {
                 handle_expression(program, it);
+            }
+            else if (it->text == "[") {
+                handle_list_literal(program, it);
             }
             else {
                 anzu::print("Could not handle symbol '{}'\n", it->text);
