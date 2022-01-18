@@ -1,20 +1,8 @@
 # test file to manually testing new features
 
-list_new -> l
+list_new
 
-l 5 list_push
-l 2 list_push
-l 8 list_push
-l 0 list_push
-l 51 list_push
+dup 1 list_push
+dup 2 list_push
 
-l list_size -> size
-0 -> count
-while count size < do
-    l count list_at print
-    count 1 + -> count
-end
-
-# for x in l do
-#     x print
-# end
+dup print

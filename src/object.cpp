@@ -112,15 +112,6 @@ auto object::to_str() const -> std::string
     }, d_value);
 }
 
-auto object::as_list() -> object_list&
-{
-    if (is_list()) {
-        return std::get<object_list>(d_value);
-    }
-    anzu::print("error: {} is not a list\n", to_repr());
-    std::exit(1);
-}
-
 auto object::to_repr() const -> std::string
 {
     return std::visit(overloaded {

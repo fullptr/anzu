@@ -1,10 +1,12 @@
 #include "functions.hpp"
 #include "print.hpp"
+#include "object.hpp"
 
 #include <unordered_map>
 #include <string>
 #include <functional>
 
+namespace anzu {
 namespace {
 
 auto verify(bool condition, std::string_view msg) -> void
@@ -46,7 +48,7 @@ auto builtin_list_push(anzu::context& ctx) -> void
     verify(frame.top(1).is_list(), "second element on stack must be a list for list_push\n");
     auto elem = frame.pop();
     auto list = frame.pop();
-    list.as_list()->push_back(elem);
+    list.as<object_list>()->push_back(elem);
 }
 
 auto builtin_list_pop(anzu::context& ctx) -> void
@@ -54,7 +56,7 @@ auto builtin_list_pop(anzu::context& ctx) -> void
     auto& frame = ctx.top();
     verify(frame.top().is_list(), "top element on stack must be a list for list_pop\n");
     auto list = frame.pop();
-    list.as_list()->pop_back();
+    list.as<object_list>()->pop_back();
 }
 
 auto builtin_list_size(anzu::context& ctx) -> void
@@ -62,7 +64,7 @@ auto builtin_list_size(anzu::context& ctx) -> void
     auto& frame = ctx.top();
     verify(frame.top().is_list(), "top element on stack must be a list for list_size\n");
     auto list = frame.pop();
-    frame.push(static_cast<int>(list.as_list()->size()));
+    frame.push(static_cast<int>(list.as<object_list>()->size()));
 }
 
 auto builtin_list_at(anzu::context& ctx) -> void
@@ -73,7 +75,7 @@ auto builtin_list_at(anzu::context& ctx) -> void
     verify(frame.top(1).is_list(), "second element on stack must be a list for list_push\n");
     auto pos = frame.pop();
     auto list = frame.pop();
-    frame.push(list.as_list()->at(static_cast<std::size_t>(pos.to_int())));
+    frame.push(list.as<object_list>()->at(static_cast<std::size_t>(pos.to_int())));
 }
 
 }
@@ -92,8 +94,6 @@ static const std::unordered_map<std::string, std::function<void(anzu::context&)>
     // Debug functions
     { "__print_frame__", builtin_print_frame }
 };
-
-namespace anzu {
 
 auto is_builtin(const std::string& name) -> bool
 {

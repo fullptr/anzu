@@ -5,6 +5,8 @@
 #include <variant>
 #include <vector>
 
+#include "print.hpp"
+
 namespace anzu {
 
 class object;
@@ -37,8 +39,15 @@ public:
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
     
-    // Only returns if the value is the correct type, otherwise exits.
-    auto as_list() -> object_list&;
+    template <typename T>
+    auto as() -> T&
+    {
+        if (std::holds_alternative<T>(d_value)) {
+            return std::get<T>(d_value);
+        }
+        anzu::print("error: {} is not a list\n", to_repr());
+        std::exit(1);
+    }
 
     auto to_repr() const -> std::string;
 
