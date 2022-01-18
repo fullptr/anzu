@@ -3,6 +3,7 @@
 #include "print.hpp"
 
 #include <algorithm>
+#include <ranges>
 #include <string_view>
 
 namespace anzu {
@@ -119,11 +120,19 @@ auto object::to_repr() const -> std::string
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& val) { return std::format("'{}'", val); },
         [](const object_list& v) {
-            std::string ret;
-            for (const auto& obj : *v) {
-                ret += std::format("{}, ", obj);
+            switch (v->size()) {
+                break; case 0:
+                    return std::string{"[]"};
+                break; case 1:
+                    return std::format("[{}]", v->at(0));
+                break; default:
+                    std::string ret = std::format("[{}", v->at(0));
+                    for (const auto& obj : *v | std::views::drop(1)) {
+                        ret += std::format(", {}", obj);
+                    }
+                    ret += "]";
+                    return ret;
             }
-            return std::format("[{}]", ret);
         }
     }, d_value);
 }
