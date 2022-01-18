@@ -105,16 +105,19 @@ auto handle_expression(
 }
 
 auto handle_list_literal(
-    std::vector<anzu::op>& program,
-    std::vector<anzu::token>::const_iterator& it
+    std::vector<anzu::token>::const_iterator& it,
+    std::vector<anzu::token>::const_iterator end
 )
-    -> void
+    -> anzu::object_list
 {
     auto list = std::make_shared<std::vector<anzu::object>>();
 
     ++it; // Skip "["
-    while (it->text != "]") {
-        if (it->type == token_type::string) {
+    while (it != end && it->text != "]") {
+        if (it->text == "[") { // Nested list literal
+            list->push_back(handle_list_literal(it, end));
+        }
+        else if (it->type == token_type::string) {
             list->push_back(it->text);
         }
         else if (it->type == token_type::number) {
@@ -135,9 +138,12 @@ auto handle_list_literal(
         }
         ++it;
     }
-    ++it; // Skip "]"
+    if (it == end) {
+        anzu::print("end of file reached while parsing string literal\n");
+        std::exit(1);
+    }
 
-    program.emplace_back(anzu::op_push_const{ .value=list });
+    return list;
 }
 
 }
@@ -184,7 +190,9 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
                 handle_expression(program, it);
             }
             else if (it->text == "[") {
-                handle_list_literal(program, it);
+                program.emplace_back(anzu::op_push_const{
+                    .value=handle_list_literal(it, tokens.end())
+                });;
             }
             else {
                 anzu::print("Could not handle symbol '{}'\n", it->text);
