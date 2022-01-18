@@ -1,11 +1,7 @@
 # test file to manually testing new features
 
-[1, 2, true, [1, 2], "hello world\n", 3]
-
-dup 3 list_at -> x
-
-x 3 list_push
-x print
+[]
+dup 1 list_push
 
 print
 

@@ -35,12 +35,6 @@ auto builtin_print_frame(anzu::context& ctx) -> void
     frame.print();
 }
 
-auto builtin_list_new(anzu::context& ctx) -> void
-{
-    auto& frame = ctx.top();
-    frame.push(std::make_shared<std::vector<anzu::object>>());
-}
-
 auto builtin_list_push(anzu::context& ctx) -> void
 {
     auto& frame = ctx.top();
@@ -85,7 +79,6 @@ static const std::unordered_map<std::string, std::function<void(anzu::context&)>
     { "stack_size", builtin_stack_size },
 
     // List functions
-    { "list_new", builtin_list_new },
     { "list_push", builtin_list_push },
     { "list_pop", builtin_list_pop },
     { "list_size", builtin_list_size },
