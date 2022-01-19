@@ -74,7 +74,7 @@ auto builtin_list_at(anzu::context& ctx) -> void
 
 }
 
-static const std::unordered_map<std::string, std::function<void(anzu::context&)>> builtins = {
+static const std::unordered_map<std::string, void(*)(anzu::context&)> builtins = {
     { "print", builtin_print },
     { "stack_size", builtin_stack_size },
 

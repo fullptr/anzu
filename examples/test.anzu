@@ -1,8 +1,8 @@
 # test file to manually testing new features
 
-[]
-dup 1 list_push
+[1, 2, 3, 4, 5, 6] -> x
 
-print
-
-
+0 while dup x list_size < do
+    x over list_at print
+    1 + 
+end
