@@ -2,6 +2,7 @@
 #include "op_codes.hpp"
 #include "object.hpp"
 #include "print.hpp"
+#include "functions.hpp"
 
 #include <stack>
 #include <cstdint>
@@ -400,7 +401,8 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
         }
         else if (anzu::is_builtin(token)) {
             program.emplace_back(anzu::op_builtin_function_call{
-                .name=token
+                .name=token,
+                .func=anzu::fetch_builtin(token)
             });
         }
         else {

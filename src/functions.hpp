@@ -6,7 +6,9 @@
 
 namespace anzu {
 
+using builtin_function = void(*)(anzu::context&);
+
 auto is_builtin(const std::string& name) -> bool;
-auto call_builtin(const std::string& name, anzu::context& ctx) -> void;
+auto fetch_builtin(const std::string& name) -> builtin_function;
     
 }

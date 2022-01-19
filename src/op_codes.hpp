@@ -1,5 +1,6 @@
 #pragma once
 #include "stack_frame.hpp"
+#include "functions.hpp"
 
 #include <variant>
 #include <format>
@@ -216,6 +217,7 @@ struct op_return
 struct op_builtin_function_call
 {
     std::string name;
+    anzu::builtin_function func;
 
     std::string to_string() const { return std::format("OP_BUILTIN_FUNCTION_CALL({})", name); }
     void apply(anzu::context& ctx) const;

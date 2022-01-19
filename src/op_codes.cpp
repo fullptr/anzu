@@ -177,7 +177,8 @@ void op_return::apply(anzu::context& ctx) const
 
 void op_builtin_function_call::apply(anzu::context& ctx) const
 {
-    anzu::call_builtin(name, ctx);
+    func(ctx);
+    ctx.top().ptr() += 1;
 }
 
 template <typename A, typename B>

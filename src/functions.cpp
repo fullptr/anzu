@@ -74,7 +74,7 @@ auto builtin_list_at(anzu::context& ctx) -> void
 
 }
 
-static const std::unordered_map<std::string, void(*)(anzu::context&)> builtins = {
+static const std::unordered_map<std::string, builtin_function> builtins = {
     { "print", builtin_print },
     { "stack_size", builtin_stack_size },
 
@@ -93,10 +93,9 @@ auto is_builtin(const std::string& name) -> bool
     return builtins.contains(name);
 }
 
-auto call_builtin(const std::string& name, anzu::context& ctx) -> void
+auto fetch_builtin(const std::string& name) -> builtin_function
 {
-    builtins.at(name)(ctx);
-    ctx.top().ptr() += 1;
+    return builtins.at(name);
 }
 
 }
