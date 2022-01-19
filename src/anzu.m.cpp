@@ -3,6 +3,7 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "print.hpp"
+#include "ast.hpp"
 
 #include <string>
 #include <variant>
@@ -61,6 +62,24 @@ void print_usage()
 
 int main(int argc, char** argv)
 {
+    auto root = std::make_unique<anzu::node_bin_op>();
+    root->op = "+";
+    root->rhs = std::make_unique<anzu::node_literal>(anzu::object{5});
+
+    auto leaf = std::make_unique<anzu::node_bin_op>();
+    leaf->op = "*";
+    leaf->lhs = std::make_unique<anzu::node_literal>(anzu::object{7});
+    leaf->rhs = std::make_unique<anzu::node_literal>(anzu::object{10});
+
+    root->lhs = std::move(leaf);
+
+    root->print();
+
+    std::vector<anzu::op> p;
+    root->evaluate(p);
+    print_program(p);
+    return 0;
+
     if (argc != 3) {
         print_usage();
         return 1;

@@ -29,24 +29,25 @@ public:
     
     object() : d_value{0} {}
 
-    auto is_int() const -> bool;
-    auto is_bool() const -> bool;
-    auto is_str() const -> bool;
-    auto is_list() const -> bool;
-
     // Casts, for certain types, converts the object to the requested type.
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
+
+    template <typename T>
+    auto is() -> bool
+    {
+        return std::holds_alternative<T>(d_value);
+    }
     
     template <typename T>
     auto as() -> T&
     {
-        if (std::holds_alternative<T>(d_value)) {
-            return std::get<T>(d_value);
+        if (!is<T>()) {
+            anzu::print("error: {} does not contain requested type\n", to_repr());
+            std::exit(1);
         }
-        anzu::print("error: {} is not a list\n", to_repr());
-        std::exit(1);
+        return std::get<T>(d_value);
     }
 
     auto to_repr() const -> std::string;

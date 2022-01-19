@@ -57,26 +57,6 @@ auto format_special_chars(const std::string& str) -> std::string
     return ret;
 }
 
-auto object::is_int() const -> bool
-{
-    return std::holds_alternative<int>(d_value);
-}
-
-auto object::is_bool() const -> bool
-{
-    return std::holds_alternative<bool>(d_value);
-}
-
-auto object::is_str() const -> bool
-{
-    return std::holds_alternative<std::string>(d_value);
-}
-
-auto object::is_list() const -> bool
-{
-    return std::holds_alternative<object_list>(d_value);
-}
-
 auto object::to_int() const -> int
 {
     return std::visit(overloaded {
