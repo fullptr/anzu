@@ -1,6 +1,7 @@
 #include "op_codes.hpp"
 #include "object.hpp"
 #include "print.hpp"
+#include "functions.hpp"
 
 #include <iostream>
 #include <string>
@@ -172,6 +173,12 @@ void op_return::apply(anzu::context& ctx) const
 {
     transfer_values(ctx.top(0), ctx.top(1), retc);
     ctx.pop(); // Remove stack frame
+}
+
+void op_builtin_function_call::apply(anzu::context& ctx) const
+{
+    func(ctx);
+    ctx.top().ptr() += 1;
 }
 
 template <typename A, typename B>
@@ -348,13 +355,6 @@ void op_dump::apply(anzu::context& ctx) const
     auto& frame = ctx.top();
     anzu::verify_stack(frame, 1, ".");
     anzu::print("{}", frame.pop());
-    frame.ptr() += 1;
-}
-
-void op_print_frame::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.print();
     frame.ptr() += 1;
 }
 

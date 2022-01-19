@@ -9,6 +9,7 @@ add_executable(anzu
                op_codes.cpp
                lexer.cpp
                parser.cpp
-               object.cpp)
+               object.cpp
+               functions.cpp)
 
 target_include_directories(anzu PRIVATE .)

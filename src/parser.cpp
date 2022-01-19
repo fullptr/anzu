@@ -2,6 +2,7 @@
 #include "op_codes.hpp"
 #include "object.hpp"
 #include "print.hpp"
+#include "functions.hpp"
 
 #include <stack>
 #include <cstdint>
@@ -10,6 +11,8 @@
 #include <fstream>
 #include <sstream>
 #include <optional>
+
+#include "functions.hpp"
 
 namespace anzu {
 namespace {
@@ -102,6 +105,48 @@ auto handle_expression(
 
 }
 
+auto handle_list_literal(
+    std::vector<anzu::token>::const_iterator& it,
+    std::vector<anzu::token>::const_iterator end
+)
+    -> anzu::object_list
+{
+    auto list = std::make_shared<std::vector<anzu::object>>();
+
+    ++it; // Skip "["
+    while (it != end && it->text != "]") {
+        if (it->text == "[") { // Nested list literal
+            list->push_back(handle_list_literal(it, end));
+        }
+        else if (it->type == token_type::string) {
+            list->push_back(it->text);
+        }
+        else if (it->type == token_type::number) {
+            list->push_back(anzu::to_int(it->text));
+        }
+        else if (it->text == TRUE_LIT) {
+            list->push_back(true);
+        }
+        else if (it->text == FALSE_LIT) {
+            list->push_back(false);
+        }
+        else if (it->text == ",") {
+            // Pass, delimiters currently optional, will enforce after this workes
+        }
+        else {
+            anzu::print("could not recognise token while parsing list literal: {}\n", it->text);
+            std::exit(1);
+        }
+        ++it;
+    }
+    if (it == end) {
+        anzu::print("end of file reached while parsing string literal\n");
+        std::exit(1);
+    }
+
+    return list;
+}
+
 }
 
 struct function_def
@@ -144,6 +189,11 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
         else if (it->type == token_type::symbol) {
             if (it->text == "(") {
                 handle_expression(program, it);
+            }
+            else if (it->text == "[") {
+                program.emplace_back(anzu::op_push_const{
+                    .value=handle_list_literal(it, tokens.end())
+                });;
             }
             else {
                 anzu::print("Could not handle symbol '{}'\n", it->text);
@@ -342,16 +392,17 @@ auto parse(const std::vector<anzu::token>& tokens) -> std::vector<anzu::op>
             program.emplace_back(anzu::op_to_str{});
         }
 
-        // Debug
-        else if (token == PRINT_FRAME) {
-            program.emplace_back(anzu::op_print_frame{});
-        }
-
         // Rest
         else if (all_functions.contains(token)) {
             auto [argc, retc, ptr] = all_functions[token];
             program.emplace_back(anzu::op_function_call{
                 .name=token, .argc=argc, .jump=ptr + 1
+            });
+        }
+        else if (anzu::is_builtin(token)) {
+            program.emplace_back(anzu::op_builtin_function_call{
+                .name=token,
+                .func=anzu::fetch_builtin(token)
             });
         }
         else {

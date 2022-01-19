@@ -1,5 +1,6 @@
 #pragma once
 #include "stack_frame.hpp"
+#include "functions.hpp"
 
 #include <variant>
 #include <format>
@@ -213,6 +214,15 @@ struct op_return
     void apply(anzu::context& ctx) const;
 };
 
+struct op_builtin_function_call
+{
+    std::string name;
+    anzu::builtin_function func;
+
+    std::string to_string() const { return std::format("OP_BUILTIN_FUNCTION_CALL({})", name); }
+    void apply(anzu::context& ctx) const;
+};
+
 // Numerical Operators
 
 struct op_add
@@ -329,14 +339,6 @@ struct op_dump
     void apply(anzu::context& ctx) const;
 };
 
-// Debug
-
-struct op_print_frame
-{
-    std::string to_string() const { return "OP_PRINT_FRAME"; }
-    void apply(anzu::context& ctx) const;
-};
-
 class op
 {
     using op_type = std::variant<
@@ -368,6 +370,7 @@ class op
         op_function_call,
         op_function_end,
         op_return,
+        op_builtin_function_call,
 
         // Numerical Operators
         op_add,
@@ -393,10 +396,7 @@ class op
 
         // IO
         op_input,
-        op_dump,
-
-        // Debug
-        op_print_frame
+        op_dump
     >;
 
     op_type d_type;
