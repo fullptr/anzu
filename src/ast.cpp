@@ -3,11 +3,11 @@
 
 namespace anzu {
 
-void node_temp::evaluate(std::vector<anzu::op>& program)
+void node_expression::evaluate(std::vector<anzu::op>& program)
 {
 }
 
-void node_temp::print(int indent)
+void node_expression::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
     anzu::print("{}Statement:\n", spaces);
@@ -16,20 +16,35 @@ void node_temp::print(int indent)
     }
 }
 
-void node_seq::evaluate(std::vector<anzu::op>& program)
+void node_sequence::evaluate(std::vector<anzu::op>& program)
 {
     for (const auto& node : sequence) {
         node->evaluate(program);
     }
 }
 
-void node_seq::print(int indent)
+void node_sequence::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
     anzu::print("{}Sequnce:\n", spaces);
     for (const auto& node : sequence) {
         node->print(indent + 1);
     }
+}
+
+void node_while_statement::evaluate(std::vector<anzu::op>& program)
+{
+    program.emplace_back(anzu::op_while{});
+    const auto while_pos = std::ssize(program);
+    condition->evaluate(program);
+    program.emplace_back(anzu::op_do{ .jump=while_pos });
+    body->evaluate(program);
+    program.emplace_back(anzu::op_while_end{});
+}
+
+void node_while_statement::print(int indent)
+{
+    anzu::print("While statement\n");
 }
 
 void node_bin_op::evaluate(std::vector<anzu::op>& program)

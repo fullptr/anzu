@@ -20,9 +20,8 @@ struct node
     virtual void print(int indent = 0) = 0;
 };
 
-// This will not be used eventually as the tokens it stores will also get converted
-// into actual nodes. This is just here until I fill it out
-struct node_temp : public node
+// This will eventually store a tree of expressions, not the tokens
+struct node_expression : public node
 {
     std::vector<anzu::token> tokens;
 
@@ -30,9 +29,18 @@ struct node_temp : public node
     void print(int indent = 0) override;
 };
 
-struct node_seq : public node
+struct node_sequence : public node
 {
     std::vector<std::unique_ptr<node>> sequence;
+
+    void evaluate(std::vector<anzu::op>& program) override;
+    void print(int indent = 0) override;
+};
+
+struct node_while_statement : public node
+{
+    std::unique_ptr<node> condition;
+    std::unique_ptr<node> body;
 
     void evaluate(std::vector<anzu::op>& program) override;
     void print(int indent = 0) override;
