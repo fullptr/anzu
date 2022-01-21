@@ -62,6 +62,38 @@ void print_usage()
 
 int main(int argc, char** argv)
 {
+    const auto tok = anzu::token{
+        .text = "foo",
+        .line = 1,
+        .col = 2,
+        .type = anzu::token_type::symbol
+    };
+
+    auto root = std::make_unique<anzu::node_sequence>();
+    root->sequence.push_back(std::make_unique<anzu::node_expression>(std::vector<anzu::token>{tok}));
+    
+    auto while_node = std::make_unique<anzu::node_while_statement>();
+
+    auto while_cond = std::make_unique<anzu::node_bin_op>();
+    while_cond->op = "+";
+    while_cond->lhs = std::make_unique<anzu::node_literal>(anzu::object{1});
+    while_cond->rhs = std::make_unique<anzu::node_literal>(anzu::object{2});
+
+    auto while_body = std::make_unique<anzu::node_bin_op>();
+    while_body->op = "+";
+    while_body->lhs = std::make_unique<anzu::node_literal>(anzu::object{1});
+    while_body->rhs = std::make_unique<anzu::node_literal>(anzu::object{2});
+
+    while_node->condition = std::move(while_cond);
+    while_node->body = std::move(while_body);
+    root->sequence.push_back(std::move(while_node));
+
+    root->print();
+    std::vector<anzu::op> p;
+    root->evaluate(p);
+    print_program(p);
+    return 0;
+
     if (argc != 3) {
         print_usage();
         return 1;

@@ -18,6 +18,5 @@ end
 
 0 while dup 10 < do
     dup fibb print
-    break
     1 + 
 end

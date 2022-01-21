@@ -25,6 +25,8 @@ struct node_expression : public node
 {
     std::vector<anzu::token> tokens;
 
+    node_expression(const std::vector<anzu::token>& toks) : tokens(toks) {}
+
     void evaluate(std::vector<anzu::op>& program) override;
     void print(int indent = 0) override;
 };
@@ -65,5 +67,7 @@ struct node_literal : public node
     void evaluate(std::vector<anzu::op>& program) override;
     void print(int indent = 0) override;
 };
+
+auto build_ast(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>;
 
 }

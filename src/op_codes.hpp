@@ -408,6 +408,16 @@ public:
     template <typename Op>
     Op* get_if() { return std::get_if<Op>(&d_type); }
 
+    template <typename Op>
+    Op& as() {
+        auto* ret = get_if<Op>();
+        if (ret == nullptr) {
+            anzu::print("parser error: op code did not contain the expected type\n");
+            std::exit(1);
+        }
+        return *ret;
+    }
+
     inline std::string to_string() const {
         return std::visit([](auto&& o) { return o.to_string(); }, d_type);
     }
