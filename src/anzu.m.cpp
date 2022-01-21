@@ -76,16 +76,16 @@ int main(int argc, char** argv)
 
     auto while_cond = std::make_unique<anzu::node_bin_op>();
     while_cond->op = "+";
-    while_cond->lhs = std::make_unique<anzu::node_literal>(anzu::object{1});
-    while_cond->rhs = std::make_unique<anzu::node_literal>(anzu::object{2});
+    while_cond->lhs = std::make_unique<anzu::node_literal>(1);
+    while_cond->rhs = std::make_unique<anzu::node_literal>(2);
+    while_node->condition = std::move(while_cond);
 
     auto while_body = std::make_unique<anzu::node_bin_op>();
     while_body->op = "+";
-    while_body->lhs = std::make_unique<anzu::node_literal>(anzu::object{1});
-    while_body->rhs = std::make_unique<anzu::node_literal>(anzu::object{2});
-
-    while_node->condition = std::move(while_cond);
+    while_body->lhs = std::make_unique<anzu::node_literal>(1);
+    while_body->rhs = std::make_unique<anzu::node_literal>(2);
     while_node->body = std::move(while_body);
+
     root->sequence.push_back(std::move(while_node));
 
     root->print();
