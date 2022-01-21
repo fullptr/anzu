@@ -3,6 +3,35 @@
 
 namespace anzu {
 
+void node_temp::evaluate(std::vector<anzu::op>& program)
+{
+}
+
+void node_temp::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Statement:\n", spaces);
+    for (const auto& tok : tokens) {
+        anzu::print("{}    {}\n", spaces, tok.text);
+    }
+}
+
+void node_seq::evaluate(std::vector<anzu::op>& program)
+{
+    for (const auto& node : sequence) {
+        node->evaluate(program);
+    }
+}
+
+void node_seq::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Sequnce:\n", spaces);
+    for (const auto& node : sequence) {
+        node->print(indent + 1);
+    }
+}
+
 void node_bin_op::evaluate(std::vector<anzu::op>& program)
 {
     lhs->evaluate(program);

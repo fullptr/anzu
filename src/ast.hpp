@@ -1,6 +1,7 @@
 #pragma once
 #include "op_codes.hpp"
 #include "object.hpp"
+#include "lexer.hpp"
 
 #include <memory>
 #include <vector>
@@ -17,6 +18,24 @@ struct node
 
     virtual void evaluate(std::vector<anzu::op>& program) = 0;
     virtual void print(int indent = 0) = 0;
+};
+
+// This will not be used eventually as the tokens it stores will also get converted
+// into actual nodes. This is just here until I fill it out
+struct node_temp : public node
+{
+    std::vector<anzu::token> tokens;
+
+    void evaluate(std::vector<anzu::op>& program) override;
+    void print(int indent = 0) override;
+};
+
+struct node_seq : public node
+{
+    std::vector<std::unique_ptr<node>> sequence;
+
+    void evaluate(std::vector<anzu::op>& program) override;
+    void print(int indent = 0) override;
 };
 
 struct node_bin_op : public node
