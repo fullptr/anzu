@@ -94,7 +94,43 @@ void node_literal::print(int indent)
 
 auto build_ast(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>
 {
-    return nullptr;
+    auto root = std::make_unique<anzu::node_sequence>();
+    auto it = tokens.begin();
+    
+    while (it != tokens.end()) {
+        auto next = std::next(it);
+        if (it->text == "while") {
+            auto while_op = std::make_unique<anzu::node_while_statement>();
+            auto condition = std::make_unique<anzu::node_expression>();
+            ++it;
+            while (it != tokens.end() && it->text != "do") {
+                condition->tokens.push_back(*it);
+                ++it;
+            }
+            auto body = std::make_unique<anzu::node_expression>();
+            ++it;
+            while (it != tokens.end() && it->text != "end") {
+                body->tokens.push_back(*it);
+                ++it;
+            }
+            while_op->condition = std::move(condition);
+            while_op->body = std::move(body);
+
+            root->sequence.push_back(std::move(while_op));
+        }
+        else {
+            auto stmt_op = std::make_unique<anzu::node_expression>();
+            stmt_op->tokens.push_back(*it);
+            ++it;
+            while (it != tokens.end() && it->text != "while") {
+                stmt_op->tokens.push_back(*it);
+                ++it;
+            }
+            root->sequence.push_back(std::move(stmt_op));
+        }
+    }
+
+    return root;
 }
 
 }

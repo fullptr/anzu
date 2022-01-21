@@ -19,12 +19,14 @@ struct node
     virtual void print(int indent = 0) = 0;
 };
 
-// This will eventually store a tree of expressions, not the tokens
+// This will eventually store a tree of expressions, not the tokens. For now, these can
+// be fed back into the old parser and be evaluated as sub-programs
 struct node_expression : public node
 {
     std::vector<anzu::token> tokens;
 
     node_expression(const std::vector<anzu::token>& toks) : tokens(toks) {}
+    node_expression() = default;
     void evaluate(std::vector<anzu::op>& program) override;
     void print(int indent = 0) override;
 };

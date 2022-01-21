@@ -51,49 +51,18 @@ void run_program_debug(const std::vector<anzu::op>& program)
 
 void print_usage()
 {
-    anzu::print("usage: anzu.exe <program_file> (lex|parse|debug|run)\n\n");
+    anzu::print("usage: anzu.exe <program_file> (lex|parse|ast|debug|run)\n\n");
     anzu::print("The Anzu Programming Language\n\n");
     anzu::print("options:\n");
     anzu::print("    lex   - displays the program after lexing into tokens\n");
-    anzu::print("    parse - displays the program after parsig to bytecode\n");
+    anzu::print("    parse - parses the program using the default parser and prints the bytecode\n");
+    anzu::print("    ast   - parses the program with the new ast parser and prints the bytecode\n");
     anzu::print("    debug - executes the program and prints each op code executed\n");
     anzu::print("    run   - executes the program\n");
 }
 
 int main(int argc, char** argv)
 {
-    const auto tok = anzu::token{
-        .text = "foo",
-        .line = 1,
-        .col = 2,
-        .type = anzu::token_type::symbol
-    };
-
-    auto root = std::make_unique<anzu::node_sequence>();
-    root->sequence.push_back(std::make_unique<anzu::node_expression>(std::vector<anzu::token>{tok}));
-    
-    auto while_node = std::make_unique<anzu::node_while_statement>();
-
-    auto while_cond = std::make_unique<anzu::node_bin_op>();
-    while_cond->op = "+";
-    while_cond->lhs = std::make_unique<anzu::node_literal>(1);
-    while_cond->rhs = std::make_unique<anzu::node_literal>(2);
-    while_node->condition = std::move(while_cond);
-
-    auto while_body = std::make_unique<anzu::node_bin_op>();
-    while_body->op = "+";
-    while_body->lhs = std::make_unique<anzu::node_literal>(1);
-    while_body->rhs = std::make_unique<anzu::node_literal>(2);
-    while_node->body = std::move(while_body);
-
-    root->sequence.push_back(std::move(while_node));
-
-    root->print();
-    std::vector<anzu::op> p;
-    root->evaluate(p);
-    print_program(p);
-    return 0;
-
     if (argc != 3) {
         print_usage();
         return 1;
@@ -111,8 +80,15 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    const auto program = anzu::parse(tokens);
-    if (mode == "parse") {
+    std::vector<anzu::op> program;
+    if (mode == "ast") { // new parser, only available to dump the parse
+        const auto root = anzu::build_ast(tokens);
+        root->evaluate(program);
+    } else {
+        program = anzu::parse(tokens);
+    }
+
+    if (mode == "parse" || mode == "ast") {
         print_program(program);
         return 0;
     }
