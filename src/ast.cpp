@@ -130,7 +130,6 @@ auto parse_statement_list(
             it->text == "do"   ||
             it->text == "else")
         {
-            ++it;
             return stmt_list;
         }
     }
@@ -145,24 +144,24 @@ auto parse_statement_list(
 //     | string_literal
 //     | builtin
 //     | identifier
+// TODO: ALlow for break, continue, else and elif
 auto parse_statement(
     std::vector<anzu::token>::const_iterator& it,
     std::vector<anzu::token>::const_iterator end
 )
     -> std::unique_ptr<anzu::node>
 {
-    // TODO: ALlow for break and continue
     if (it->text == "while") {
         ++it; // skip while
         auto condition = parse_statement_list(it, end);
         if (it->text != "do") {
-            anzu::print("parse error, expected 'do'\n");
+            anzu::print("(while) parse error, expected 'do', got '{}'\n", it->text);
             std::exit(1);
         }
         ++it; // skip do
         auto body = parse_statement_list(it, end);
         if (it->text != "end") {
-            anzu::print("parse error, expected 'end'\n");
+            anzu::print("(while) parse error, expected 'end', got '{}'\n", it->text);
             std::exit(1);
         }
         ++it; // skip end
@@ -171,7 +170,6 @@ auto parse_statement(
         while_stmt->body = std::move(body);
         return while_stmt;
     }
-    // TODO: Allow for else and elif
     else if (it->text == "if") {
         ++it; // skip if
         auto condition = parse_statement_list(it, end);
