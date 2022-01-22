@@ -1,8 +1,0 @@
-# fibbonacci to demonstrate functions and recursion
-
-[1, 2, 3]
-
-0 while dup 10 < do
-    dup fibb print
-    1 + 
-end

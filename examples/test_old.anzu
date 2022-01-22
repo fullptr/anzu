@@ -1,0 +1,11 @@
+# fibbonacci to demonstrate functions and recursion
+
+[1, 2, 3] -> arr
+arr print
+
+"Hello world" print
+
+0 while dup 5 < do
+    dup print
+    1 + 
+end

@@ -84,6 +84,7 @@ int main(int argc, char** argv)
     if (mode == "ast") { // new parser, only available to dump the parse
         const auto root = anzu::build_ast(tokens);
         root->evaluate(program);
+        root->print();
     } else {
         program = anzu::parse(tokens);
     }

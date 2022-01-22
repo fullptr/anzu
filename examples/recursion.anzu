@@ -18,5 +18,5 @@ end
 
 0 while dup 10 < do
     dup fibb print
-    1 + 
+    1 +
 end

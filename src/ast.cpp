@@ -58,6 +58,16 @@ void node_while_statement::print(int indent)
     body->print(indent + 1);
 }
 
+void node_if_statement::evaluate(std::vector<anzu::op>& program)
+{
+
+}
+
+void node_if_statement::print(int indent)
+{
+
+}
+
 void node_bin_op::evaluate(std::vector<anzu::op>& program)
 {
     lhs->evaluate(program);
@@ -92,44 +102,110 @@ void node_literal::print(int indent)
     anzu::print("{}Literal = {}\n", spaces, value);
 }
 
-auto build_ast(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>
-{
-    auto root = std::make_unique<anzu::node_sequence>();
-    auto it = tokens.begin();
-    
-    while (it != tokens.end()) {
-        auto next = std::next(it);
-        if (it->text == "while") {
-            auto while_op = std::make_unique<anzu::node_while_statement>();
-            auto condition = std::make_unique<anzu::node_expression>();
-            ++it;
-            while (it != tokens.end() && it->text != "do") {
-                condition->tokens.push_back(*it);
-                ++it;
-            }
-            auto body = std::make_unique<anzu::node_expression>();
-            ++it;
-            while (it != tokens.end() && it->text != "end") {
-                body->tokens.push_back(*it);
-                ++it;
-            }
-            while_op->condition = std::move(condition);
-            while_op->body = std::move(body);
+namespace {
 
-            root->sequence.push_back(std::move(while_op));
-        }
-        else {
-            auto stmt_op = std::make_unique<anzu::node_expression>();
-            stmt_op->tokens.push_back(*it);
+auto parse_statement(
+    std::vector<anzu::token>::const_iterator& it,
+    std::vector<anzu::token>::const_iterator end
+)
+    -> std::unique_ptr<anzu::node>;
+
+// statement_list:
+//     | statement
+//     | statement statement_list
+auto parse_statement_list(
+    std::vector<anzu::token>::const_iterator& it,
+    std::vector<anzu::token>::const_iterator end
+)
+    -> std::unique_ptr<anzu::node>
+{
+    auto stmt_list = std::make_unique<anzu::node_sequence>();
+    while (it != end) {
+        auto stmt = parse_statement(it, end);
+        stmt_list->sequence.push_back(std::move(stmt));
+        if (it == end) break;
+
+        if (it->text == "end"  ||
+            it->text == "elif" ||
+            it->text == "do"   ||
+            it->text == "else")
+        {
             ++it;
-            while (it != tokens.end() && it->text != "while") {
-                stmt_op->tokens.push_back(*it);
-                ++it;
-            }
-            root->sequence.push_back(std::move(stmt_op));
+            return stmt_list;
         }
     }
+    return stmt_list;
+}
 
+// statement:
+//     | 'while' statement_list 'do' statement_list 'end'
+//     | 'while' statement_list 'do' 'end'
+//     | 'if' if_body
+//     | num_literal
+//     | string_literal
+//     | builtin
+//     | identifier
+auto parse_statement(
+    std::vector<anzu::token>::const_iterator& it,
+    std::vector<anzu::token>::const_iterator end
+)
+    -> std::unique_ptr<anzu::node>
+{
+    // TODO: ALlow for break and continue
+    if (it->text == "while") {
+        ++it; // skip while
+        auto condition = parse_statement_list(it, end);
+        if (it->text != "do") {
+            anzu::print("parse error, expected 'do'\n");
+            std::exit(1);
+        }
+        ++it; // skip do
+        auto body = parse_statement_list(it, end);
+        if (it->text != "end") {
+            anzu::print("parse error, expected 'end'\n");
+            std::exit(1);
+        }
+        ++it; // skip end
+        auto while_stmt = std::make_unique<anzu::node_while_statement>();
+        while_stmt->condition = std::move(condition);
+        while_stmt->body = std::move(body);
+        return while_stmt;
+    }
+    // TODO: Allow for else and elif
+    else if (it->text == "if") {
+        ++it; // skip if
+        auto condition = parse_statement_list(it, end);
+        if (it->text != "do") {
+            anzu::print("parse error, expected 'do'\n");
+            std::exit(1);
+        }
+        ++it; // skip do
+        auto body = parse_statement_list(it, end);
+        if (it->text != "end") {
+            anzu::print("parse error, expected 'end'\n");
+            std::exit(1);
+        }
+        ++it; // skip end
+        auto if_stmt = std::make_unique<anzu::node_if_statement>();
+        if_stmt->condition = std::move(condition);
+        if_stmt->body = std::move(body);
+        return if_stmt;
+    }
+    auto stmt = std::make_unique<anzu::node_expression>();
+    stmt->tokens.push_back(*it);
+    ++it;
+    return stmt;
+}
+
+}
+
+auto build_ast(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>
+{
+    auto it = tokens.begin();
+    auto root = std::make_unique<anzu::node_sequence>();
+    while (it != tokens.end()) {
+        root->sequence.push_back(parse_statement(it, tokens.end()));
+    }
     return root;
 }
 

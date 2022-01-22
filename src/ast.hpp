@@ -48,6 +48,16 @@ struct node_while_statement : public node
     void print(int indent = 0) override;
 };
 
+struct node_if_statement : public node
+{
+    std::unique_ptr<node> condition;
+    std::unique_ptr<node> body;
+    std::unique_ptr<node> else_body;
+
+    void evaluate(std::vector<anzu::op>& program) override;
+    void print(int indent = 0) override;
+};
+
 struct node_bin_op : public node
 {
     std::string           op;
