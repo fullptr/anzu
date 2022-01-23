@@ -67,11 +67,22 @@ void node_if_statement::evaluate(std::vector<anzu::op>& program)
     
     const auto do_pos = std::ssize(program);
     program.emplace_back(anzu::op_do{});
-
     body->evaluate(program);
 
+    auto else_pos = std::intptr_t{-1};
+    if (else_body) {
+        else_pos = std::ssize(program);
+        program.emplace_back(anzu::op_else{});
+        else_body->evaluate(program);
+    }
+
     program.emplace_back(anzu::op_if_end{});
-    program[do_pos].as<anzu::op_do>().jump = std::ssize(program); // Jump past the end if false
+    if (else_pos == -1) {
+        program[do_pos].as<anzu::op_do>().jump = std::ssize(program); // Jump past the end if false
+    } else {
+        program[do_pos].as<anzu::op_do>().jump = else_pos + 1; // Jump into the else block if false
+        program[else_pos].as<anzu::op_else>().jump = std::ssize(program); // Jump past the end if false
+    }
 }
 
 void node_if_statement::print(int indent)
@@ -82,6 +93,10 @@ void node_if_statement::print(int indent)
     condition->print(indent + 1);
     anzu::print("{}- Body:\n", spaces);
     body->print(indent + 1);
+    if (else_body) {
+        anzu::print("{}- Else:\n", spaces);
+        body->print(indent + 1);
+    }
 }
 
 void node_bin_op::evaluate(std::vector<anzu::op>& program)
@@ -137,17 +152,16 @@ auto parse_statement_list(
 {
     auto stmt_list = std::make_unique<anzu::node_sequence>();
     while (it != end) {
-        auto stmt = parse_statement(it, end);
-        stmt_list->sequence.push_back(std::move(stmt));
-        if (it == end) break;
-
         if (it->text == "end"  ||
             it->text == "elif" ||
             it->text == "do"   ||
             it->text == "else")
         {
-            return stmt_list;
+            break;
         }
+
+        auto stmt = parse_statement(it, end);
+        stmt_list->sequence.push_back(std::move(stmt));
     }
     return stmt_list;
 }
@@ -190,20 +204,33 @@ auto parse_statement(
         ++it; // skip if
         auto condition = parse_statement_list(it, end);
         if (it->text != "do") {
-            anzu::print("parse error, expected 'do'\n");
+            anzu::print("(if) parse error, expected 'do', got '{}'\n", it->text);
             std::exit(1);
         }
         ++it; // skip do
-        auto body = parse_statement_list(it, end);
-        if (it->text != "end") {
-            anzu::print("parse error, expected 'end'\n");
-            std::exit(1);
-        }
-        ++it; // skip end
+
         auto if_stmt = std::make_unique<anzu::node_if_statement>();
         if_stmt->condition = std::move(condition);
-        if_stmt->body = std::move(body);
-        return if_stmt;
+        if_stmt->body = parse_statement_list(it, end);
+        if_stmt->else_body = nullptr;
+
+        if (it->text == "end") { // no else or elif
+            ++it; // skip end
+            return if_stmt;
+        }
+        
+        if (it->text == "else") {
+            ++it; // skip else
+            auto else_body = parse_statement_list(it, end);
+            if (it->text == "end") {
+                if_stmt->else_body = std::move(else_body);
+                ++it; // skip end
+                return if_stmt;
+            }
+        }
+
+        anzu::print("(if) parse error, expected 'end|elif|else', got '{}'\n", it->text);
+        std::exit(1);
     }
     auto stmt = std::make_unique<anzu::node_expression>();
     stmt->tokens.push_back(*it);
