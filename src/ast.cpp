@@ -60,12 +60,28 @@ void node_while_statement::print(int indent)
 
 void node_if_statement::evaluate(std::vector<anzu::op>& program)
 {
+    const auto if_pos = std::ssize(program);
+    program.emplace_back(anzu::op_if{});
 
+    condition->evaluate(program);
+    
+    const auto do_pos = std::ssize(program);
+    program.emplace_back(anzu::op_do{});
+
+    body->evaluate(program);
+
+    program.emplace_back(anzu::op_if_end{});
+    program[do_pos].as<anzu::op_do>().jump = std::ssize(program); // Jump past the end if false
 }
 
 void node_if_statement::print(int indent)
 {
-
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}If:\n", spaces);
+    anzu::print("{}- Condition:\n", spaces);
+    condition->print(indent + 1);
+    anzu::print("{}- Body:\n", spaces);
+    body->print(indent + 1);
 }
 
 void node_bin_op::evaluate(std::vector<anzu::op>& program)

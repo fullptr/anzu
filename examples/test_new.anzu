@@ -4,7 +4,7 @@
 while x < 10 do
     y = a + 1
 
-    while in == 5 do
+    if in == 5 do
         print(5)
     end
 end
