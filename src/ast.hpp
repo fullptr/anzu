@@ -71,6 +71,16 @@ struct node_if_statement : public node
     void print(int indent = 0) override;
 };
 
+struct node_function_definition : public node
+{
+    int argc;
+    int retc;
+    std::unique_ptr<node> body;
+
+    void evaluate(std::vector<anzu::op>& program) override;
+    void print(int indent = 0) override;
+};
+
 struct node_literal : public node
 {
     anzu::object value;

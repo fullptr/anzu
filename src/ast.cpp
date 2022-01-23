@@ -115,6 +115,14 @@ void node_if_statement::print(int indent)
     }
 }
 
+void node_function_definition::evaluate(std::vector<anzu::op>& program)
+{
+}
+
+void node_function_definition::print(int indent)
+{
+}
+
 void node_literal::evaluate(std::vector<anzu::op>& program)
 {
     program.emplace_back(anzu::op_push_const{ .value=value });
@@ -135,80 +143,31 @@ auto parse_op(token_iterator& it, token_iterator end) -> anzu::op
 {
     const auto& token = it->text;
     ++it;
-
-    if (token == STORE) {
-        return anzu::op_store{ .name=(it++)->text };
-    }
-    else if (token == POP) {
-        return anzu::op_pop{};
-    }
-    else if (token == DUP) {
-        return anzu::op_dup{};
-    }
-    else if (token == SWAP) {
-        return anzu::op_swap{};
-    }
-    else if (token == ROT) {
-        return anzu::op_rot{};
-    }
-    else if (token == OVER) {
-        return anzu::op_over{};
-    }
-    else if (token == ADD) {
-        return anzu::op_add{};
-    }
-    else if (token == SUB) {
-        return anzu::op_sub{};
-    }
-    else if (token == MUL) {
-        return anzu::op_mul{};
-    }
-    else if (token == DIV) {
-        return anzu::op_div{};
-    }
-    else if (token == MOD) {
-        return anzu::op_mod{};
-    }
-    else if (token == EQ) {
-        return anzu::op_eq{};
-    }
-    else if (token == NE) {
-        return anzu::op_ne{};
-    }
-    else if (token == LT) {
-        return anzu::op_lt{};
-    }
-    else if (token == LE) {
-        return anzu::op_le{};
-    }
-    else if (token == GT) {
-        return anzu::op_gt{};
-    }
-    else if (token == GE) {
-        return anzu::op_ge{};
-    }
-    else if (token == OR) {
-        return anzu::op_or{};
-    }
-    else if (token == AND) {
-        return anzu::op_and{};
-    }
-    else if (token == INPUT) {
-        return anzu::op_input{};
-    }
-    else if (token == DUMP) {
-        return anzu::op_dump{};
-    }
-    else if (token == TO_INT) {
-        return anzu::op_to_int{};
-    }
-    else if (token == TO_BOOL) {
-        return anzu::op_to_bool{};
-    }
-    else if (token == TO_STR) {
-        return anzu::op_to_str{};
-    }
-    return anzu::op_push_var{.name=token};
+    if (token == STORE)   return op_store{ .name=(it++)->text };
+    if (token == POP)     return op_pop{};
+    if (token == DUP)     return op_dup{};
+    if (token == SWAP)    return op_swap{};
+    if (token == ROT)     return op_rot{};
+    if (token == OVER)    return op_over{};
+    if (token == ADD)     return op_add{};
+    if (token == SUB)     return op_sub{};
+    if (token == MUL)     return op_mul{};
+    if (token == DIV)     return op_div{};
+    if (token == MOD)     return op_mod{};
+    if (token == EQ)      return op_eq{};
+    if (token == NE)      return op_ne{};
+    if (token == LT)      return op_lt{};
+    if (token == LE)      return op_le{};
+    if (token == GT)      return op_gt{};
+    if (token == GE)      return op_ge{};
+    if (token == OR)      return op_or{};
+    if (token == AND)     return op_and{};
+    if (token == INPUT)   return op_input{};
+    if (token == DUMP)    return op_dump{};
+    if (token == TO_INT)  return op_to_int{};
+    if (token == TO_BOOL) return op_to_bool{};
+    if (token == TO_STR)  return op_to_str{};
+    return op_push_var{.name=token};
 }
 
 auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr;
@@ -218,16 +177,10 @@ auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr;
 //     | statement statement_list
 auto parse_statement_list(token_iterator& it, token_iterator end) -> node_ptr
 {
-    auto stmt_list = std::make_unique<anzu::node_sequence>();
-    while (it != end) {
-        if (it->text == "end"  ||
-            it->text == "elif" ||
-            it->text == "do"   ||
-            it->text == "else")
-        {
-            break;
-        }
+    static const auto sentinel = std::unordered_set<std::string_view>{"end", "elif", "do", "else"};
 
+    auto stmt_list = std::make_unique<anzu::node_sequence>();
+    while (it != end && !sentinel.contains(it->text)) {
         auto stmt = parse_statement(it, end);
         stmt_list->sequence.push_back(std::move(stmt));
     }

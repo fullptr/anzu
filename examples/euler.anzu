@@ -2,6 +2,8 @@
 
 0 -> count
 
+[1, 2, 3, "string"] -> x
+
 0 while dup 1000 < do
     if dup 3 % 0 == do
         dup count + -> count
