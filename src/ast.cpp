@@ -3,6 +3,9 @@
 
 namespace anzu {
 
+using token_iterator = std::vector<anzu::token>::const_iterator;
+using node_ptr       = std::unique_ptr<anzu::node>;
+
 void node_expression::evaluate(std::vector<anzu::op>& program)
 {
 }
@@ -135,20 +138,12 @@ void node_literal::print(int indent)
 
 namespace {
 
-auto parse_statement(
-    std::vector<anzu::token>::const_iterator& it,
-    std::vector<anzu::token>::const_iterator end
-)
-    -> std::unique_ptr<anzu::node>;
+auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr;
 
 // statement_list:
 //     | statement
 //     | statement statement_list
-auto parse_statement_list(
-    std::vector<anzu::token>::const_iterator& it,
-    std::vector<anzu::token>::const_iterator end
-)
-    -> std::unique_ptr<anzu::node>
+auto parse_statement_list(token_iterator& it, token_iterator end) -> node_ptr
 {
     auto stmt_list = std::make_unique<anzu::node_sequence>();
     while (it != end) {
@@ -166,11 +161,10 @@ auto parse_statement_list(
     return stmt_list;
 }
 
-auto parse_if_body(
-    std::vector<anzu::token>::const_iterator& it,
-    std::vector<anzu::token>::const_iterator end
-)
-    -> std::unique_ptr<anzu::node>
+// if_body:
+//     | statement_list 'do' statement_list 'elif' if_body
+//     | statement_list 'do' statement_list 'end'
+auto parse_if_body(token_iterator& it, token_iterator end) -> node_ptr
 {
     auto condition = parse_statement_list(it, end);
     if (it->text != "do") {
@@ -209,6 +203,45 @@ auto parse_if_body(
     std::exit(1);
 }
 
+auto handle_list_literal(token_iterator& it, token_iterator end) -> anzu::object_list
+{
+    auto list = std::make_shared<std::vector<anzu::object>>();
+
+    ++it; // Skip "["
+    while (it != end && it->text != "]") {
+        if (it->text == "[") { // Nested list literal
+            list->push_back(handle_list_literal(it, end));
+        }
+        else if (it->type == token_type::string) {
+            list->push_back(it->text);
+        }
+        else if (it->type == token_type::number) {
+            list->push_back(anzu::to_int(it->text));
+        }
+        else if (it->text == "true") {
+            list->push_back(true);
+        }
+        else if (it->text == "false") {
+            list->push_back(false);
+        }
+        else if (it->text == ",") {
+            // Pass, delimiters currently optional, will enforce after this workes
+        }
+        else {
+            anzu::print("could not recognise token while parsing list literal: {}\n", it->text);
+            std::exit(1);
+        }
+        ++it;
+    }
+    if (it == end) {
+        anzu::print("end of file reached while parsing string literal\n");
+        std::exit(1);
+    }
+    ++it; // Skip "]"
+
+    return list;
+}
+
 // statement:
 //     | 'while' statement_list 'do' statement_list 'end'
 //     | 'while' statement_list 'do' 'end'
@@ -218,11 +251,7 @@ auto parse_if_body(
 //     | builtin
 //     | identifier
 // TODO: ALlow for break, continue, else and elif
-auto parse_statement(
-    std::vector<anzu::token>::const_iterator& it,
-    std::vector<anzu::token>::const_iterator end
-)
-    -> std::unique_ptr<anzu::node>
+auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr
 {
     if (it->text == "while") {
         ++it; // skip while
@@ -247,6 +276,20 @@ auto parse_statement(
         ++it; // skip if
         return parse_if_body(it, end);
     }
+    else if (it->type == token_type::number) {
+        const auto literal = anzu::object{anzu::to_int(it->text)};
+        ++it;
+        return std::make_unique<anzu::node_literal>(literal);
+    }
+    else if (it->type == token_type::string) {
+        const auto literal = anzu::object{it->text};
+        ++it;
+        return std::make_unique<anzu::node_literal>(literal);
+    }
+    else if (it->text == "[") {
+        auto list = handle_list_literal(it, end);
+        return std::make_unique<anzu::node_literal>(anzu::object{list});
+    }
     auto stmt = std::make_unique<anzu::node_expression>();
     stmt->tokens.push_back(*it);
     ++it;
@@ -255,7 +298,7 @@ auto parse_statement(
 
 }
 
-auto build_ast(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>
+auto build_ast(const std::vector<anzu::token>& tokens) -> node_ptr
 {
     auto it = tokens.begin();
     auto root = std::make_unique<anzu::node_sequence>();
