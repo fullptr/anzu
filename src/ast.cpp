@@ -166,6 +166,49 @@ auto parse_statement_list(
     return stmt_list;
 }
 
+auto parse_if_body(
+    std::vector<anzu::token>::const_iterator& it,
+    std::vector<anzu::token>::const_iterator end
+)
+    -> std::unique_ptr<anzu::node>
+{
+    auto condition = parse_statement_list(it, end);
+    if (it->text != "do") {
+        anzu::print("(if) parse error, expected 'do', got '{}'\n", it->text);
+        std::exit(1);
+    }
+    ++it; // skip do
+
+    auto if_stmt = std::make_unique<anzu::node_if_statement>();
+    if_stmt->condition = std::move(condition);
+    if_stmt->body = parse_statement_list(it, end);
+    if_stmt->else_body = nullptr;
+
+    if (it->text == "end") { // no else or elif
+        ++it; // skip end
+        return if_stmt;
+    }
+    
+    if (it->text == "else") {
+        ++it; // skip else
+        auto else_body = parse_statement_list(it, end);
+        if (it->text == "end") {
+            if_stmt->else_body = std::move(else_body);
+            ++it; // skip end
+            return if_stmt;
+        }
+    }
+
+    if (it->text == "elif") {
+        ++it; // skip elif
+        if_stmt->else_body = parse_if_body(it, end);
+        return if_stmt;
+    }
+
+    anzu::print("(if) parse error, expected 'end|elif|else', got '{}'\n", it->text);
+    std::exit(1);
+}
+
 // statement:
 //     | 'while' statement_list 'do' statement_list 'end'
 //     | 'while' statement_list 'do' 'end'
@@ -202,35 +245,7 @@ auto parse_statement(
     }
     else if (it->text == "if") {
         ++it; // skip if
-        auto condition = parse_statement_list(it, end);
-        if (it->text != "do") {
-            anzu::print("(if) parse error, expected 'do', got '{}'\n", it->text);
-            std::exit(1);
-        }
-        ++it; // skip do
-
-        auto if_stmt = std::make_unique<anzu::node_if_statement>();
-        if_stmt->condition = std::move(condition);
-        if_stmt->body = parse_statement_list(it, end);
-        if_stmt->else_body = nullptr;
-
-        if (it->text == "end") { // no else or elif
-            ++it; // skip end
-            return if_stmt;
-        }
-        
-        if (it->text == "else") {
-            ++it; // skip else
-            auto else_body = parse_statement_list(it, end);
-            if (it->text == "end") {
-                if_stmt->else_body = std::move(else_body);
-                ++it; // skip end
-                return if_stmt;
-            }
-        }
-
-        anzu::print("(if) parse error, expected 'end|elif|else', got '{}'\n", it->text);
-        std::exit(1);
+        return parse_if_body(it, end);
     }
     auto stmt = std::make_unique<anzu::node_expression>();
     stmt->tokens.push_back(*it);
