@@ -51,22 +51,30 @@ void run_program_debug(const std::vector<anzu::op>& program)
 
 void print_usage()
 {
-    anzu::print("usage: anzu.exe <program_file> (lex|parse|ast|debug|run)\n\n");
+    anzu::print("usage: anzu.exe <program_file> (lex|parse|tree|debug|run) [ast]\n\n");
     anzu::print("The Anzu Programming Language\n\n");
     anzu::print("options:\n");
     anzu::print("    lex   - displays the program after lexing into tokens\n");
     anzu::print("    parse - parses the program using the default parser and prints the bytecode\n");
-    anzu::print("    ast   - parses the program with the new ast parser and prints the bytecode\n");
+    anzu::print("    tree  - prints the ast (obviously ast must be specified)\n");
     anzu::print("    debug - executes the program and prints each op code executed\n");
     anzu::print("    run   - executes the program\n");
+    anzu::print("flags\n");
+    anzu::print("    ast   - uses the new ast-based parser\n");
 }
 
 int main(int argc, char** argv)
 {
-    if (argc != 3) {
+    if (argc != 3 && argc != 4) {
         print_usage();
         return 1;
     }
+    if (argc == 4 && std::string{argv[3]} != "ast") {
+        print_usage();
+        return 2;
+    }
+
+    const bool use_ast = argc == 4; 
 
     const auto file = std::string{argv[1]};
     const auto mode = std::string{argv[2]};
@@ -81,15 +89,24 @@ int main(int argc, char** argv)
     }
 
     std::vector<anzu::op> program;
-    if (mode == "ast") { // new parser, only available to dump the parse
+    if (use_ast) { // new parser, only available to dump the parse
         const auto root = anzu::build_ast(tokens);
         root->evaluate(program);
-        root->print();
+
+        if (mode == "tree") {
+            if (!use_ast) {
+                print_usage();
+                return 1;
+            }
+            root->print();
+            return 0;
+        }
+        
     } else {
         program = anzu::parse(tokens);
     }
 
-    if (mode == "parse" || mode == "ast") {
+    if (mode == "parse") {
         print_program(program);
         return 0;
     }
