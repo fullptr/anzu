@@ -89,19 +89,15 @@ int main(int argc, char** argv)
     }
 
     std::vector<anzu::op> program;
-    if (use_ast) { // new parser, only available to dump the parse
+    if (use_ast) {
         const auto root = anzu::build_ast(tokens);
         root->evaluate(program);
 
         if (mode == "tree") {
-            if (!use_ast) {
-                print_usage();
-                return 1;
-            }
             root->print();
             return 0;
         }
-        
+
     } else {
         program = anzu::parse(tokens);
     }

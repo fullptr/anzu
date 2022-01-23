@@ -71,16 +71,6 @@ struct node_if_statement : public node
     void print(int indent = 0) override;
 };
 
-struct node_bin_op : public node
-{
-    std::string           op;
-    std::unique_ptr<node> lhs;
-    std::unique_ptr<node> rhs;
-
-    void evaluate(std::vector<anzu::op>& program) override;
-    void print(int indent = 0) override;
-};
-
 struct node_literal : public node
 {
     anzu::object value;
