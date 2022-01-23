@@ -1,4 +1,6 @@
 #include "ast.hpp"
+#include "lexer.hpp"
+#include "object.hpp"
 #include "print.hpp"
 
 namespace anzu {
@@ -17,6 +19,17 @@ void node_expression::print(int indent)
     for (const auto& tok : tokens) {
         anzu::print("{}    {}\n", spaces, tok.text);
     }
+}
+
+void node_op::evaluate(std::vector<anzu::op>& program)
+{
+    program.push_back(op);
+}
+
+void node_op::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Op: {}\n", spaces, op);
 }
 
 void node_sequence::evaluate(std::vector<anzu::op>& program)
@@ -137,6 +150,89 @@ void node_literal::print(int indent)
 }
 
 namespace {
+
+// A temporary function during migration between the old and new parsers. This will
+// get smaller and smaller as we move these operations to be stored in proper tree
+// nodes.
+auto parse_op(token_iterator& it, token_iterator end) -> anzu::op
+{
+    const auto& token = it->text;
+    ++it;
+
+    if (token == STORE) {
+        return anzu::op_store{ .name=(it++)->text };
+    }
+    else if (token == POP) {
+        return anzu::op_pop{};
+    }
+    else if (token == DUP) {
+        return anzu::op_dup{};
+    }
+    else if (token == SWAP) {
+        return anzu::op_swap{};
+    }
+    else if (token == ROT) {
+        return anzu::op_rot{};
+    }
+    else if (token == OVER) {
+        return anzu::op_over{};
+    }
+    else if (token == ADD) {
+        return anzu::op_add{};
+    }
+    else if (token == SUB) {
+        return anzu::op_sub{};
+    }
+    else if (token == MUL) {
+        return anzu::op_mul{};
+    }
+    else if (token == DIV) {
+        return anzu::op_div{};
+    }
+    else if (token == MOD) {
+        return anzu::op_mod{};
+    }
+    else if (token == EQ) {
+        return anzu::op_eq{};
+    }
+    else if (token == NE) {
+        return anzu::op_ne{};
+    }
+    else if (token == LT) {
+        return anzu::op_lt{};
+    }
+    else if (token == LE) {
+        return anzu::op_le{};
+    }
+    else if (token == GT) {
+        return anzu::op_gt{};
+    }
+    else if (token == GE) {
+        return anzu::op_ge{};
+    }
+    else if (token == OR) {
+        return anzu::op_or{};
+    }
+    else if (token == AND) {
+        return anzu::op_and{};
+    }
+    else if (token == INPUT) {
+        return anzu::op_input{};
+    }
+    else if (token == DUMP) {
+        return anzu::op_dump{};
+    }
+    else if (token == TO_INT) {
+        return anzu::op_to_int{};
+    }
+    else if (token == TO_BOOL) {
+        return anzu::op_to_bool{};
+    }
+    else if (token == TO_STR) {
+        return anzu::op_to_str{};
+    }
+    return anzu::op_push_var{.name=token};
+}
 
 auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr;
 
@@ -290,10 +386,11 @@ auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr
         auto list = handle_list_literal(it, end);
         return std::make_unique<anzu::node_literal>(anzu::object{list});
     }
-    auto stmt = std::make_unique<anzu::node_expression>();
-    stmt->tokens.push_back(*it);
-    ++it;
-    return stmt;
+    else if (it != end) {
+        auto stmt = std::make_unique<anzu::node_op>(parse_op(it, end));
+        return stmt;
+    }
+    return nullptr;
 }
 
 }

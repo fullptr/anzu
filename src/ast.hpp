@@ -2,6 +2,7 @@
 #include "op_codes.hpp"
 #include "object.hpp"
 #include "lexer.hpp"
+#include "parser.hpp"
 
 #include <memory>
 #include <vector>
@@ -27,6 +28,18 @@ struct node_expression : public node
 
     node_expression(const std::vector<anzu::token>& toks) : tokens(toks) {}
     node_expression() = default;
+    void evaluate(std::vector<anzu::op>& program) override;
+    void print(int indent = 0) override;
+};
+
+// This is just a temporary node for storing bytecode, with the goal
+// of retiring the old parser. This will eventually get used less and less as more code
+// gets translated to proper nodes.
+struct node_op : public node
+{
+    anzu::op op;
+
+    node_op(const anzu::op& new_op) : op(new_op) {}
     void evaluate(std::vector<anzu::op>& program) override;
     void print(int indent = 0) override;
 };

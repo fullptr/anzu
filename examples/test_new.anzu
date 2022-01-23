@@ -1,12 +1,13 @@
 # fibbonacci to demonstrate functions and recursion
 
+5 -> i
 
-if i == 5 do
-    while 1 < 2 do end
-elif i == 6 do
-    while 1 < 2 do end
-elif i == 7 do
-    while 1 < 2 do end
+if i 5 == do
+    1 .
+elif i 6 == do
+    2 .
+elif i 7 == do
+    3 .
 else
-    while 1 < 2 do end
+    4 .
 end
