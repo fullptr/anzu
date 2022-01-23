@@ -8,6 +8,28 @@ namespace anzu {
 using token_iterator = std::vector<anzu::token>::const_iterator;
 using node_ptr       = std::unique_ptr<anzu::node>;
 
+namespace {
+
+auto consume_maybe(token_iterator& it, std::string_view tok) -> bool
+{
+    if (it->text == tok) {
+        ++it; // skip end
+        return true;
+    }
+    return false;
+}
+
+auto consume_only(token_iterator& it, std::string_view tok) -> void
+{
+    if (it->text != tok) {
+        anzu::print("parse error: expected '{}', got '{}'\n", tok, it->text);
+        std::exit(1);
+    }
+    ++it;
+}
+
+}
+
 void node_expression::evaluate(std::vector<anzu::op>& program)
 {
 }
@@ -193,40 +215,26 @@ auto parse_statement_list(token_iterator& it, token_iterator end) -> node_ptr
 auto parse_if_body(token_iterator& it, token_iterator end) -> node_ptr
 {
     auto condition = parse_statement_list(it, end);
-    if (it->text != "do") {
-        anzu::print("(if) parse error, expected 'do', got '{}'\n", it->text);
-        std::exit(1);
-    }
-    ++it; // skip do
+    consume_only(it, "do");
 
     auto if_stmt = std::make_unique<anzu::node_if_statement>();
     if_stmt->condition = std::move(condition);
     if_stmt->body = parse_statement_list(it, end);
-    if_stmt->else_body = nullptr;
 
-    if (it->text == "end") { // no else or elif
-        ++it; // skip end
-        return if_stmt;
-    }
-    
-    if (it->text == "else") {
-        ++it; // skip else
-        auto else_body = parse_statement_list(it, end);
-        if (it->text == "end") {
-            if_stmt->else_body = std::move(else_body);
-            ++it; // skip end
-            return if_stmt;
-        }
-    }
-
-    if (it->text == "elif") {
-        ++it; // skip elif
+    if (consume_maybe(it, "elif")) {
         if_stmt->else_body = parse_if_body(it, end);
         return if_stmt;
     }
 
-    anzu::print("(if) parse error, expected 'end|elif|else', got '{}'\n", it->text);
-    std::exit(1);
+    if (consume_maybe(it, "else")) {
+        auto else_body = parse_statement_list(it, end);
+        consume_only(it, "end");
+        if_stmt->else_body = std::move(else_body);
+        return if_stmt;
+    }
+    
+    consume_only(it, "end");
+    return if_stmt;
 }
 
 auto handle_list_literal(token_iterator& it, token_iterator end) -> anzu::object_list
