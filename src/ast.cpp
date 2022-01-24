@@ -39,9 +39,9 @@ auto consume_only(token_iterator& it, std::string_view tok) -> void
 
 }
 
-void node_op::evaluate(std::vector<anzu::op>& program)
+void node_op::evaluate(ast_eval_context& ctx)
 {
-    program.push_back(op);
+    ctx.program.push_back(op);
 }
 
 void node_op::print(int indent)
@@ -50,10 +50,10 @@ void node_op::print(int indent)
     anzu::print("{}Op: {}\n", spaces, op);
 }
 
-void node_sequence::evaluate(std::vector<anzu::op>& program)
+void node_sequence::evaluate(ast_eval_context& ctx)
 {
     for (const auto& node : sequence) {
-        node->evaluate(program);
+        node->evaluate(ctx);
     }
 }
 
@@ -66,20 +66,20 @@ void node_sequence::print(int indent)
     }
 }
 
-void node_while_statement::evaluate(std::vector<anzu::op>& program)
+void node_while_statement::evaluate(ast_eval_context& ctx)
 {
-    const auto while_pos = std::ssize(program);
-    program.emplace_back(anzu::op_while{});
+    const auto while_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_while{});
 
-    condition->evaluate(program);
+    condition->evaluate(ctx);
     
-    const auto do_pos = std::ssize(program);
-    program.emplace_back(anzu::op_do{});
+    const auto do_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_do{});
 
-    body->evaluate(program);
+    body->evaluate(ctx);
 
-    program.emplace_back(anzu::op_while_end{ .jump=while_pos }); // Jump back to start
-    program[do_pos].as<anzu::op_do>().jump = std::ssize(program); // Jump past the end if false
+    ctx.program.emplace_back(anzu::op_while_end{ .jump=while_pos }); // Jump back to start
+    ctx.program[do_pos].as<anzu::op_do>().jump = std::ssize(ctx.program); // Jump past the end if false
 }
 
 void node_while_statement::print(int indent)
@@ -92,30 +92,30 @@ void node_while_statement::print(int indent)
     body->print(indent + 1);
 }
 
-void node_if_statement::evaluate(std::vector<anzu::op>& program)
+void node_if_statement::evaluate(ast_eval_context& ctx)
 {
-    const auto if_pos = std::ssize(program);
-    program.emplace_back(anzu::op_if{});
+    const auto if_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_if{});
 
-    condition->evaluate(program);
+    condition->evaluate(ctx);
     
-    const auto do_pos = std::ssize(program);
-    program.emplace_back(anzu::op_do{});
-    body->evaluate(program);
+    const auto do_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_do{});
+    body->evaluate(ctx);
 
     auto else_pos = std::intptr_t{-1};
     if (else_body) {
-        else_pos = std::ssize(program);
-        program.emplace_back(anzu::op_else{});
-        else_body->evaluate(program);
+        else_pos = std::ssize(ctx.program);
+        ctx.program.emplace_back(anzu::op_else{});
+        else_body->evaluate(ctx);
     }
 
-    program.emplace_back(anzu::op_if_end{});
+    ctx.program.emplace_back(anzu::op_if_end{});
     if (else_pos == -1) {
-        program[do_pos].as<anzu::op_do>().jump = std::ssize(program); // Jump past the end if false
+        ctx.program[do_pos].as<anzu::op_do>().jump = std::ssize(ctx.program); // Jump past the end if false
     } else {
-        program[do_pos].as<anzu::op_do>().jump = else_pos + 1; // Jump into the else block if false
-        program[else_pos].as<anzu::op_else>().jump = std::ssize(program); // Jump past the end if false
+        ctx.program[do_pos].as<anzu::op_do>().jump = else_pos + 1; // Jump into the else block if false
+        ctx.program[else_pos].as<anzu::op_else>().jump = std::ssize(ctx.program); // Jump past the end if false
     }
 }
 
@@ -133,15 +133,15 @@ void node_if_statement::print(int indent)
     }
 }
 
-void node_function_definition::evaluate(std::vector<anzu::op>& program)
+void node_function_definition::evaluate(ast_eval_context& ctx)
 {
-    const auto function_pos = std::ssize(program);
-    program.push_back(anzu::op_function{ .name=name });
-    body->evaluate(program);
-    const auto function_end_pos = std::ssize(program);
-    program.push_back(anzu::op_function_end{ .retc=retc });
+    const auto function_pos = std::ssize(ctx.program);
+    ctx.program.push_back(anzu::op_function{ .name=name });
+    body->evaluate(ctx);
+    const auto function_end_pos = std::ssize(ctx.program);
+    ctx.program.push_back(anzu::op_function_end{ .retc=retc });
 
-    program[function_pos].as<anzu::op_function>().jump = function_end_pos + 1;
+    ctx.program[function_pos].as<anzu::op_function>().jump = function_end_pos + 1;
 }
 
 void node_function_definition::print(int indent)
@@ -154,7 +154,7 @@ void node_function_definition::print(int indent)
     body->print(indent + 1);
 }
 
-void node_function_call::evaluate(std::vector<anzu::op>& program)
+void node_function_call::evaluate(ast_eval_context& ctx)
 {
     
 }
@@ -165,9 +165,9 @@ void node_function_call::print(int indent)
     anzu::print("{}FunctionCall: {}\n", spaces, name);
 }
 
-void node_literal::evaluate(std::vector<anzu::op>& program)
+void node_literal::evaluate(ast_eval_context& ctx)
 {
-    program.emplace_back(anzu::op_push_const{ .value=value });
+    ctx.program.emplace_back(anzu::op_push_const{ .value=value });
 }
 
 void node_literal::print(int indent)

@@ -91,7 +91,9 @@ int main(int argc, char** argv)
     std::vector<anzu::op> program;
     if (use_ast) {
         const auto root = anzu::build_ast(tokens);
-        root->evaluate(program);
+        anzu::ast_eval_context ctx;
+        root->evaluate(ctx);
+        program = std::move(ctx.program);
 
         if (mode == "tree") {
             root->print();
