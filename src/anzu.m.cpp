@@ -78,16 +78,13 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    std::vector<anzu::op> program;
-    const auto root = anzu::build_ast(tokens);
+    const auto root = anzu::parse(tokens);
     if (mode == "parse") {
         root->print();
         return 0;
     }
 
-    anzu::ast_eval_context ctx;
-    root->evaluate(ctx);
-    program = std::move(ctx.program);
+    const auto program = anzu::compile(root);
     if (mode == "com") {
         print_program(program);
         return 0;

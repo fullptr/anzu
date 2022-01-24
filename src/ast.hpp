@@ -192,6 +192,7 @@ struct node_literal : public node
     void print(int indent = 0) override;
 };
 
-auto build_ast(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>;
+auto parse(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>;
+auto compile(const std::unique_ptr<anzu::node>& root) -> std::vector<anzu::op>;
 
 }

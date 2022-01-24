@@ -445,7 +445,7 @@ auto parse_statement(parser_context& ctx) -> node_ptr
 
 }
 
-auto build_ast(const std::vector<anzu::token>& tokens) -> node_ptr
+auto parse(const std::vector<anzu::token>& tokens) -> node_ptr
 {
     auto ctx = anzu::parser_context{
         .curr = tokens.begin(),
@@ -457,6 +457,13 @@ auto build_ast(const std::vector<anzu::token>& tokens) -> node_ptr
         root->sequence.push_back(parse_statement(ctx));
     }
     return root;
+}
+
+auto compile(const std::unique_ptr<anzu::node>& root) -> std::vector<anzu::op>
+{
+    anzu::ast_eval_context ctx;
+    root->evaluate(ctx);
+    return ctx.program;
 }
 
 }
