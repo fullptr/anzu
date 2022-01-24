@@ -204,7 +204,7 @@ struct op_function_call
 
 struct op_return
 {
-    int retc;
+    int retc = -1;
 
     std::string to_string() const
     {

@@ -155,20 +155,20 @@ void node_function_definition::evaluate(ast_eval_context& ctx)
         .retc=retc,
         .ptr=function_pos
     };
-
-    if (!ctx.current_function.empty()) {
-        anzu::print("cannot nest functions\n");
-        std::exit(1);
-    }
     
-    ctx.current_function = name;
     body->evaluate(ctx);
-    ctx.current_function.clear();
 
     const auto function_end_pos = std::ssize(ctx.program);
     ctx.program.push_back(anzu::op_function_end{ .retc=retc });
 
     ctx.program[function_pos].as<anzu::op_function>().jump = function_end_pos + 1;
+
+    // Set retc on all return statements
+    for (std::intptr_t idx = function_pos + 1; idx != function_end_pos; ++idx) {
+        if (auto op = ctx.program[idx].get_if<anzu::op_return>()) {
+            op->retc = retc;
+        }
+    }
 }
 
 void node_function_definition::print(int indent)
@@ -232,13 +232,7 @@ void node_continue::print(int indent)
 
 void node_return::evaluate(ast_eval_context& ctx)
 {
-    if (ctx.current_function.empty()) {
-        anzu::print("'return' can only be used within a function\n");
-        std::exit(1);
-    }
-
-    auto retc = ctx.functions.at(ctx.current_function).retc;
-    ctx.program.emplace_back(anzu::op_return{ .retc=retc });
+    ctx.program.emplace_back(anzu::op_return{});
 }
 
 void node_return::print(int indent)

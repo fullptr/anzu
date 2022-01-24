@@ -22,7 +22,6 @@ struct ast_eval_context
 
     std::vector<anzu::op> program;
     std::unordered_map<std::string, function_def> functions;
-    std::string current_function;
 };
 
 // I normally avoid inheritance trees, however dealing with variants here was a bit
