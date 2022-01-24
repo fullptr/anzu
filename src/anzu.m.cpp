@@ -1,7 +1,6 @@
 #include "stack_frame.hpp"
 #include "op_codes.hpp"
 #include "lexer.hpp"
-#include "parser.hpp"
 #include "print.hpp"
 #include "ast.hpp"
 
@@ -51,16 +50,14 @@ void run_program_debug(const std::vector<anzu::op>& program)
 
 void print_usage()
 {
-    anzu::print("usage: anzu.exe <program_file> (lex|parse|tree|debug|run) [ast]\n\n");
+    anzu::print("usage: anzu.exe <program_file> (lex|parse|com|debug|run)\n\n");
     anzu::print("The Anzu Programming Language\n\n");
     anzu::print("options:\n");
-    anzu::print("    lex   - displays the program after lexing into tokens\n");
-    anzu::print("    parse - parses the program using the default parser and prints the bytecode\n");
-    anzu::print("    tree  - prints the ast (obviously ast must be specified)\n");
-    anzu::print("    debug - executes the program and prints each op code executed\n");
-    anzu::print("    run   - executes the program\n");
-    anzu::print("flags\n");
-    anzu::print("    ast   - uses the new ast-based parser\n");
+    anzu::print("    lex   - runs the lexer and prints the tokens\n");
+    anzu::print("    parse - runs the parser and prints the AST\n");
+    anzu::print("    com   - runs the compiler and prints the bytecode\n");
+    anzu::print("    debug - runs the program and prints each op code executed\n");
+    anzu::print("    run   - runs the program\n");
 }
 
 int main(int argc, char** argv)
@@ -69,12 +66,6 @@ int main(int argc, char** argv)
         print_usage();
         return 1;
     }
-    if (argc == 4 && std::string{argv[3]} != "ast") {
-        print_usage();
-        return 2;
-    }
-
-    const bool use_ast = argc == 4; 
 
     const auto file = std::string{argv[1]};
     const auto mode = std::string{argv[2]};
@@ -82,29 +73,22 @@ int main(int argc, char** argv)
     anzu::print("loading file '{}'\n", file);
 
     const auto tokens = anzu::lex(file);
-
     if (mode == "lex") {
         print_tokens(tokens);
         return 0;
     }
 
     std::vector<anzu::op> program;
-    if (use_ast) {
-        const auto root = anzu::build_ast(tokens);
-        anzu::ast_eval_context ctx;
-        root->evaluate(ctx);
-        program = std::move(ctx.program);
-
-        if (mode == "tree") {
-            root->print();
-            return 0;
-        }
-
-    } else {
-        program = anzu::parse(tokens);
+    const auto root = anzu::build_ast(tokens);
+    if (mode == "parse") {
+        root->print();
+        return 0;
     }
 
-    if (mode == "parse") {
+    anzu::ast_eval_context ctx;
+    root->evaluate(ctx);
+    program = std::move(ctx.program);
+    if (mode == "com") {
         print_program(program);
         return 0;
     }
