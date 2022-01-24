@@ -6,19 +6,7 @@
 #include <tuple>
 
 namespace anzu {
-
-using token_iterator = std::vector<anzu::token>::const_iterator;
-using node_ptr       = std::unique_ptr<anzu::node>;
-
 namespace {
-
-struct parser_context
-{
-    token_iterator       curr;
-    const token_iterator end;
-
-    std::unordered_set<std::string> function_names;
-};
 
 auto consume_maybe(token_iterator& it, std::string_view tok) -> bool
 {
@@ -39,7 +27,7 @@ auto consume_only(token_iterator& it, std::string_view tok) -> void
 
 }
 
-void node_op::evaluate(ast_eval_context& ctx)
+void node_op::evaluate(compiler_context& ctx)
 {
     ctx.program.push_back(op);
 }
@@ -50,7 +38,7 @@ void node_op::print(int indent)
     anzu::print("{}Op: {}\n", spaces, op);
 }
 
-void node_sequence::evaluate(ast_eval_context& ctx)
+void node_sequence::evaluate(compiler_context& ctx)
 {
     for (const auto& node : sequence) {
         node->evaluate(ctx);
@@ -66,7 +54,7 @@ void node_sequence::print(int indent)
     }
 }
 
-void node_while_statement::evaluate(ast_eval_context& ctx)
+void node_while_statement::evaluate(compiler_context& ctx)
 {
     const auto while_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_while{});
@@ -105,7 +93,7 @@ void node_while_statement::print(int indent)
     body->print(indent + 1);
 }
 
-void node_if_statement::evaluate(ast_eval_context& ctx)
+void node_if_statement::evaluate(compiler_context& ctx)
 {
     const auto if_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_if{});
@@ -146,7 +134,7 @@ void node_if_statement::print(int indent)
     }
 }
 
-void node_function_definition::evaluate(ast_eval_context& ctx)
+void node_function_definition::evaluate(compiler_context& ctx)
 {
     const auto function_pos = std::ssize(ctx.program);
     ctx.program.push_back(anzu::op_function{ .name=name });
@@ -181,7 +169,7 @@ void node_function_definition::print(int indent)
     body->print(indent + 1);
 }
 
-void node_function_call::evaluate(ast_eval_context& ctx)
+void node_function_call::evaluate(compiler_context& ctx)
 {
     auto function = ctx.functions.at(name);
     ctx.program.push_back(anzu::op_function_call{
@@ -197,7 +185,7 @@ void node_function_call::print(int indent)
     anzu::print("{}FunctionCall: {}\n", spaces, name);
 }
 
-void node_builtin_call::evaluate(ast_eval_context& ctx)
+void node_builtin_call::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_builtin_function_call{
         .name=name,
@@ -211,7 +199,7 @@ void node_builtin_call::print(int indent)
     anzu::print("{}BuiltinCall: {}\n", spaces, name);
 }
 
-void node_literal::evaluate(ast_eval_context& ctx)
+void node_literal::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_push_const{ .value=value });
 }
@@ -222,7 +210,7 @@ void node_literal::print(int indent)
     anzu::print("{}Literal: {}\n", spaces, value);
 }
 
-void node_break::evaluate(ast_eval_context& ctx)
+void node_break::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_break{});
 }
@@ -233,7 +221,7 @@ void node_break::print(int indent)
     anzu::print("{}Break\n", spaces);
 }
 
-void node_continue::evaluate(ast_eval_context& ctx)
+void node_continue::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_continue{});
 }
@@ -244,7 +232,7 @@ void node_continue::print(int indent)
     anzu::print("{}Continue\n", spaces);
 }
 
-void node_return::evaluate(ast_eval_context& ctx)
+void node_return::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_return{});
 }
@@ -461,7 +449,7 @@ auto parse(const std::vector<anzu::token>& tokens) -> node_ptr
 
 auto compile(const std::unique_ptr<anzu::node>& root) -> std::vector<anzu::op>
 {
-    anzu::ast_eval_context ctx;
+    anzu::compiler_context ctx;
     root->evaluate(ctx);
     return ctx.program;
 }
