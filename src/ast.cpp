@@ -197,6 +197,20 @@ void node_function_call::print(int indent)
     anzu::print("{}FunctionCall: {}\n", spaces, name);
 }
 
+void node_builtin_call::evaluate(ast_eval_context& ctx)
+{
+    ctx.program.emplace_back(anzu::op_builtin_function_call{
+        .name=name,
+        .func=anzu::fetch_builtin(name)
+    });
+}
+
+void node_builtin_call::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}BuiltinCall: {}\n", spaces, name);
+}
+
 void node_literal::evaluate(ast_eval_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_push_const{ .value=value });
@@ -419,6 +433,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     }
     else if (ctx.function_names.contains(ctx.curr->text)) {
         return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
+    }
+    else if (anzu::is_builtin(ctx.curr->text)) {
+        return std::make_unique<anzu::node_builtin_call>((ctx.curr++)->text);
     }
     else if (ctx.curr != ctx.end) {
         return std::make_unique<anzu::node_op>(parse_op(ctx));

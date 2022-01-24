@@ -94,6 +94,15 @@ struct node_function_call : public node
     void print(int indent = 0) override;
 };
 
+struct node_builtin_call : public node
+{
+    std::string name;
+
+    node_builtin_call(const std::string& n) : name(n) {}
+    void evaluate(ast_eval_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
 struct node_break : public node
 {
     void evaluate(ast_eval_context& ctx) override;
