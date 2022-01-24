@@ -29,19 +29,6 @@ auto consume_only(token_iterator& it, std::string_view tok) -> void
 
 }
 
-void node_expression::evaluate(std::vector<anzu::op>& program)
-{
-}
-
-void node_expression::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Statement:\n", spaces);
-    for (const auto& tok : tokens) {
-        anzu::print("{}    {}\n", spaces, tok.text);
-    }
-}
-
 void node_op::evaluate(std::vector<anzu::op>& program)
 {
     program.push_back(op);
@@ -200,11 +187,11 @@ auto parse_statement_list(token_iterator& it, token_iterator end) -> node_ptr
 {
     static const auto sentinel = std::unordered_set<std::string_view>{"end", "elif", "do", "else"};
 
-    auto stmt_list = std::make_unique<anzu::node_sequence>();
+    auto stmt = std::make_unique<node_sequence>();
     while (it != end && !sentinel.contains(it->text)) {
-        stmt_list->sequence.push_back(parse_statement(it, end));
+        stmt->sequence.push_back(parse_statement(it, end));
     }
-    return stmt_list;
+    return stmt;
 }
 
 // if_body:
@@ -212,23 +199,23 @@ auto parse_statement_list(token_iterator& it, token_iterator end) -> node_ptr
 //     | statement_list 'do' statement_list 'end'
 auto parse_if_body(token_iterator& it, token_iterator end) -> node_ptr
 {
-    auto if_stmt = std::make_unique<anzu::node_if_statement>();
-    if_stmt->condition = parse_statement_list(it, end);
+    auto stmt = std::make_unique<node_if_statement>();
+    stmt->condition = parse_statement_list(it, end);
     consume_only(it, "do");
-    if_stmt->body = parse_statement_list(it, end);
+    stmt->body = parse_statement_list(it, end);
 
     if (consume_maybe(it, "elif")) {
-        if_stmt->else_body = parse_if_body(it, end);
+        stmt->else_body = parse_if_body(it, end);
     }
     else if (consume_maybe(it, "else")) {
-        if_stmt->else_body = parse_statement_list(it, end);
+        stmt->else_body = parse_statement_list(it, end);
         consume_only(it, "end");
     }
     else {
         consume_only(it, "end");
     }
     
-    return if_stmt;
+    return stmt;
 }
 
 auto handle_list_literal(token_iterator& it, token_iterator end) -> anzu::object_list
@@ -278,7 +265,7 @@ auto handle_list_literal(token_iterator& it, token_iterator end) -> anzu::object
 //     | string_literal
 //     | builtin
 //     | identifier
-// TODO: ALlow for break, continue, else and elif
+// TODO: ALlow for break, continue
 auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr
 {
     if (consume_maybe(it, "while")) {
@@ -293,18 +280,14 @@ auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr
         return parse_if_body(it, end);
     }
     else if (it->type == token_type::number) {
-        const auto literal = anzu::object{anzu::to_int(it->text)};
-        ++it;
-        return std::make_unique<anzu::node_literal>(literal);
+        return std::make_unique<anzu::node_literal>(anzu::to_int((it++)->text));
     }
     else if (it->type == token_type::string) {
-        const auto literal = anzu::object{it->text};
-        ++it;
-        return std::make_unique<anzu::node_literal>(literal);
+        return std::make_unique<anzu::node_literal>((it++)->text);
     }
     else if (it->text == "[") {
         auto list = handle_list_literal(it, end);
-        return std::make_unique<anzu::node_literal>(anzu::object{list});
+        return std::make_unique<anzu::node_literal>(list);
     }
     else if (it != end) {
         return std::make_unique<anzu::node_op>(parse_op(it, end));
