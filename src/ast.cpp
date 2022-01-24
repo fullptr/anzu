@@ -143,7 +143,10 @@ void node_function_definition::evaluate(ast_eval_context& ctx)
         .ptr=function_pos
     };
     
+    ctx.current_function.push(name);
     body->evaluate(ctx);
+    ctx.current_function.pop();
+
     const auto function_end_pos = std::ssize(ctx.program);
     ctx.program.push_back(anzu::op_function_end{ .retc=retc });
 
@@ -189,6 +192,12 @@ void node_literal::print(int indent)
 
 void node_return::evaluate(ast_eval_context& ctx)
 {
+    if (ctx.current_function.size() == 0) {
+        anzu::print("'return' can only be used within a function\n");
+        std::exit(1);
+    }
+    auto f = ctx.current_function.top();
+    auto retc = ctx.functions.at(f).retc;
     ctx.program.emplace_back(anzu::op_return{ .retc=retc });
 }
 
