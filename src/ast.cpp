@@ -3,6 +3,8 @@
 #include "object.hpp"
 #include "print.hpp"
 
+#include <tuple>
+
 namespace anzu {
 
 using token_iterator = std::vector<anzu::token>::const_iterator;
@@ -14,6 +16,8 @@ struct parser_context
 {
     token_iterator       curr;
     const token_iterator end;
+
+    std::unordered_set<std::string> function_names;
 };
 
 auto consume_maybe(token_iterator& it, std::string_view tok) -> bool
@@ -148,6 +152,17 @@ void node_function_definition::print(int indent)
     anzu::print("{}- Retc: {}\n", spaces, retc);
     anzu::print("{}- Body:\n", spaces);
     body->print(indent + 1);
+}
+
+void node_function_call::evaluate(std::vector<anzu::op>& program)
+{
+    
+}
+
+void node_function_call::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}FunctionCall: {}\n", spaces, name);
 }
 
 void node_literal::evaluate(std::vector<anzu::op>& program)
@@ -290,6 +305,14 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     if (consume_maybe(ctx.curr, "function")) {
         auto stmt = std::make_unique<anzu::node_function_definition>();
         stmt->name = (ctx.curr++)->text;
+
+        bool success = false;
+        std::tie(std::ignore, success) = ctx.function_names.insert(stmt->name);
+        if (!success) {
+            anzu::print("error: multiple defintions for function '{}'\n", stmt->name);
+            std::exit(1);
+        }
+
         stmt->argc = anzu::to_int((ctx.curr++)->text);
         stmt->retc = anzu::to_int((ctx.curr++)->text);
         stmt->body = parse_statement_list(ctx);
@@ -316,6 +339,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (ctx.curr->text == "[") {
         auto list = handle_list_literal(ctx);
         return std::make_unique<anzu::node_literal>(list);
+    }
+    else if (ctx.function_names.contains(ctx.curr->text)) {
+        return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
     }
     else if (ctx.curr != ctx.end) {
         return std::make_unique<anzu::node_op>(parse_op(ctx));

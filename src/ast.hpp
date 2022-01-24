@@ -70,6 +70,15 @@ struct node_function_definition : public node
     void print(int indent = 0) override;
 };
 
+struct node_function_call : public node
+{
+    std::string name;
+
+    node_function_call(const std::string& n) : name(n) {}
+    void evaluate(std::vector<anzu::op>& program) override;
+    void print(int indent = 0) override;
+};
+
 struct node_literal : public node
 {
     anzu::object value;
