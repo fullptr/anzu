@@ -162,7 +162,7 @@ struct op_do
 
 struct op_function
 {
-    std::string    name;
+    std::string   name;
     std::intptr_t jump = -1;  // Jumps to end of function so it isnt invoked when running.
 
     std::string to_string() const

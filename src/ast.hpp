@@ -61,6 +61,7 @@ struct node_if_statement : public node
 
 struct node_function_definition : public node
 {
+    std::string name;
     int argc;
     int retc;
     std::unique_ptr<node> body;

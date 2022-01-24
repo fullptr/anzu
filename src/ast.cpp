@@ -125,10 +125,23 @@ void node_if_statement::print(int indent)
 
 void node_function_definition::evaluate(std::vector<anzu::op>& program)
 {
+    const auto function_pos = std::ssize(program);
+    program.push_back(anzu::op_function{ .name=name });
+    body->evaluate(program);
+    const auto function_end_pos = std::ssize(program);
+    program.push_back(anzu::op_function_end{ .retc=retc });
+
+    program[function_pos].as<anzu::op_function>().jump = function_end_pos + 1;
 }
 
 void node_function_definition::print(int indent)
 {
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}FunctionDef:\n", spaces);
+    anzu::print("{}- Argc: {}\n", spaces, argc);
+    anzu::print("{}- Retc: {}\n", spaces, retc);
+    anzu::print("{}- Body:\n", spaces);
+    body->print(indent + 1);
 }
 
 void node_literal::evaluate(std::vector<anzu::op>& program)
@@ -268,13 +281,22 @@ auto handle_list_literal(token_iterator& it, token_iterator end) -> anzu::object
 // TODO: ALlow for break, continue
 auto parse_statement(token_iterator& it, token_iterator end) -> node_ptr
 {
-    if (consume_maybe(it, "while")) {
-        auto while_stmt = std::make_unique<anzu::node_while_statement>();
-        while_stmt->condition = parse_statement_list(it, end);
-        consume_only(it, "do");
-        while_stmt->body = parse_statement_list(it, end);
+    if (consume_maybe(it, "function")) {
+        auto stmt = std::make_unique<anzu::node_function_definition>();
+        stmt->name = (it++)->text;
+        stmt->argc = anzu::to_int((it++)->text);
+        stmt->retc = anzu::to_int((it++)->text);
+        stmt->body = parse_statement_list(it, end);
         consume_only(it, "end");
-        return while_stmt;
+        return stmt;
+    }
+    else if (consume_maybe(it, "while")) {
+        auto stmt = std::make_unique<anzu::node_while_statement>();
+        stmt->condition = parse_statement_list(it, end);
+        consume_only(it, "do");
+        stmt->body = parse_statement_list(it, end);
+        consume_only(it, "end");
+        return stmt;
     }
     else if (consume_maybe(it, "if")) {
         return parse_if_body(it, end);
