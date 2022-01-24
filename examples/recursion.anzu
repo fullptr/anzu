@@ -20,3 +20,11 @@ end
     dup fibb .
     1 +
 end
+
+0 while dup 10 < do
+    dup . "\n" .
+    if dup 6 == do
+        break
+    end
+    1 +
+end

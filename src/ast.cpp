@@ -78,8 +78,21 @@ void node_while_statement::evaluate(ast_eval_context& ctx)
 
     body->evaluate(ctx);
 
+    const auto end_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_while_end{ .jump=while_pos }); // Jump back to start
-    ctx.program[do_pos].as<anzu::op_do>().jump = std::ssize(ctx.program); // Jump past the end if false
+
+    // Setup the control flow jumps
+    ctx.program[do_pos].as<anzu::op_do>().jump = end_pos + 1; // Jump past the end if false
+    for (std::intptr_t idx = do_pos + 1; idx != end_pos; ++idx) {
+        // Only set break and continue jumps if they are currently not set, they may be set it
+        // there are nested while loops
+        if (auto op = ctx.program[idx].get_if<anzu::op_break>(); op && op->jump == -1) {
+            op->jump = end_pos + 1;
+        }
+        else if (auto op = ctx.program[idx].get_if<anzu::op_continue>(); op && op->jump == -1) {
+            op->jump = while_pos;
+        }
+    }
 }
 
 void node_while_statement::print(int indent)
@@ -142,10 +155,15 @@ void node_function_definition::evaluate(ast_eval_context& ctx)
         .retc=retc,
         .ptr=function_pos
     };
+
+    if (!ctx.current_function.empty()) {
+        anzu::print("cannot nest functions\n");
+        std::exit(1);
+    }
     
-    ctx.current_function.push(name);
+    ctx.current_function = name;
     body->evaluate(ctx);
-    ctx.current_function.pop();
+    ctx.current_function.clear();
 
     const auto function_end_pos = std::ssize(ctx.program);
     ctx.program.push_back(anzu::op_function_end{ .retc=retc });
@@ -190,14 +208,36 @@ void node_literal::print(int indent)
     anzu::print("{}Literal: {}\n", spaces, value);
 }
 
+void node_break::evaluate(ast_eval_context& ctx)
+{
+    ctx.program.emplace_back(anzu::op_break{});
+}
+
+void node_break::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Break\n", spaces);
+}
+
+void node_continue::evaluate(ast_eval_context& ctx)
+{
+    ctx.program.emplace_back(anzu::op_continue{});
+}
+
+void node_continue::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Continue\n", spaces);
+}
+
 void node_return::evaluate(ast_eval_context& ctx)
 {
-    if (ctx.current_function.size() == 0) {
+    if (ctx.current_function.empty()) {
         anzu::print("'return' can only be used within a function\n");
         std::exit(1);
     }
-    auto f = ctx.current_function.top();
-    auto retc = ctx.functions.at(f).retc;
+
+    auto retc = ctx.functions.at(ctx.current_function).retc;
     ctx.program.emplace_back(anzu::op_return{ .retc=retc });
 }
 
@@ -327,6 +367,8 @@ auto handle_list_literal(parser_context& ctx) -> anzu::object_list
 //     | 'while' statement_list 'do' 'end'
 //     | 'if' if_body
 //     | 'return'
+//     | 'continue'
+//     | 'break'
 //     | num_literal
 //     | string_literal
 //     | builtin
@@ -364,6 +406,12 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     }
     else if (consume_maybe(ctx.curr, "return")) {
         return std::make_unique<anzu::node_return>(); 
+    }
+    else if (consume_maybe(ctx.curr, "break")) {
+        return std::make_unique<anzu::node_break>(); 
+    }
+    else if (consume_maybe(ctx.curr, "continue")) {
+        return std::make_unique<anzu::node_continue>(); 
     }
     else if (ctx.curr->type == token_type::number) {
         return std::make_unique<anzu::node_literal>(anzu::to_int((ctx.curr++)->text));

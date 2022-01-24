@@ -22,7 +22,7 @@ struct ast_eval_context
 
     std::vector<anzu::op> program;
     std::unordered_map<std::string, function_def> functions;
-    std::stack<std::string> current_function;
+    std::string current_function;
 };
 
 // I normally avoid inheritance trees, however dealing with variants here was a bit
@@ -91,6 +91,18 @@ struct node_function_call : public node
     std::string name;
 
     node_function_call(const std::string& n) : name(n) {}
+    void evaluate(ast_eval_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_break : public node
+{
+    void evaluate(ast_eval_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_continue : public node
+{
     void evaluate(ast_eval_context& ctx) override;
     void print(int indent = 0) override;
 };
