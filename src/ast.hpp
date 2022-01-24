@@ -94,6 +94,12 @@ struct node_function_call : public node
     void print(int indent = 0) override;
 };
 
+struct node_return : public node
+{
+    void evaluate(ast_eval_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
 struct node_literal : public node
 {
     anzu::object value;

@@ -137,6 +137,12 @@ void node_function_definition::evaluate(ast_eval_context& ctx)
 {
     const auto function_pos = std::ssize(ctx.program);
     ctx.program.push_back(anzu::op_function{ .name=name });
+    ctx.functions[name] = {
+        .argc=argc,
+        .retc=retc,
+        .ptr=function_pos
+    };
+    
     body->evaluate(ctx);
     const auto function_end_pos = std::ssize(ctx.program);
     ctx.program.push_back(anzu::op_function_end{ .retc=retc });
@@ -156,7 +162,12 @@ void node_function_definition::print(int indent)
 
 void node_function_call::evaluate(ast_eval_context& ctx)
 {
-    
+    auto function = ctx.functions.at(name);
+    ctx.program.push_back(anzu::op_function_call{
+        .name=name,
+        .argc=function.argc,
+        .jump=function.ptr + 1
+    });
 }
 
 void node_function_call::print(int indent)
@@ -174,6 +185,17 @@ void node_literal::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
     anzu::print("{}Literal: {}\n", spaces, value);
+}
+
+void node_return::evaluate(ast_eval_context& ctx)
+{
+    ctx.program.emplace_back(anzu::op_return{ .retc=retc });
+}
+
+void node_return::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Return\n", spaces);
 }
 
 namespace {
@@ -295,6 +317,7 @@ auto handle_list_literal(parser_context& ctx) -> anzu::object_list
 //     | 'while' statement_list 'do' statement_list 'end'
 //     | 'while' statement_list 'do' 'end'
 //     | 'if' if_body
+//     | 'return'
 //     | num_literal
 //     | string_literal
 //     | builtin
@@ -329,6 +352,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     }
     else if (consume_maybe(ctx.curr, "if")) {
         return parse_if_body(ctx);
+    }
+    else if (consume_maybe(ctx.curr, "return")) {
+        return std::make_unique<anzu::node_return>(); 
     }
     else if (ctx.curr->type == token_type::number) {
         return std::make_unique<anzu::node_literal>(anzu::to_int((ctx.curr++)->text));
