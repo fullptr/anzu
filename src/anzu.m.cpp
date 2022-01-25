@@ -1,8 +1,8 @@
 #include "stack_frame.hpp"
 #include "op_codes.hpp"
 #include "lexer.hpp"
-#include "parser.hpp"
 #include "print.hpp"
+#include "ast.hpp"
 
 #include <string>
 #include <variant>
@@ -50,18 +50,19 @@ void run_program_debug(const std::vector<anzu::op>& program)
 
 void print_usage()
 {
-    anzu::print("usage: anzu.exe <program_file> (lex|parse|debug|run)\n\n");
+    anzu::print("usage: anzu.exe <program_file> (lex|parse|com|debug|run)\n\n");
     anzu::print("The Anzu Programming Language\n\n");
     anzu::print("options:\n");
-    anzu::print("    lex   - displays the program after lexing into tokens\n");
-    anzu::print("    parse - displays the program after parsig to bytecode\n");
-    anzu::print("    debug - executes the program and prints each op code executed\n");
-    anzu::print("    run   - executes the program\n");
+    anzu::print("    lex   - runs the lexer and prints the tokens\n");
+    anzu::print("    parse - runs the parser and prints the AST\n");
+    anzu::print("    com   - runs the compiler and prints the bytecode\n");
+    anzu::print("    debug - runs the program and prints each op code executed\n");
+    anzu::print("    run   - runs the program\n");
 }
 
 int main(int argc, char** argv)
 {
-    if (argc != 3) {
+    if (argc != 3 && argc != 4) {
         print_usage();
         return 1;
     }
@@ -72,14 +73,19 @@ int main(int argc, char** argv)
     anzu::print("loading file '{}'\n", file);
 
     const auto tokens = anzu::lex(file);
-
     if (mode == "lex") {
         print_tokens(tokens);
         return 0;
     }
 
-    const auto program = anzu::parse(tokens);
+    const auto root = anzu::parse(tokens);
     if (mode == "parse") {
+        root->print();
+        return 0;
+    }
+
+    const auto program = anzu::compile(root);
+    if (mode == "com") {
         print_program(program);
         return 0;
     }

@@ -107,11 +107,6 @@ void op_if_end::apply(anzu::context& ctx) const
     ctx.top().ptr() += 1;
 }
 
-void op_elif::apply(anzu::context& ctx) const
-{
-    ctx.top().ptr() = jump;
-}
-
 void op_else::apply(anzu::context& ctx) const
 {
     ctx.top().ptr() = jump;
@@ -354,7 +349,12 @@ void op_dump::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
     anzu::verify_stack(frame, 1, ".");
-    anzu::print("{}", frame.pop());
+    const auto obj = frame.pop();
+    if (obj.is<std::string>()) {
+        anzu::print("{}", anzu::format_special_chars(obj.as<std::string>()));
+    } else {
+        anzu::print("{}", obj);
+    }
     frame.ptr() += 1;
 }
 

@@ -1,8 +1,11 @@
-# test file to manually testing new features
+# fibbonacci to demonstrate functions and recursion
 
-[1, 2, 3, 4, 5, 6] -> x
+[1, 2, 3] -> arr
+arr . "\n" .
 
-0 while dup x list_size < do
-    x over list_at print
+"Hello world\n" . "\n" .
+
+0 while dup 5 < do
+    dup . "\n".
     1 + 
 end

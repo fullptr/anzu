@@ -82,18 +82,6 @@ struct op_if_end
     void apply(anzu::context& ctx) const;
 };
 
-struct op_elif
-{
-    std::intptr_t jump = -1;
-
-    std::string to_string() const
-    {
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, "OP_ELIF", jump_str);
-    }
-    void apply(anzu::context& ctx) const;
-};
-
 struct op_else
 {
     std::intptr_t jump = -1;
@@ -162,7 +150,7 @@ struct op_do
 
 struct op_function
 {
-    std::string    name;
+    std::string   name;
     std::intptr_t jump = -1;  // Jumps to end of function so it isnt invoked when running.
 
     std::string to_string() const
@@ -204,7 +192,7 @@ struct op_function_call
 
 struct op_return
 {
-    int retc;
+    int retc = -1;
 
     std::string to_string() const
     {
@@ -357,7 +345,6 @@ class op
         // Control Flow
         op_if,
         op_if_end,
-        op_elif,
         op_else,
         op_while,
         op_while_end,
@@ -407,6 +394,16 @@ public:
 
     template <typename Op>
     Op* get_if() { return std::get_if<Op>(&d_type); }
+
+    template <typename Op>
+    Op& as() {
+        auto* ret = get_if<Op>();
+        if (ret == nullptr) {
+            anzu::print("parser error: op code did not contain the expected type\n");
+            std::exit(1);
+        }
+        return *ret;
+    }
 
     inline std::string to_string() const {
         return std::visit([](auto&& o) { return o.to_string(); }, d_type);

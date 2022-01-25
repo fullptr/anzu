@@ -17,12 +17,6 @@ auto verify(bool condition, std::string_view msg) -> void
     }
 }
 
-auto builtin_print(anzu::context& ctx) -> void
-{
-    verify(!ctx.top().empty(), "frame stack is empty, nothing to print\n");
-    anzu::print("{}\n", ctx.top().pop());
-}
-
 auto builtin_stack_size(anzu::context& ctx) -> void
 {
     auto stack_size = static_cast<int>(ctx.top().stack_size());
@@ -39,7 +33,7 @@ auto builtin_list_push(anzu::context& ctx) -> void
 {
     auto& frame = ctx.top();
     verify(frame.stack_size() >= 2, "stack must contain two elements for list_push\n");
-    verify(frame.top(1).is_list(), "second element on stack must be a list for list_push\n");
+    verify(frame.top(1).is<object_list>(), "second element on stack must be a list for list_push\n");
     auto elem = frame.pop();
     auto list = frame.pop();
     list.as<object_list>()->push_back(elem);
@@ -48,7 +42,7 @@ auto builtin_list_push(anzu::context& ctx) -> void
 auto builtin_list_pop(anzu::context& ctx) -> void
 {
     auto& frame = ctx.top();
-    verify(frame.top().is_list(), "top element on stack must be a list for list_pop\n");
+    verify(frame.top().is<object_list>(), "top element on stack must be a list for list_pop\n");
     auto list = frame.pop();
     list.as<object_list>()->pop_back();
 }
@@ -56,7 +50,7 @@ auto builtin_list_pop(anzu::context& ctx) -> void
 auto builtin_list_size(anzu::context& ctx) -> void
 {
     auto& frame = ctx.top();
-    verify(frame.top().is_list(), "top element on stack must be a list for list_size\n");
+    verify(frame.top().is<object_list>(), "top element on stack must be a list for list_size\n");
     auto list = frame.pop();
     frame.push(static_cast<int>(list.as<object_list>()->size()));
 }
@@ -65,8 +59,8 @@ auto builtin_list_at(anzu::context& ctx) -> void
 {
     auto& frame = ctx.top();
     verify(frame.stack_size() >= 2, "stack must contain two elements for list_push\n");
-    verify(frame.top(0).is_int(), "first element of stack must be an integer (index into list)\n");
-    verify(frame.top(1).is_list(), "second element on stack must be a list for list_push\n");
+    verify(frame.top(0).is<int>(), "first element of stack must be an integer (index into list)\n");
+    verify(frame.top(1).is<object_list>(), "second element on stack must be a list for list_push\n");
     auto pos = frame.pop();
     auto list = frame.pop();
     frame.push(list.as<object_list>()->at(static_cast<std::size_t>(pos.to_int())));
@@ -75,14 +69,13 @@ auto builtin_list_at(anzu::context& ctx) -> void
 }
 
 static const std::unordered_map<std::string, builtin_function> builtins = {
-    { "print", builtin_print },
-    { "stack_size", builtin_stack_size },
+    { "stack_size",      builtin_stack_size  },
 
     // List functions
-    { "list_push", builtin_list_push },
-    { "list_pop", builtin_list_pop },
-    { "list_size", builtin_list_size },
-    { "list_at", builtin_list_at },
+    { "list_push",       builtin_list_push   },
+    { "list_pop",        builtin_list_pop    },
+    { "list_size",       builtin_list_size   },
+    { "list_at",         builtin_list_at     },
 
     // Debug functions
     { "__print_frame__", builtin_print_frame }
