@@ -4,8 +4,4 @@ function print 1 0
     . "\n" .
 end
 
-true print
-false print
-1 print
-"hello world" print
-[1, "hi there", true, false] print
+expr 1 + 2 * 3 print

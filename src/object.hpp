@@ -68,7 +68,7 @@ public:
     friend object operator/(const object& lhs, const object& rhs);
     friend object operator%(const object& lhs, const object& rhs);
     
-    friend auto operator<=>(const object& lhs, const object& rhs) = default;
+    friend std::strong_ordering operator<=>(const object& lhs, const object& rhs) = default;
 
     friend bool operator||(const object& lhs, const object& rhs);
     friend bool operator&&(const object& lhs, const object& rhs);

@@ -248,7 +248,10 @@ void node_bin_op::evaluate(compiler_context& ctx)
 {
     lhs->evaluate(ctx);
     rhs->evaluate(ctx);
-    switch (op) {
+    if (op.size() != 1) {
+        anzu::print("unrecognised binary op: '{}'\n", op);
+    }
+    switch (op[0]) {
         break; case '+': ctx.program.push_back(anzu::op_add{});
         break; case '-': ctx.program.push_back(anzu::op_sub{});
         break; case '*': ctx.program.push_back(anzu::op_mul{});
@@ -266,8 +269,16 @@ void node_bin_op::print(int indent)
     anzu::print("{}BinOp\n", spaces);
     anzu::print("{}- Op: {}\n", spaces, op);
     anzu::print("{}- Lhs:\n", spaces);
+    if (!lhs) {
+        anzu::print("bin op has no lhs\n");
+        std::exit(1);
+    }
     lhs->print(indent + 1);
     anzu::print("{}- Rhs:\n", spaces);
+    if (!rhs) {
+        anzu::print("bin op has no rhs\n");
+        std::exit(1);
+    }
     rhs->print(indent + 1);
 }
 
@@ -305,6 +316,57 @@ auto parse_op(parser_context& ctx) -> anzu::op
     if (token == TO_BOOL) return op_to_bool{};
     if (token == TO_STR)  return op_to_str{};
     return op_push_var{.name=token};
+}
+
+auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>;
+auto parse_expression(parser_context& ctx) -> node_ptr;
+auto parse_term(parser_context& ctx) -> node_ptr;
+auto parse_factor(parser_context& ctx) -> node_ptr;
+
+auto parse_expression(parser_context& ctx) -> node_ptr
+{
+    static const auto ops = std::unordered_set<std::string_view>{"+", "-"};
+
+    auto left = parse_term(ctx);
+    while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {
+        auto op = (ctx.curr++)->text;
+
+        auto new_left = std::make_unique<anzu::node_bin_op>();
+        new_left->lhs = std::move(left);
+        new_left->op = op;
+        new_left->rhs = parse_term(ctx);
+
+        left = std::move(new_left);
+    }
+    return left;
+}
+
+auto parse_term(parser_context& ctx) -> node_ptr
+{
+    static const auto ops = std::unordered_set<std::string_view>{"*", "/"};
+
+    auto left = parse_factor(ctx);
+    while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {
+        auto op = (ctx.curr++)->text;
+
+        auto new_left = std::make_unique<anzu::node_bin_op>();
+        new_left->lhs = std::move(left);
+        new_left->op = op;
+        new_left->rhs = parse_factor(ctx);
+
+        left = std::move(new_left);
+    }
+    return left;
+}
+
+auto parse_factor(parser_context& ctx) -> node_ptr
+{
+    auto factor = anzu::try_parse_literal(ctx);
+    if (!factor.has_value()) {
+        anzu::print("syntax error: failed to parse factor\n");
+        std::exit(1);
+    }
+    return std::make_unique<anzu::node_literal>(*factor);
 }
 
 auto parse_statement(parser_context& ctx) -> node_ptr;
@@ -448,6 +510,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     }
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
+    }
+    else if (consume_maybe(ctx.curr, "expr")) {
+        return parse_expression(ctx);
     }
 
     else if (auto obj = try_parse_literal(ctx); obj.has_value()) {

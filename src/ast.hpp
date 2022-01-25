@@ -182,7 +182,7 @@ struct node_literal : public node
 
 struct node_bin_op : public node
 {
-    char op; // TODO: make into enum
+    std::string op; // TODO: make into enum
     std::unique_ptr<node> lhs;
     std::unique_ptr<node> rhs;
 
