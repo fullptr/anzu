@@ -31,7 +31,11 @@ statement:
   | 'return'
   | 'break'
   | 'continue'
-  | expression
+
+  # We will remove the 'expr' token eventually, this is just for during development.
+  # When assignments and function calls can be included, this can be the last thing
+  # that a statement is parsed as, resulting in a failure otherwise.
+  | 'expr' expression
   | function_identifier
   | builtin_identifier
   | op_code  # This is temporary and will be removed

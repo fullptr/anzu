@@ -372,6 +372,21 @@ auto parse_if_body(parser_context& ctx) -> node_ptr
     return stmt;
 }
 
+auto parse_factor(parser_context& ctx) -> node_ptr
+{
+    return nullptr;
+}
+
+auto parse_term(parser_context& ctx) -> node_ptr
+{
+    return nullptr;
+}
+
+auto parse_expression(parser_context& ctx) -> node_ptr
+{
+    return nullptr;
+}
+
 auto handle_list_literal(parser_context& ctx) -> anzu::object_list
 {
     auto list = std::make_shared<std::vector<anzu::object>>();
@@ -430,6 +445,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     }
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
+    }
+    else if (consume_maybe(ctx.curr, "expr")) {
+        return parse_expression(ctx);
     }
 
     else if (ctx.curr->type == token_type::number) {
