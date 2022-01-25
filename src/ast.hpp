@@ -55,8 +55,8 @@ constexpr auto LT          = std::string_view{"<"};
 constexpr auto LE          = std::string_view{"<="};
 constexpr auto GT          = std::string_view{">"};
 constexpr auto GE          = std::string_view{">="};
-constexpr auto OR          = std::string_view{"or"};
-constexpr auto AND         = std::string_view{"and"};
+constexpr auto OR          = std::string_view{"||"};
+constexpr auto AND         = std::string_view{"&&"};
 
 // IO
 

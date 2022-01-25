@@ -17,9 +17,19 @@ expression:
   | term '-' expression
 
 term:
+  | comparison
+  | comparison '*' term
+  | comparison '/' term
+  | comparison '%' term
+
+comparison:
   | factor
-  | factor '*' term
-  | factor '/' term
+  | factor '<'  term
+  | factor '<=' term
+  | factor '>'  term
+  | factor '>=' term
+  | factor '==' term
+  | factor '!=' term
 
 factor:
   | literal

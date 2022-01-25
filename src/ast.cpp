@@ -248,19 +248,20 @@ void node_bin_op::evaluate(compiler_context& ctx)
 {
     lhs->evaluate(ctx);
     rhs->evaluate(ctx);
-    if (op.size() != 1) {
-        anzu::print("unrecognised binary op: '{}'\n", op);
-    }
-    switch (op[0]) {
-        break; case '+': ctx.program.push_back(anzu::op_add{});
-        break; case '-': ctx.program.push_back(anzu::op_sub{});
-        break; case '*': ctx.program.push_back(anzu::op_mul{});
-        break; case '/': ctx.program.push_back(anzu::op_div{});
-        break; case '%': ctx.program.push_back(anzu::op_mod{});
-        break; default: {
-            anzu::print("syntax error: unknown binary operator '{}'\n", op);
-            std::exit(1);
-        }
+    if      (op == "+")  { ctx.program.push_back(anzu::op_add{}); }
+    else if (op == "-")  { ctx.program.push_back(anzu::op_sub{}); }
+    else if (op == "*")  { ctx.program.push_back(anzu::op_mul{}); }
+    else if (op == "/")  { ctx.program.push_back(anzu::op_div{}); }
+    else if (op == "%")  { ctx.program.push_back(anzu::op_mod{}); }
+    else if (op == "<")  { ctx.program.push_back(anzu::op_lt{}); }
+    else if (op == "<=") { ctx.program.push_back(anzu::op_le{}); }
+    else if (op == ">")  { ctx.program.push_back(anzu::op_gt{}); }
+    else if (op == ">=") { ctx.program.push_back(anzu::op_ge{}); }
+    else if (op == "==") { ctx.program.push_back(anzu::op_eq{}); }
+    else if (op == "!=") { ctx.program.push_back(anzu::op_ne{}); }
+    else {
+        anzu::print("syntax error: unknown binary operator: '{}'\n", op);
+        std::exit(1);
     }
 }
 
@@ -298,12 +299,6 @@ auto parse_op(parser_context& ctx) -> anzu::op
     if (token == SWAP)    return op_swap{};
     if (token == ROT)     return op_rot{};
     if (token == OVER)    return op_over{};
-    if (token == EQ)      return op_eq{};
-    if (token == NE)      return op_ne{};
-    if (token == LT)      return op_lt{};
-    if (token == LE)      return op_le{};
-    if (token == GT)      return op_gt{};
-    if (token == GE)      return op_ge{};
     if (token == OR)      return op_or{};
     if (token == AND)     return op_and{};
     if (token == INPUT)   return op_input{};
@@ -315,6 +310,7 @@ auto parse_op(parser_context& ctx) -> anzu::op
 }
 
 auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>;
+auto parse_comparison(parser_context& ctx) -> node_ptr;
 auto parse_expression(parser_context& ctx) -> node_ptr;
 auto parse_term(parser_context& ctx) -> node_ptr;
 auto parse_factor(parser_context& ctx) -> node_ptr;
@@ -351,6 +347,26 @@ auto parse_term(parser_context& ctx) -> node_ptr
         new_left->lhs = std::move(left);
         new_left->op = op;
         new_left->rhs = parse_factor(ctx);
+
+        left = std::move(new_left);
+    }
+    return left;
+}
+
+auto parse_comparison(parser_context& ctx) -> node_ptr
+{
+    static const auto ops = std::unordered_set<std::string_view>{
+        "<", "<=", ">", ">=", "==", "!="
+    };
+
+    auto left = parse_expression(ctx);
+    while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {
+        auto op = (ctx.curr++)->text;
+
+        auto new_left = std::make_unique<anzu::node_bin_op>();
+        new_left->lhs = std::move(left);
+        new_left->op = op;
+        new_left->rhs = parse_expression(ctx);
 
         left = std::move(new_left);
     }
@@ -510,7 +526,7 @@ auto parse_statement(parser_context& ctx) -> node_ptr
         return std::make_unique<anzu::node_continue>(); 
     }
     else if (consume_maybe(ctx.curr, "expr")) {
-        return parse_expression(ctx);
+        return parse_comparison(ctx);
     }
 
     else if (auto obj = try_parse_literal(ctx); obj.has_value()) {
