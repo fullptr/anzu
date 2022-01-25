@@ -184,7 +184,7 @@ using token_iterator = std::vector<anzu::token>::const_iterator;
 using node_ptr       = std::unique_ptr<anzu::node>;
 
 // Context used while constructing an AST. Has non-owning pointers into the tokens as well
-// as keeping track of
+// as keeping track of function names.
 struct parser_context
 {
     token_iterator       curr;
@@ -193,7 +193,7 @@ struct parser_context
     std::unordered_set<std::string> function_names;
 };
 
-// Struct used to store information while evaluating an ast. Contains the output program
+// Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler_context
 {

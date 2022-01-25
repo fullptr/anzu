@@ -82,18 +82,6 @@ struct op_if_end
     void apply(anzu::context& ctx) const;
 };
 
-struct op_elif
-{
-    std::intptr_t jump = -1;
-
-    std::string to_string() const
-    {
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, "OP_ELIF", jump_str);
-    }
-    void apply(anzu::context& ctx) const;
-};
-
 struct op_else
 {
     std::intptr_t jump = -1;
@@ -357,7 +345,6 @@ class op
         // Control Flow
         op_if,
         op_if_end,
-        op_elif,
         op_else,
         op_while,
         op_while_end,

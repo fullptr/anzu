@@ -107,11 +107,6 @@ void op_if_end::apply(anzu::context& ctx) const
     ctx.top().ptr() += 1;
 }
 
-void op_elif::apply(anzu::context& ctx) const
-{
-    ctx.top().ptr() = jump;
-}
-
 void op_else::apply(anzu::context& ctx) const
 {
     ctx.top().ptr() = jump;

@@ -436,8 +436,7 @@ auto parse_statement(parser_context& ctx) -> node_ptr
 auto parse(const std::vector<anzu::token>& tokens) -> node_ptr
 {
     auto ctx = anzu::parser_context{
-        .curr = tokens.begin(),
-        .end = tokens.end()
+        .curr = tokens.begin(), .end = tokens.end()
     };
 
     auto root = std::make_unique<anzu::node_sequence>();
