@@ -256,6 +256,7 @@ void node_bin_op::evaluate(compiler_context& ctx)
         break; case '-': ctx.program.push_back(anzu::op_sub{});
         break; case '*': ctx.program.push_back(anzu::op_mul{});
         break; case '/': ctx.program.push_back(anzu::op_div{});
+        break; case '%': ctx.program.push_back(anzu::op_mod{});
         break; default: {
             anzu::print("syntax error: unknown binary operator '{}'\n", op);
             std::exit(1);
@@ -297,11 +298,6 @@ auto parse_op(parser_context& ctx) -> anzu::op
     if (token == SWAP)    return op_swap{};
     if (token == ROT)     return op_rot{};
     if (token == OVER)    return op_over{};
-    if (token == ADD)     return op_add{};
-    if (token == SUB)     return op_sub{};
-    if (token == MUL)     return op_mul{};
-    if (token == DIV)     return op_div{};
-    if (token == MOD)     return op_mod{};
     if (token == EQ)      return op_eq{};
     if (token == NE)      return op_ne{};
     if (token == LT)      return op_lt{};
@@ -343,7 +339,9 @@ auto parse_expression(parser_context& ctx) -> node_ptr
 
 auto parse_term(parser_context& ctx) -> node_ptr
 {
-    static const auto ops = std::unordered_set<std::string_view>{"*", "/"};
+    static const auto ops = std::unordered_set<std::string_view>{
+        "*", "/", "%"
+    };
 
     auto left = parse_factor(ctx);
     while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {

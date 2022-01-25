@@ -4,4 +4,8 @@ function print 1 0
     . "\n" .
 end
 
-expr 1 + 2 * 3 print
+if expr 6 % 5 do
+    "yes" print
+else
+    "no" print
+end
