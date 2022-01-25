@@ -1,0 +1,26 @@
+program:
+  | statement_list
+
+statement:
+  | 'while' statement_list 'do' statement_list 'end'
+  | 'while' statement_list 'do' 'end'
+  | 'break'
+  | 'continue'
+  | 'if' if_body
+  | 'function' function_declaration
+  | 'return'
+  | num_literal
+  | string_literal
+  | identifier
+
+statement_list:
+  | statement
+  | statement statement_list
+
+if_body:
+  | statement_list 'do' statement_list 'elif' if_body
+  | statement_list 'do' statement_list 'end'
+
+function_declaration:
+  | identifier num_literal num_literal statement_list 'end'
+  | identifier num_literal num_literal 'end'
