@@ -295,9 +295,35 @@ auto parse_statement_list(parser_context& ctx) -> node_ptr
     return stmt;
 }
 
-// if_body:
-//     | statement_list 'do' statement_list 'elif' if_body
-//     | statement_list 'do' statement_list 'end'
+auto parse_function_body(parser_context& ctx) -> node_ptr
+{
+    auto stmt = std::make_unique<anzu::node_function_definition>();
+    stmt->name = (ctx.curr++)->text;
+
+    bool success = false;
+    std::tie(std::ignore, success) = ctx.function_names.insert(stmt->name);
+    if (!success) {
+        anzu::print("error: multiple defintions for function '{}'\n", stmt->name);
+        std::exit(1);
+    }
+
+    stmt->argc = anzu::to_int((ctx.curr++)->text);
+    stmt->retc = anzu::to_int((ctx.curr++)->text);
+    stmt->body = parse_statement_list(ctx);
+    consume_only(ctx.curr, "end");
+    return stmt;
+}
+
+auto parse_while_body(parser_context& ctx) -> node_ptr
+{
+    auto stmt = std::make_unique<anzu::node_while_statement>();
+    stmt->condition = parse_statement_list(ctx);
+    consume_only(ctx.curr, "do");
+    stmt->body = parse_statement_list(ctx);
+    consume_only(ctx.curr, "end");
+    return stmt;
+}
+
 auto parse_if_body(parser_context& ctx) -> node_ptr
 {
     auto stmt = std::make_unique<node_if_statement>();
@@ -358,44 +384,13 @@ auto handle_list_literal(parser_context& ctx) -> anzu::object_list
     return list;
 }
 
-// statement:
-//     | 'while' statement_list 'do' statement_list 'end'
-//     | 'while' statement_list 'do' 'end'
-//     | 'if' if_body
-//     | 'return'
-//     | 'continue'
-//     | 'break'
-//     | num_literal
-//     | string_literal
-//     | builtin
-//     | identifier
-// TODO: ALlow for break, continue
 auto parse_statement(parser_context& ctx) -> node_ptr
 {
     if (consume_maybe(ctx.curr, "function")) {
-        auto stmt = std::make_unique<anzu::node_function_definition>();
-        stmt->name = (ctx.curr++)->text;
-
-        bool success = false;
-        std::tie(std::ignore, success) = ctx.function_names.insert(stmt->name);
-        if (!success) {
-            anzu::print("error: multiple defintions for function '{}'\n", stmt->name);
-            std::exit(1);
-        }
-
-        stmt->argc = anzu::to_int((ctx.curr++)->text);
-        stmt->retc = anzu::to_int((ctx.curr++)->text);
-        stmt->body = parse_statement_list(ctx);
-        consume_only(ctx.curr, "end");
-        return stmt;
+        return parse_function_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "while")) {
-        auto stmt = std::make_unique<anzu::node_while_statement>();
-        stmt->condition = parse_statement_list(ctx);
-        consume_only(ctx.curr, "do");
-        stmt->body = parse_statement_list(ctx);
-        consume_only(ctx.curr, "end");
-        return stmt;
+        return parse_while_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "if")) {
         return parse_if_body(ctx);
@@ -409,6 +404,7 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
     }
+
     else if (ctx.curr->type == token_type::number) {
         return std::make_unique<anzu::node_literal>(anzu::to_int((ctx.curr++)->text));
     }
@@ -416,9 +412,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
         return std::make_unique<anzu::node_literal>((ctx.curr++)->text);
     }
     else if (ctx.curr->text == "[") {
-        auto list = handle_list_literal(ctx);
-        return std::make_unique<anzu::node_literal>(list);
+        return std::make_unique<anzu::node_literal>(handle_list_literal(ctx));
     }
+    
     else if (ctx.function_names.contains(ctx.curr->text)) {
         return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
     }

@@ -1,26 +1,42 @@
 program:
   | statement_list
 
-statement:
-  | 'while' statement_list 'do' statement_list 'end'
-  | 'while' statement_list 'do' 'end'
-  | 'break'
-  | 'continue'
-  | 'if' if_body
-  | 'function' function_declaration
-  | 'return'
-  | num_literal
-  | string_literal
-  | identifier
-
 statement_list:
   | statement
   | statement statement_list
 
+literal:
+  | int_literal
+  | bool_literal
+  | string_literal
+  | list_literal
+
+statement:
+  | 'function' function_body
+  | 'while' while_body
+  | 'if' if_body
+  | 'return'
+  | 'break'
+  | 'continue'
+  | literal
+  | function_identifier
+  | builtin_identifier
+  | op_code  # This is temporary and will be removed
+
+function_identifier:
+  | string_literal
+
+builtin_identifier:
+  | string_literal
+
+function_body:
+  | function_identifier int_literal int_literal statement_list 'end'
+  | function_identifier int_literal int_literal 'end'
+
+while_body:
+  | statement_list 'do' statement_list 'end'
+  | statement_list 'do' 'end'
+
 if_body:
   | statement_list 'do' statement_list 'elif' if_body
   | statement_list 'do' statement_list 'end'
-
-function_declaration:
-  | identifier num_literal num_literal statement_list 'end'
-  | identifier num_literal num_literal 'end'
