@@ -74,9 +74,17 @@ auto foramt_special_chars(const std::string& str) -> std::string;
 }
 
 template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
+    char fmt = 's';
+
+    constexpr auto parse(std::format_parse_context& ctx) -> decltype(ctx.begin()) {
+        auto it = ctx.begin(), end = ctx.end();
+        if (it != end && (*it == 's' || *it == 'r')) fmt = *it++;
+        if (it != end && *it != '}') throw format_error("invalid format");
+        return it;
+    }
+
     auto format(const anzu::object& obj, auto& ctx) {
-        return std::formatter<std::string>::format(
-            std::format("{}", obj.to_repr()), ctx
-        );
+        const auto str = fmt == 's' ? obj.to_str() : obj.to_repr();
+        return std::formatter<std::string>::format(std::format("{}", str), ctx);
     }
 };
