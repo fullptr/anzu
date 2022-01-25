@@ -180,6 +180,16 @@ struct node_literal : public node
     void print(int indent = 0) override;
 };
 
+struct node_bin_op : public node
+{
+    char op; // TODO: make into enum
+    std::unique_ptr<node> lhs;
+    std::unique_ptr<node> rhs;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
 using token_iterator = std::vector<anzu::token>::const_iterator;
 using node_ptr       = std::unique_ptr<anzu::node>;
 

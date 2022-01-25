@@ -11,6 +11,19 @@ literal:
   | string_literal
   | list_literal
 
+expression:
+  | term
+  | term '+' expression
+  | term '-' expression
+
+term:
+  | factor
+  | factor '*' term
+  | factor '/' term
+
+factor:
+  | literal
+
 statement:
   | 'function' function_body
   | 'while' while_body
@@ -18,7 +31,7 @@ statement:
   | 'return'
   | 'break'
   | 'continue'
-  | literal
+  | expression
   | function_identifier
   | builtin_identifier
   | op_code  # This is temporary and will be removed

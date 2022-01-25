@@ -243,6 +243,33 @@ void node_return::print(int indent)
     anzu::print("{}Return\n", spaces);
 }
 
+void node_bin_op::evaluate(compiler_context& ctx)
+{
+    lhs->evaluate(ctx);
+    rhs->evaluate(ctx);
+    switch (op) {
+        break; case '+': ctx.program.push_back(anzu::op_add{});
+        break; case '-': ctx.program.push_back(anzu::op_sub{});
+        break; case '*': ctx.program.push_back(anzu::op_mul{});
+        break; case '/': ctx.program.push_back(anzu::op_div{});
+        break; default: {
+            anzu::print("syntax error: unknown binary operator '{}'\n", op);
+            std::exit(1);
+        }
+    }
+}
+
+void node_bin_op::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}BinOp\n", spaces);
+    anzu::print("{}- Op: {}\n", spaces, op);
+    anzu::print("{}- Lhs:\n", spaces);
+    lhs->print(indent + 1);
+    anzu::print("{}- Rhs:\n", spaces);
+    rhs->print(indent + 1);
+}
+
 namespace {
 
 // A temporary function during migration between the old and new parsers. This will
@@ -414,7 +441,7 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (ctx.curr->text == "[") {
         return std::make_unique<anzu::node_literal>(handle_list_literal(ctx));
     }
-    
+
     else if (ctx.function_names.contains(ctx.curr->text)) {
         return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
     }
