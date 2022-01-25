@@ -207,7 +207,7 @@ void node_literal::evaluate(compiler_context& ctx)
 void node_literal::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Literal: {:r}\n", spaces, value);
+    anzu::print("{}Literal: {}\n", spaces, value.to_repr());
 }
 
 void node_break::evaluate(compiler_context& ctx)

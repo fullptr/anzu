@@ -35,13 +35,23 @@ public:
     auto to_str() const -> std::string;
 
     template <typename T>
-    auto is() -> bool
+    auto is() const -> bool
     {
         return std::holds_alternative<T>(d_value);
     }
     
     template <typename T>
     auto as() -> T&
+    {
+        if (!is<T>()) {
+            anzu::print("error: {} does not contain requested type\n", to_repr());
+            std::exit(1);
+        }
+        return std::get<T>(d_value);
+    }
+
+    template <typename T>
+    auto as() const -> const T&
     {
         if (!is<T>()) {
             anzu::print("error: {} does not contain requested type\n", to_repr());
@@ -69,7 +79,7 @@ public:
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;
 
-auto foramt_special_chars(const std::string& str) -> std::string;
+auto format_special_chars(const std::string& str) -> std::string;
 
 }
 

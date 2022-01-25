@@ -17,12 +17,6 @@ auto verify(bool condition, std::string_view msg) -> void
     }
 }
 
-auto builtin_print(anzu::context& ctx) -> void
-{
-    verify(!ctx.top().empty(), "frame stack is empty, nothing to print\n");
-    anzu::print("{}\n", ctx.top().pop());
-}
-
 auto builtin_stack_size(anzu::context& ctx) -> void
 {
     auto stack_size = static_cast<int>(ctx.top().stack_size());
@@ -75,7 +69,6 @@ auto builtin_list_at(anzu::context& ctx) -> void
 }
 
 static const std::unordered_map<std::string, builtin_function> builtins = {
-    { "print",           builtin_print       },
     { "stack_size",      builtin_stack_size  },
 
     // List functions

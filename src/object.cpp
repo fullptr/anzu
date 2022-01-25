@@ -85,10 +85,21 @@ auto object::to_str() const -> std::string
     return std::visit(overloaded {
         [](int v) { return std::to_string(v); },
         [](bool v) { return std::string{v ? "true" : "false"}; },
-        [](const std::string& v) { return anzu::format_special_chars(v); },
+        [](const std::string& v) { return v; },
         [](const object_list& v) {
-            type_error_list_conversion("str");
-            return std::string{};
+            switch (v->size()) {
+                break; case 0:
+                    return std::string{"[]"};
+                break; case 1:
+                    return std::format("[{}]", v->at(0));
+                break; default:
+                    std::string ret = std::format("[{}", v->at(0));
+                    for (const auto& obj : *v | std::views::drop(1)) {
+                        ret += std::format(", {}", obj);
+                    }
+                    ret += "]";
+                    return ret;
+            }
         }
     }, d_value);
 }
@@ -98,7 +109,7 @@ auto object::to_repr() const -> std::string
     return std::visit(overloaded {
         [](int val) { return std::to_string(val); },
         [](bool val) { return std::string{val ? "true" : "false"}; },
-        [](const std::string& val) { return std::format("'{}'", val); },
+        [](const std::string& v) { return std::format("'{}'", v); },
         [](const object_list& v) {
             switch (v->size()) {
                 break; case 0:
