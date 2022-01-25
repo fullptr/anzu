@@ -3,6 +3,7 @@
 #include "object.hpp"
 #include "print.hpp"
 
+#include <optional>
 #include <tuple>
 
 namespace anzu {
@@ -372,58 +373,60 @@ auto parse_if_body(parser_context& ctx) -> node_ptr
     return stmt;
 }
 
-auto parse_factor(parser_context& ctx) -> node_ptr
-{
-    return nullptr;
-}
+auto handle_list_literal(parser_context& ctx) -> anzu::object;
 
-auto parse_term(parser_context& ctx) -> node_ptr
+auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
 {
-    return nullptr;
-}
+    if (ctx.curr->type == token_type::number) {
+        return { anzu::to_int((ctx.curr++)->text) };
+    }
+    else if (ctx.curr->type == token_type::string) {
+        return { (ctx.curr++)->text };
+    }
+     else if (consume_maybe(ctx.curr, "true")) {
+        return { true };
+    }
+    else if (consume_maybe(ctx.curr, "false")) {
+        return { false };
+    }
+    else if (ctx.curr->text == "[") {
+        return { handle_list_literal(ctx) };
+    }
+    return std::nullopt;
+};
 
-auto parse_expression(parser_context& ctx) -> node_ptr
-{
-    return nullptr;
-}
-
-auto handle_list_literal(parser_context& ctx) -> anzu::object_list
+auto handle_list_literal(parser_context& ctx) -> anzu::object
 {
     auto list = std::make_shared<std::vector<anzu::object>>();
 
     consume_only(ctx.curr, "[");
+    bool expect_comma = false;
     while (ctx.curr != ctx.end && ctx.curr->text != "]") {
-        if (ctx.curr->text == "[") { // Nested list literal
-            list->push_back(handle_list_literal(ctx));
-        }
-        else if (ctx.curr->type == token_type::string) {
-            list->push_back(ctx.curr->text);
-        }
-        else if (ctx.curr->type == token_type::number) {
-            list->push_back(anzu::to_int(ctx.curr->text));
-        }
-        else if (ctx.curr->text == "true") {
-            list->push_back(true);
-        }
-        else if (ctx.curr->text == "false") {
-            list->push_back(false);
-        }
-        else if (ctx.curr->text == ",") {
-            // Pass, delimiters currently optional, will enforce after this workes
+        if (expect_comma) {
+            if (ctx.curr->text != ",") { // skip commas, enforce later
+                anzu::print("syntax error: expected comma in list literal\n");
+                std::exit(1);
+            }
+            ++ctx.curr;
         }
         else {
-            anzu::print("could not recognise token while parsing list literal: {}\n", ctx.curr->text);
-            std::exit(1);
+            if (auto obj = try_parse_literal(ctx); obj.has_value()) {
+                list->push_back(*obj);            
+            }
+            else {
+                anzu::print("syntax error: failed to parse literal\n");
+                std::exit(1);
+            }
         }
-        ++ctx.curr;
+        expect_comma = !expect_comma;
     }
     if (ctx.curr == ctx.end) {
-        anzu::print("end of file reached while parsing string literal\n");
+        anzu::print("syntax error: list literal never closed\n");
         std::exit(1);
     }
     consume_only(ctx.curr, "]");
 
-    return list;
+    return { list };
 }
 
 auto parse_statement(parser_context& ctx) -> node_ptr
@@ -446,18 +449,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
     }
-    else if (consume_maybe(ctx.curr, "expr")) {
-        return parse_expression(ctx);
-    }
 
-    else if (ctx.curr->type == token_type::number) {
-        return std::make_unique<anzu::node_literal>(anzu::to_int((ctx.curr++)->text));
-    }
-    else if (ctx.curr->type == token_type::string) {
-        return std::make_unique<anzu::node_literal>((ctx.curr++)->text);
-    }
-    else if (ctx.curr->text == "[") {
-        return std::make_unique<anzu::node_literal>(handle_list_literal(ctx));
+    else if (auto obj = try_parse_literal(ctx); obj.has_value()) {
+        return std::make_unique<anzu::node_literal>(*obj);
     }
 
     else if (ctx.function_names.contains(ctx.curr->text)) {

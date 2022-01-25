@@ -1,11 +1,11 @@
 # fibbonacci to demonstrate functions and recursion
 
-[1, 2, 3] -> arr
-arr . "\n" .
-
-"Hello world\n" . "\n" .
-
-0 while dup 5 < do
-    dup . "\n".
-    1 + 
+function print 1 0
+    . "\n" .
 end
+
+true print
+false print
+1 print
+"hello world" print
+[1, "hi there", true, false] print
