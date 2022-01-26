@@ -310,8 +310,6 @@ auto parse_op(parser_context& ctx) -> anzu::op
     if (token == SWAP)    return op_swap{};
     if (token == ROT)     return op_rot{};
     if (token == OVER)    return op_over{};
-    if (token == OR)      return op_or{};
-    if (token == AND)     return op_and{};
     if (token == INPUT)   return op_input{};
     if (token == DUMP)    return op_dump{};
     if (token == TO_INT)  return op_to_int{};
