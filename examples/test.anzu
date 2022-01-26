@@ -4,4 +4,7 @@ function print 1 0
     . expr "\n" .
 end
 
-expr 1 to_bool to_str print
+input -> x
+expr x to_int -> x
+
+expr 2 * x print

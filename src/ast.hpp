@@ -11,14 +11,6 @@ namespace anzu {
 struct parser_context;
 struct compiler_context;
 
-// Stack Manipulation
-
-constexpr auto POP         = std::string_view{"pop"};
-constexpr auto DUP         = std::string_view{"dup"};
-constexpr auto SWAP        = std::string_view{"swap"};
-constexpr auto ROT         = std::string_view{"rot"};
-constexpr auto OVER        = std::string_view{"over"};
-
 // Store Manipulation
 
 constexpr auto STORE       = std::string_view{"->"};
@@ -67,12 +59,6 @@ constexpr auto DUMP        = std::string_view{"."};
 
 constexpr auto TRUE_LIT    = std::string_view{"true"};
 constexpr auto FALSE_LIT   = std::string_view{"false"};
-
-// Casts
-
-constexpr auto TO_INT      = std::string_view{"(int)"};
-constexpr auto TO_BOOL     = std::string_view{"(bool)"};
-constexpr auto TO_STR      = std::string_view{"(str)"};
 
 // I normally avoid inheritance trees, however dealing with variants here was a bit
 // cumbersome and required wrapping the variant in a struct to allow recusrion (due
@@ -183,7 +169,7 @@ struct node_literal : public node
 struct node_variable : public node
 {
     std::string name;
-    
+
     node_variable(const std::string& n) : name(n) {}
     void evaluate(compiler_context& ctx) override;
     void print(int indent = 0) override;
