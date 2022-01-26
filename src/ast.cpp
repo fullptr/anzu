@@ -322,63 +322,37 @@ auto parse_op(parser_context& ctx) -> anzu::op
 }
 
 auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>;
-auto parse_comparison(parser_context& ctx) -> node_ptr;
-auto parse_expression(parser_context& ctx) -> node_ptr;
-auto parse_term(parser_context& ctx) -> node_ptr;
+auto parse_level_4_factor(parser_context& ctx) -> node_ptr;
+auto parse_level_3_factor(parser_context& ctx) -> node_ptr;
+auto parse_level_2_factor(parser_context& ctx) -> node_ptr;
 auto parse_factor(parser_context& ctx) -> node_ptr;
 
-auto parse_comparison(parser_context& ctx) -> node_ptr
+auto precedence_table() -> std::array<std::unordered_set<std::string_view>, 4>
 {
-    static const auto ops = std::unordered_set<std::string_view>{
-        "<", "<=", ">", ">=", "==", "!="
-    };
-
-    auto left = parse_expression(ctx);
-    while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {
-        auto op = (ctx.curr++)->text;
-
-        auto new_left = std::make_unique<anzu::node_bin_op>();
-        new_left->lhs = std::move(left);
-        new_left->op = op;
-        new_left->rhs = parse_expression(ctx);
-
-        left = std::move(new_left);
-    }
-    return left;
+    auto table = std::array<std::unordered_set<std::string_view>, 4>{};
+    table[0] = {};
+    table[1] = {"*", "/", "%"};
+    table[2] = {"+", "-"};
+    table[3] = {"<", "<=", ">", ">=", "==", "!="};
+    return table;
 }
 
-auto parse_expression(parser_context& ctx) -> node_ptr
+auto parse_factor_level(parser_context& ctx, int level) -> node_ptr
 {
-    static const auto ops = std::unordered_set<std::string_view>{"+", "-"};
+    static const auto bin_ops = precedence_table();
 
-    auto left = parse_term(ctx);
-    while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {
-        auto op = (ctx.curr++)->text;
-
-        auto new_left = std::make_unique<anzu::node_bin_op>();
-        new_left->lhs = std::move(left);
-        new_left->op = op;
-        new_left->rhs = parse_term(ctx);
-
-        left = std::move(new_left);
+    if (level == 0) {
+        return parse_factor(ctx);
     }
-    return left;
-}
 
-auto parse_term(parser_context& ctx) -> node_ptr
-{
-    static const auto ops = std::unordered_set<std::string_view>{
-        "*", "/", "%"
-    };
-
-    auto left = parse_factor(ctx);
-    while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {
+    auto left = parse_factor_level(ctx, level - 1);
+    while (ctx.curr != ctx.end && bin_ops[level].contains(ctx.curr->text)) {
         auto op = (ctx.curr++)->text;
 
         auto new_left = std::make_unique<anzu::node_bin_op>();
         new_left->lhs = std::move(left);
         new_left->op = op;
-        new_left->rhs = parse_factor(ctx);
+        new_left->rhs = parse_factor_level(ctx, level - 1);
 
         left = std::move(new_left);
     }
@@ -547,7 +521,7 @@ auto parse_statement(parser_context& ctx) -> node_ptr
         return std::make_unique<anzu::node_continue>(); 
     }
     else if (consume_maybe(ctx.curr, "expr")) {
-        return parse_comparison(ctx);
+        return parse_factor_level(ctx, 3);
     }
 
     else if (ctx.function_names.contains(ctx.curr->text)) {

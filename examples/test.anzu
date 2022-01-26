@@ -4,6 +4,6 @@ function print 1 0
     . expr "\n" .
 end
 
-expr 5 + 6 -> x
+expr 5 + 6 > 10 -> x
 
 expr x print
