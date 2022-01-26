@@ -66,6 +66,24 @@ auto builtin_list_at(anzu::context& ctx) -> void
     frame.push(list.as<object_list>()->at(static_cast<std::size_t>(pos.to_int())));
 }
 
+auto builtin_to_int(anzu::context& ctx) -> void
+{
+    auto& frame = ctx.top();
+    frame.push(frame.pop().to_int());
+}
+
+auto builtin_to_bool(anzu::context& ctx) -> void
+{
+    auto& frame = ctx.top();
+    frame.push(frame.pop().to_bool());
+}
+
+auto builtin_to_str(anzu::context& ctx) -> void
+{
+    auto& frame = ctx.top();
+    frame.push(frame.pop().to_str());
+}
+
 }
 
 static const std::unordered_map<std::string, builtin_function> builtins = {
@@ -78,7 +96,12 @@ static const std::unordered_map<std::string, builtin_function> builtins = {
     { "list_at",         builtin_list_at     },
 
     // Debug functions
-    { "__print_frame__", builtin_print_frame }
+    { "__print_frame__", builtin_print_frame },
+
+    // Old Op Codes
+    { "to_int",          builtin_to_int      },
+    { "to_bool",         builtin_to_bool     },
+    { "to_str",          builtin_to_str      }
 };
 
 auto is_builtin(const std::string& name) -> bool

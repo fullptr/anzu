@@ -4,6 +4,4 @@ function print 1 0
     . expr "\n" .
 end
 
-expr 1 + 2 * 3 == 7
-
-__print_frame__
+expr 1 to_bool to_str print

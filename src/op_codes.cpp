@@ -277,27 +277,6 @@ void op_and::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
-void op_to_int::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.pop().to_int());
-    frame.ptr() += 1;
-}
-
-void op_to_bool::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.pop().to_bool());
-    frame.ptr() += 1;
-}
-
-void op_to_str::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.pop().to_str());
-    frame.ptr() += 1;
-}
-
 void op_input::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
