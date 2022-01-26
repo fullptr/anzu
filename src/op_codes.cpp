@@ -50,44 +50,6 @@ void op_push_var::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
-void op_pop::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.pop();
-    frame.ptr() += 1;
-}
-
-void op_dup::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.top());
-    frame.ptr() += 1;
-}
-
-void op_swap::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    anzu::verify_stack(frame, 2, "swap");
-    swap(frame.top(0), frame.top(1));
-    frame.ptr() += 1;
-}
-
-void op_rot::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    anzu::verify_stack(frame, 3, "rot");
-    swap(frame.top(0), frame.top(1));
-    swap(frame.top(1), frame.top(2));
-    frame.ptr() += 1;
-}
-
-void op_over::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    anzu::verify_stack(frame, 2, "over");
-    frame.push(frame.top(1));
-    frame.ptr() += 1;
-}
 
 void op_store::apply(anzu::context& ctx) const
 {

@@ -305,11 +305,6 @@ auto parse_op(parser_context& ctx) -> anzu::op
     const auto token = ctx.curr->text;
     ++ctx.curr;
     if (token == STORE)   return op_store{ .name=(ctx.curr++)->text };
-    if (token == POP)     return op_pop{};
-    if (token == DUP)     return op_dup{};
-    if (token == SWAP)    return op_swap{};
-    if (token == ROT)     return op_rot{};
-    if (token == OVER)    return op_over{};
     if (token == INPUT)   return op_input{};
     if (token == DUMP)    return op_dump{};
     if (token == TO_INT)  return op_to_int{};

@@ -28,36 +28,6 @@ struct op_push_var
     void apply(anzu::context& ctx) const;
 };
 
-struct op_pop
-{
-    std::string to_string() const { return "OP_POP"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_dup
-{
-    std::string to_string() const { return "OP_DUP"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_swap
-{
-    std::string to_string() const { return "OP_SWAP"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_rot
-{
-    std::string to_string() const { return "OP_ROT"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_over
-{
-    std::string to_string() const { return "OP_OVER"; }
-    void apply(anzu::context& ctx) const;
-};
-
 // Store Manipulation
 
 struct op_store
@@ -330,14 +300,8 @@ struct op_dump
 class op
 {
     using op_type = std::variant<
-        // Stack Manipulation
         op_push_const,
         op_push_var,
-        op_pop,
-        op_dup,
-        op_swap,
-        op_rot,
-        op_over,
 
         // Store Manipulation
         op_store,

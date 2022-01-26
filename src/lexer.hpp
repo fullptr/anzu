@@ -6,12 +6,6 @@
 namespace anzu {
 
 static const std::unordered_set<std::string_view> keywords = {
-    "pop",
-    "dup",
-    "swap",
-    "rot",
-    "over",
-
     "function",
     "if",
     "elif",
