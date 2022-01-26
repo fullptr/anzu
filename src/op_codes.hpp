@@ -28,6 +28,12 @@ struct op_push_var
     void apply(anzu::context& ctx) const;
 };
 
+struct op_pop
+{
+    std::string to_string() const { return "OP_POP"; }
+    void apply(anzu::context& ctx) const;
+};
+
 // Store Manipulation
 
 struct op_store
@@ -209,11 +215,33 @@ struct op_and
     void apply(anzu::context& ctx) const;
 };
 
+struct op_function
+{
+    std::string              name;
+    std::vector<std::string> arg_names;
+    std::intptr_t            jump;
+    std::string to_string() const { return std::format("OP_FUNCTION({})", name); }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_function_end
+{
+    std::string to_string() const { return "OP_FUNCTION_END"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_return
+{
+    std::string to_string() const { return "OP_RETURN"; }
+    void apply(anzu::context& ctx) const;
+};
+
 class op
 {
     using op_type = std::variant<
         op_push_const,
         op_push_var,
+        op_pop,
 
         // Store Manipulation
         op_store,
@@ -228,7 +256,6 @@ class op
         op_continue,
         op_do,
 
-        // Functions
         op_builtin_function_call,
 
         // Numerical Operators
@@ -246,7 +273,11 @@ class op
         op_gt,
         op_ge,
         op_or,
-        op_and
+        op_and,
+
+        op_function,
+        op_function_end,
+        op_return
     >;
 
     op_type d_type;

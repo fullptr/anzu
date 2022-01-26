@@ -222,20 +222,84 @@ void node_bin_op::print(int indent)
     rhs->print(indent + 1);
 }
 
-void node_assignment::evaluate(compiler_context& ctx)
+void node_assign_expression::evaluate(compiler_context& ctx)
 {
-    value->evaluate(ctx);
+    expr->evaluate(ctx);
     ctx.program.emplace_back(anzu::op_store{ .name=name });
 }
 
-void node_assignment::print(int indent)
+void node_assign_expression::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Assignment\n", spaces);
+    anzu::print("{}AssignExpr\n", spaces);
     anzu::print("{}- Name: {}\n", spaces, name);
     anzu::print("{}- Value:\n", spaces);
-    value->print(indent + 1);
+    expr->print(indent + 1);
 }
+
+void node_discard_expression::evaluate(compiler_context& ctx)
+{
+    expr->evaluate(ctx);
+    ctx.program.emplace_back(anzu::op_pop{});
+}
+
+void node_discard_expression::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}DiscardExpr:\n", spaces);
+    anzu::print("{}- Value:\n", spaces);
+    expr->print(indent + 1);
+}
+
+void node_function_def::evaluate(compiler_context& ctx)
+{
+    const auto start_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_function{ .name=name, .arg_names=arg_names });
+    ctx.functions[name] = {
+        .name=name,
+        .ptr=start_pos
+    };
+
+    body->evaluate(ctx);
+
+    const auto end_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_function_end{});
+
+    ctx.program[start_pos].as<anzu::op_function>().jump = end_pos + 1;
+}
+
+void node_function_def::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Function: {}", spaces, name);
+    for (const auto& arg : arg_names) {
+        anzu::print(" {}", arg);
+    }
+    anzu::print("\n");
+    body->print(indent + 1);
+}
+
+void node_function_call::evaluate(compiler_context& ctx)
+{
+}
+
+void node_function_call::print(int indent)
+{
+}
+
+void node_return::evaluate(compiler_context& ctx)
+{
+    return_value->evaluate(ctx);
+    ctx.program.emplace_back(anzu::op_return{});
+}
+
+void node_return::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Return:\n", spaces);
+    return_value->print(indent + 1);
+}
+
 
 namespace {
 
@@ -359,7 +423,7 @@ auto parse_expression(parser_context& ctx) -> node_ptr
     return parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
 }
 
-auto parse_assignment(parser_context& ctx) -> node_ptr
+auto parse_assign_expression(parser_context& ctx) -> node_ptr
 {
     if (ctx.curr->type != token_type::name) {
         anzu::print("syntax error: cannot assign to '{}'\n", ctx.curr->text);
@@ -368,9 +432,16 @@ auto parse_assignment(parser_context& ctx) -> node_ptr
     auto name = (ctx.curr++)->text;
     consume_only(ctx.curr, "=");
 
-    auto assign = std::make_unique<anzu::node_assignment>();
+    auto assign = std::make_unique<anzu::node_assign_expression>();
     assign->name = name;
-    assign->value = parse_expression(ctx);
+    assign->expr = parse_expression(ctx);
+    return assign;
+}
+
+auto parse_discard_expression(parser_context& ctx) -> node_ptr
+{
+    auto assign = std::make_unique<anzu::node_discard_expression>();
+    assign->expr = parse_expression(ctx);
     return assign;
 }
 
@@ -421,9 +492,49 @@ auto parse_if_body(parser_context& ctx) -> node_ptr
     return stmt;
 }
 
+auto parse_function(parser_context& ctx) -> node_ptr
+{
+    auto ret = std::make_unique<node_function_def>();
+    if (ctx.curr->type != token_type::name) {
+        anzu::print("syntax error: expected function name\n");
+        std::exit(1);
+    }
+    ret->name = (ctx.curr++)->text;
+    consume_only(ctx.curr, "(");
+    bool expect_comma = false;
+    while (ctx.curr != ctx.end && ctx.curr->text != ")") {
+        if (expect_comma) {
+            if (ctx.curr->text != ",") { // skip commas, enforce later
+                anzu::print("syntax error: expected comma in function name list\n");
+                std::exit(1);
+            }
+            ++ctx.curr;
+        }
+        else {
+            if (ctx.curr->type == token_type::name) {
+                ret->arg_names.push_back(ctx.curr->text);
+                ++ctx.curr;          
+            }
+            else {
+                anzu::print("syntax error: failed to parse function signature\n");
+                std::exit(1);
+            }
+        }
+        expect_comma = !expect_comma;
+    }
+    consume_only(ctx.curr, ")");
+    consume_only(ctx.curr, "do");
+    ret->body = parse_statement_list(ctx);
+    consume_only(ctx.curr, "end");
+    return ret;
+}
+
 auto parse_statement(parser_context& ctx) -> node_ptr
 {
-    if (consume_maybe(ctx.curr, "while")) {
+    if (consume_maybe(ctx.curr, "function")) {
+        return parse_function(ctx);
+    }
+    else if (consume_maybe(ctx.curr, "while")) {
         return parse_while_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "if")) {
@@ -436,13 +547,14 @@ auto parse_statement(parser_context& ctx) -> node_ptr
         return std::make_unique<anzu::node_continue>(); 
     }
     else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == "=") {
-        return parse_assignment(ctx);
+        return parse_assign_expression(ctx);
     }
     else if (anzu::is_builtin(ctx.curr->text)) {
         return std::make_unique<anzu::node_builtin_call>((ctx.curr++)->text);
     }
+
     else if (ctx.curr != ctx.end) {
-        return parse_expression(ctx);
+        return parse_discard_expression(ctx);
     }
     return nullptr;
 }

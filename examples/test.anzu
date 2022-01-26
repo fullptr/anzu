@@ -1,8 +1,14 @@
 # fibbonacci to demonstrate functions and recursion
 
+function foo(x, y) do
+    t = 5 + y
+end
+
 x = 5
 y = 2 * x
-y println
 
 y = 3 * x
-y println
+
+2 * x + 1
+
+x = 12

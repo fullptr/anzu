@@ -127,10 +127,51 @@ struct node_bin_op : public node
     void print(int indent = 0) override;
 };
 
-struct node_assignment : public node
+// Evaluates the child node and assigns the result to the given name.
+// Currently assuming that the child node results in a value being pushed
+// to the stack, will enforce this in the code later on.
+struct node_assign_expression : public node
 {
     std::string name;
-    std::unique_ptr<node> value;
+    std::unique_ptr<node> expr;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+// Evaluates the child node and then inserts an OP_POP to ignore the
+// returned value. Currently assuming that the child node results in a
+// value being pushed to the stack, will enforce this in the code later on.
+struct node_discard_expression : public node
+{
+    std::unique_ptr<node> expr;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_function_def : public node
+{
+    std::string              name;
+    std::vector<std::string> arg_names;
+    std::unique_ptr<node>    body;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_function_call : public node
+{
+    std::string                        function_name;
+    std::vector<std::unique_ptr<node>> args;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_return : public node
+{
+    std::unique_ptr<node> return_value; // Should leave a value on the stack
 
     void evaluate(compiler_context& ctx) override;
     void print(int indent = 0) override;
@@ -139,8 +180,8 @@ struct node_assignment : public node
 using token_iterator = std::vector<anzu::token>::const_iterator;
 using node_ptr       = std::unique_ptr<anzu::node>;
 
-// Context used while constructing an AST. Has non-owning pointers into the tokens as well
-// as keeping track of function names.
+// Context used while constructing an AST. Has non-owning pointers into the
+// tokens as well as keeping track of function names.
 struct parser_context
 {
     token_iterator       curr;
@@ -151,7 +192,14 @@ struct parser_context
 // as well as information such as function definitions.
 struct compiler_context
 {
+    struct function_def
+    {
+        std::string  name;
+        std::intptr_t ptr;
+    };
+
     std::vector<anzu::op> program;
+    std::unordered_map<std::string, function_def> functions;
 };
 
 auto parse(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>;

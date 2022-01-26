@@ -50,6 +50,12 @@ void op_push_var::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
+void op_pop::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    frame.pop();
+}
+
 
 void op_store::apply(anzu::context& ctx) const
 {
@@ -108,6 +114,24 @@ void op_builtin_function_call::apply(anzu::context& ctx) const
 {
     func(ctx);
     ctx.top().ptr() += 1;
+}
+
+void op_function::apply(anzu::context& ctx) const
+{
+    ctx.top().ptr() += jump;
+}
+
+void op_function_end::apply(anzu::context& ctx) const
+{
+    ctx.pop();
+    ctx.top().push(anzu::object{false}); // TODO: Make a null type
+}
+
+void op_return::apply(anzu::context& ctx) const
+{
+    auto return_value = ctx.top().pop();
+    ctx.pop();
+    ctx.top().push(return_value);
 }
 
 template <typename A, typename B>
