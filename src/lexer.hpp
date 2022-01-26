@@ -43,8 +43,7 @@ static const std::unordered_set<std::string_view> symbols = {
     "[",
     "]",
     ",",
-    ".",
-    "="
+    "."
 };
 
 enum class token_type
