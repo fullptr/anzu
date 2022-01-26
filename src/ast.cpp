@@ -297,18 +297,6 @@ void node_bin_op::print(int indent)
 
 namespace {
 
-// A temporary function during migration between the old and new parsers. This will
-// get smaller and smaller as we move these operations to be stored in proper tree
-// nodes.
-auto parse_op(parser_context& ctx) -> anzu::op
-{
-    const auto token = ctx.curr->text;
-    ++ctx.curr;
-    if (token == STORE)   return op_store{ .name=(ctx.curr++)->text };
-    anzu::print("unknown token '{}'\n", token);
-    std::exit(1);
-}
-
 auto handle_list_literal(parser_context& ctx) -> anzu::object;
 
 auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
@@ -526,7 +514,13 @@ auto parse_statement(parser_context& ctx) -> node_ptr
         return parse_expression(ctx);
     }
     else if (ctx.curr != ctx.end) {
-        return std::make_unique<anzu::node_op>(parse_op(ctx));
+        const auto token = ctx.curr->text;
+        ++ctx.curr;
+        if (token == STORE) {
+            return std::make_unique<anzu::node_op>(op_store{ .name=(ctx.curr++)->text });
+        }
+        anzu::print("unknown token '{}'\n", token);
+        std::exit(1);
     }
     return nullptr;
 }
