@@ -28,17 +28,6 @@ auto consume_only(token_iterator& it, std::string_view tok) -> void
 
 }
 
-void node_op::evaluate(compiler_context& ctx)
-{
-    ctx.program.push_back(op);
-}
-
-void node_op::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Op: {}\n", spaces, op);
-}
-
 void node_sequence::evaluate(compiler_context& ctx)
 {
     for (const auto& node : sequence) {
@@ -295,6 +284,21 @@ void node_bin_op::print(int indent)
     rhs->print(indent + 1);
 }
 
+void node_assignment::evaluate(compiler_context& ctx)
+{
+    value->evaluate(ctx);
+    ctx.program.emplace_back(anzu::op_store{ .name=name });
+}
+
+void node_assignment::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Assignment\n", spaces);
+    anzu::print("{}- Name: {}\n", spaces, name);
+    anzu::print("{}- Value:\n", spaces);
+    value->print(indent + 1);
+}
+
 namespace {
 
 auto handle_list_literal(parser_context& ctx) -> anzu::object;
@@ -417,6 +421,21 @@ auto parse_expression(parser_context& ctx) -> node_ptr
     return parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
 }
 
+auto parse_assignment(parser_context& ctx) -> node_ptr
+{
+    if (ctx.curr->type != token_type::name) {
+        anzu::print("syntax error: cannot assign to '{}'\n", ctx.curr->text);
+        std::exit(1);
+    }
+    auto name = (ctx.curr++)->text;
+    consume_only(ctx.curr, "=");
+
+    auto assign = std::make_unique<anzu::node_assignment>();
+    assign->name = name;
+    assign->value = parse_expression(ctx);
+    return assign;
+}
+
 auto parse_statement(parser_context& ctx) -> node_ptr;
 
 // statement_list:
@@ -503,10 +522,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
     }
-    else if (consume_maybe(ctx.curr, "->")) {
-        return std::make_unique<anzu::node_op>(op_store{ .name=(ctx.curr++)->text });
+    else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == "=") {
+        return parse_assignment(ctx);
     }
-
     else if (ctx.function_names.contains(ctx.curr->text)) {
         return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
     }

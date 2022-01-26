@@ -1,11 +1,8 @@
 # fibbonacci to demonstrate functions and recursion
 
-"Enter value: " print
-input -> x
-x to_int -> x
+x = 5
+y = 2 * x
+y println
 
-2 * x -> x
-x println
-
-3 * x -> y
+y = 3 * x
 y println

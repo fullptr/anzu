@@ -11,35 +11,24 @@ namespace anzu {
 struct parser_context;
 struct compiler_context;
 
-// Store Manipulation
-
-constexpr auto STORE       = std::string_view{"->"};
-
-// Control Flow / Functions
-
 constexpr auto IF          = std::string_view{"if"};
 constexpr auto ELIF        = std::string_view{"elif"};
 constexpr auto ELSE        = std::string_view{"else"};
-
 constexpr auto WHILE       = std::string_view{"while"};
 constexpr auto BREAK       = std::string_view{"break"};
 constexpr auto CONTINUE    = std::string_view{"continue"};
-
 constexpr auto FUNCTION    = std::string_view{"function"};
 constexpr auto RETURN      = std::string_view{"return"};
-
 constexpr auto DO          = std::string_view{"do"};
 constexpr auto END         = std::string_view{"end"};
-
-// Numerical Operators
+constexpr auto TRUE_LIT    = std::string_view{"true"};
+constexpr auto FALSE_LIT   = std::string_view{"false"};
 
 constexpr auto ADD         = std::string_view{"+"};
 constexpr auto SUB         = std::string_view{"-"};
 constexpr auto MUL         = std::string_view{"*"};
 constexpr auto DIV         = std::string_view{"/"};
 constexpr auto MOD         = std::string_view{"%"};
-
-// Logical Operators
 
 constexpr auto EQ          = std::string_view{"=="};
 constexpr auto NE          = std::string_view{"!="};
@@ -50,10 +39,8 @@ constexpr auto GE          = std::string_view{">="};
 constexpr auto OR          = std::string_view{"||"};
 constexpr auto AND         = std::string_view{"&&"};
 
-// Literals
+constexpr auto ASSIGN      = std::string_view{"="};
 
-constexpr auto TRUE_LIT    = std::string_view{"true"};
-constexpr auto FALSE_LIT   = std::string_view{"false"};
 
 // I normally avoid inheritance trees, however dealing with variants here was a bit
 // cumbersome and required wrapping the variant in a struct to allow recusrion (due
@@ -64,18 +51,6 @@ struct node
     virtual ~node() {}
     virtual void evaluate(compiler_context& ctx) = 0;
     virtual void print(int indent = 0) = 0;
-};
-
-// This is just a temporary node for storing bytecode, with the goal
-// of retiring the old parser. This will eventually get used less and less as more code
-// gets translated to proper nodes.
-struct node_op : public node
-{
-    anzu::op op;
-
-    node_op(const anzu::op& new_op) : op(new_op) {}
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_sequence : public node
@@ -175,6 +150,15 @@ struct node_bin_op : public node
     std::string op; // TODO: make into enum
     std::unique_ptr<node> lhs;
     std::unique_ptr<node> rhs;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_assignment : public node
+{
+    std::string name;
+    std::unique_ptr<node> value;
 
     void evaluate(compiler_context& ctx) override;
     void print(int indent = 0) override;
