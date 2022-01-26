@@ -180,6 +180,14 @@ struct node_literal : public node
     void print(int indent = 0) override;
 };
 
+struct node_variable : public node
+{
+    std::string name;
+    node_variable(const std::string& n) : name(n) {}
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
 struct node_bin_op : public node
 {
     std::string op; // TODO: make into enum

@@ -211,6 +211,17 @@ void node_literal::print(int indent)
     anzu::print("{}Literal: {}\n", spaces, value.to_repr());
 }
 
+void node_variable::evaluate(compiler_context& ctx)
+{
+    ctx.program.emplace_back(anzu::op_push_var{ .name=name });
+}
+
+void node_variable::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Variable: {}\n", spaces, name);
+}
+
 void node_break::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_break{});
@@ -315,6 +326,26 @@ auto parse_expression(parser_context& ctx) -> node_ptr;
 auto parse_term(parser_context& ctx) -> node_ptr;
 auto parse_factor(parser_context& ctx) -> node_ptr;
 
+auto parse_comparison(parser_context& ctx) -> node_ptr
+{
+    static const auto ops = std::unordered_set<std::string_view>{
+        "<", "<=", ">", ">=", "==", "!="
+    };
+
+    auto left = parse_expression(ctx);
+    while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {
+        auto op = (ctx.curr++)->text;
+
+        auto new_left = std::make_unique<anzu::node_bin_op>();
+        new_left->lhs = std::move(left);
+        new_left->op = op;
+        new_left->rhs = parse_expression(ctx);
+
+        left = std::move(new_left);
+    }
+    return left;
+}
+
 auto parse_expression(parser_context& ctx) -> node_ptr
 {
     static const auto ops = std::unordered_set<std::string_view>{"+", "-"};
@@ -353,34 +384,23 @@ auto parse_term(parser_context& ctx) -> node_ptr
     return left;
 }
 
-auto parse_comparison(parser_context& ctx) -> node_ptr
-{
-    static const auto ops = std::unordered_set<std::string_view>{
-        "<", "<=", ">", ">=", "==", "!="
-    };
-
-    auto left = parse_expression(ctx);
-    while (ctx.curr != ctx.end && ops.contains(ctx.curr->text)) {
-        auto op = (ctx.curr++)->text;
-
-        auto new_left = std::make_unique<anzu::node_bin_op>();
-        new_left->lhs = std::move(left);
-        new_left->op = op;
-        new_left->rhs = parse_expression(ctx);
-
-        left = std::move(new_left);
-    }
-    return left;
-}
-
 auto parse_factor(parser_context& ctx) -> node_ptr
 {
     auto factor = anzu::try_parse_literal(ctx);
-    if (!factor.has_value()) {
-        anzu::print("syntax error: failed to parse factor\n");
+    if (factor.has_value()) {
+        return std::make_unique<anzu::node_literal>(*factor);
+    }
+    else if (ctx.function_names.contains(ctx.curr->text) || anzu::is_builtin(ctx.curr->text)) {
+        anzu::print("syntax error: '{}' is a function name, cannot be a factor\n", ctx.curr->text);
         std::exit(1);
     }
-    return std::make_unique<anzu::node_literal>(*factor);
+    else if (ctx.curr->type != token_type::name) {
+        anzu::print("syntax error: '{}' is not a name, cannot be a factor\n", ctx.curr->text);
+        std::exit(1);
+    }
+    else {
+        return std::make_unique<anzu::node_variable>((ctx.curr++)->text);
+    }
 }
 
 auto parse_statement(parser_context& ctx) -> node_ptr;
