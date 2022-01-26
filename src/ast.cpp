@@ -302,7 +302,7 @@ namespace {
 // nodes.
 auto parse_op(parser_context& ctx) -> anzu::op
 {
-    const auto& token = ctx.curr->text;
+    const auto token = ctx.curr->text;
     ++ctx.curr;
     if (token == STORE)   return op_store{ .name=(ctx.curr++)->text };
     if (token == POP)     return op_pop{};
@@ -317,7 +317,8 @@ auto parse_op(parser_context& ctx) -> anzu::op
     if (token == TO_INT)  return op_to_int{};
     if (token == TO_BOOL) return op_to_bool{};
     if (token == TO_STR)  return op_to_str{};
-    return op_push_var{.name=token};
+    anzu::print("unknown token '{}'\n", token);
+    std::exit(1);
 }
 
 auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>;
@@ -547,10 +548,6 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     }
     else if (consume_maybe(ctx.curr, "expr")) {
         return parse_comparison(ctx);
-    }
-
-    else if (auto obj = try_parse_literal(ctx); obj.has_value()) {
-        return std::make_unique<anzu::node_literal>(*obj);
     }
 
     else if (ctx.function_names.contains(ctx.curr->text)) {

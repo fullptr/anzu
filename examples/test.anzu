@@ -1,5 +1,9 @@
 # fibbonacci to demonstrate functions and recursion
 
-6 -> x
+function print 1 0
+    . expr "\n" .
+end
 
-expr 6 % x == 1 . "\n" .
+expr 5 + 6 -> x
+
+expr x print

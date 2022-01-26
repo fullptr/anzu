@@ -183,6 +183,7 @@ struct node_literal : public node
 struct node_variable : public node
 {
     std::string name;
+    
     node_variable(const std::string& n) : name(n) {}
     void evaluate(compiler_context& ctx) override;
     void print(int indent = 0) override;

@@ -24,6 +24,7 @@ static const std::unordered_set<std::string_view> keywords = {
 
     "true",
     "false",
+    "expr"
 };
 
 static const std::unordered_set<std::string_view> bin_ops = {
@@ -50,7 +51,8 @@ static const std::unordered_set<std::string_view> symbols = {
     ":",
     "[",
     "]",
-    ","
+    ",",
+    "."
 };
 
 enum class token_type
