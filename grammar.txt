@@ -1,0 +1,69 @@
+program:
+  | statement_list
+
+statement_list:
+  | statement
+  | statement statement_list
+
+literal:
+  | int_literal
+  | bool_literal
+  | string_literal
+  | list_literal
+
+expression:
+  | level_5_expression
+
+level_5_expression:
+  | level_4_expression [('*'|'/'|'%') level_5_expression]*
+
+level_4_expression:
+  | level_3_expression [('+'|'-') level_4_expression]*
+
+level_3_expression:
+  | level_2_expression [('<'|'<='|'>'|'>='|'=='|'!=') level_3_expression]*
+
+level_2_expression:
+  | level_1_expression ['&&' level_2_expression]*
+
+level_1_expression:
+  | factor ['||' level_1_expression]*
+
+factor:
+  | literal
+  | variable_name
+  | '(' expression ')'
+
+statement:
+  | 'function' function_body
+  | 'while' while_body
+  | 'if' if_body
+  | 'return'
+  | 'break'
+  | 'continue'
+
+  # We will remove the 'expr' token eventually, this is just for during development.
+  # When assignments and function calls can be included, this can be the last thing
+  # that a statement is parsed as, resulting in a failure otherwise.
+  | 'expr' expression
+  | function_identifier
+  | builtin_identifier
+  | op_code  # This is temporary and will be removed
+
+function_identifier:
+  | string_literal
+
+builtin_identifier:
+  | string_literal
+
+function_body:
+  | function_identifier int_literal int_literal statement_list 'end'
+  | function_identifier int_literal int_literal 'end'
+
+while_body:
+  | statement_list 'do' statement_list 'end'
+  | statement_list 'do' 'end'
+
+if_body:
+  | statement_list 'do' statement_list 'elif' if_body
+  | statement_list 'do' statement_list 'end'

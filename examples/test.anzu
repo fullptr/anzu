@@ -1,11 +1,11 @@
 # fibbonacci to demonstrate functions and recursion
 
-[1, 2, 3] -> arr
-arr . "\n" .
+"Enter value: " print
+input -> x
+x to_int -> x
 
-"Hello world\n" . "\n" .
+2 * x -> x
+x println
 
-0 while dup 5 < do
-    dup . "\n".
-    1 + 
-end
+3 * x -> y
+y println

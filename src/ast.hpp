@@ -11,14 +11,6 @@ namespace anzu {
 struct parser_context;
 struct compiler_context;
 
-// Stack Manipulation
-
-constexpr auto POP         = std::string_view{"pop"};
-constexpr auto DUP         = std::string_view{"dup"};
-constexpr auto SWAP        = std::string_view{"swap"};
-constexpr auto ROT         = std::string_view{"rot"};
-constexpr auto OVER        = std::string_view{"over"};
-
 // Store Manipulation
 
 constexpr auto STORE       = std::string_view{"->"};
@@ -55,24 +47,13 @@ constexpr auto LT          = std::string_view{"<"};
 constexpr auto LE          = std::string_view{"<="};
 constexpr auto GT          = std::string_view{">"};
 constexpr auto GE          = std::string_view{">="};
-constexpr auto OR          = std::string_view{"or"};
-constexpr auto AND         = std::string_view{"and"};
-
-// IO
-
-constexpr auto INPUT       = std::string_view{"input"};
-constexpr auto DUMP        = std::string_view{"."};
+constexpr auto OR          = std::string_view{"||"};
+constexpr auto AND         = std::string_view{"&&"};
 
 // Literals
 
 constexpr auto TRUE_LIT    = std::string_view{"true"};
 constexpr auto FALSE_LIT   = std::string_view{"false"};
-
-// Casts
-
-constexpr auto TO_INT      = std::string_view{"(int)"};
-constexpr auto TO_BOOL     = std::string_view{"(bool)"};
-constexpr auto TO_STR      = std::string_view{"(str)"};
 
 // I normally avoid inheritance trees, however dealing with variants here was a bit
 // cumbersome and required wrapping the variant in a struct to allow recusrion (due
@@ -176,6 +157,25 @@ struct node_literal : public node
     anzu::object value;
 
     node_literal(const anzu::object& v) : value(v) {}
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_variable : public node
+{
+    std::string name;
+
+    node_variable(const std::string& n) : name(n) {}
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_bin_op : public node
+{
+    std::string op; // TODO: make into enum
+    std::unique_ptr<node> lhs;
+    std::unique_ptr<node> rhs;
+
     void evaluate(compiler_context& ctx) override;
     void print(int indent = 0) override;
 };

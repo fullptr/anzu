@@ -50,44 +50,6 @@ void op_push_var::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
-void op_pop::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.pop();
-    frame.ptr() += 1;
-}
-
-void op_dup::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.top());
-    frame.ptr() += 1;
-}
-
-void op_swap::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    anzu::verify_stack(frame, 2, "swap");
-    swap(frame.top(0), frame.top(1));
-    frame.ptr() += 1;
-}
-
-void op_rot::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    anzu::verify_stack(frame, 3, "rot");
-    swap(frame.top(0), frame.top(1));
-    swap(frame.top(1), frame.top(2));
-    frame.ptr() += 1;
-}
-
-void op_over::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    anzu::verify_stack(frame, 2, "over");
-    frame.push(frame.top(1));
-    frame.ptr() += 1;
-}
 
 void op_store::apply(anzu::context& ctx) const
 {
@@ -312,49 +274,6 @@ void op_and::apply(anzu::context& ctx) const
     auto b = frame.pop();
     auto a = frame.pop();
     frame.push(a && b);
-    frame.ptr() += 1;
-}
-
-void op_to_int::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.pop().to_int());
-    frame.ptr() += 1;
-}
-
-void op_to_bool::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.pop().to_bool());
-    frame.ptr() += 1;
-}
-
-void op_to_str::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    frame.push(frame.pop().to_str());
-    frame.ptr() += 1;
-}
-
-void op_input::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    std::string in;
-    std::cin >> in;
-    frame.push(in);
-    frame.ptr() += 1;
-}
-
-void op_dump::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    anzu::verify_stack(frame, 1, ".");
-    const auto obj = frame.pop();
-    if (obj.is<std::string>()) {
-        anzu::print("{}", anzu::format_special_chars(obj.as<std::string>()));
-    } else {
-        anzu::print("{}", obj);
-    }
     frame.ptr() += 1;
 }
 

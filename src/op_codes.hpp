@@ -28,36 +28,6 @@ struct op_push_var
     void apply(anzu::context& ctx) const;
 };
 
-struct op_pop
-{
-    std::string to_string() const { return "OP_POP"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_dup
-{
-    std::string to_string() const { return "OP_DUP"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_swap
-{
-    std::string to_string() const { return "OP_SWAP"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_rot
-{
-    std::string to_string() const { return "OP_ROT"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_over
-{
-    std::string to_string() const { return "OP_OVER"; }
-    void apply(anzu::context& ctx) const;
-};
-
 // Store Manipulation
 
 struct op_store
@@ -293,51 +263,11 @@ struct op_and
     void apply(anzu::context& ctx) const;
 };
 
-// Casts
-
-struct op_to_int
-{
-    std::string to_string() const { return "OP_TO_INT"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_to_bool
-{
-    std::string to_string() const { return "OP_TO_BOOL"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_to_str
-{
-    std::string to_string() const { return "OP_STR"; }
-    void apply(anzu::context& ctx) const;
-};
-
-// IO
-
-struct op_input
-{
-    std::string to_string() const { return "OP_INPUT"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_dump
-{
-    std::string to_string() const { return "OP_DUMP"; }
-    void apply(anzu::context& ctx) const;
-};
-
 class op
 {
     using op_type = std::variant<
-        // Stack Manipulation
         op_push_const,
         op_push_var,
-        op_pop,
-        op_dup,
-        op_swap,
-        op_rot,
-        op_over,
 
         // Store Manipulation
         op_store,
@@ -374,16 +304,7 @@ class op
         op_gt,
         op_ge,
         op_or,
-        op_and,
-
-        // Casts
-        op_to_int,
-        op_to_bool,
-        op_to_str,
-
-        // IO
-        op_input,
-        op_dump
+        op_and
     >;
 
     op_type d_type;

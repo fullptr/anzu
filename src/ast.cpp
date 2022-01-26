@@ -3,6 +3,7 @@
 #include "object.hpp"
 #include "print.hpp"
 
+#include <optional>
 #include <tuple>
 
 namespace anzu {
@@ -210,6 +211,17 @@ void node_literal::print(int indent)
     anzu::print("{}Literal: {}\n", spaces, value.to_repr());
 }
 
+void node_variable::evaluate(compiler_context& ctx)
+{
+    ctx.program.emplace_back(anzu::op_push_var{ .name=name });
+}
+
+void node_variable::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}Variable: {}\n", spaces, name);
+}
+
 void node_break::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_break{});
@@ -243,40 +255,166 @@ void node_return::print(int indent)
     anzu::print("{}Return\n", spaces);
 }
 
+void node_bin_op::evaluate(compiler_context& ctx)
+{
+    lhs->evaluate(ctx);
+    rhs->evaluate(ctx);
+    if      (op == "+")  { ctx.program.push_back(anzu::op_add{}); }
+    else if (op == "-")  { ctx.program.push_back(anzu::op_sub{}); }
+    else if (op == "*")  { ctx.program.push_back(anzu::op_mul{}); }
+    else if (op == "/")  { ctx.program.push_back(anzu::op_div{}); }
+    else if (op == "%")  { ctx.program.push_back(anzu::op_mod{}); }
+    else if (op == "<")  { ctx.program.push_back(anzu::op_lt{}); }
+    else if (op == "<=") { ctx.program.push_back(anzu::op_le{}); }
+    else if (op == ">")  { ctx.program.push_back(anzu::op_gt{}); }
+    else if (op == ">=") { ctx.program.push_back(anzu::op_ge{}); }
+    else if (op == "==") { ctx.program.push_back(anzu::op_eq{}); }
+    else if (op == "!=") { ctx.program.push_back(anzu::op_ne{}); }
+    else {
+        anzu::print("syntax error: unknown binary operator: '{}'\n", op);
+        std::exit(1);
+    }
+}
+
+void node_bin_op::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}BinOp\n", spaces);
+    anzu::print("{}- Op: {}\n", spaces, op);
+    anzu::print("{}- Lhs:\n", spaces);
+    if (!lhs) {
+        anzu::print("bin op has no lhs\n");
+        std::exit(1);
+    }
+    lhs->print(indent + 1);
+    anzu::print("{}- Rhs:\n", spaces);
+    if (!rhs) {
+        anzu::print("bin op has no rhs\n");
+        std::exit(1);
+    }
+    rhs->print(indent + 1);
+}
+
 namespace {
 
-// A temporary function during migration between the old and new parsers. This will
-// get smaller and smaller as we move these operations to be stored in proper tree
-// nodes.
-auto parse_op(parser_context& ctx) -> anzu::op
+auto handle_list_literal(parser_context& ctx) -> anzu::object;
+
+auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
 {
-    const auto& token = ctx.curr->text;
-    ++ctx.curr;
-    if (token == STORE)   return op_store{ .name=(ctx.curr++)->text };
-    if (token == POP)     return op_pop{};
-    if (token == DUP)     return op_dup{};
-    if (token == SWAP)    return op_swap{};
-    if (token == ROT)     return op_rot{};
-    if (token == OVER)    return op_over{};
-    if (token == ADD)     return op_add{};
-    if (token == SUB)     return op_sub{};
-    if (token == MUL)     return op_mul{};
-    if (token == DIV)     return op_div{};
-    if (token == MOD)     return op_mod{};
-    if (token == EQ)      return op_eq{};
-    if (token == NE)      return op_ne{};
-    if (token == LT)      return op_lt{};
-    if (token == LE)      return op_le{};
-    if (token == GT)      return op_gt{};
-    if (token == GE)      return op_ge{};
-    if (token == OR)      return op_or{};
-    if (token == AND)     return op_and{};
-    if (token == INPUT)   return op_input{};
-    if (token == DUMP)    return op_dump{};
-    if (token == TO_INT)  return op_to_int{};
-    if (token == TO_BOOL) return op_to_bool{};
-    if (token == TO_STR)  return op_to_str{};
-    return op_push_var{.name=token};
+    if (ctx.curr->type == token_type::number) {
+        return { anzu::to_int((ctx.curr++)->text) };
+    }
+    else if (ctx.curr->type == token_type::string) {
+        return { (ctx.curr++)->text };
+    }
+     else if (consume_maybe(ctx.curr, "true")) {
+        return { true };
+    }
+    else if (consume_maybe(ctx.curr, "false")) {
+        return { false };
+    }
+    else if (ctx.curr->text == "[") {
+        return { handle_list_literal(ctx) };
+    }
+    return std::nullopt;
+};
+
+auto handle_list_literal(parser_context& ctx) -> anzu::object
+{
+    auto list = std::make_shared<std::vector<anzu::object>>();
+
+    consume_only(ctx.curr, "[");
+    bool expect_comma = false;
+    while (ctx.curr != ctx.end && ctx.curr->text != "]") {
+        if (expect_comma) {
+            if (ctx.curr->text != ",") { // skip commas, enforce later
+                anzu::print("syntax error: expected comma in list literal\n");
+                std::exit(1);
+            }
+            ++ctx.curr;
+        }
+        else {
+            if (auto obj = try_parse_literal(ctx); obj.has_value()) {
+                list->push_back(*obj);            
+            }
+            else {
+                anzu::print("syntax error: failed to parse literal\n");
+                std::exit(1);
+            }
+        }
+        expect_comma = !expect_comma;
+    }
+    if (ctx.curr == ctx.end) {
+        anzu::print("syntax error: list literal never closed\n");
+        std::exit(1);
+    }
+    consume_only(ctx.curr, "]");
+
+    return { list };
+}
+
+auto precedence_table()
+{
+    auto table = std::array<std::unordered_set<std::string_view>, 6>{};
+    table[0] = {};
+    table[1] = {"*", "/", "%"};
+    table[2] = {"+", "-"};
+    table[3] = {"<", "<=", ">", ">=", "==", "!="};
+    table[4] = {"&&"};
+    table[5] = {"||"};
+    return table;
+}
+static const auto bin_ops_table = precedence_table();
+
+auto parse_expression(parser_context& ctx) -> node_ptr;
+
+auto parse_single_factor(parser_context& ctx) -> node_ptr
+{
+    if (consume_maybe(ctx.curr, "(")) {
+        auto expr = parse_expression(ctx);
+        consume_only(ctx.curr, ")");
+        return expr;
+    }  
+    else if (auto factor = anzu::try_parse_literal(ctx); factor.has_value()) {
+        return std::make_unique<anzu::node_literal>(*factor);
+    }
+    else if (ctx.function_names.contains(ctx.curr->text) || anzu::is_builtin(ctx.curr->text)) {
+        anzu::print("syntax error: '{}' is a function name, cannot be a factor\n", ctx.curr->text);
+        std::exit(1);
+    }
+    else if (ctx.curr->type != token_type::name) {
+        anzu::print("syntax error: '{}' is not a name, cannot be a factor\n", ctx.curr->text);
+        std::exit(1);
+    }
+    else {
+        return std::make_unique<anzu::node_variable>((ctx.curr++)->text);
+    }
+}
+
+// Level is the precendence level, the lower the number, the tighter the factors bind.
+auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_ptr
+{
+    if (level == 0) {
+        return parse_single_factor(ctx);
+    }
+
+    auto left = parse_compound_factor(ctx, level - 1);
+    while (ctx.curr != ctx.end && bin_ops_table[level].contains(ctx.curr->text)) {
+        auto op = (ctx.curr++)->text;
+
+        auto new_left = std::make_unique<anzu::node_bin_op>();
+        new_left->lhs = std::move(left);
+        new_left->op = op;
+        new_left->rhs = parse_compound_factor(ctx, level - 1);
+
+        left = std::move(new_left);
+    }
+    return left;
+}
+
+auto parse_expression(parser_context& ctx) -> node_ptr
+{
+    return parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
 }
 
 auto parse_statement(parser_context& ctx) -> node_ptr;
@@ -295,9 +433,35 @@ auto parse_statement_list(parser_context& ctx) -> node_ptr
     return stmt;
 }
 
-// if_body:
-//     | statement_list 'do' statement_list 'elif' if_body
-//     | statement_list 'do' statement_list 'end'
+auto parse_function_body(parser_context& ctx) -> node_ptr
+{
+    auto stmt = std::make_unique<anzu::node_function_definition>();
+    stmt->name = (ctx.curr++)->text;
+
+    bool success = false;
+    std::tie(std::ignore, success) = ctx.function_names.insert(stmt->name);
+    if (!success) {
+        anzu::print("error: multiple defintions for function '{}'\n", stmt->name);
+        std::exit(1);
+    }
+
+    stmt->argc = anzu::to_int((ctx.curr++)->text);
+    stmt->retc = anzu::to_int((ctx.curr++)->text);
+    stmt->body = parse_statement_list(ctx);
+    consume_only(ctx.curr, "end");
+    return stmt;
+}
+
+auto parse_while_body(parser_context& ctx) -> node_ptr
+{
+    auto stmt = std::make_unique<anzu::node_while_statement>();
+    stmt->condition = parse_statement_list(ctx);
+    consume_only(ctx.curr, "do");
+    stmt->body = parse_statement_list(ctx);
+    consume_only(ctx.curr, "end");
+    return stmt;
+}
+
 auto parse_if_body(parser_context& ctx) -> node_ptr
 {
     auto stmt = std::make_unique<node_if_statement>();
@@ -319,83 +483,13 @@ auto parse_if_body(parser_context& ctx) -> node_ptr
     return stmt;
 }
 
-auto handle_list_literal(parser_context& ctx) -> anzu::object_list
-{
-    auto list = std::make_shared<std::vector<anzu::object>>();
-
-    consume_only(ctx.curr, "[");
-    while (ctx.curr != ctx.end && ctx.curr->text != "]") {
-        if (ctx.curr->text == "[") { // Nested list literal
-            list->push_back(handle_list_literal(ctx));
-        }
-        else if (ctx.curr->type == token_type::string) {
-            list->push_back(ctx.curr->text);
-        }
-        else if (ctx.curr->type == token_type::number) {
-            list->push_back(anzu::to_int(ctx.curr->text));
-        }
-        else if (ctx.curr->text == "true") {
-            list->push_back(true);
-        }
-        else if (ctx.curr->text == "false") {
-            list->push_back(false);
-        }
-        else if (ctx.curr->text == ",") {
-            // Pass, delimiters currently optional, will enforce after this workes
-        }
-        else {
-            anzu::print("could not recognise token while parsing list literal: {}\n", ctx.curr->text);
-            std::exit(1);
-        }
-        ++ctx.curr;
-    }
-    if (ctx.curr == ctx.end) {
-        anzu::print("end of file reached while parsing string literal\n");
-        std::exit(1);
-    }
-    consume_only(ctx.curr, "]");
-
-    return list;
-}
-
-// statement:
-//     | 'while' statement_list 'do' statement_list 'end'
-//     | 'while' statement_list 'do' 'end'
-//     | 'if' if_body
-//     | 'return'
-//     | 'continue'
-//     | 'break'
-//     | num_literal
-//     | string_literal
-//     | builtin
-//     | identifier
-// TODO: ALlow for break, continue
 auto parse_statement(parser_context& ctx) -> node_ptr
 {
     if (consume_maybe(ctx.curr, "function")) {
-        auto stmt = std::make_unique<anzu::node_function_definition>();
-        stmt->name = (ctx.curr++)->text;
-
-        bool success = false;
-        std::tie(std::ignore, success) = ctx.function_names.insert(stmt->name);
-        if (!success) {
-            anzu::print("error: multiple defintions for function '{}'\n", stmt->name);
-            std::exit(1);
-        }
-
-        stmt->argc = anzu::to_int((ctx.curr++)->text);
-        stmt->retc = anzu::to_int((ctx.curr++)->text);
-        stmt->body = parse_statement_list(ctx);
-        consume_only(ctx.curr, "end");
-        return stmt;
+        return parse_function_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "while")) {
-        auto stmt = std::make_unique<anzu::node_while_statement>();
-        stmt->condition = parse_statement_list(ctx);
-        consume_only(ctx.curr, "do");
-        stmt->body = parse_statement_list(ctx);
-        consume_only(ctx.curr, "end");
-        return stmt;
+        return parse_while_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "if")) {
         return parse_if_body(ctx);
@@ -409,16 +503,10 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
     }
-    else if (ctx.curr->type == token_type::number) {
-        return std::make_unique<anzu::node_literal>(anzu::to_int((ctx.curr++)->text));
+    else if (consume_maybe(ctx.curr, "->")) {
+        return std::make_unique<anzu::node_op>(op_store{ .name=(ctx.curr++)->text });
     }
-    else if (ctx.curr->type == token_type::string) {
-        return std::make_unique<anzu::node_literal>((ctx.curr++)->text);
-    }
-    else if (ctx.curr->text == "[") {
-        auto list = handle_list_literal(ctx);
-        return std::make_unique<anzu::node_literal>(list);
-    }
+
     else if (ctx.function_names.contains(ctx.curr->text)) {
         return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
     }
@@ -426,7 +514,7 @@ auto parse_statement(parser_context& ctx) -> node_ptr
         return std::make_unique<anzu::node_builtin_call>((ctx.curr++)->text);
     }
     else if (ctx.curr != ctx.end) {
-        return std::make_unique<anzu::node_op>(parse_op(ctx));
+        return parse_expression(ctx);
     }
     return nullptr;
 }

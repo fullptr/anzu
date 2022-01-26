@@ -6,12 +6,6 @@
 namespace anzu {
 
 static const std::unordered_set<std::string_view> keywords = {
-    "pop",
-    "dup",
-    "swap",
-    "rot",
-    "over",
-
     "function",
     "if",
     "elif",
@@ -21,9 +15,8 @@ static const std::unordered_set<std::string_view> keywords = {
     "continue",
     "do",
     "end",
-
     "true",
-    "false",
+    "false"
 };
 
 static const std::unordered_set<std::string_view> bin_ops = {
@@ -50,7 +43,8 @@ static const std::unordered_set<std::string_view> symbols = {
     ":",
     "[",
     "]",
-    ","
+    ",",
+    "."
 };
 
 enum class token_type

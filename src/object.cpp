@@ -95,7 +95,7 @@ auto object::to_str() const -> std::string
                 break; default:
                     std::string ret = std::format("[{}", v->at(0));
                     for (const auto& obj : *v | std::views::drop(1)) {
-                        ret += std::format(", {}", obj);
+                        ret += std::format(", {}", obj.to_repr());
                     }
                     ret += "]";
                     return ret;
@@ -119,7 +119,7 @@ auto object::to_repr() const -> std::string
                 break; default:
                     std::string ret = std::format("[{}", v->at(0));
                     for (const auto& obj : *v | std::views::drop(1)) {
-                        ret += std::format(", {}", obj);
+                        ret += std::format(", {}", obj.to_repr());
                     }
                     ret += "]";
                     return ret;
