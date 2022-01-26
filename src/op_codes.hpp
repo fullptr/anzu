@@ -263,20 +263,6 @@ struct op_and
     void apply(anzu::context& ctx) const;
 };
 
-// IO
-
-struct op_input
-{
-    std::string to_string() const { return "OP_INPUT"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_dump
-{
-    std::string to_string() const { return "OP_DUMP"; }
-    void apply(anzu::context& ctx) const;
-};
-
 class op
 {
     using op_type = std::variant<
@@ -318,11 +304,7 @@ class op
         op_gt,
         op_ge,
         op_or,
-        op_and,
-
-        // IO
-        op_input,
-        op_dump
+        op_and
     >;
 
     op_type d_type;

@@ -305,8 +305,6 @@ auto parse_op(parser_context& ctx) -> anzu::op
     const auto token = ctx.curr->text;
     ++ctx.curr;
     if (token == STORE)   return op_store{ .name=(ctx.curr++)->text };
-    if (token == INPUT)   return op_input{};
-    if (token == DUMP)    return op_dump{};
     anzu::print("unknown token '{}'\n", token);
     std::exit(1);
 }

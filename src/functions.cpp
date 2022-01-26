@@ -84,6 +84,36 @@ auto builtin_to_str(anzu::context& ctx) -> void
     frame.push(frame.pop().to_str());
 }
 
+auto builtin_print(anzu::context& ctx) -> void
+{
+    auto& frame = ctx.top();
+    const auto obj = frame.pop();
+    if (obj.is<std::string>()) {
+        anzu::print("{}", anzu::format_special_chars(obj.as<std::string>()));
+    } else {
+        anzu::print("{}", obj);
+    }
+}
+
+auto builtin_println(anzu::context& ctx) -> void
+{
+    auto& frame = ctx.top();
+    const auto obj = frame.pop();
+    if (obj.is<std::string>()) {
+        anzu::print("{}\n", anzu::format_special_chars(obj.as<std::string>()));
+    } else {
+        anzu::print("{}\n", obj);
+    }
+}
+
+auto builtin_input(anzu::context& ctx) -> void
+{
+    auto& frame = ctx.top();
+    std::string in;
+    std::cin >> in;
+    frame.push(in);
+}
+
 }
 
 static const std::unordered_map<std::string, builtin_function> builtins = {
@@ -101,7 +131,12 @@ static const std::unordered_map<std::string, builtin_function> builtins = {
     // Old Op Codes
     { "to_int",          builtin_to_int      },
     { "to_bool",         builtin_to_bool     },
-    { "to_str",          builtin_to_str      }
+    { "to_str",          builtin_to_str      },
+
+    // I/O
+    { "print",           builtin_print       },
+    { "println",         builtin_println     },
+    { "input",           builtin_input       }
 };
 
 auto is_builtin(const std::string& name) -> bool

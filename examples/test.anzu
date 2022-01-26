@@ -1,10 +1,9 @@
 # fibbonacci to demonstrate functions and recursion
 
-function print 1 0
-    . expr "\n" .
-end
-
+expr "Enter value: " print
 input -> x
 expr x to_int -> x
 
-expr 2 * x print
+expr 2 * x println
+
+expr 3 * x println

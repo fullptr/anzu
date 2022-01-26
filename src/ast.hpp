@@ -50,11 +50,6 @@ constexpr auto GE          = std::string_view{">="};
 constexpr auto OR          = std::string_view{"||"};
 constexpr auto AND         = std::string_view{"&&"};
 
-// IO
-
-constexpr auto INPUT       = std::string_view{"input"};
-constexpr auto DUMP        = std::string_view{"."};
-
 // Literals
 
 constexpr auto TRUE_LIT    = std::string_view{"true"};

@@ -277,26 +277,4 @@ void op_and::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
-void op_input::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    std::string in;
-    std::cin >> in;
-    frame.push(in);
-    frame.ptr() += 1;
-}
-
-void op_dump::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    anzu::verify_stack(frame, 1, ".");
-    const auto obj = frame.pop();
-    if (obj.is<std::string>()) {
-        anzu::print("{}", anzu::format_special_chars(obj.as<std::string>()));
-    } else {
-        anzu::print("{}", obj);
-    }
-    frame.ptr() += 1;
-}
-
 }
