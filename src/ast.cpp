@@ -503,6 +503,9 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
     }
+    else if (consume_maybe(ctx.curr, "->")) {
+        return std::make_unique<anzu::node_op>(op_store{ .name=(ctx.curr++)->text });
+    }
 
     else if (ctx.function_names.contains(ctx.curr->text)) {
         return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
@@ -510,17 +513,8 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (anzu::is_builtin(ctx.curr->text)) {
         return std::make_unique<anzu::node_builtin_call>((ctx.curr++)->text);
     }
-    else if (consume_maybe(ctx.curr, "expr")) {
-        return parse_expression(ctx);
-    }
     else if (ctx.curr != ctx.end) {
-        const auto token = ctx.curr->text;
-        ++ctx.curr;
-        if (token == STORE) {
-            return std::make_unique<anzu::node_op>(op_store{ .name=(ctx.curr++)->text });
-        }
-        anzu::print("unknown token '{}'\n", token);
-        std::exit(1);
+        return parse_expression(ctx);
     }
     return nullptr;
 }
