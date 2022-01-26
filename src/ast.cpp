@@ -124,57 +124,6 @@ void node_if_statement::print(int indent)
     }
 }
 
-void node_function_definition::evaluate(compiler_context& ctx)
-{
-    const auto function_pos = std::ssize(ctx.program);
-    ctx.program.push_back(anzu::op_function{ .name=name });
-    ctx.functions[name] = {
-        .argc=argc,
-        .retc=retc,
-        .ptr=function_pos
-    };
-    
-    body->evaluate(ctx);
-
-    const auto function_end_pos = std::ssize(ctx.program);
-    ctx.program.push_back(anzu::op_function_end{ .retc=retc });
-
-    ctx.program[function_pos].as<anzu::op_function>().jump = function_end_pos + 1;
-
-    // Set retc on all return statements
-    for (std::intptr_t idx = function_pos + 1; idx != function_end_pos; ++idx) {
-        if (auto op = ctx.program[idx].get_if<anzu::op_return>()) {
-            op->retc = retc;
-        }
-    }
-}
-
-void node_function_definition::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}FunctionDef:\n", spaces);
-    anzu::print("{}- Argc: {}\n", spaces, argc);
-    anzu::print("{}- Retc: {}\n", spaces, retc);
-    anzu::print("{}- Body:\n", spaces);
-    body->print(indent + 1);
-}
-
-void node_function_call::evaluate(compiler_context& ctx)
-{
-    auto function = ctx.functions.at(name);
-    ctx.program.push_back(anzu::op_function_call{
-        .name=name,
-        .argc=function.argc,
-        .jump=function.ptr + 1
-    });
-}
-
-void node_function_call::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}FunctionCall: {}\n", spaces, name);
-}
-
 void node_builtin_call::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_builtin_function_call{
@@ -231,17 +180,6 @@ void node_continue::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
     anzu::print("{}Continue\n", spaces);
-}
-
-void node_return::evaluate(compiler_context& ctx)
-{
-    ctx.program.emplace_back(anzu::op_return{});
-}
-
-void node_return::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Return\n", spaces);
 }
 
 void node_bin_op::evaluate(compiler_context& ctx)
@@ -382,7 +320,7 @@ auto parse_single_factor(parser_context& ctx) -> node_ptr
     else if (auto factor = anzu::try_parse_literal(ctx); factor.has_value()) {
         return std::make_unique<anzu::node_literal>(*factor);
     }
-    else if (ctx.function_names.contains(ctx.curr->text) || anzu::is_builtin(ctx.curr->text)) {
+    else if (anzu::is_builtin(ctx.curr->text)) {
         anzu::print("syntax error: '{}' is a function name, cannot be a factor\n", ctx.curr->text);
         std::exit(1);
     }
@@ -452,25 +390,6 @@ auto parse_statement_list(parser_context& ctx) -> node_ptr
     return stmt;
 }
 
-auto parse_function_body(parser_context& ctx) -> node_ptr
-{
-    auto stmt = std::make_unique<anzu::node_function_definition>();
-    stmt->name = (ctx.curr++)->text;
-
-    bool success = false;
-    std::tie(std::ignore, success) = ctx.function_names.insert(stmt->name);
-    if (!success) {
-        anzu::print("error: multiple defintions for function '{}'\n", stmt->name);
-        std::exit(1);
-    }
-
-    stmt->argc = anzu::to_int((ctx.curr++)->text);
-    stmt->retc = anzu::to_int((ctx.curr++)->text);
-    stmt->body = parse_statement_list(ctx);
-    consume_only(ctx.curr, "end");
-    return stmt;
-}
-
 auto parse_while_body(parser_context& ctx) -> node_ptr
 {
     auto stmt = std::make_unique<anzu::node_while_statement>();
@@ -504,17 +423,11 @@ auto parse_if_body(parser_context& ctx) -> node_ptr
 
 auto parse_statement(parser_context& ctx) -> node_ptr
 {
-    if (consume_maybe(ctx.curr, "function")) {
-        return parse_function_body(ctx);
-    }
-    else if (consume_maybe(ctx.curr, "while")) {
+    if (consume_maybe(ctx.curr, "while")) {
         return parse_while_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "if")) {
         return parse_if_body(ctx);
-    }
-    else if (consume_maybe(ctx.curr, "return")) {
-        return std::make_unique<anzu::node_return>(); 
     }
     else if (consume_maybe(ctx.curr, "break")) {
         return std::make_unique<anzu::node_break>(); 
@@ -524,9 +437,6 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     }
     else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == "=") {
         return parse_assignment(ctx);
-    }
-    else if (ctx.function_names.contains(ctx.curr->text)) {
-        return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
     }
     else if (anzu::is_builtin(ctx.curr->text)) {
         return std::make_unique<anzu::node_builtin_call>((ctx.curr++)->text);

@@ -17,8 +17,6 @@ constexpr auto ELSE        = std::string_view{"else"};
 constexpr auto WHILE       = std::string_view{"while"};
 constexpr auto BREAK       = std::string_view{"break"};
 constexpr auto CONTINUE    = std::string_view{"continue"};
-constexpr auto FUNCTION    = std::string_view{"function"};
-constexpr auto RETURN      = std::string_view{"return"};
 constexpr auto DO          = std::string_view{"do"};
 constexpr auto END         = std::string_view{"end"};
 constexpr auto TRUE_LIT    = std::string_view{"true"};
@@ -80,26 +78,6 @@ struct node_if_statement : public node
     void print(int indent = 0) override;
 };
 
-struct node_function_definition : public node
-{
-    std::string name;
-    int argc;
-    int retc;
-    std::unique_ptr<node> body;
-
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
-struct node_function_call : public node
-{
-    std::string name;
-
-    node_function_call(const std::string& n) : name(n) {}
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
 struct node_builtin_call : public node
 {
     std::string name;
@@ -116,12 +94,6 @@ struct node_break : public node
 };
 
 struct node_continue : public node
-{
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
-struct node_return : public node
 {
     void evaluate(compiler_context& ctx) override;
     void print(int indent = 0) override;
@@ -173,23 +145,13 @@ struct parser_context
 {
     token_iterator       curr;
     const token_iterator end;
-
-    std::unordered_set<std::string> function_names;
 };
 
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler_context
 {
-    struct function_def
-    {
-        int           argc;
-        int           retc;
-        std::intptr_t ptr; // Pointer to the position of this function in the program.
-    };
-
     std::vector<anzu::op> program;
-    std::unordered_map<std::string, function_def> functions;
 };
 
 auto parse(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>;

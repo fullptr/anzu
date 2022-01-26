@@ -118,60 +118,6 @@ struct op_do
     void apply(anzu::context& ctx) const;
 };
 
-struct op_function
-{
-    std::string   name;
-    std::intptr_t jump = -1;  // Jumps to end of function so it isnt invoked when running.
-
-    std::string to_string() const
-    {
-        const auto func_str = std::format("OP_FUNCTION({})", name);
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, func_str, jump_str);
-    }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_function_end
-{
-    int retc;
-
-    std::string to_string() const
-    {
-        const auto retc_str = std::format("(RETC = {})", retc);
-        return std::format(FORMAT3, "OP_FUNCTION_END", "JUMP -> CALL", retc_str);
-    }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_function_call
-{
-    std::string   name;
-    int           argc;
-    std::intptr_t jump;
-
-    std::string to_string() const
-    {
-        const auto func_str = std::format("OP_FUNCTION_CALL({})", name);
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        const auto argc_str = std::format("(ARGC = {})", argc);
-        return std::format(FORMAT3, func_str, jump_str, argc_str);
-    }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_return
-{
-    int retc = -1;
-
-    std::string to_string() const
-    {
-        const auto retc_str = std::format("(RETC = {})", retc);
-        return std::format(FORMAT3, "OP_RETURN", "JUMP -> CALL", retc_str);
-    }
-    void apply(anzu::context& ctx) const;
-};
-
 struct op_builtin_function_call
 {
     std::string name;
@@ -283,10 +229,6 @@ class op
         op_do,
 
         // Functions
-        op_function,
-        op_function_call,
-        op_function_end,
-        op_return,
         op_builtin_function_call,
 
         // Numerical Operators

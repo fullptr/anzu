@@ -104,34 +104,6 @@ void op_do::apply(anzu::context& ctx) const
     }
 }
 
-void op_function::apply(anzu::context& ctx) const
-{
-    ctx.top().ptr() = jump;
-}
-
-void op_function_call::apply(anzu::context& ctx) const
-{
-    auto& curr = ctx.push({}); // New frame
-    auto& prev = ctx.top(1);   // One under the top
-
-    curr.ptr() = jump; // Jump into the function
-    prev.ptr() += 1;   // The position in the program where it will resume
-
-    transfer_values(prev, curr, argc);
-}
-
-void op_function_end::apply(anzu::context& ctx) const
-{
-    transfer_values(ctx.top(0), ctx.top(1), retc);
-    ctx.pop(); // Remove stack frame
-}
-
-void op_return::apply(anzu::context& ctx) const
-{
-    transfer_values(ctx.top(0), ctx.top(1), retc);
-    ctx.pop(); // Remove stack frame
-}
-
 void op_builtin_function_call::apply(anzu::context& ctx) const
 {
     func(ctx);
