@@ -28,17 +28,6 @@ auto consume_only(token_iterator& it, std::string_view tok) -> void
 
 }
 
-void node_op::evaluate(compiler_context& ctx)
-{
-    ctx.program.push_back(op);
-}
-
-void node_op::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Op: {}\n", spaces, op);
-}
-
 void node_sequence::evaluate(compiler_context& ctx)
 {
     for (const auto& node : sequence) {

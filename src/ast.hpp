@@ -11,8 +11,6 @@ namespace anzu {
 struct parser_context;
 struct compiler_context;
 
-constexpr auto STORE       = std::string_view{"->"};
-
 constexpr auto IF          = std::string_view{"if"};
 constexpr auto ELIF        = std::string_view{"elif"};
 constexpr auto ELSE        = std::string_view{"else"};
@@ -53,18 +51,6 @@ struct node
     virtual ~node() {}
     virtual void evaluate(compiler_context& ctx) = 0;
     virtual void print(int indent = 0) = 0;
-};
-
-// This is just a temporary node for storing bytecode, with the goal
-// of retiring the old parser. This will eventually get used less and less as more code
-// gets translated to proper nodes.
-struct node_op : public node
-{
-    anzu::op op;
-
-    node_op(const anzu::op& new_op) : op(new_op) {}
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_sequence : public node
