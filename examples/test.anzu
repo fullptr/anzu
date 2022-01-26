@@ -4,6 +4,6 @@ function print 1 0
     . expr "\n" .
 end
 
-expr 5 + 6 > 10 -> x
+expr (1 + 2) * 3 
 
-expr x print
+__print_frame__

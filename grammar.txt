@@ -12,27 +12,27 @@ literal:
   | list_literal
 
 expression:
-  | term
-  | term '+' expression
-  | term '-' expression
+  | level_5_expression
 
-term:
-  | comparison
-  | comparison '*' term
-  | comparison '/' term
-  | comparison '%' term
+level_5_expression:
+  | level_4_expression [('*'|'/'|'%') level_5_expression]*
 
-comparison:
-  | factor
-  | factor '<'  term
-  | factor '<=' term
-  | factor '>'  term
-  | factor '>=' term
-  | factor '==' term
-  | factor '!=' term
+level_4_expression:
+  | level_3_expression [('+'|'-') level_4_expression]*
+
+level_3_expression:
+  | level_2_expression [('<'|'<='|'>'|'>='|'=='|'!=') level_3_expression]*
+
+level_2_expression:
+  | level_1_expression ['&&' level_2_expression]*
+
+level_1_expression:
+  | factor ['||' level_1_expression]*
 
 factor:
   | literal
+  | variable_name
+  | '(' expression ')'
 
 statement:
   | 'function' function_body

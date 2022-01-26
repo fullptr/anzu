@@ -321,48 +321,85 @@ auto parse_op(parser_context& ctx) -> anzu::op
     std::exit(1);
 }
 
-auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>;
-auto parse_level_4_factor(parser_context& ctx) -> node_ptr;
-auto parse_level_3_factor(parser_context& ctx) -> node_ptr;
-auto parse_level_2_factor(parser_context& ctx) -> node_ptr;
-auto parse_factor(parser_context& ctx) -> node_ptr;
+auto handle_list_literal(parser_context& ctx) -> anzu::object;
 
-auto precedence_table() -> std::array<std::unordered_set<std::string_view>, 4>
+auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
 {
-    auto table = std::array<std::unordered_set<std::string_view>, 4>{};
+    if (ctx.curr->type == token_type::number) {
+        return { anzu::to_int((ctx.curr++)->text) };
+    }
+    else if (ctx.curr->type == token_type::string) {
+        return { (ctx.curr++)->text };
+    }
+     else if (consume_maybe(ctx.curr, "true")) {
+        return { true };
+    }
+    else if (consume_maybe(ctx.curr, "false")) {
+        return { false };
+    }
+    else if (ctx.curr->text == "[") {
+        return { handle_list_literal(ctx) };
+    }
+    return std::nullopt;
+};
+
+auto handle_list_literal(parser_context& ctx) -> anzu::object
+{
+    auto list = std::make_shared<std::vector<anzu::object>>();
+
+    consume_only(ctx.curr, "[");
+    bool expect_comma = false;
+    while (ctx.curr != ctx.end && ctx.curr->text != "]") {
+        if (expect_comma) {
+            if (ctx.curr->text != ",") { // skip commas, enforce later
+                anzu::print("syntax error: expected comma in list literal\n");
+                std::exit(1);
+            }
+            ++ctx.curr;
+        }
+        else {
+            if (auto obj = try_parse_literal(ctx); obj.has_value()) {
+                list->push_back(*obj);            
+            }
+            else {
+                anzu::print("syntax error: failed to parse literal\n");
+                std::exit(1);
+            }
+        }
+        expect_comma = !expect_comma;
+    }
+    if (ctx.curr == ctx.end) {
+        anzu::print("syntax error: list literal never closed\n");
+        std::exit(1);
+    }
+    consume_only(ctx.curr, "]");
+
+    return { list };
+}
+
+auto precedence_table()
+{
+    auto table = std::array<std::unordered_set<std::string_view>, 6>{};
     table[0] = {};
     table[1] = {"*", "/", "%"};
     table[2] = {"+", "-"};
     table[3] = {"<", "<=", ">", ">=", "==", "!="};
+    table[4] = {"&&"};
+    table[5] = {"||"};
     return table;
 }
+static const auto bin_ops_table = precedence_table();
 
-auto parse_factor_level(parser_context& ctx, int level) -> node_ptr
+auto parse_expression(parser_context& ctx) -> node_ptr;
+
+auto parse_single_factor(parser_context& ctx) -> node_ptr
 {
-    static const auto bin_ops = precedence_table();
-
-    if (level == 0) {
-        return parse_factor(ctx);
-    }
-
-    auto left = parse_factor_level(ctx, level - 1);
-    while (ctx.curr != ctx.end && bin_ops[level].contains(ctx.curr->text)) {
-        auto op = (ctx.curr++)->text;
-
-        auto new_left = std::make_unique<anzu::node_bin_op>();
-        new_left->lhs = std::move(left);
-        new_left->op = op;
-        new_left->rhs = parse_factor_level(ctx, level - 1);
-
-        left = std::move(new_left);
-    }
-    return left;
-}
-
-auto parse_factor(parser_context& ctx) -> node_ptr
-{
-    auto factor = anzu::try_parse_literal(ctx);
-    if (factor.has_value()) {
+    if (consume_maybe(ctx.curr, "(")) {
+        auto expr = parse_expression(ctx);
+        consume_only(ctx.curr, ")");
+        return expr;
+    }  
+    else if (auto factor = anzu::try_parse_literal(ctx); factor.has_value()) {
         return std::make_unique<anzu::node_literal>(*factor);
     }
     else if (ctx.function_names.contains(ctx.curr->text) || anzu::is_builtin(ctx.curr->text)) {
@@ -376,6 +413,32 @@ auto parse_factor(parser_context& ctx) -> node_ptr
     else {
         return std::make_unique<anzu::node_variable>((ctx.curr++)->text);
     }
+}
+
+// Level is the precendence level, the lower the number, the tighter the factors bind.
+auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_ptr
+{
+    if (level == 0) {
+        return parse_single_factor(ctx);
+    }
+
+    auto left = parse_compound_factor(ctx, level - 1);
+    while (ctx.curr != ctx.end && bin_ops_table[level].contains(ctx.curr->text)) {
+        auto op = (ctx.curr++)->text;
+
+        auto new_left = std::make_unique<anzu::node_bin_op>();
+        new_left->lhs = std::move(left);
+        new_left->op = op;
+        new_left->rhs = parse_compound_factor(ctx, level - 1);
+
+        left = std::move(new_left);
+    }
+    return left;
+}
+
+auto parse_expression(parser_context& ctx) -> node_ptr
+{
+    return parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
 }
 
 auto parse_statement(parser_context& ctx) -> node_ptr;
@@ -444,62 +507,6 @@ auto parse_if_body(parser_context& ctx) -> node_ptr
     return stmt;
 }
 
-auto handle_list_literal(parser_context& ctx) -> anzu::object;
-
-auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
-{
-    if (ctx.curr->type == token_type::number) {
-        return { anzu::to_int((ctx.curr++)->text) };
-    }
-    else if (ctx.curr->type == token_type::string) {
-        return { (ctx.curr++)->text };
-    }
-     else if (consume_maybe(ctx.curr, "true")) {
-        return { true };
-    }
-    else if (consume_maybe(ctx.curr, "false")) {
-        return { false };
-    }
-    else if (ctx.curr->text == "[") {
-        return { handle_list_literal(ctx) };
-    }
-    return std::nullopt;
-};
-
-auto handle_list_literal(parser_context& ctx) -> anzu::object
-{
-    auto list = std::make_shared<std::vector<anzu::object>>();
-
-    consume_only(ctx.curr, "[");
-    bool expect_comma = false;
-    while (ctx.curr != ctx.end && ctx.curr->text != "]") {
-        if (expect_comma) {
-            if (ctx.curr->text != ",") { // skip commas, enforce later
-                anzu::print("syntax error: expected comma in list literal\n");
-                std::exit(1);
-            }
-            ++ctx.curr;
-        }
-        else {
-            if (auto obj = try_parse_literal(ctx); obj.has_value()) {
-                list->push_back(*obj);            
-            }
-            else {
-                anzu::print("syntax error: failed to parse literal\n");
-                std::exit(1);
-            }
-        }
-        expect_comma = !expect_comma;
-    }
-    if (ctx.curr == ctx.end) {
-        anzu::print("syntax error: list literal never closed\n");
-        std::exit(1);
-    }
-    consume_only(ctx.curr, "]");
-
-    return { list };
-}
-
 auto parse_statement(parser_context& ctx) -> node_ptr
 {
     if (consume_maybe(ctx.curr, "function")) {
@@ -520,15 +527,15 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
     }
-    else if (consume_maybe(ctx.curr, "expr")) {
-        return parse_factor_level(ctx, 3);
-    }
 
     else if (ctx.function_names.contains(ctx.curr->text)) {
         return std::make_unique<anzu::node_function_call>((ctx.curr++)->text);
     }
     else if (anzu::is_builtin(ctx.curr->text)) {
         return std::make_unique<anzu::node_builtin_call>((ctx.curr++)->text);
+    }
+    else if (consume_maybe(ctx.curr, "expr")) {
+        return parse_expression(ctx);
     }
     else if (ctx.curr != ctx.end) {
         return std::make_unique<anzu::node_op>(parse_op(ctx));
