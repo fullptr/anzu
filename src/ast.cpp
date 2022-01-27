@@ -346,7 +346,7 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
         return { false };
     }
     else if (consume_maybe(ctx.curr, NULL_LIT)) {
-        return { std::monostate{} };
+        return anzu::null_object();
     }
     else if (ctx.curr->text == "[") {
         return { handle_list_literal(ctx) };
@@ -571,7 +571,7 @@ auto parse_return(parser_context& ctx) -> node_ptr
     if (!sentinel.contains(ctx.curr->text)) {
         ret_node->return_value = parse_expression(ctx);
     } else {
-        ret_node->return_value = std::make_unique<anzu::node_literal>(anzu::object{false}); // TODO: Make null
+        ret_node->return_value = std::make_unique<anzu::node_literal>(anzu::null_object());
     }
     return ret_node;
 }

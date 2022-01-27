@@ -78,6 +78,8 @@ public:
     friend void swap(object& lhs, object& rhs);
 };
 
+auto null_object() -> anzu::object { return { std::monostate{} }; }
+
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;
 

@@ -11,7 +11,7 @@ namespace {
 
 auto push_null(anzu::context& ctx) -> void
 {
-    ctx.top().push(anzu::object{false});
+    ctx.top().push(anzu::null_object());
 }
 
 auto verify(bool condition, std::string_view msg) -> void
