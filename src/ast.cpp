@@ -346,7 +346,7 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
         return { false };
     }
     else if (consume_maybe(ctx.curr, NULL_LIT)) {
-        return { object_null{} };
+        return { std::monostate{} };
     }
     else if (ctx.curr->text == "[") {
         return { handle_list_literal(ctx) };

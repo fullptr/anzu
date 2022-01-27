@@ -11,6 +11,7 @@ namespace anzu {
 
 class object;
 using object_list = std::shared_ptr<std::vector<object>>;
+using object_null = std::monostate;
 
 class object
 {
@@ -18,7 +19,8 @@ class object
         int,
         bool,
         std::string,
-        object_list
+        object_list,
+        object_null
     >;
 
     value_type d_value;
