@@ -1,6 +1,3 @@
 # fibbonacci to demonstrate functions and recursion
 
-function foo(x, y) do
-    t = (x + 2) * y
-    return 2 * t
-end
+print("hello")

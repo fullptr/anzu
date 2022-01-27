@@ -78,15 +78,6 @@ struct node_if_statement : public node
     void print(int indent = 0) override;
 };
 
-struct node_builtin_call : public node
-{
-    std::string name;
-
-    node_builtin_call(const std::string& n) : name(n) {}
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
 struct node_break : public node
 {
     void evaluate(compiler_context& ctx) override;
@@ -169,6 +160,15 @@ struct node_function_call : public node
     void print(int indent = 0) override;
 };
 
+struct node_builtin_call : public node
+{
+    std::string                        function_name;
+    std::vector<std::unique_ptr<node>> args;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
 struct node_return : public node
 {
     std::unique_ptr<node> return_value; // Should leave a value on the stack
@@ -184,8 +184,15 @@ using node_ptr       = std::unique_ptr<anzu::node>;
 // tokens as well as keeping track of function names.
 struct parser_context
 {
+    struct function_info
+    {
+        std::int64_t argc;
+    };
+
     token_iterator       curr;
     const token_iterator end;
+
+    std::unordered_map<std::string, function_info> functions;
 };
 
 // Struct used to store information while compiling an AST. Contains the output program
@@ -194,7 +201,6 @@ struct compiler_context
 {
     struct function_def
     {
-        std::string  name;
         std::intptr_t ptr;
     };
 
