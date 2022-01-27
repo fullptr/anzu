@@ -1,30 +1,17 @@
 # fibbonacci to demonstrate functions and recursion
 
-
-function fibb 1 1
-    if dup 0 == do
-        0 return
-    elif dup 1 == do
-        1 return
+function fibb(n) do
+    if n == 0 do
+        return 0
+    elif n == 1 do
+        return 1
     end
 
-    dup 1 - -> a
-    dup 2 - -> b
-    a fibb b fibb +
+    return fibb(n - 1) + fibb(n - 2)
 end
 
-0 while dup 10 < do
-    dup fibb .
-    1 +
+i = 0
+while i < 10 do
+    println(fibb(i))
+    i = i + 1
 end
-
-0 while dup 10 < do
-    dup . "\n" .
-    if dup 6 == do
-        break
-    end
-    1 +
-end
-
-1 2 3
-__print_frame__
