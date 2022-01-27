@@ -1,0 +1,17 @@
+# fibbonacci to demonstrate functions and recursion
+
+function fibb(n) do
+    if n == 0 do
+        return 0
+    elif n == 1 do
+        return 1
+    end
+
+    return fibb(n - 1) + fibb(n - 2)
+end
+
+i = 0
+while i < 10 do
+    println(fibb(i))
+    i = i + 1
+end

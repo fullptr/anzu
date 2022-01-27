@@ -1,0 +1,67 @@
+# tests all language features, here is a comment
+
+# declaring variables from literals
+a = 1               # ints
+b = true            # bools
+c = "hello world\n" # string literal
+d = [1, 2, 3]       # list
+
+# variables from variables
+e = a
+
+# while-statements
+idx = 0
+while idx < 10 do
+    print(idx)
+    print(", ")
+    idx = idx + 1
+end
+println("")
+
+# if-statements
+# basic if
+if true do
+    print("in true block\n")
+end
+
+# if with else
+if 2 < 1 do
+    # never entered
+else
+    println("in else block")
+end
+
+# if with elif
+if 1 > 3 do
+    # not entered
+elif 2 == 1 + 1 do  # also testing an expression
+    println("i just evaluated 2 == 1 + 1")
+end
+
+# if with elif and else
+if false do
+    # nah
+elif false do
+    # also nah
+else
+    println("in else after skipping the if and elif")
+end
+
+# simple expressions
+println(2 + 2)
+println(8 * (1 + 6) || 5)
+println(true && true)
+println(true && false)
+println(true || false)
+
+# functions
+function adder(a, b, c) do
+    return a + b + c
+end
+
+print("Does adder(1, 2, 3) == 6? ")
+if adder(1, 2, 3) == 6 do
+    println("yes")
+else
+    println("no")
+end
