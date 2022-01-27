@@ -63,19 +63,20 @@ public:
 
 
 template <typename... Args>
-auto lexer_error(std::string_view msg, Args&&... args) -> void
+auto lexer_error(int lineno, int col, std::string_view msg, Args&&... args) -> void
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[Lexer Error] {}\n", formatted_msg);
+    anzu::print("[Lexer Error {}:{}] {}\n", lineno, col, formatted_msg);
     std::exit(1);
 }
 
-auto parse_string_literal(line_iterator& iter) -> std::string
+auto parse_string_literal(int lineno, line_iterator& iter) -> std::string
 {
+    const auto col = iter.col() - 1;
     std::string return_value;
     while (true) {
         if (!iter.valid()) {
-            lexer_error("EOF reached before closing string literal");
+            lexer_error(lineno, col, "EOF reached before closing string literal");
         }
         else if (iter.consume_maybe('"')) {
             break;
@@ -121,7 +122,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
         const int col = iter.col();
 
         if (iter.consume_maybe('"')) {
-            const auto literal = parse_string_literal(iter);
+            const auto literal = parse_string_literal(lineno, iter);
             push_token(literal, col, token_type::string);
         }
         else if (iter.consume_maybe('#')) {
@@ -143,7 +144,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
                 push_token(token, col, token_type::name);
             }
             else {
-                lexer_error("invalid name '{}' - names cannot start with a digit", token);
+                lexer_error(lineno, col, "invalid name '{}' - names cannot start with a digit", token);
             }
         }
     }
