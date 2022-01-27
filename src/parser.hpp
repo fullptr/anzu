@@ -1,6 +1,6 @@
 #pragma once
 #include "lexer.hpp"
-#include "ast.hpp"
+#include "compiler.hpp"
 
 #include <vector>
 #include <memory>
