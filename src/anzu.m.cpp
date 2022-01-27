@@ -1,6 +1,7 @@
 #include "stack_frame.hpp"
 #include "op_codes.hpp"
 #include "lexer.hpp"
+#include "parser.hpp"
 #include "print.hpp"
 #include "ast.hpp"
 
