@@ -201,6 +201,7 @@ struct compiler_context
 {
     struct function_def
     {
+        std::vector<std::string> arg_names;
         std::intptr_t ptr;
     };
 

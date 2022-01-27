@@ -124,30 +124,6 @@ void node_if_statement::print(int indent)
     }
 }
 
-void node_builtin_call::evaluate(compiler_context& ctx)
-{
-    // Push the args to the stack
-    for (const auto& arg : args) {
-        arg->evaluate(ctx);
-    }
-
-    // Call the function
-    ctx.program.emplace_back(anzu::op_builtin_function_call{
-        .name=function_name,
-        .func=anzu::fetch_builtin(function_name)
-    });
-}
-
-void node_builtin_call::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}BuiltinCall: {}\n", spaces, function_name);
-    anzu::print("{}- Args:\n", spaces);
-    for (const auto& arg : args) {
-        arg->print(indent + 1);
-    }
-}
-
 void node_literal::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_push_const{ .value=value });
@@ -265,7 +241,7 @@ void node_function_def::evaluate(compiler_context& ctx)
 {
     const auto start_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_function{ .name=name, .arg_names=arg_names });
-    ctx.functions[name] = { .ptr=start_pos };
+    ctx.functions[name] = { .arg_names=arg_names ,.ptr=start_pos };
 
     body->evaluate(ctx);
 
@@ -288,10 +264,53 @@ void node_function_def::print(int indent)
 
 void node_function_call::evaluate(compiler_context& ctx)
 {
+    // Push the args to the stack
+    for (const auto& arg : args) {
+        arg->evaluate(ctx);
+    }
+
+    const auto& function_def = ctx.functions.at(function_name);
+
+    // Call the function
+    ctx.program.emplace_back(anzu::op_function_call{
+        .name=function_name,
+        .ptr=function_def.ptr + 1, // Jump into the function
+        .arg_names=function_def.arg_names
+    });
 }
 
 void node_function_call::print(int indent)
 {
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}FunctionCall: {}\n", spaces, function_name);
+    anzu::print("{}- Args:\n", spaces);
+    for (const auto& arg : args) {
+        arg->print(indent + 1);
+    }
+}
+
+void node_builtin_call::evaluate(compiler_context& ctx)
+{
+    // Push the args to the stack
+    for (const auto& arg : args) {
+        arg->evaluate(ctx);
+    }
+
+    // Call the function
+    ctx.program.emplace_back(anzu::op_builtin_function_call{
+        .name=function_name,
+        .func=anzu::fetch_builtin(function_name)
+    });
+}
+
+void node_builtin_call::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}BuiltinCall: {}\n", spaces, function_name);
+    anzu::print("{}- Args:\n", spaces);
+    for (const auto& arg : args) {
+        arg->print(indent + 1);
+    }
 }
 
 void node_return::evaluate(compiler_context& ctx)
@@ -380,6 +399,7 @@ auto precedence_table()
 static const auto bin_ops_table = precedence_table();
 
 auto parse_expression(parser_context& ctx) -> node_ptr;
+auto parse_function_call(parser_context& ctx) -> node_ptr;
 auto parse_builtin_call(parser_context& ctx) -> node_ptr;
 
 auto parse_single_factor(parser_context& ctx) -> node_ptr
@@ -391,6 +411,9 @@ auto parse_single_factor(parser_context& ctx) -> node_ptr
     }  
     else if (auto factor = anzu::try_parse_literal(ctx); factor.has_value()) {
         return std::make_unique<anzu::node_literal>(*factor);
+    }
+    else if (ctx.functions.contains(ctx.curr->text)) {
+        return parse_function_call(ctx);
     }
     else if (anzu::is_builtin(ctx.curr->text)) {
         return parse_builtin_call(ctx);
@@ -584,6 +607,40 @@ auto parse_builtin_call(parser_context& ctx) -> node_ptr
     return node;
 }
 
+auto parse_function_call(parser_context& ctx) -> node_ptr
+{
+    auto node = std::make_unique<anzu::node_function_call>();
+    node->function_name = (ctx.curr++)->text;
+
+    consume_only(ctx.curr, "(");
+    bool expect_comma = false;
+    while (ctx.curr != ctx.end && ctx.curr->text != ")") {
+        if (expect_comma) {
+            if (ctx.curr->text != ",") { // skip commas, enforce later
+                anzu::print("syntax error: expected comma in function call arg list\n");
+                std::exit(1);
+            }
+            ++ctx.curr;
+        }
+        else {
+            node->args.push_back(parse_expression(ctx));
+        }
+        expect_comma = !expect_comma;
+    }
+    consume_only(ctx.curr, ")");
+
+    const auto argc = ctx.functions.at(node->function_name).argc;
+    if (argc != std::ssize(node->args)) {
+        anzu::print(
+            "error: function '{}' expected {} args, got {}\n",
+            node->function_name, argc, std::ssize(node->args)
+        );
+        std::exit(1);
+    }
+
+    return node;
+}
+
 auto parse_statement(parser_context& ctx) -> node_ptr
 {
     if (consume_maybe(ctx.curr, "function")) {
@@ -604,10 +661,10 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (consume_maybe(ctx.curr, "continue")) {
         return std::make_unique<anzu::node_continue>(); 
     }
+
     else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == "=") {
         return parse_assign_expression(ctx);
     }
-
     else if (ctx.curr != ctx.end) {
         return parse_discard_expression(ctx);
     }

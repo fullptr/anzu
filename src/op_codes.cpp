@@ -111,15 +111,9 @@ void op_do::apply(anzu::context& ctx) const
     }
 }
 
-void op_builtin_function_call::apply(anzu::context& ctx) const
-{
-    func(ctx);
-    ctx.top().ptr() += 1;
-}
-
 void op_function::apply(anzu::context& ctx) const
 {
-    ctx.top().ptr() += jump;
+    ctx.top().ptr() = jump;
 }
 
 void op_function_end::apply(anzu::context& ctx) const
@@ -133,6 +127,26 @@ void op_return::apply(anzu::context& ctx) const
     auto return_value = ctx.top().pop();
     ctx.pop();
     ctx.top().push(return_value);
+}
+
+void op_function_call::apply(anzu::context& ctx) const
+{
+    auto& curr = ctx.push({}); // New frame
+    auto& prev = ctx.top(1);   // One under the top
+
+    curr.ptr() = ptr; // Jump into the function
+    prev.ptr() += 1;  // The position in the program where it will resume
+
+    // Pop elements off the previous stack and load them into the new function heap
+    for (const auto& arg_name : std::views::reverse(arg_names)) {
+        curr.load(arg_name, prev.pop());
+    }
+}
+
+void op_builtin_function_call::apply(anzu::context& ctx) const
+{
+    func(ctx);
+    ctx.top().ptr() += 1;
 }
 
 template <typename A, typename B>

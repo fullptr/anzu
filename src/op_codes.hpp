@@ -124,6 +124,16 @@ struct op_do
     void apply(anzu::context& ctx) const;
 };
 
+struct op_function_call
+{
+    std::string   name;
+    std::intptr_t ptr;
+    std::vector<std::string> arg_names;
+
+    std::string to_string() const { return std::format("OP_FUNCTION_CALL({})", name); }
+    void apply(anzu::context& ctx) const;
+};
+
 struct op_builtin_function_call
 {
     std::string name;
@@ -220,7 +230,12 @@ struct op_function
     std::string              name;
     std::vector<std::string> arg_names;
     std::intptr_t            jump;
-    std::string to_string() const { return std::format("OP_FUNCTION({})", name); }
+    std::string to_string() const
+    {
+        const auto func_str = std::format("OP_FUNCTION({})", name);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, func_str, jump_str);
+    }
     void apply(anzu::context& ctx) const;
 };
 
@@ -256,8 +271,6 @@ class op
         op_continue,
         op_do,
 
-        op_builtin_function_call,
-
         // Numerical Operators
         op_add,
         op_sub,
@@ -277,7 +290,9 @@ class op
 
         op_function,
         op_function_end,
-        op_return
+        op_return,
+        op_function_call,
+        op_builtin_function_call
     >;
 
     op_type d_type;

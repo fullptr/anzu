@@ -1,7 +1,27 @@
 # fibbonacci to demonstrate functions and recursion
 
-if to_bool(0) do
-    println("in if")
-else
-    print("in else\n")
+x = 1
+
+println(1)
+__print_frame__()
+println(2)
+
+
+function foo() do
+    d = 1
+    __print_frame__()
 end
+
+println(3)
+
+x = 1
+y = 2
+z = 3
+
+println(4)
+
+__print_frame__()
+
+println(5)
+foo()
+println(6)
