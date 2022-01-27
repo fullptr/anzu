@@ -21,27 +21,8 @@ static const std::unordered_set<std::string_view> keywords = {
 };
 
 static const std::unordered_set<std::string_view> symbols = {
-    "+",
-    "-",
-    "*",
-    "/",
-    "%",
-    "==",
-    "!=",
-    "<",
-    "<=",
-    ">",
-    ">=",
-    "||",
-    "&&",
-    "=",
-    "(",
-    ")",
-    ":",
-    "[",
-    "]",
-    ",",
-    "."
+    "+", "-", "*", "/", "%", "=", "(",  ")", ":", "[", "]", ",", ".",
+    "==", "!=", "<", "<=", ">", ">=", "||", "&&"
 };
 
 enum class token_type
@@ -52,7 +33,6 @@ enum class token_type
     number,
     string
 };
-
 auto to_string(token_type type) -> std::string;
 
 struct token
