@@ -20,7 +20,7 @@ static const std::unordered_set<std::string_view> keywords = {
     "return"
 };
 
-static const std::unordered_set<std::string_view> bin_ops = {
+static const std::unordered_set<std::string_view> symbols = {
     "+",
     "-",
     "*",
@@ -34,10 +34,7 @@ static const std::unordered_set<std::string_view> bin_ops = {
     ">=",
     "||",
     "&&",
-    "="
-};
-
-static const std::unordered_set<std::string_view> symbols = {
+    "=",
     "(",
     ")",
     ":",
@@ -50,7 +47,6 @@ static const std::unordered_set<std::string_view> symbols = {
 enum class token_type
 {
     keyword,
-    bin_op,
     symbol,
     name,
     number,

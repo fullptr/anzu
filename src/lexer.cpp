@@ -6,89 +6,116 @@
 #include <ranges>
 #include <fstream>
 #include <sstream>
+#include <optional>
 
 namespace anzu {
 namespace {
 
-inline static constexpr auto enumerate = std::views::transform([i=0](const auto& elem) mutable {
-    return std::pair(i++, std::cref(elem));
-});
+using string_iter = std::string::const_iterator;
 
-auto get_token_type(std::string_view text) -> anzu::token_type
+template <typename... Args>
+auto lexer_error(std::string_view msg, Args&&... args) -> void
 {
-    if (keywords.contains(text)) {
-        return anzu::token_type::keyword;
-    }
-    if (bin_ops.contains(text)) {
-        return anzu::token_type::bin_op;
-    }
-    if (symbols.contains(text)) {
-        return anzu::token_type::symbol;
-    }
-    if (anzu::is_int(text)) {
-        return anzu::token_type::number;
-    }
-    return anzu::token_type::name;
+    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
+    anzu::print("[Lexer Error] {}\n", formatted_msg);
+    std::exit(1);
 }
+
+auto parse_string_literal(string_iter& curr, int& col, string_iter end) -> std::string
+{
+    std::string return_value;
+    ++curr; ++col; // Skip opening
+    while (true) {
+        if (curr == end) {
+            lexer_error("EOF reached before closing string literal");
+        }
+        else if (*curr == '"') {
+            ++curr; ++col;
+            break;
+        }
+        return_value += *curr;
+        ++curr; ++col;
+    }
+    return return_value;
+}
+
+auto try_parse_symbol(string_iter& curr, int& col, string_iter end) -> std::optional<std::string>
+{
+    if (const auto next = std::next(curr); next != end) {
+        if (const auto pair = std::format("{}{}", *curr, *next); symbols.contains(pair)) {
+            ++curr; ++col;
+            ++curr; ++col;
+            return pair;
+        }
+    }
+    if (const auto single = std::string{*curr}; symbols.contains(single)) {
+        ++curr; ++col;
+        return single;
+    }
+    return std::nullopt;
+}
+
+auto parse_token(string_iter& curr, int& col, string_iter end) -> std::string
+{
+    std::string return_value;
+    while (curr != end && (std::isalpha(*curr) || std::isdigit(*curr) || *curr == '_')) {
+        return_value += *curr;
+        ++curr; ++col;
+    }
+    return return_value;
+};
 
 auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const int lineno) -> void
 {
-    std::string text;
-    bool parsing_string_literal = false;
-    int token_col = 1;
-
-    const auto push_token = [&](token_type type) {
-        // Don't skip string literal tokens here since it could be an empty string
-        if (text.empty() && type != token_type::string) { return; }
-        tokens.push_back({
-            .text=text, .line=lineno, .col=token_col + 1, .type=type
-        });
-        text.clear();
-    };
-
-    for (auto [col, c] : line | enumerate) {
-        if (parsing_string_literal) {
-            if (c == '"') { // End of literal
-                push_token(token_type::string);
-                parsing_string_literal = false;
-            }
-            else {
-                text.push_back(c);
-            }
+    auto it = line.begin();
+    auto col = 0;
+    int token_col = 0;
+    while (it != line.end()) {
+        
+        while (it != line.end() && std::isspace(*it)) {
+            ++it; ++col;
         }
-        else if (c == '"') { // Start of literal
-            if (!text.empty()) {
-                anzu::print("unknown string type: {}\n", text);
-                std::exit(1);
-            }
-            token_col = col;
-            parsing_string_literal = true;
+        if (it == line.end()) {
+            return;
         }
-        else if (c == '#') {
+        token_col = col;
+
+        if (*it == '"') {
+            const auto literal = parse_string_literal(it, col, line.end());
+            tokens.push_back({
+                .text=literal, .line=lineno, .col=token_col + 1, .type=token_type::string
+            });
+        }
+        else if (*it == '#') {
             break;
         }
-        else if (symbols.contains(std::string{c})) {
-            push_token(get_token_type(text));
-            text += c;
-            token_col = col;
-            push_token(token_type::symbol);
+        else if (const auto sym = try_parse_symbol(it, col, line.end()); sym.has_value()) {
+            tokens.push_back({
+                .text=*sym, .line=lineno, .col=token_col + 1, .type=token_type::symbol
+            });
         }
-        else if (!std::isspace(c)) {
-            if (text.empty()) {
-                token_col = col;
+
+        const auto token = parse_token(it, col, line.end());
+        if (!token.empty()) {
+            if (keywords.contains(token)) {
+                tokens.push_back({
+                    .text=token, .line=lineno, .col=token_col + 1, .type=token_type::keyword
+                });
             }
-            text += c;
+            else if (anzu::is_int(token)) {
+                tokens.push_back({
+                    .text=token, .line=lineno, .col=token_col + 1, .type=token_type::number
+                });
+            }
+            else if (!std::isdigit(token[0])) {
+                tokens.push_back({
+                    .text=token, .line=lineno, .col=token_col + 1, .type=token_type::name
+                });
+            }
+            else {
+                lexer_error("invalid name '{}' - names cannot start with a digit", token);
+            }
         }
-        else {
-            push_token(get_token_type(text));
-        }
-    }
-
-    push_token(get_token_type(text));
-
-    if (parsing_string_literal) {
-        anzu::print("lexing failed, string literal not closed\n");
-        std::exit(1);
     }
 }
 
@@ -98,7 +125,6 @@ auto to_string(token_type type) -> std::string
 {
     switch (type) {
         break; case token_type::keyword: { return "keyword"; };
-        break; case token_type::bin_op:  { return "bin_op"; };
         break; case token_type::symbol:  { return "symbol"; };
         break; case token_type::name:    { return "name"; };
         break; case token_type::number:  { return "number"; };
