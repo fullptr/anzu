@@ -17,8 +17,6 @@ constexpr auto ELSE        = std::string_view{"else"};
 constexpr auto WHILE       = std::string_view{"while"};
 constexpr auto BREAK       = std::string_view{"break"};
 constexpr auto CONTINUE    = std::string_view{"continue"};
-constexpr auto FUNCTION    = std::string_view{"function"};
-constexpr auto RETURN      = std::string_view{"return"};
 constexpr auto DO          = std::string_view{"do"};
 constexpr auto END         = std::string_view{"end"};
 constexpr auto TRUE_LIT    = std::string_view{"true"};
@@ -80,35 +78,6 @@ struct node_if_statement : public node
     void print(int indent = 0) override;
 };
 
-struct node_function_definition : public node
-{
-    std::string name;
-    int argc;
-    int retc;
-    std::unique_ptr<node> body;
-
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
-struct node_function_call : public node
-{
-    std::string name;
-
-    node_function_call(const std::string& n) : name(n) {}
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
-struct node_builtin_call : public node
-{
-    std::string name;
-
-    node_builtin_call(const std::string& n) : name(n) {}
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
 struct node_break : public node
 {
     void evaluate(compiler_context& ctx) override;
@@ -116,12 +85,6 @@ struct node_break : public node
 };
 
 struct node_continue : public node
-{
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
-struct node_return : public node
 {
     void evaluate(compiler_context& ctx) override;
     void print(int indent = 0) override;
@@ -155,10 +118,60 @@ struct node_bin_op : public node
     void print(int indent = 0) override;
 };
 
-struct node_assignment : public node
+// Evaluates the child node and assigns the result to the given name.
+// Currently assuming that the child node results in a value being pushed
+// to the stack, will enforce this in the code later on.
+struct node_assign_expression : public node
 {
     std::string name;
-    std::unique_ptr<node> value;
+    std::unique_ptr<node> expr;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+// Evaluates the child node and then inserts an OP_POP to ignore the
+// returned value. Currently assuming that the child node results in a
+// value being pushed to the stack, will enforce this in the code later on.
+struct node_discard_expression : public node
+{
+    std::unique_ptr<node> expr;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_function_def : public node
+{
+    std::string              name;
+    std::vector<std::string> arg_names;
+    std::unique_ptr<node>    body;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_function_call : public node
+{
+    std::string                        function_name;
+    std::vector<std::unique_ptr<node>> args;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_builtin_call : public node
+{
+    std::string                        function_name;
+    std::vector<std::unique_ptr<node>> args;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_return : public node
+{
+    std::unique_ptr<node> return_value; // Should leave a value on the stack
 
     void evaluate(compiler_context& ctx) override;
     void print(int indent = 0) override;
@@ -167,14 +180,19 @@ struct node_assignment : public node
 using token_iterator = std::vector<anzu::token>::const_iterator;
 using node_ptr       = std::unique_ptr<anzu::node>;
 
-// Context used while constructing an AST. Has non-owning pointers into the tokens as well
-// as keeping track of function names.
+// Context used while constructing an AST. Has non-owning pointers into the
+// tokens as well as keeping track of function names.
 struct parser_context
 {
+    struct function_info
+    {
+        std::int64_t argc;
+    };
+
     token_iterator       curr;
     const token_iterator end;
 
-    std::unordered_set<std::string> function_names;
+    std::unordered_map<std::string, function_info> functions;
 };
 
 // Struct used to store information while compiling an AST. Contains the output program
@@ -183,9 +201,8 @@ struct compiler_context
 {
     struct function_def
     {
-        int           argc;
-        int           retc;
-        std::intptr_t ptr; // Pointer to the position of this function in the program.
+        std::vector<std::string> arg_names;
+        std::intptr_t ptr;
     };
 
     std::vector<anzu::op> program;

@@ -9,6 +9,11 @@
 namespace anzu {
 namespace {
 
+auto push_null(anzu::context& ctx) -> void
+{
+    ctx.top().push(anzu::object{false});
+}
+
 auto verify(bool condition, std::string_view msg) -> void
 {
     if (!condition) {
@@ -17,16 +22,11 @@ auto verify(bool condition, std::string_view msg) -> void
     }
 }
 
-auto builtin_stack_size(anzu::context& ctx) -> void
-{
-    auto stack_size = static_cast<int>(ctx.top().stack_size());
-    ctx.top().push(stack_size);
-};
-
 auto builtin_print_frame(anzu::context& ctx) -> void
 {
     auto& frame = ctx.top();
     frame.print();
+    push_null(ctx);
 }
 
 auto builtin_list_push(anzu::context& ctx) -> void
@@ -37,6 +37,7 @@ auto builtin_list_push(anzu::context& ctx) -> void
     auto elem = frame.pop();
     auto list = frame.pop();
     list.as<object_list>()->push_back(elem);
+    push_null(ctx);
 }
 
 auto builtin_list_pop(anzu::context& ctx) -> void
@@ -44,6 +45,7 @@ auto builtin_list_pop(anzu::context& ctx) -> void
     auto& frame = ctx.top();
     verify(frame.top().is<object_list>(), "top element on stack must be a list for list_pop\n");
     auto list = frame.pop();
+    frame.push(list.as<object_list>()->back());
     list.as<object_list>()->pop_back();
 }
 
@@ -93,6 +95,7 @@ auto builtin_print(anzu::context& ctx) -> void
     } else {
         anzu::print("{}", obj);
     }
+    push_null(ctx);
 }
 
 auto builtin_println(anzu::context& ctx) -> void
@@ -104,6 +107,7 @@ auto builtin_println(anzu::context& ctx) -> void
     } else {
         anzu::print("{}\n", obj);
     }
+    push_null(ctx);
 }
 
 auto builtin_input(anzu::context& ctx) -> void
@@ -116,27 +120,26 @@ auto builtin_input(anzu::context& ctx) -> void
 
 }
 
-static const std::unordered_map<std::string, builtin_function> builtins = {
-    { "stack_size",      builtin_stack_size  },
+static const std::unordered_map<std::string, builtin> builtins = {
 
     // List functions
-    { "list_push",       builtin_list_push   },
-    { "list_pop",        builtin_list_pop    },
-    { "list_size",       builtin_list_size   },
-    { "list_at",         builtin_list_at     },
+    { "list_push",       builtin{ builtin_list_push,   2 }},
+    { "list_pop",        builtin{ builtin_list_pop,    1 }},
+    { "list_size",       builtin{ builtin_list_size,   1 }},
+    { "list_at",         builtin{ builtin_list_at,     2 }},
 
     // Debug functions
-    { "__print_frame__", builtin_print_frame },
+    { "__print_frame__", builtin{ builtin_print_frame, 0 }},
 
     // Old Op Codes
-    { "to_int",          builtin_to_int      },
-    { "to_bool",         builtin_to_bool     },
-    { "to_str",          builtin_to_str      },
+    { "to_int",          builtin{ builtin_to_int,      1 }},
+    { "to_bool",         builtin{ builtin_to_bool,     1 }},
+    { "to_str",          builtin{ builtin_to_str,      1 }},
 
     // I/O
-    { "print",           builtin_print       },
-    { "println",         builtin_println     },
-    { "input",           builtin_input       }
+    { "print",           builtin{ builtin_print,       1 }},
+    { "println",         builtin{ builtin_println,     1 }},
+    { "input",           builtin{ builtin_input,       0 }}
 };
 
 auto is_builtin(const std::string& name) -> bool
@@ -146,7 +149,12 @@ auto is_builtin(const std::string& name) -> bool
 
 auto fetch_builtin(const std::string& name) -> builtin_function
 {
-    return builtins.at(name);
+    return builtins.at(name).ptr;
+}
+
+auto fetch_builtin_argc(const std::string& name) -> std::int64_t
+{
+    return builtins.at(name).argc;
 }
 
 }

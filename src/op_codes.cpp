@@ -50,6 +50,13 @@ void op_push_var::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
+void op_pop::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    frame.pop();
+    frame.ptr() += 1;
+}
+
 
 void op_store::apply(anzu::context& ctx) const
 {
@@ -109,27 +116,31 @@ void op_function::apply(anzu::context& ctx) const
     ctx.top().ptr() = jump;
 }
 
+void op_function_end::apply(anzu::context& ctx) const
+{
+    ctx.pop();
+    ctx.top().push(anzu::object{false}); // TODO: Make a null type
+}
+
+void op_return::apply(anzu::context& ctx) const
+{
+    auto return_value = ctx.top().pop();
+    ctx.pop();
+    ctx.top().push(return_value);
+}
+
 void op_function_call::apply(anzu::context& ctx) const
 {
     auto& curr = ctx.push({}); // New frame
     auto& prev = ctx.top(1);   // One under the top
 
-    curr.ptr() = jump; // Jump into the function
-    prev.ptr() += 1;   // The position in the program where it will resume
+    curr.ptr() = ptr; // Jump into the function
+    prev.ptr() += 1;  // The position in the program where it will resume
 
-    transfer_values(prev, curr, argc);
-}
-
-void op_function_end::apply(anzu::context& ctx) const
-{
-    transfer_values(ctx.top(0), ctx.top(1), retc);
-    ctx.pop(); // Remove stack frame
-}
-
-void op_return::apply(anzu::context& ctx) const
-{
-    transfer_values(ctx.top(0), ctx.top(1), retc);
-    ctx.pop(); // Remove stack frame
+    // Pop elements off the previous stack and load them into the new function heap
+    for (const auto& arg_name : std::views::reverse(arg_names)) {
+        curr.load(arg_name, prev.pop());
+    }
 }
 
 void op_builtin_function_call::apply(anzu::context& ctx) const

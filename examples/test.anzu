@@ -1,8 +1,17 @@
 # fibbonacci to demonstrate functions and recursion
 
-x = 5
-y = 2 * x
-y println
+x = [1, 2, 3]
 
-y = 3 * x
-y println
+list_push(x, 4)
+list_push(x, 5)
+
+index = 0
+while index < list_size(x) do
+    elem = list_at(x, index)
+
+    println(elem)
+
+    index = index + 1
+end
+
+println(x)
