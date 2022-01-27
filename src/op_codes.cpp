@@ -54,6 +54,7 @@ void op_pop::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
     frame.pop();
+    frame.ptr() += 1;
 }
 
 

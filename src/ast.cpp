@@ -126,6 +126,12 @@ void node_if_statement::print(int indent)
 
 void node_builtin_call::evaluate(compiler_context& ctx)
 {
+    // Push the args to the stack
+    for (const auto& arg : args) {
+        arg->evaluate(ctx);
+    }
+
+    // Call the function
     ctx.program.emplace_back(anzu::op_builtin_function_call{
         .name=function_name,
         .func=anzu::fetch_builtin(function_name)
