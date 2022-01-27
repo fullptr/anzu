@@ -1,5 +1,6 @@
 #pragma once
 #include "lexer.hpp"
+#include "ast.hpp"
 #include "compiler.hpp"
 
 #include <vector>
@@ -26,6 +27,7 @@ struct parser_context
 
     std::unordered_map<std::string, function_info> functions;
 };
-auto parse(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>;
+
+auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr;
 
 }

@@ -399,7 +399,7 @@ auto parse_function_call_stmt(parser_context& ctx) -> node_ptr
     return node;
 }
 
-auto parse_statement(parser_context& ctx) -> node_ptr
+auto parse_statement(parser_context& ctx) -> node_stmt_ptr
 {
     if (consume_maybe(ctx.curr, "function")) {
         return parse_function(ctx);
@@ -414,12 +414,15 @@ auto parse_statement(parser_context& ctx) -> node_ptr
         return parse_if_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "break")) {
-        return std::make_unique<anzu::node_break>(); 
+        auto node = std::make_unique<anzu::node_stmt>();
+        node->emplace<anzu::node_break_stmt>();
+        return node;
     }
     else if (consume_maybe(ctx.curr, "continue")) {
-        return std::make_unique<anzu::node_continue>(); 
+        auto node = std::make_unique<anzu::node_stmt>();
+        node->emplace<anzu::node_continue_stmt>();
+        return node;
     }
-
     else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == "=") {
         return parse_assign_expression(ctx);
     }
@@ -439,15 +442,16 @@ auto parse_statement(parser_context& ctx) -> node_ptr
 
 }
 
-auto parse(const std::vector<anzu::token>& tokens) -> node_ptr
+auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr
 {
     auto ctx = anzu::parser_context{
         .curr = tokens.begin(), .end = tokens.end()
     };
 
-    auto root = std::make_unique<anzu::node_sequence>();
+    auto root = std::make_unique<anzu::node_stmt>();
+    auto& seq = root->emplace<anzu::node_sequence_stmt>();
     while (ctx.curr != ctx.end) {
-        root->sequence.push_back(parse_statement(ctx));
+        seq.sequence.push_back(parse_statement(ctx));
     }
     return root;
 }
