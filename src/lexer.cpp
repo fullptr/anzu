@@ -38,7 +38,8 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
     int token_col = 1;
 
     const auto push_token = [&](token_type type) {
-        if (text.empty()) { return; }
+        // Don't skip string literal tokens here since it could be an empty string
+        if (text.empty() && type != token_type::string) { return; }
         tokens.push_back({
             .text=text, .line=lineno, .col=token_col + 1, .type=type
         });

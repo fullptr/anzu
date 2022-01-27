@@ -15,7 +15,9 @@ static const std::unordered_set<std::string_view> keywords = {
     "do",
     "end",
     "true",
-    "false"
+    "false",
+    "function",
+    "return"
 };
 
 static const std::unordered_set<std::string_view> bin_ops = {

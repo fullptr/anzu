@@ -183,6 +183,8 @@ void node_bin_op::evaluate(compiler_context& ctx)
     else if (op == ">=") { ctx.program.push_back(anzu::op_ge{}); }
     else if (op == "==") { ctx.program.push_back(anzu::op_eq{}); }
     else if (op == "!=") { ctx.program.push_back(anzu::op_ne{}); }
+    else if (op == "||") { ctx.program.push_back(anzu::op_or{}); }
+    else if (op == "&&") { ctx.program.push_back(anzu::op_and{}); }
     else {
         anzu::print("syntax error: unknown binary operator: '{}'\n", op);
         std::exit(1);
