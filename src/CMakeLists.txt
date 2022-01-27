@@ -5,10 +5,11 @@ set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS}")
 
 add_executable(anzu
                anzu.m.cpp
-               ast.cpp
+               compiler.cpp
                stack_frame.cpp
                op_codes.cpp
                lexer.cpp
+               parser.cpp
                object.cpp
                functions.cpp)
 

@@ -6,55 +6,34 @@
 namespace anzu {
 
 static const std::unordered_set<std::string_view> keywords = {
-    "if",
-    "elif",
-    "else",
-    "while",
     "break",
     "continue",
     "do",
+    "elif",
+    "else",
     "end",
+    "false",
+    "function",
+    "if",
+    "null",
+    "return",
     "true",
-    "false"
-};
-
-static const std::unordered_set<std::string_view> bin_ops = {
-    "+",
-    "-",
-    "*",
-    "/",
-    "%",
-    "==",
-    "!=",
-    "<",
-    "<=",
-    ">",
-    ">=",
-    "||",
-    "&&",
-    "="
+    "while"
 };
 
 static const std::unordered_set<std::string_view> symbols = {
-    "(",
-    ")",
-    ":",
-    "[",
-    "]",
-    ",",
-    "."
+    "+", "-", "*", "/", "%", "=", "(",  ")", ":", "[", "]", ",", ".",
+    "==", "!=", "<", "<=", ">", ">=", "||", "&&"
 };
 
 enum class token_type
 {
     keyword,
-    bin_op,
     symbol,
     name,
     number,
     string
 };
-
 auto to_string(token_type type) -> std::string;
 
 struct token

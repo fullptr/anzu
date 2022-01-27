@@ -11,6 +11,7 @@ namespace anzu {
 
 class object;
 using object_list = std::shared_ptr<std::vector<object>>;
+using object_null = std::monostate;
 
 class object
 {
@@ -18,7 +19,8 @@ class object
         int,
         bool,
         std::string,
-        object_list
+        object_list,
+        object_null
     >;
 
     value_type d_value;
@@ -75,6 +77,8 @@ public:
 
     friend void swap(object& lhs, object& rhs);
 };
+
+inline auto null_object() -> anzu::object { return { std::monostate{} }; }
 
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;

@@ -119,7 +119,7 @@ void op_function::apply(anzu::context& ctx) const
 void op_function_end::apply(anzu::context& ctx) const
 {
     ctx.pop();
-    ctx.top().push(anzu::object{false}); // TODO: Make a null type
+    ctx.top().push(anzu::null_object());
 }
 
 void op_return::apply(anzu::context& ctx) const
@@ -254,7 +254,7 @@ void op_gt::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, ">");
     auto b = frame.pop();
     auto a = frame.pop();
-    frame.push(a >b);
+    frame.push(a > b);
     frame.ptr() += 1;
 }
 

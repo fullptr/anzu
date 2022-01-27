@@ -29,9 +29,9 @@ auto format_error(const std::string& str) -> void
     std::exit(1);
 }
 
-auto type_error_list_conversion(std::string_view type) -> void
+auto type_error_conversion(std::string_view src_type, std::string_view dst_type) -> void
 {
-    anzu::print("type error: cannot convert list to {}\n", type);
+    anzu::print("type error: cannot convert {} to {}\n", src_type, dst_type);
     std::exit(1);
 }
 
@@ -64,7 +64,11 @@ auto object::to_int() const -> int
         [](bool v) { return v ? 1 : 0; },
         [](const std::string& v) { return anzu::to_int(v); },
         [](const object_list& v) {
-            type_error_list_conversion("int");
+            type_error_conversion("list", "int");
+            return 0;
+        },
+        [](std::monostate) {
+            type_error_conversion("null", "int");
             return 0;
         }
     }, d_value);
@@ -76,7 +80,8 @@ auto object::to_bool() const -> bool
         [](int v) { return v != 0; },
         [](bool v) { return v; },
         [](const std::string& v) { return v.size() > 0; },
-        [](const object_list& v) { return v->size() > 0; }
+        [](const object_list& v) { return v->size() > 0; },
+        [](std::monostate) { return false; }
     }, d_value);
 }
 
@@ -100,7 +105,8 @@ auto object::to_str() const -> std::string
                     ret += "]";
                     return ret;
             }
-        }
+        },
+        [](std::monostate) { return std::string{"null"}; }
     }, d_value);
 }
 
@@ -124,7 +130,8 @@ auto object::to_repr() const -> std::string
                     ret += "]";
                     return ret;
             }
-        }
+        },
+        [](std::monostate) { return std::string{"null"}; }
     }, d_value);
 }
 

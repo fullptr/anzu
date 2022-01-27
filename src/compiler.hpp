@@ -21,6 +21,7 @@ constexpr auto DO          = std::string_view{"do"};
 constexpr auto END         = std::string_view{"end"};
 constexpr auto TRUE_LIT    = std::string_view{"true"};
 constexpr auto FALSE_LIT   = std::string_view{"false"};
+constexpr auto NULL_LIT    = std::string_view{"null"};
 
 constexpr auto ADD         = std::string_view{"+"};
 constexpr auto SUB         = std::string_view{"-"};
@@ -177,24 +178,6 @@ struct node_return : public node
     void print(int indent = 0) override;
 };
 
-using token_iterator = std::vector<anzu::token>::const_iterator;
-using node_ptr       = std::unique_ptr<anzu::node>;
-
-// Context used while constructing an AST. Has non-owning pointers into the
-// tokens as well as keeping track of function names.
-struct parser_context
-{
-    struct function_info
-    {
-        std::int64_t argc;
-    };
-
-    token_iterator       curr;
-    const token_iterator end;
-
-    std::unordered_map<std::string, function_info> functions;
-};
-
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler_context
@@ -209,7 +192,6 @@ struct compiler_context
     std::unordered_map<std::string, function_def> functions;
 };
 
-auto parse(const std::vector<anzu::token>& tokens) -> std::unique_ptr<anzu::node>;
 auto compile(const std::unique_ptr<anzu::node>& root) -> std::vector<anzu::op>;
 
 }

@@ -1,8 +1,9 @@
 #include "stack_frame.hpp"
 #include "op_codes.hpp"
-#include "lexer.hpp"
 #include "print.hpp"
-#include "ast.hpp"
+#include "lexer.hpp"
+#include "parser.hpp"
+#include "compiler.hpp"
 
 #include <string>
 #include <variant>
