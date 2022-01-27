@@ -471,7 +471,7 @@ auto parse_statement_list(parser_context& ctx) -> node_ptr
 auto parse_while_body(parser_context& ctx) -> node_ptr
 {
     auto stmt = std::make_unique<anzu::node_while_statement>();
-    stmt->condition = parse_statement_list(ctx);
+    stmt->condition = parse_expression(ctx);
     consume_only(ctx.curr, "do");
     stmt->body = parse_statement_list(ctx);
     consume_only(ctx.curr, "end");
@@ -481,7 +481,7 @@ auto parse_while_body(parser_context& ctx) -> node_ptr
 auto parse_if_body(parser_context& ctx) -> node_ptr
 {
     auto stmt = std::make_unique<node_if_statement>();
-    stmt->condition = parse_statement_list(ctx);
+    stmt->condition = parse_expression(ctx);
     consume_only(ctx.curr, "do");
     stmt->body = parse_statement_list(ctx);
 

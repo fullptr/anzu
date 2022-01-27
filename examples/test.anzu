@@ -1,4 +1,7 @@
 # fibbonacci to demonstrate functions and recursion
 
-if 2 < 4 do
+if to_bool(0) do
+    println("in if")
+else
+    print("in else\n")
 end
