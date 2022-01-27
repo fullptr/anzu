@@ -529,10 +529,26 @@ auto parse_function(parser_context& ctx) -> node_ptr
     return ret;
 }
 
+auto parse_return(parser_context& ctx) -> node_ptr
+{
+    static const auto sentinel = std::unordered_set<std::string_view>{"end", "elif", "do", "else"};
+
+    auto ret_node = std::make_unique<anzu::node_return>();
+    if (!sentinel.contains(ctx.curr->text)) {
+        ret_node->return_value = parse_expression(ctx);
+    } else {
+        ret_node->return_value = std::make_unique<anzu::node_literal>(anzu::object{false}); // TODO: Make null
+    }
+    return ret_node;
+}
+
 auto parse_statement(parser_context& ctx) -> node_ptr
 {
     if (consume_maybe(ctx.curr, "function")) {
         return parse_function(ctx);
+    }
+    else if (consume_maybe(ctx.curr, "return")) {
+        return parse_return(ctx);
     }
     else if (consume_maybe(ctx.curr, "while")) {
         return parse_while_body(ctx);
