@@ -339,11 +339,14 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
     else if (ctx.curr->type == token_type::string) {
         return { (ctx.curr++)->text };
     }
-     else if (consume_maybe(ctx.curr, "true")) {
+     else if (consume_maybe(ctx.curr, TRUE_LIT)) {
         return { true };
     }
-    else if (consume_maybe(ctx.curr, "false")) {
+    else if (consume_maybe(ctx.curr, FALSE_LIT)) {
         return { false };
+    }
+    else if (consume_maybe(ctx.curr, NULL_LIT)) {
+        return { object_null{} };
     }
     else if (ctx.curr->text == "[") {
         return { handle_list_literal(ctx) };

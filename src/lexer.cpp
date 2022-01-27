@@ -69,7 +69,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
 {
     auto it = line.begin();
     auto col = 0;
-    int token_col = 0;
+    auto token_col = 0;
     while (it != line.end()) {
         
         while (it != line.end() && std::isspace(*it)) {
@@ -78,12 +78,12 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
         if (it == line.end()) {
             return;
         }
-        token_col = col;
+        token_col = col + 1;
 
         if (*it == '"') {
             const auto literal = parse_string_literal(it, col, line.end());
             tokens.push_back({
-                .text=literal, .line=lineno, .col=token_col + 1, .type=token_type::string
+                .text=literal, .line=lineno, .col=token_col, .type=token_type::string
             });
         }
         else if (*it == '#') {
@@ -91,7 +91,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
         }
         else if (const auto sym = try_parse_symbol(it, col, line.end()); sym.has_value()) {
             tokens.push_back({
-                .text=*sym, .line=lineno, .col=token_col + 1, .type=token_type::symbol
+                .text=*sym, .line=lineno, .col=token_col, .type=token_type::symbol
             });
         }
 
@@ -99,17 +99,17 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
         if (!token.empty()) {
             if (keywords.contains(token)) {
                 tokens.push_back({
-                    .text=token, .line=lineno, .col=token_col + 1, .type=token_type::keyword
+                    .text=token, .line=lineno, .col=token_col, .type=token_type::keyword
                 });
             }
             else if (anzu::is_int(token)) {
                 tokens.push_back({
-                    .text=token, .line=lineno, .col=token_col + 1, .type=token_type::number
+                    .text=token, .line=lineno, .col=token_col, .type=token_type::number
                 });
             }
             else if (!std::isdigit(token[0])) {
                 tokens.push_back({
-                    .text=token, .line=lineno, .col=token_col + 1, .type=token_type::name
+                    .text=token, .line=lineno, .col=token_col, .type=token_type::name
                 });
             }
             else {

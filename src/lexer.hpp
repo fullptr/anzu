@@ -6,18 +6,19 @@
 namespace anzu {
 
 static const std::unordered_set<std::string_view> keywords = {
-    "if",
-    "elif",
-    "else",
-    "while",
     "break",
     "continue",
     "do",
+    "elif",
+    "else",
     "end",
-    "true",
     "false",
     "function",
-    "return"
+    "if",
+    "null",
+    "return",
+    "true",
+    "while"
 };
 
 static const std::unordered_set<std::string_view> symbols = {

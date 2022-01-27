@@ -65,3 +65,6 @@ if adder(1, 2, 3) == 6 do
 else
     println("no")
 end
+
+x = null
+print(x)

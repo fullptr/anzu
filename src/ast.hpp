@@ -21,6 +21,7 @@ constexpr auto DO          = std::string_view{"do"};
 constexpr auto END         = std::string_view{"end"};
 constexpr auto TRUE_LIT    = std::string_view{"true"};
 constexpr auto FALSE_LIT   = std::string_view{"false"};
+constexpr auto NULL_LIT    = std::string_view{"null"};
 
 constexpr auto ADD         = std::string_view{"+"};
 constexpr auto SUB         = std::string_view{"-"};

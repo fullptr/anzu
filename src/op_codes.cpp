@@ -254,7 +254,7 @@ void op_gt::apply(anzu::context& ctx) const
     anzu::verify_stack(frame, 2, ">");
     auto b = frame.pop();
     auto a = frame.pop();
-    frame.push(a >b);
+    frame.push(a > b);
     frame.ptr() += 1;
 }
 
