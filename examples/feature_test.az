@@ -66,5 +66,7 @@ else
     println("no")
 end
 
+# printing null and showing functions with no return value return null
 x = null
-print(x)
+y = println(x)
+println(y)

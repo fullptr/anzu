@@ -119,7 +119,7 @@ void op_function::apply(anzu::context& ctx) const
 void op_function_end::apply(anzu::context& ctx) const
 {
     ctx.pop();
-    ctx.top().push(anzu::null_object()); // TODO: Make a null type
+    ctx.top().push(anzu::null_object());
 }
 
 void op_return::apply(anzu::context& ctx) const

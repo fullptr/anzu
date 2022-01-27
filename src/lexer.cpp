@@ -13,6 +13,55 @@ namespace {
 
 using string_iter = std::string::const_iterator;
 
+class line_iterator
+{
+    string_iter d_curr;
+    string_iter d_end;
+    int         d_col;
+
+public:
+    line_iterator(const std::string& line)
+        : d_curr(line.begin()) , d_end(line.end()) , d_col(1)
+    {
+    }
+
+    auto valid() const -> bool { return d_curr != d_end; }
+    auto has_next() const -> bool { return std::next(d_curr) != d_end; }
+
+    auto curr() const -> char { return *d_curr; }
+    auto next() const -> char { return *std::next(d_curr); }
+    auto col() const -> int { return d_col; }
+
+    auto is_alphanumeric() const -> bool
+    {
+        return valid() && (std::isalpha(curr()) || std::isdigit(curr()) || curr() == '_');
+    }
+
+    auto consume() -> char
+    {
+        auto ret = curr();
+        ++d_curr;
+        ++d_col;
+        return ret;
+    }
+
+    auto consume_maybe(char c) -> bool
+    {
+        if (curr() == c) {
+            consume();
+            return true;
+        }
+        return false;
+    };
+    
+    auto move_to_next() -> bool
+    {
+        while (valid() && std::isspace(curr())) { consume(); }
+        return valid();
+    }
+};
+
+
 template <typename... Args>
 auto lexer_error(std::string_view msg, Args&&... args) -> void
 {
@@ -21,96 +70,77 @@ auto lexer_error(std::string_view msg, Args&&... args) -> void
     std::exit(1);
 }
 
-auto parse_string_literal(string_iter& curr, int& col, string_iter end) -> std::string
+auto parse_string_literal(line_iterator& iter) -> std::string
 {
     std::string return_value;
-    ++curr; ++col; // Skip opening
     while (true) {
-        if (curr == end) {
+        if (!iter.valid()) {
             lexer_error("EOF reached before closing string literal");
         }
-        else if (*curr == '"') {
-            ++curr; ++col;
+        else if (iter.consume_maybe('"')) {
             break;
         }
-        return_value += *curr;
-        ++curr; ++col;
+        return_value += iter.consume();
     }
     return return_value;
 }
 
-auto try_parse_symbol(string_iter& curr, int& col, string_iter end) -> std::optional<std::string>
+auto try_parse_symbol(line_iterator& iter) -> std::optional<std::string>
 {
-    if (const auto next = std::next(curr); next != end) {
-        if (const auto pair = std::format("{}{}", *curr, *next); symbols.contains(pair)) {
-            ++curr; ++col;
-            ++curr; ++col;
+    if (iter.has_next()) {
+        if (const auto pair = std::format("{}{}", iter.curr(), iter.next()); symbols.contains(pair)) {
+            iter.consume();
+            iter.consume();
             return pair;
         }
     }
-    if (const auto single = std::string{*curr}; symbols.contains(single)) {
-        ++curr; ++col;
+    if (const auto single = std::string{iter.curr()}; symbols.contains(single)) {
+        iter.consume();
         return single;
     }
     return std::nullopt;
 }
 
-auto parse_token(string_iter& curr, int& col, string_iter end) -> std::string
+auto parse_token(line_iterator& iter) -> std::string
 {
     std::string return_value;
-    while (curr != end && (std::isalpha(*curr) || std::isdigit(*curr) || *curr == '_')) {
-        return_value += *curr;
-        ++curr; ++col;
+    while (iter.is_alphanumeric()) {
+        return_value += iter.consume();
     }
     return return_value;
 };
 
 auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const int lineno) -> void
 {
-    auto it = line.begin();
-    auto col = 0;
-    auto token_col = 0;
-    while (it != line.end()) {
-        
-        while (it != line.end() && std::isspace(*it)) {
-            ++it; ++col;
+    const auto push_token = [&](const std::string& text, int col, token_type type) {
+        tokens.push_back({ .text=text, .line=lineno, .col=col, .type=type });
+    };
+
+    auto iter = line_iterator{line};
+    while (iter.move_to_next()) {
+        const int col = iter.col();
+
+        if (iter.consume_maybe('"')) {
+            const auto literal = parse_string_literal(iter);
+            push_token(literal, col, token_type::string);
         }
-        if (it == line.end()) {
+        else if (iter.consume_maybe('#')) {
             return;
         }
-        token_col = col + 1;
-
-        if (*it == '"') {
-            const auto literal = parse_string_literal(it, col, line.end());
-            tokens.push_back({
-                .text=literal, .line=lineno, .col=token_col, .type=token_type::string
-            });
-        }
-        else if (*it == '#') {
-            break;
-        }
-        else if (const auto sym = try_parse_symbol(it, col, line.end()); sym.has_value()) {
-            tokens.push_back({
-                .text=*sym, .line=lineno, .col=token_col, .type=token_type::symbol
-            });
+        else if (const auto symbol = try_parse_symbol(iter); symbol.has_value()) {
+            push_token(*symbol, col, token_type::symbol);
         }
 
-        const auto token = parse_token(it, col, line.end());
+        const auto token = parse_token(iter);
         if (!token.empty()) {
             if (keywords.contains(token)) {
-                tokens.push_back({
-                    .text=token, .line=lineno, .col=token_col, .type=token_type::keyword
-                });
+                push_token(token, col, token_type::keyword);
             }
             else if (anzu::is_int(token)) {
-                tokens.push_back({
-                    .text=token, .line=lineno, .col=token_col, .type=token_type::number
-                });
+                push_token(token, col, token_type::number);
             }
             else if (!std::isdigit(token[0])) {
-                tokens.push_back({
-                    .text=token, .line=lineno, .col=token_col, .type=token_type::name
-                });
+                push_token(token, col, token_type::name);
             }
             else {
                 lexer_error("invalid name '{}' - names cannot start with a digit", token);
