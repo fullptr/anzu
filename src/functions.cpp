@@ -123,7 +123,7 @@ auto builtin_input(anzu::context& ctx) -> void
 static const std::unordered_map<std::string, builtin> builtins = {
 
     // List functions
-    { "list_push",       builtin{ builtin_list_push,   1 }},
+    { "list_push",       builtin{ builtin_list_push,   2 }},
     { "list_pop",        builtin{ builtin_list_pop,    1 }},
     { "list_size",       builtin{ builtin_list_size,   1 }},
     { "list_at",         builtin{ builtin_list_at,     2 }},

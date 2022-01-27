@@ -232,9 +232,7 @@ void node_discard_expression::evaluate(compiler_context& ctx)
 void node_discard_expression::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}DiscardExpr:\n", spaces);
-    anzu::print("{}- Value:\n", spaces);
-    expr->print(indent + 1);
+    expr->print(indent);
 }
 
 void node_function_def::evaluate(compiler_context& ctx)

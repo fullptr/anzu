@@ -1,27 +1,8 @@
 # fibbonacci to demonstrate functions and recursion
 
-x = 1
+x = [1, 2, 3]
 
-println(1)
-__print_frame__()
-println(2)
+list_push(x, 4)
+list_push(x, 5)
 
-
-function foo() do
-    d = 1
-    __print_frame__()
-end
-
-println(3)
-
-x = 1
-y = 2
-z = 3
-
-println(4)
-
-__print_frame__()
-
-println(5)
-foo()
-println(6)
+println(x)
