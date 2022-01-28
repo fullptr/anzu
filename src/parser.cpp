@@ -159,15 +159,8 @@ auto parse_assign_expression(parser_context& ctx) -> node_ptr
     auto name = (ctx.curr++)->text;
     consume_only(ctx.curr, "=");
 
-    auto assign = std::make_unique<anzu::node_assign_expression>();
+    auto assign = std::make_unique<anzu::node_assignment>();
     assign->name = name;
-    assign->expr = parse_expression(ctx);
-    return assign;
-}
-
-auto parse_discard_expression(parser_context& ctx) -> node_ptr
-{
-    auto assign = std::make_unique<anzu::node_discard_expression>();
     assign->expr = parse_expression(ctx);
     return assign;
 }
@@ -340,7 +333,7 @@ auto parse_builtin_call_stmt(parser_context& ctx) -> node_ptr
 
 auto parse_function_call(parser_context& ctx) -> node_ptr
 {
-    auto node = std::make_unique<anzu::node_function_call>();
+    auto node = std::make_unique<anzu::node_function_call_expression>();
     node->function_name = (ctx.curr++)->text;
 
     consume_only(ctx.curr, "(");

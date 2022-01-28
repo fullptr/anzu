@@ -122,20 +122,9 @@ struct node_bin_op : public node
 // Evaluates the child node and assigns the result to the given name.
 // Currently assuming that the child node results in a value being pushed
 // to the stack, will enforce this in the code later on.
-struct node_assign_expression : public node
+struct node_assignment : public node
 {
     std::string name;
-    std::unique_ptr<node> expr;
-
-    void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
-};
-
-// Evaluates the child node and then inserts an OP_POP to ignore the
-// returned value. Currently assuming that the child node results in a
-// value being pushed to the stack, will enforce this in the code later on.
-struct node_discard_expression : public node
-{
     std::unique_ptr<node> expr;
 
     void evaluate(compiler_context& ctx) override;
@@ -152,7 +141,7 @@ struct node_function_def : public node
     void print(int indent = 0) override;
 };
 
-struct node_function_call : public node
+struct node_function_call_expression : public node
 {
     std::string                        function_name;
     std::vector<std::unique_ptr<node>> args;
