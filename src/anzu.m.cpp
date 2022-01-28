@@ -85,20 +85,20 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    //const auto program = anzu::compile(root);
-    //if (mode == "com") {
-    //    print_program(program);
-    //    return 0;
-    //}
+    const auto program = anzu::compile(root);
+    if (mode == "com") {
+        print_program(program);
+        return 0;
+    }
 
-    //if (mode == "run") {
-    //    run_program(program);
-    //    return 0;
-    //}
-    //else if (mode == "debug") {
-    //    run_program_debug(program);
-    //    return 0;
-    //}
+    if (mode == "run") {
+        run_program(program);
+        return 0;
+    }
+    else if (mode == "debug") {
+        run_program_debug(program);
+        return 0;
+    }
 
     anzu::print("unknown mode: '{}'\n", mode);
     print_usage();

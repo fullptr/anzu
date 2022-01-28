@@ -131,4 +131,7 @@ struct node_return_stmt
     node_expr_ptr return_value;
 };
 
+auto print_node(const anzu::node_expr& node, int indent = 0) -> void;
+auto print_node(const anzu::node_stmt& node, int indent = 0) -> void;
+
 }
