@@ -17,15 +17,6 @@ void node_sequence::evaluate(compiler_context& ctx)
     }
 }
 
-void node_sequence::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Sequence:\n", spaces);
-    for (const auto& node : sequence) {
-        node->print(indent + 1);
-    }
-}
-
 void node_while_statement::evaluate(compiler_context& ctx)
 {
     const auto while_pos = std::ssize(ctx.program);
@@ -55,16 +46,6 @@ void node_while_statement::evaluate(compiler_context& ctx)
     }
 }
 
-void node_while_statement::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}While:\n", spaces);
-    anzu::print("{}- Condition:\n", spaces);
-    condition->print(indent + 1);
-    anzu::print("{}- Body:\n", spaces);
-    body->print(indent + 1);
-}
-
 void node_if_statement::evaluate(compiler_context& ctx)
 {
     const auto if_pos = std::ssize(ctx.program);
@@ -92,29 +73,9 @@ void node_if_statement::evaluate(compiler_context& ctx)
     }
 }
 
-void node_if_statement::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}If:\n", spaces);
-    anzu::print("{}- Condition:\n", spaces);
-    condition->print(indent + 1);
-    anzu::print("{}- Body:\n", spaces);
-    body->print(indent + 1);
-    if (else_body) {
-        anzu::print("{}- Else:\n", spaces);
-        else_body->print(indent + 1);
-    }
-}
-
 void node_literal::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_push_const{ .value=value });
-}
-
-void node_literal::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Literal: {}\n", spaces, value.to_repr());
 }
 
 void node_variable::evaluate(compiler_context& ctx)
@@ -122,33 +83,18 @@ void node_variable::evaluate(compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_push_var{ .name=name });
 }
 
-void node_variable::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Variable: {}\n", spaces, name);
-}
 
 void node_break::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_break{});
 }
 
-void node_break::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Break\n", spaces);
-}
 
 void node_continue::evaluate(compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_continue{});
 }
 
-void node_continue::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Continue\n", spaces);
-}
 
 void node_bin_op::evaluate(compiler_context& ctx)
 {
@@ -173,38 +119,10 @@ void node_bin_op::evaluate(compiler_context& ctx)
     }
 }
 
-void node_bin_op::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}BinOp\n", spaces);
-    anzu::print("{}- Op: {}\n", spaces, op);
-    anzu::print("{}- Lhs:\n", spaces);
-    if (!lhs) {
-        anzu::print("bin op has no lhs\n");
-        std::exit(1);
-    }
-    lhs->print(indent + 1);
-    anzu::print("{}- Rhs:\n", spaces);
-    if (!rhs) {
-        anzu::print("bin op has no rhs\n");
-        std::exit(1);
-    }
-    rhs->print(indent + 1);
-}
-
 void node_assignment::evaluate(compiler_context& ctx)
 {
     expr->evaluate(ctx);
     ctx.program.emplace_back(anzu::op_store{ .name=name });
-}
-
-void node_assignment::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}AssignExpr\n", spaces);
-    anzu::print("{}- Name: {}\n", spaces, name);
-    anzu::print("{}- Value:\n", spaces);
-    expr->print(indent + 1);
 }
 
 void node_function_def::evaluate(compiler_context& ctx)
@@ -219,17 +137,6 @@ void node_function_def::evaluate(compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_function_end{});
 
     ctx.program[start_pos].as<anzu::op_function>().jump = end_pos + 1;
-}
-
-void node_function_def::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Function: {}", spaces, name);
-    for (const auto& arg : arg_names) {
-        anzu::print(" {}", arg);
-    }
-    anzu::print("\n");
-    body->print(indent + 1);
 }
 
 void node_function_call_expression::evaluate(compiler_context& ctx)
@@ -249,16 +156,6 @@ void node_function_call_expression::evaluate(compiler_context& ctx)
     });
 }
 
-void node_function_call_expression::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}FunctionCall: {}\n", spaces, function_name);
-    anzu::print("{}- Args:\n", spaces);
-    for (const auto& arg : args) {
-        arg->print(indent + 1);
-    }
-}
-
 void node_function_call_statement::evaluate(compiler_context& ctx)
 {
     // Push the args to the stack
@@ -276,16 +173,6 @@ void node_function_call_statement::evaluate(compiler_context& ctx)
     });
 }
 
-void node_function_call_statement::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}FunctionCall: {}\n", spaces, function_name);
-    anzu::print("{}- Args:\n", spaces);
-    for (const auto& arg : args) {
-        arg->print(indent + 1);
-    }
-}
-
 void node_builtin_call::evaluate(compiler_context& ctx)
 {
     // Push the args to the stack
@@ -299,17 +186,6 @@ void node_builtin_call::evaluate(compiler_context& ctx)
         .func=anzu::fetch_builtin(function_name)
     });
     ctx.program.emplace_back(anzu::op_pop{});
-}
-
-
-void node_builtin_call::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}BuiltinCall: {}\n", spaces, function_name);
-    anzu::print("{}- Args:\n", spaces);
-    for (const auto& arg : args) {
-        arg->print(indent + 1);
-    }
 }
 
 void node_builtin_call_statement::evaluate(compiler_context& ctx)
@@ -327,28 +203,10 @@ void node_builtin_call_statement::evaluate(compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_pop{});
 }
 
-
-void node_builtin_call_statement::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}BuiltinCall: {}\n", spaces, function_name);
-    anzu::print("{}- Args:\n", spaces);
-    for (const auto& arg : args) {
-        arg->print(indent + 1);
-    }
-}
-
 void node_return::evaluate(compiler_context& ctx)
 {
     return_value->evaluate(ctx);
     ctx.program.emplace_back(anzu::op_return{});
-}
-
-void node_return::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    anzu::print("{}Return:\n", spaces);
-    return_value->print(indent + 1);
 }
 
 auto compile(const std::unique_ptr<anzu::node>& root) -> std::vector<anzu::op>

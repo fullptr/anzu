@@ -49,7 +49,6 @@ struct node
 {
     virtual ~node() {}
     virtual void evaluate(compiler_context& ctx) = 0;
-    virtual void print(int indent = 0) = 0;
 };
 
 struct node_sequence : public node
@@ -57,7 +56,6 @@ struct node_sequence : public node
     std::vector<std::unique_ptr<node>> sequence;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_while_statement : public node
@@ -66,7 +64,6 @@ struct node_while_statement : public node
     std::unique_ptr<node> body;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_if_statement : public node
@@ -76,19 +73,16 @@ struct node_if_statement : public node
     std::unique_ptr<node> else_body;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_break : public node
 {
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_continue : public node
 {
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_literal : public node
@@ -97,7 +91,6 @@ struct node_literal : public node
 
     node_literal(const anzu::object& v) : value(v) {}
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_variable : public node
@@ -106,7 +99,6 @@ struct node_variable : public node
 
     node_variable(const std::string& n) : name(n) {}
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_bin_op : public node
@@ -116,7 +108,6 @@ struct node_bin_op : public node
     std::unique_ptr<node> rhs;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 // Evaluates the child node and assigns the result to the given name.
@@ -128,7 +119,6 @@ struct node_assignment : public node
     std::unique_ptr<node> expr;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_function_def : public node
@@ -138,7 +128,6 @@ struct node_function_def : public node
     std::unique_ptr<node>    body;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_function_call_expression : public node
@@ -147,7 +136,6 @@ struct node_function_call_expression : public node
     std::vector<std::unique_ptr<node>> args;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_function_call_statement : public node
@@ -156,7 +144,6 @@ struct node_function_call_statement : public node
     std::vector<std::unique_ptr<node>> args;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_builtin_call : public node
@@ -165,7 +152,6 @@ struct node_builtin_call : public node
     std::vector<std::unique_ptr<node>> args;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_builtin_call_statement : public node
@@ -174,7 +160,6 @@ struct node_builtin_call_statement : public node
     std::vector<std::unique_ptr<node>> args;
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 struct node_return : public node
@@ -182,7 +167,6 @@ struct node_return : public node
     std::unique_ptr<node> return_value; // Should leave a value on the stack
 
     void evaluate(compiler_context& ctx) override;
-    void print(int indent = 0) override;
 };
 
 // Struct used to store information while compiling an AST. Contains the output program
