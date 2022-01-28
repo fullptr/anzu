@@ -81,7 +81,7 @@ int main(int argc, char** argv)
 
     const auto root = anzu::parse(tokens);
     if (mode == "parse") {
-        //root->print();
+        print_node(*root);
         return 0;
     }
 
