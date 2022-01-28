@@ -30,4 +30,7 @@ struct parser_context
 
 auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr;
 
+auto print_node(const anzu::node_expr& node, int indent = 0) -> void;
+auto print_node(const anzu::node_stmt& node, int indent = 0) -> void;
+
 }
