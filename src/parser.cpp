@@ -159,15 +159,8 @@ auto parse_assign_expression(parser_context& ctx) -> node_ptr
     auto name = (ctx.curr++)->text;
     consume_only(ctx.curr, "=");
 
-    auto assign = std::make_unique<anzu::node_assign_expression>();
+    auto assign = std::make_unique<anzu::node_assignment>();
     assign->name = name;
-    assign->expr = parse_expression(ctx);
-    return assign;
-}
-
-auto parse_discard_expression(parser_context& ctx) -> node_ptr
-{
-    auto assign = std::make_unique<anzu::node_discard_expression>();
     assign->expr = parse_expression(ctx);
     return assign;
 }
@@ -304,9 +297,77 @@ auto parse_builtin_call(parser_context& ctx) -> node_ptr
     return node;
 }
 
+auto parse_builtin_call_stmt(parser_context& ctx) -> node_ptr
+{
+    auto node = std::make_unique<anzu::node_builtin_call_statement>();
+    node->function_name = (ctx.curr++)->text;
+
+    consume_only(ctx.curr, "(");
+    bool expect_comma = false;
+    while (ctx.curr != ctx.end && ctx.curr->text != ")") {
+        if (expect_comma) {
+            if (ctx.curr->text != ",") { // skip commas, enforce later
+                anzu::print("syntax error: expected comma in function call arg list\n");
+                std::exit(1);
+            }
+            ++ctx.curr;
+        }
+        else {
+            node->args.push_back(parse_expression(ctx));
+        }
+        expect_comma = !expect_comma;
+    }
+    consume_only(ctx.curr, ")");
+
+    const auto argc = anzu::fetch_builtin_argc(node->function_name);
+    if (argc != std::ssize(node->args)) {
+        anzu::print(
+            "error: function '{}' expected {} args, got {}\n",
+            node->function_name, argc, std::ssize(node->args)
+        );
+        std::exit(1);
+    }
+
+    return node;
+}
+
 auto parse_function_call(parser_context& ctx) -> node_ptr
 {
-    auto node = std::make_unique<anzu::node_function_call>();
+    auto node = std::make_unique<anzu::node_function_call_expression>();
+    node->function_name = (ctx.curr++)->text;
+
+    consume_only(ctx.curr, "(");
+    bool expect_comma = false;
+    while (ctx.curr != ctx.end && ctx.curr->text != ")") {
+        if (expect_comma) {
+            if (ctx.curr->text != ",") { // skip commas, enforce later
+                anzu::print("syntax error: expected comma in function call arg list\n");
+                std::exit(1);
+            }
+            ++ctx.curr;
+        }
+        else {
+            node->args.push_back(parse_expression(ctx));
+        }
+        expect_comma = !expect_comma;
+    }
+    consume_only(ctx.curr, ")");
+
+    const auto argc = ctx.functions.at(node->function_name).argc;
+    if (argc != std::ssize(node->args)) {
+        anzu::print(
+            "error: function '{}' expected {} args, got {}\n",
+            node->function_name, argc, std::ssize(node->args)
+        );
+        std::exit(1);
+    }
+
+    return node;
+}
+
+auto parse_function_call_stmt(parser_context& ctx) -> node_ptr
+{
+    auto node = std::make_unique<anzu::node_function_call_statement>();
     node->function_name = (ctx.curr++)->text;
 
     consume_only(ctx.curr, "(");
@@ -362,10 +423,18 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == "=") {
         return parse_assign_expression(ctx);
     }
-    else if (ctx.curr != ctx.end) {
-        return parse_discard_expression(ctx);
+    else if (ctx.functions.contains(ctx.curr->text)) {
+        return parse_function_call_stmt(ctx);
     }
-    return nullptr;
+    else if (anzu::is_builtin(ctx.curr->text)) {
+        return parse_builtin_call_stmt(ctx);
+    }
+    else {
+        auto expression = parse_expression(ctx);
+        anzu::print("error: unused statement\n");
+        expression->print();
+        std::exit(1);
+    }
 }
 
 }

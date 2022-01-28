@@ -192,31 +192,19 @@ void node_bin_op::print(int indent)
     rhs->print(indent + 1);
 }
 
-void node_assign_expression::evaluate(compiler_context& ctx)
+void node_assignment::evaluate(compiler_context& ctx)
 {
     expr->evaluate(ctx);
     ctx.program.emplace_back(anzu::op_store{ .name=name });
 }
 
-void node_assign_expression::print(int indent)
+void node_assignment::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
     anzu::print("{}AssignExpr\n", spaces);
     anzu::print("{}- Name: {}\n", spaces, name);
     anzu::print("{}- Value:\n", spaces);
     expr->print(indent + 1);
-}
-
-void node_discard_expression::evaluate(compiler_context& ctx)
-{
-    expr->evaluate(ctx);
-    ctx.program.emplace_back(anzu::op_pop{});
-}
-
-void node_discard_expression::print(int indent)
-{
-    const auto spaces = std::string(4 * indent, ' ');
-    expr->print(indent);
 }
 
 void node_function_def::evaluate(compiler_context& ctx)
@@ -244,7 +232,7 @@ void node_function_def::print(int indent)
     body->print(indent + 1);
 }
 
-void node_function_call::evaluate(compiler_context& ctx)
+void node_function_call_expression::evaluate(compiler_context& ctx)
 {
     // Push the args to the stack
     for (const auto& arg : args) {
@@ -261,7 +249,34 @@ void node_function_call::evaluate(compiler_context& ctx)
     });
 }
 
-void node_function_call::print(int indent)
+void node_function_call_expression::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}FunctionCall: {}\n", spaces, function_name);
+    anzu::print("{}- Args:\n", spaces);
+    for (const auto& arg : args) {
+        arg->print(indent + 1);
+    }
+}
+
+void node_function_call_statement::evaluate(compiler_context& ctx)
+{
+    // Push the args to the stack
+    for (const auto& arg : args) {
+        arg->evaluate(ctx);
+    }
+
+    const auto& function_def = ctx.functions.at(function_name);
+
+    // Call the function
+    ctx.program.emplace_back(anzu::op_function_call{
+        .name=function_name,
+        .ptr=function_def.ptr + 1, // Jump into the function
+        .arg_names=function_def.arg_names
+    });
+}
+
+void node_function_call_statement::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
     anzu::print("{}FunctionCall: {}\n", spaces, function_name);
@@ -283,9 +298,37 @@ void node_builtin_call::evaluate(compiler_context& ctx)
         .name=function_name,
         .func=anzu::fetch_builtin(function_name)
     });
+    ctx.program.emplace_back(anzu::op_pop{});
 }
 
+
 void node_builtin_call::print(int indent)
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    anzu::print("{}BuiltinCall: {}\n", spaces, function_name);
+    anzu::print("{}- Args:\n", spaces);
+    for (const auto& arg : args) {
+        arg->print(indent + 1);
+    }
+}
+
+void node_builtin_call_statement::evaluate(compiler_context& ctx)
+{
+    // Push the args to the stack
+    for (const auto& arg : args) {
+        arg->evaluate(ctx);
+    }
+
+    // Call the function
+    ctx.program.emplace_back(anzu::op_builtin_function_call{
+        .name=function_name,
+        .func=anzu::fetch_builtin(function_name)
+    });
+    ctx.program.emplace_back(anzu::op_pop{});
+}
+
+
+void node_builtin_call_statement::print(int indent)
 {
     const auto spaces = std::string(4 * indent, ' ');
     anzu::print("{}BuiltinCall: {}\n", spaces, function_name);
