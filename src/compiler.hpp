@@ -161,7 +161,25 @@ struct node_function_call : public node
     void print(int indent = 0) override;
 };
 
+struct node_function_call_statement : public node
+{
+    std::string                        function_name;
+    std::vector<std::unique_ptr<node>> args;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
 struct node_builtin_call : public node
+{
+    std::string                        function_name;
+    std::vector<std::unique_ptr<node>> args;
+
+    void evaluate(compiler_context& ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct node_builtin_call_statement : public node
 {
     std::string                        function_name;
     std::vector<std::unique_ptr<node>> args;
