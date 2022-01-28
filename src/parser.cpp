@@ -1,4 +1,5 @@
 #include "parser.hpp"
+#include "functions.hpp"
 
 #include <optional>
 
@@ -95,11 +96,11 @@ auto precedence_table()
 }
 static const auto bin_ops_table = precedence_table();
 
-auto parse_expression(parser_context& ctx) -> node_ptr;
-auto parse_function_call(parser_context& ctx) -> node_ptr;
-auto parse_builtin_call(parser_context& ctx) -> node_ptr;
+auto parse_expression(parser_context& ctx) -> node_expr_ptr;
+auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr;
+auto parse_builtin_call_expr(parser_context& ctx) -> node_expr_ptr;
 
-auto parse_single_factor(parser_context& ctx) -> node_ptr
+auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
 {
     if (consume_maybe(ctx.curr, "(")) {
         auto expr = parse_expression(ctx);
@@ -107,25 +108,29 @@ auto parse_single_factor(parser_context& ctx) -> node_ptr
         return expr;
     }  
     else if (auto factor = anzu::try_parse_literal(ctx); factor.has_value()) {
-        return std::make_unique<anzu::node_literal>(*factor);
+        auto node = std::make_unique<anzu::node_expr>();
+        auto& expr = node->emplace<anzu::node_literal_expr>();
+        expr.value = *factor;
+        return node;
     }
     else if (ctx.functions.contains(ctx.curr->text)) {
-        return parse_function_call(ctx);
+        return parse_function_call_expr(ctx);
     }
     else if (anzu::is_builtin(ctx.curr->text)) {
-        return parse_builtin_call(ctx);
+        return parse_builtin_call_expr(ctx);
     }
     else if (ctx.curr->type != token_type::name) {
         anzu::print("syntax error: '{}' is not a name, cannot be a factor\n", ctx.curr->text);
         std::exit(1);
     }
-    else {
-        return std::make_unique<anzu::node_variable>((ctx.curr++)->text);
-    }
+    auto node = std::make_unique<anzu::node_expr>();
+    auto& expr = node->emplace<anzu::node_variable_expr>();
+    expr.name = (ctx.curr++)->text;
+    return node;
 }
 
 // Level is the precendence level, the lower the number, the tighter the factors bind.
-auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_ptr
+auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_expr_ptr
 {
     if (level == 0) {
         return parse_single_factor(ctx);
@@ -135,22 +140,23 @@ auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_ptr
     while (ctx.curr != ctx.end && bin_ops_table[level].contains(ctx.curr->text)) {
         auto op = (ctx.curr++)->text;
 
-        auto new_left = std::make_unique<anzu::node_bin_op>();
-        new_left->lhs = std::move(left);
-        new_left->op = op;
-        new_left->rhs = parse_compound_factor(ctx, level - 1);
+        auto node = std::make_unique<anzu::node_expr>();
+        auto& expr = node->emplace<anzu::node_bin_op_expr>();
+        expr.lhs = std::move(left);
+        expr.op = op;
+        expr.rhs = parse_compound_factor(ctx, level - 1);
 
-        left = std::move(new_left);
+        left = std::move(node);
     }
     return left;
 }
 
-auto parse_expression(parser_context& ctx) -> node_ptr
+auto parse_expression(parser_context& ctx) -> node_expr_ptr
 {
     return parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
 }
 
-auto parse_assign_expression(parser_context& ctx) -> node_ptr
+auto parse_assign_expression(parser_context& ctx) -> node_stmt_ptr
 {
     if (ctx.curr->type != token_type::name) {
         anzu::print("syntax error: cannot assign to '{}'\n", ctx.curr->text);
@@ -159,67 +165,77 @@ auto parse_assign_expression(parser_context& ctx) -> node_ptr
     auto name = (ctx.curr++)->text;
     consume_only(ctx.curr, "=");
 
-    auto assign = std::make_unique<anzu::node_assignment>();
-    assign->name = name;
-    assign->expr = parse_expression(ctx);
-    return assign;
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_assignment_stmt>();
+    stmt.name = name;
+    stmt.expr = parse_expression(ctx);
+    return node;
 }
 
-auto parse_statement(parser_context& ctx) -> node_ptr;
+auto parse_statement(parser_context& ctx) -> node_stmt_ptr;
 
 // statement_list:
 //     | statement
 //     | statement statement_list
-auto parse_statement_list(parser_context& ctx) -> node_ptr
+auto parse_statement_list(parser_context& ctx) -> node_stmt_ptr
 {
     static const auto sentinel = std::unordered_set<std::string_view>{"end", "elif", "do", "else"};
 
-    auto stmt = std::make_unique<node_sequence>();
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_sequence_stmt>();
     while (ctx.curr != ctx.end && !sentinel.contains(ctx.curr->text)) {
-        stmt->sequence.push_back(parse_statement(ctx));
+        stmt.sequence.push_back(parse_statement(ctx));
     }
-    return stmt;
+
+    // If there is only one element in the sequence, return that directly
+    if (stmt.sequence.size() == 1) {
+        node = std::move(stmt.sequence.back());
+    }
+    return node;
 }
 
-auto parse_while_body(parser_context& ctx) -> node_ptr
+auto parse_while_body(parser_context& ctx) -> node_stmt_ptr
 {
-    auto stmt = std::make_unique<anzu::node_while_statement>();
-    stmt->condition = parse_expression(ctx);
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_while_stmt>();
+    stmt.condition = parse_expression(ctx);
     consume_only(ctx.curr, "do");
-    stmt->body = parse_statement_list(ctx);
+    stmt.body = parse_statement_list(ctx);
     consume_only(ctx.curr, "end");
-    return stmt;
+    return node;
 }
 
-auto parse_if_body(parser_context& ctx) -> node_ptr
+auto parse_if_body(parser_context& ctx) -> node_stmt_ptr
 {
-    auto stmt = std::make_unique<node_if_statement>();
-    stmt->condition = parse_expression(ctx);
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_if_stmt>();
+    stmt.condition = parse_expression(ctx);
     consume_only(ctx.curr, "do");
-    stmt->body = parse_statement_list(ctx);
+    stmt.body = parse_statement_list(ctx);
 
     if (consume_maybe(ctx.curr, "elif")) {
-        stmt->else_body = parse_if_body(ctx);
+        stmt.else_body = parse_if_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "else")) {
-        stmt->else_body = parse_statement_list(ctx);
+        stmt.else_body = parse_statement_list(ctx);
         consume_only(ctx.curr, "end");
     }
     else {
         consume_only(ctx.curr, "end");
     }
     
-    return stmt;
+    return node;
 }
 
-auto parse_function(parser_context& ctx) -> node_ptr
+auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
 {
-    auto ret = std::make_unique<node_function_def>();
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_function_def_stmt>();
     if (ctx.curr->type != token_type::name) {
         anzu::print("syntax error: expected function name\n");
         std::exit(1);
     }
-    ret->name = (ctx.curr++)->text;
+    stmt.name = (ctx.curr++)->text;
     consume_only(ctx.curr, "(");
     bool expect_comma = false;
     while (ctx.curr != ctx.end && ctx.curr->text != ")") {
@@ -232,7 +248,7 @@ auto parse_function(parser_context& ctx) -> node_ptr
         }
         else {
             if (ctx.curr->type == token_type::name) {
-                ret->arg_names.push_back(ctx.curr->text);
+                stmt.arg_names.push_back(ctx.curr->text);
                 ++ctx.curr;          
             }
             else {
@@ -242,31 +258,35 @@ auto parse_function(parser_context& ctx) -> node_ptr
         }
         expect_comma = !expect_comma;
     }
-    ctx.functions[ret->name] = { .argc=std::ssize(ret->arg_names) };
+    ctx.functions[stmt.name] = { .argc=std::ssize(stmt.arg_names) };
     consume_only(ctx.curr, ")");
     consume_only(ctx.curr, "do");
-    ret->body = parse_statement_list(ctx);
+    stmt.body = parse_statement_list(ctx);
     consume_only(ctx.curr, "end");
-    return ret;
+    return node;
 }
 
-auto parse_return(parser_context& ctx) -> node_ptr
+auto parse_return(parser_context& ctx) -> node_stmt_ptr
 {
     static const auto sentinel = std::unordered_set<std::string_view>{"end", "elif", "do", "else"};
 
-    auto ret_node = std::make_unique<anzu::node_return>();
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_return_stmt>();
+    
     if (!sentinel.contains(ctx.curr->text)) {
-        ret_node->return_value = parse_expression(ctx);
+        stmt.return_value = parse_expression(ctx);
     } else {
-        ret_node->return_value = std::make_unique<anzu::node_literal>(anzu::null_object());
+        stmt.return_value = std::make_unique<anzu::node_expr>();
+        stmt.return_value->emplace<anzu::node_literal_expr>().value = anzu::null_object();
     }
-    return ret_node;
+    return node;
 }
 
-auto parse_builtin_call(parser_context& ctx) -> node_ptr
+auto parse_builtin_call_expr(parser_context& ctx) -> node_expr_ptr
 {
-    auto node = std::make_unique<anzu::node_builtin_call>();
-    node->function_name = (ctx.curr++)->text;
+    auto node = std::make_unique<anzu::node_expr>();
+    auto& expr = node->emplace<anzu::node_builtin_call_expr>();
+    expr.function_name = (ctx.curr++)->text;
 
     consume_only(ctx.curr, "(");
     bool expect_comma = false;
@@ -279,17 +299,17 @@ auto parse_builtin_call(parser_context& ctx) -> node_ptr
             ++ctx.curr;
         }
         else {
-            node->args.push_back(parse_expression(ctx));
+            expr.args.push_back(parse_expression(ctx));
         }
         expect_comma = !expect_comma;
     }
     consume_only(ctx.curr, ")");
 
-    const auto argc = anzu::fetch_builtin_argc(node->function_name);
-    if (argc != std::ssize(node->args)) {
+    const auto argc = anzu::fetch_builtin_argc(expr.function_name);
+    if (argc != std::ssize(expr.args)) {
         anzu::print(
             "error: function '{}' expected {} args, got {}\n",
-            node->function_name, argc, std::ssize(node->args)
+            expr.function_name, argc, std::ssize(expr.args)
         );
         std::exit(1);
     }
@@ -297,10 +317,11 @@ auto parse_builtin_call(parser_context& ctx) -> node_ptr
     return node;
 }
 
-auto parse_builtin_call_stmt(parser_context& ctx) -> node_ptr
+auto parse_builtin_call_stmt(parser_context& ctx) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_builtin_call_statement>();
-    node->function_name = (ctx.curr++)->text;
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_builtin_call_stmt>();
+    stmt.function_name = (ctx.curr++)->text;
 
     consume_only(ctx.curr, "(");
     bool expect_comma = false;
@@ -313,17 +334,17 @@ auto parse_builtin_call_stmt(parser_context& ctx) -> node_ptr
             ++ctx.curr;
         }
         else {
-            node->args.push_back(parse_expression(ctx));
+            stmt.args.push_back(parse_expression(ctx));
         }
         expect_comma = !expect_comma;
     }
     consume_only(ctx.curr, ")");
 
-    const auto argc = anzu::fetch_builtin_argc(node->function_name);
-    if (argc != std::ssize(node->args)) {
+    const auto argc = anzu::fetch_builtin_argc(stmt.function_name);
+    if (argc != std::ssize(stmt.args)) {
         anzu::print(
             "error: function '{}' expected {} args, got {}\n",
-            node->function_name, argc, std::ssize(node->args)
+            stmt.function_name, argc, std::ssize(stmt.args)
         );
         std::exit(1);
     }
@@ -331,10 +352,11 @@ auto parse_builtin_call_stmt(parser_context& ctx) -> node_ptr
     return node;
 }
 
-auto parse_function_call(parser_context& ctx) -> node_ptr
+auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr
 {
-    auto node = std::make_unique<anzu::node_function_call_expression>();
-    node->function_name = (ctx.curr++)->text;
+    auto node = std::make_unique<anzu::node_expr>();
+    auto& expr = node->emplace<anzu::node_function_call_expr>();
+    expr.function_name = (ctx.curr++)->text;
 
     consume_only(ctx.curr, "(");
     bool expect_comma = false;
@@ -347,17 +369,17 @@ auto parse_function_call(parser_context& ctx) -> node_ptr
             ++ctx.curr;
         }
         else {
-            node->args.push_back(parse_expression(ctx));
+            expr.args.push_back(parse_expression(ctx));
         }
         expect_comma = !expect_comma;
     }
     consume_only(ctx.curr, ")");
 
-    const auto argc = ctx.functions.at(node->function_name).argc;
-    if (argc != std::ssize(node->args)) {
+    const auto argc = ctx.functions.at(expr.function_name).argc;
+    if (argc != std::ssize(expr.args)) {
         anzu::print(
             "error: function '{}' expected {} args, got {}\n",
-            node->function_name, argc, std::ssize(node->args)
+            expr.function_name, argc, std::ssize(expr.args)
         );
         std::exit(1);
     }
@@ -365,10 +387,11 @@ auto parse_function_call(parser_context& ctx) -> node_ptr
     return node;
 }
 
-auto parse_function_call_stmt(parser_context& ctx) -> node_ptr
+auto parse_function_call_stmt(parser_context& ctx) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_function_call_statement>();
-    node->function_name = (ctx.curr++)->text;
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_function_call_stmt>();
+    stmt.function_name = (ctx.curr++)->text;
 
     consume_only(ctx.curr, "(");
     bool expect_comma = false;
@@ -381,17 +404,17 @@ auto parse_function_call_stmt(parser_context& ctx) -> node_ptr
             ++ctx.curr;
         }
         else {
-            node->args.push_back(parse_expression(ctx));
+            stmt.args.push_back(parse_expression(ctx));
         }
         expect_comma = !expect_comma;
     }
     consume_only(ctx.curr, ")");
 
-    const auto argc = ctx.functions.at(node->function_name).argc;
-    if (argc != std::ssize(node->args)) {
+    const auto argc = ctx.functions.at(stmt.function_name).argc;
+    if (argc != std::ssize(stmt.args)) {
         anzu::print(
             "error: function '{}' expected {} args, got {}\n",
-            node->function_name, argc, std::ssize(node->args)
+            stmt.function_name, argc, std::ssize(stmt.args)
         );
         std::exit(1);
     }
@@ -399,10 +422,10 @@ auto parse_function_call_stmt(parser_context& ctx) -> node_ptr
     return node;
 }
 
-auto parse_statement(parser_context& ctx) -> node_ptr
+auto parse_statement(parser_context& ctx) -> node_stmt_ptr
 {
     if (consume_maybe(ctx.curr, "function")) {
-        return parse_function(ctx);
+        return parse_function_def(ctx);
     }
     else if (consume_maybe(ctx.curr, "return")) {
         return parse_return(ctx);
@@ -414,12 +437,15 @@ auto parse_statement(parser_context& ctx) -> node_ptr
         return parse_if_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "break")) {
-        return std::make_unique<anzu::node_break>(); 
+        auto node = std::make_unique<anzu::node_stmt>();
+        node->emplace<anzu::node_break_stmt>();
+        return node;
     }
     else if (consume_maybe(ctx.curr, "continue")) {
-        return std::make_unique<anzu::node_continue>(); 
+        auto node = std::make_unique<anzu::node_stmt>();
+        node->emplace<anzu::node_continue_stmt>();
+        return node;
     }
-
     else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == "=") {
         return parse_assign_expression(ctx);
     }
@@ -432,22 +458,23 @@ auto parse_statement(parser_context& ctx) -> node_ptr
     else {
         auto expression = parse_expression(ctx);
         anzu::print("error: unused statement\n");
-        expression->print();
+        print_node(*expression);
         std::exit(1);
     }
 }
 
 }
 
-auto parse(const std::vector<anzu::token>& tokens) -> node_ptr
+auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr
 {
     auto ctx = anzu::parser_context{
         .curr = tokens.begin(), .end = tokens.end()
     };
 
-    auto root = std::make_unique<anzu::node_sequence>();
+    auto root = std::make_unique<anzu::node_stmt>();
+    auto& seq = root->emplace<anzu::node_sequence_stmt>();
     while (ctx.curr != ctx.end) {
-        root->sequence.push_back(parse_statement(ctx));
+        seq.sequence.push_back(parse_statement(ctx));
     }
     return root;
 }
