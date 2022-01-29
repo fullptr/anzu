@@ -115,7 +115,6 @@ struct node_stmt : std::variant<
 {
 };
 
-
 auto print_node(const anzu::node_expr& node, int indent = 0) -> void;
 auto print_node(const anzu::node_stmt& node, int indent = 0) -> void;
 

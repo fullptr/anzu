@@ -20,6 +20,7 @@ print(4 + 5)
 * Supports `ints`, `bools`, `floats`, `null` and `string-literals`.
 * Assignment to variable names in the expected way: `x = 5`.
 * `if` statements (with optional `else` and `elif` too).
+
     ```
     if <condition> do
         ...
@@ -30,18 +31,21 @@ print(4 + 5)
     end
     ```
 * `while` loops (with optional `break` and `continue`):
+
     ```
     while <condition> do
         ...
     end
     ```
 * `for` loops (with optional `break` and `continue`):
+
     ```
     for <variable_name> in <list_object> do
         ...
     end
     ```
 * `function` statements (with optional `return`):
+
     ```
     function <name>(<args>) do
         ...
