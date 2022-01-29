@@ -39,13 +39,6 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
             }
-        },
-        [&](const node_builtin_call_expr& node) {
-            anzu::print("{}BuiltinCall (Expr): {}\n", spaces, node.function_name);
-            anzu::print("{}- Args:\n", spaces);
-            for (const auto& arg : node.args) {
-                print_node(*arg, indent + 1);
-            }
         }
     }, root);
 }
@@ -108,13 +101,6 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         },
         [&](const node_function_call_stmt& node) {
             anzu::print("{}FunctionCall (Stmt): {}\n", spaces, node.function_name);
-            anzu::print("{}- Args:\n", spaces);
-            for (const auto& arg : node.args) {
-                print_node(*arg, indent + 1);
-            }
-        },
-        [&](const node_builtin_call_stmt& node) {
-            anzu::print("{}BuiltinCall (Stmt): {}\n", spaces, node.function_name);
             anzu::print("{}- Args:\n", spaces);
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);

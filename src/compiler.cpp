@@ -79,28 +79,21 @@ void compile_node(const node_function_call_expr& node, compiler_context& ctx)
         compile_node(*arg, ctx);
     }
 
-    const auto& function_def = ctx.functions.at(node.function_name);
+    const auto& name = node.function_name;
 
-    // Call the function
-    ctx.program.emplace_back(anzu::op_function_call{
-        .name=node.function_name,
-        .ptr=function_def.ptr + 1, // Jump into the function
-        .arg_names=function_def.arg_names
-    });
-}
-
-void compile_node(const node_builtin_call_expr& node, compiler_context& ctx)
-{
-    // Push the args to the stack
-    for (const auto& arg : node.args) {
-        compile_node(*arg, ctx);
+    if (const auto it = ctx.functions.find(name); it != ctx.functions.end()) {
+        const auto& function_def = it->second;
+        ctx.program.emplace_back(anzu::op_function_call{
+            .name=name,
+            .ptr=function_def.ptr + 1, // Jump into the function
+            .arg_names=function_def.arg_names
+        });
+    } else {
+        ctx.program.emplace_back(anzu::op_builtin_call{
+            .name=name,
+            .func=anzu::fetch_builtin(name)
+        });
     }
-
-    // Call the function
-    ctx.program.emplace_back(anzu::op_builtin_call{
-        .name=node.function_name,
-        .func=anzu::fetch_builtin(node.function_name)
-    });
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
@@ -256,29 +249,23 @@ void compile_node(const node_function_call_stmt& node, compiler_context& ctx)
         compile_node(*arg, ctx);
     }
 
-    const auto& function_def = ctx.functions.at(node.function_name);
+    const auto& name = node.function_name;
 
-    // Call the function
-    ctx.program.emplace_back(anzu::op_function_call{
-        .name=node.function_name,
-        .ptr=function_def.ptr + 1, // Jump into the function
-        .arg_names=function_def.arg_names
-    });
-    ctx.program.emplace_back(anzu::op_pop{});
-}
-
-void compile_node(const node_builtin_call_stmt& node, compiler_context& ctx)
-{
-    // Push the args to the stack
-    for (const auto& arg : node.args) {
-        compile_node(*arg, ctx);
+    if (const auto it = ctx.functions.find(name); it != ctx.functions.end()) {
+        const auto& function_def = it->second;
+        ctx.program.emplace_back(anzu::op_function_call{
+            .name=name,
+            .ptr=function_def.ptr + 1, // Jump into the function
+            .arg_names=function_def.arg_names
+        });
+    }
+    else {
+        ctx.program.emplace_back(anzu::op_builtin_call{
+            .name=name,
+            .func=anzu::fetch_builtin(name)
+        });
     }
 
-    // Call the function
-    ctx.program.emplace_back(anzu::op_builtin_call{
-        .name=node.function_name,
-        .func=anzu::fetch_builtin(node.function_name)
-    });
     ctx.program.emplace_back(anzu::op_pop{});
 }
 

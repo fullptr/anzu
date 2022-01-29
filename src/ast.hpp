@@ -33,18 +33,11 @@ struct node_function_call_expr
     std::vector<node_expr_ptr> args;
 };
 
-struct node_builtin_call_expr
-{
-    std::string                function_name;
-    std::vector<node_expr_ptr> args;
-};
-
 struct node_expr : std::variant<
     node_literal_expr,
     node_variable_expr,
     node_bin_op_expr,
-    node_function_call_expr,
-    node_builtin_call_expr>
+    node_function_call_expr>
 {
 };
 
@@ -103,12 +96,6 @@ struct node_function_call_stmt
     std::vector<node_expr_ptr> args;
 };
 
-struct node_builtin_call_stmt
-{
-    std::string                function_name;
-    std::vector<node_expr_ptr> args;
-};
-
 struct node_return_stmt
 {
     node_expr_ptr return_value;
@@ -124,7 +111,6 @@ struct node_stmt : std::variant<
     node_assignment_stmt,
     node_function_def_stmt,
     node_function_call_stmt,
-    node_builtin_call_stmt,
     node_return_stmt>
 {
 };
