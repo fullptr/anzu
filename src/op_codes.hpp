@@ -133,20 +133,20 @@ struct op_continue
 
     std::string to_string() const
     {
-        const auto jump_str = std::format("JUMP -> {}", jump);
+        const auto jump_str = std::format("JUMP -> {} IF FALSE", jump);
         return std::format(FORMAT2, "OP_CONTINUE", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
 
-struct op_do
+struct op_jump_if_false
 {
     std::intptr_t jump = -1;
 
     std::string to_string() const
     {
-        const auto jump_str = std::format("JUMP -> {} IF FALSE", jump);
-        return std::format(FORMAT2, "OP_DO", jump_str);
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, "OP_JUMP_IF_FALSE", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -299,7 +299,7 @@ class op
         op_for_end,
         op_break,
         op_continue,
-        op_do,
+        op_jump_if_false,
 
         // Numerical Operators
         op_add,

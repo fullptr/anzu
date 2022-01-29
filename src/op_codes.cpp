@@ -120,7 +120,7 @@ void op_continue::apply(anzu::context& ctx) const
     ctx.top().ptr() = jump;
 }
 
-void op_do::apply(anzu::context& ctx) const
+void op_jump_if_false::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
     if (frame.pop().to_bool()) {

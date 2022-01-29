@@ -23,7 +23,7 @@ auto link_up_jumps(
     -> void
 {
     // Jump past the end if false
-    ctx.program[loop_do].as<anzu::op_do>().jump = loop_end + 1;
+    ctx.program[loop_do].as<anzu::op_jump_if_false>().jump = loop_end + 1;
         
     // Only set unset jumps, there may be other already set from nested loops
     for (std::intptr_t idx = loop_do + 1; idx != loop_end; ++idx) {
@@ -118,7 +118,7 @@ void compile_node(const node_while_stmt& node, compiler_context& ctx)
     compile_node(*node.condition, ctx);
     
     const auto do_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_do{});
+    ctx.program.emplace_back(anzu::op_jump_if_false{});
 
     compile_node(*node.body, ctx);
 
@@ -136,7 +136,7 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
     compile_node(*node.condition, ctx);
     
     const auto do_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_do{});
+    ctx.program.emplace_back(anzu::op_jump_if_false{});
 
     compile_node(*node.body, ctx);
 
@@ -149,9 +149,9 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 
     ctx.program.emplace_back(anzu::op_if_end{});
     if (else_pos == -1) {
-        ctx.program[do_pos].as<anzu::op_do>().jump = std::ssize(ctx.program); // Jump past the end if false
+        ctx.program[do_pos].as<anzu::op_jump_if_false>().jump = std::ssize(ctx.program); // Jump past the end if false
     } else {
-        ctx.program[do_pos].as<anzu::op_do>().jump = else_pos + 1; // Jump into the else block if false
+        ctx.program[do_pos].as<anzu::op_jump_if_false>().jump = else_pos + 1; // Jump into the else block if false
         ctx.program[else_pos].as<anzu::op_else>().jump = std::ssize(ctx.program); // Jump past the end if false
     }
 }
@@ -194,7 +194,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_ne{});   // Eval size != index
 
     const auto do_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_do{});   // If size == index, jump to end
+    ctx.program.emplace_back(anzu::op_jump_if_false{});   // If size == index, jump to end
 
     // Stack: list, size, index(0)
     ctx.program.emplace_back(anzu::op_copy_index{2}); // Push container
