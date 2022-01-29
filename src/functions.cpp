@@ -24,8 +24,7 @@ auto verify(bool condition, std::string_view msg) -> void
 
 auto builtin_print_frame(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    frame.print();
+    ctx.peek_frame().memory.print();
     push_null(ctx);
 }
 

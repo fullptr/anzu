@@ -33,21 +33,21 @@ void op_push_const::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
     ctx.push_value(value);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_push_var::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    ctx.push_value(frame.fetch(name));
-    frame.ptr() += 1;
+    ctx.push_value(frame.memory.get(name));
+    frame.ptr += 1;
 }
 
 void op_pop::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
     ctx.pop_value();
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_copy_index::apply(anzu::context& ctx) const
@@ -55,7 +55,7 @@ void op_copy_index::apply(anzu::context& ctx) const
     auto& frame = ctx.peek_frame();
     verify_stack(ctx, index + 1, "copy_index");
     ctx.push_value(ctx.peek_value(index));
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 
@@ -63,68 +63,68 @@ void op_store::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
     verify_stack(ctx, 1, "store");
-    frame.load(name, ctx.pop_value());
-    frame.ptr() += 1;
+    frame.memory.insert(name, ctx.pop_value());
+    frame.ptr += 1;
 }
 
 void op_if::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() += 1;
+    ctx.peek_frame().ptr += 1;
 }
 
 void op_if_end::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() += 1;
+    ctx.peek_frame().ptr += 1;
 }
 
 void op_else::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() = jump;
+    ctx.peek_frame().ptr = jump;
 }
 
 void op_while::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() += 1;
+    ctx.peek_frame().ptr += 1;
 }
 
 void op_while_end::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() = jump;
+    ctx.peek_frame().ptr = jump;
 }
 
 void op_for::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() += 1;
+    ctx.peek_frame().ptr += 1;
 }
 
 void op_for_end::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() = jump;
+    ctx.peek_frame().ptr = jump;
 }
 
 void op_break::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() = jump;
+    ctx.peek_frame().ptr = jump;
 }
 
 void op_continue::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() = jump;
+    ctx.peek_frame().ptr = jump;
 }
 
 void op_jump_if_false::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
     if (ctx.pop_value().to_bool()) {
-        frame.ptr() += 1;
+        frame.ptr += 1;
     } else {
-        frame.ptr() = jump;
+        frame.ptr = jump;
     }
 }
 
 void op_function::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() = jump;
+    ctx.peek_frame().ptr = jump;
 }
 
 void op_function_end::apply(anzu::context& ctx) const
@@ -140,21 +140,21 @@ void op_return::apply(anzu::context& ctx) const
 
 void op_function_call::apply(anzu::context& ctx) const
 {
-    ctx.peek_frame().ptr() += 1; // Position after function call
-    
+    ctx.peek_frame().ptr += 1; // Position after function call
+
     auto& frame = ctx.push_frame(); 
-    frame.ptr() = ptr; // Jump into the function
+    frame.ptr = ptr; // Jump into the function
 
     // Pop elements off the stack and load them into the new scope
     for (const auto& arg_name : std::views::reverse(arg_names)) {
-        frame.load(arg_name, ctx.pop_value());
+        frame.memory.insert(arg_name, ctx.pop_value());
     }
 }
 
 void op_builtin_call::apply(anzu::context& ctx) const
 {
     func(ctx);
-    ctx.peek_frame().ptr() += 1;
+    ctx.peek_frame().ptr += 1;
 }
 
 template <typename A, typename B>
@@ -167,7 +167,7 @@ void op_add::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a + b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 template <typename A, typename B>
@@ -180,7 +180,7 @@ void op_sub::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a - b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 template <typename A, typename B>
@@ -193,7 +193,7 @@ void op_mul::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a * b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_div::apply(anzu::context& ctx) const
@@ -203,7 +203,7 @@ void op_div::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a / b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_mod::apply(anzu::context& ctx) const
@@ -213,7 +213,7 @@ void op_mod::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a % b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_eq::apply(anzu::context& ctx) const
@@ -223,7 +223,7 @@ void op_eq::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a == b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_ne::apply(anzu::context& ctx) const
@@ -233,7 +233,7 @@ void op_ne::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a != b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_lt::apply(anzu::context& ctx) const
@@ -243,7 +243,7 @@ void op_lt::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a < b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_le::apply(anzu::context& ctx) const
@@ -253,7 +253,7 @@ void op_le::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a <= b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_gt::apply(anzu::context& ctx) const
@@ -263,7 +263,7 @@ void op_gt::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a > b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_ge::apply(anzu::context& ctx) const
@@ -273,7 +273,7 @@ void op_ge::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a >= b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_or::apply(anzu::context& ctx) const
@@ -283,7 +283,7 @@ void op_or::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a || b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 void op_and::apply(anzu::context& ctx) const
@@ -293,7 +293,7 @@ void op_and::apply(anzu::context& ctx) const
     auto b = ctx.pop_value();
     auto a = ctx.pop_value();
     ctx.push_value(a && b);
-    frame.ptr() += 1;
+    frame.ptr += 1;
 }
 
 }

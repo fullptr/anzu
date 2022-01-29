@@ -5,24 +5,25 @@
 
 namespace anzu {
 
-auto frame::fetch(const std::string& token) const -> anzu::object
+auto memory::insert(const std::string& name, const anzu::object& value) -> anzu::object&
 {
-    if (!d_symbols.contains(token)) {
-        anzu::print("Error: Unknown value '{}'", token);
+    auto [iter, success] = d_values.insert_or_assign(name, value);
+    return iter->second;
+}
+
+auto memory::get(const std::string& name) -> anzu::object&
+{
+    if (!d_values.contains(name)) {
+        anzu::print("Error: Unknown value '{}'", name);
         std::exit(1);
     }
-    return d_symbols.at(token);
+    return d_values.at(name);
 }
 
-auto frame::load(const std::string& name, const anzu::object& value) -> void
+auto memory::print() const -> void
 {
-    d_symbols[name] = value;
-}
-
-auto frame::print() const -> void
-{
-    anzu::print("Frame:\n");
-    for (const auto& [key, val] : d_symbols) {
+    anzu::print("Values:\n");
+    for (const auto& [key, val] : d_values) {
         anzu::print(" - {} -> {}\n", key, val);
     }
 }

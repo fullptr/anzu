@@ -9,21 +9,21 @@
 
 namespace anzu {
 
-// A small wrapper for the value stack. This will eventually handle error
-// checking and checking that values are available.
-class frame
+class memory
 {
-    std::unordered_map<std::string, anzu::object> d_symbols;
-
-    std::intptr_t d_ptr = 0;
+    std::unordered_map<std::string, anzu::object> d_values;
 
 public:
-    auto fetch(const std::string& name) const -> anzu::object;
-    auto load(const std::string& name, const anzu::object& value) -> void;
-    auto print() const -> void;
+    auto insert(const std::string& name, const anzu::object& value) -> anzu::object&;
+    auto get(const std::string& name) -> anzu::object&;
 
-    std::intptr_t& ptr() { return d_ptr; }
-    std::intptr_t ptr() const { return d_ptr; }
+    auto print() const -> void;
+};
+
+struct frame
+{
+    anzu::memory  memory;
+    std::intptr_t ptr = 0;
 };
 
 class context
