@@ -1,7 +1,10 @@
 #include "parser.hpp"
 #include "functions.hpp"
+#include "vocabulary.hpp"
 
 #include <optional>
+#include <unordered_set>
+#include <string_view>
 
 namespace anzu {
 
@@ -65,16 +68,16 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
     else if (ctx.curr->type == token_type::string) {
         return { (ctx.curr++)->text };
     }
-     else if (consume_maybe(ctx, TRUE_LIT)) {
+     else if (consume_maybe(ctx, tk_true)) {
         return { true };
     }
-    else if (consume_maybe(ctx, FALSE_LIT)) {
+    else if (consume_maybe(ctx, tk_false)) {
         return { false };
     }
-    else if (consume_maybe(ctx, NULL_LIT)) {
+    else if (consume_maybe(ctx, tk_null)) {
         return anzu::null_object();
     }
-    else if (ctx.curr->text == "[") {
+    else if (ctx.curr->text == tk_lbracket) {
         return { handle_list_literal(ctx) };
     }
     return std::nullopt;
@@ -84,9 +87,9 @@ auto handle_list_literal(parser_context& ctx) -> anzu::object
 {
     auto list = std::make_shared<std::vector<anzu::object>>();
 
-    consume_only(ctx, "[");
+    consume_only(ctx, tk_lbracket);
     bool expect_comma = false;
-    while (ctx.curr != ctx.end && ctx.curr->text != "]") {
+    while (ctx.curr != ctx.end && ctx.curr->text != tk_rbracket) {
         if (expect_comma) {
             if (ctx.curr->text != ",") { // skip commas, enforce later
                 parser_error(ctx, "expected command in list literal");
@@ -106,7 +109,7 @@ auto handle_list_literal(parser_context& ctx) -> anzu::object
     if (ctx.curr == ctx.end) {
         parser_error(ctx, "list literal nexer closed");
     }
-    consume_only(ctx, "]");
+    consume_only(ctx, tk_rbracket);
 
     return { list };
 }
@@ -115,11 +118,11 @@ auto precedence_table()
 {
     auto table = std::array<std::unordered_set<std::string_view>, 6>{};
     table[0] = {};
-    table[1] = {"*", "/", "%"};
-    table[2] = {"+", "-"};
-    table[3] = {"<", "<=", ">", ">=", "==", "!="};
-    table[4] = {"&&"};
-    table[5] = {"||"};
+    table[1] = {tk_mul, tk_div, tk_mod};
+    table[2] = {tk_add, tk_sub};
+    table[3] = {tk_lt, tk_le, tk_gt, tk_ge, tk_eq, tk_ne};
+    table[4] = {tk_and};
+    table[5] = {tk_or};
     return table;
 }
 static const auto bin_ops_table = precedence_table();
@@ -129,9 +132,9 @@ auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr;
 
 auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
 {
-    if (consume_maybe(ctx, "(")) {
+    if (consume_maybe(ctx, tk_lparen)) {
         auto expr = parse_expression(ctx);
-        consume_only(ctx, ")");
+        consume_only(ctx, tk_rparen);
         return expr;
     }  
     else if (auto factor = anzu::try_parse_literal(ctx); factor.has_value()) {
@@ -185,7 +188,7 @@ auto parse_assign_expression(parser_context& ctx) -> node_stmt_ptr
         parser_error(ctx, "cannot assign to '{}'", ctx.curr->text);
     }
     auto name = (ctx.curr++)->text;
-    consume_only(ctx, "=");
+    consume_only(ctx, tk_assign);
 
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_assignment_stmt>();
@@ -197,11 +200,9 @@ auto parse_assign_expression(parser_context& ctx) -> node_stmt_ptr
 auto parse_statement(parser_context& ctx) -> node_stmt_ptr;
 auto parse_statement_list(parser_context& ctx) -> node_stmt_ptr
 {
-    static const auto sentinel = std::unordered_set<std::string_view>{"end", "elif", "do", "else"};
-
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_sequence_stmt>();
-    while (ctx.curr != ctx.end && !sentinel.contains(ctx.curr->text)) {
+    while (ctx.curr != ctx.end && !anzu::is_sentinel(ctx.curr->text)) {
         stmt.sequence.push_back(parse_statement(ctx));
     }
 
@@ -217,9 +218,9 @@ auto parse_while_body(parser_context& ctx) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_while_stmt>();
     stmt.condition = parse_expression(ctx);
-    consume_only(ctx, "do");
+    consume_only(ctx, tk_do);
     stmt.body = parse_statement_list(ctx);
-    consume_only(ctx, "end");
+    consume_only(ctx, tk_end);
     return node;
 }
 
@@ -228,18 +229,18 @@ auto parse_if_body(parser_context& ctx) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_if_stmt>();
     stmt.condition = parse_expression(ctx);
-    consume_only(ctx, "do");
+    consume_only(ctx, tk_do);
     stmt.body = parse_statement_list(ctx);
 
-    if (consume_maybe(ctx, "elif")) {
+    if (consume_maybe(ctx, tk_elif)) {
         stmt.else_body = parse_if_body(ctx);
     }
-    else if (consume_maybe(ctx, "else")) {
+    else if (consume_maybe(ctx, tk_else)) {
         stmt.else_body = parse_statement_list(ctx);
-        consume_only(ctx, "end");
+        consume_only(ctx, tk_end);
     }
     else {
-        consume_only(ctx, "end");
+        consume_only(ctx, tk_end);
     }
     
     return node;
@@ -253,11 +254,11 @@ auto parse_for_body(parser_context& ctx) -> node_stmt_ptr
         parser_error(ctx, "invalid for loop, bind target must be a name");
     }
     stmt.var = (ctx.curr++)->text;
-    consume_only(ctx, "in");
+    consume_only(ctx, tk_in);
     stmt.container = parse_expression(ctx); // TODO: When we have static typing, check this is a list
-    consume_only(ctx, "do");
+    consume_only(ctx, tk_do);
     stmt.body = parse_statement_list(ctx);
-    consume_only(ctx, "end");
+    consume_only(ctx, tk_end);
     return node;
 }
 
@@ -269,11 +270,11 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
         parser_error(ctx, "expected function name");
     }
     stmt.name = (ctx.curr++)->text;
-    consume_only(ctx, "(");
+    consume_only(ctx, tk_lparen);
     bool expect_comma = false;
-    while (ctx.curr != ctx.end && ctx.curr->text != ")") {
+    while (ctx.curr != ctx.end && ctx.curr->text != tk_rparen) {
         if (expect_comma) {
-            if (ctx.curr->text != ",") { // skip commas, enforce later
+            if (ctx.curr->text != tk_comma) { // skip commas, enforce later
                 parser_error(ctx, "expected comma in function name list");
             }
             ++ctx.curr;
@@ -290,21 +291,19 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
         expect_comma = !expect_comma;
     }
     ctx.functions[stmt.name] = { .argc=std::ssize(stmt.arg_names) };
-    consume_only(ctx, ")");
-    consume_only(ctx, "do");
+    consume_only(ctx, tk_rparen);
+    consume_only(ctx, tk_do);
     stmt.body = parse_statement_list(ctx);
-    consume_only(ctx, "end");
+    consume_only(ctx, tk_end);
     return node;
 }
 
 auto parse_return(parser_context& ctx) -> node_stmt_ptr
 {
-    static const auto sentinel = std::unordered_set<std::string_view>{"end", "elif", "do", "else"};
-
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_return_stmt>();
     
-    if (!sentinel.contains(ctx.curr->text)) {
+    if (!anzu::is_sentinel(ctx.curr->text)) {
         stmt.return_value = parse_expression(ctx);
     } else {
         stmt.return_value = std::make_unique<anzu::node_expr>();
@@ -320,11 +319,11 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
     auto& out = node->emplace<NodeType>();
     out.function_name = (ctx.curr++)->text;
 
-    consume_only(ctx, "(");
+    consume_only(ctx, tk_lparen);
     bool expect_comma = false;
-    while (ctx.curr != ctx.end && ctx.curr->text != ")") {
+    while (ctx.curr != ctx.end && ctx.curr->text != tk_rparen) {
         if (expect_comma) {
-            if (ctx.curr->text != ",") { // skip commas, enforce later
+            if (ctx.curr->text != tk_comma) { // skip commas, enforce later
                 parser_error(ctx, "expected comma in function call arg list");
             }
             ++ctx.curr;
@@ -334,7 +333,7 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
         }
         expect_comma = !expect_comma;
     }
-    consume_only(ctx, ")");
+    consume_only(ctx, tk_rparen);
 
     const auto argc = fetch_argc(ctx, out.function_name);
     check_argc(ctx, out.function_name, argc, std::ssize(out.args));
@@ -353,32 +352,32 @@ auto parse_function_call_stmt(parser_context& ctx) -> node_stmt_ptr
 
 auto parse_statement(parser_context& ctx) -> node_stmt_ptr
 {
-    if (consume_maybe(ctx, "function")) {
+    if (consume_maybe(ctx, tk_function)) {
         return parse_function_def(ctx);
     }
-    else if (consume_maybe(ctx, "return")) {
+    else if (consume_maybe(ctx, tk_return)) {
         return parse_return(ctx);
     }
-    else if (consume_maybe(ctx, "while")) {
+    else if (consume_maybe(ctx, tk_while)) {
         return parse_while_body(ctx);
     }
-    else if (consume_maybe(ctx, "if")) {
+    else if (consume_maybe(ctx, tk_if)) {
         return parse_if_body(ctx);
     }
-    else if (consume_maybe(ctx, "for")) {
+    else if (consume_maybe(ctx, tk_for)) {
         return parse_for_body(ctx);
     }
-    else if (consume_maybe(ctx, "break")) {
+    else if (consume_maybe(ctx, tk_break)) {
         auto node = std::make_unique<anzu::node_stmt>();
         node->emplace<anzu::node_break_stmt>();
         return node;
     }
-    else if (consume_maybe(ctx, "continue")) {
+    else if (consume_maybe(ctx, tk_continue)) {
         auto node = std::make_unique<anzu::node_stmt>();
         node->emplace<anzu::node_continue_stmt>();
         return node;
     }
-    else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == "=") {
+    else if (auto next = std::next(ctx.curr); next != ctx.end && next->text == tk_assign) {
         return parse_assign_expression(ctx);
     }
     else if (ctx.functions.contains(ctx.curr->text) || anzu::is_builtin(ctx.curr->text)) {
@@ -393,9 +392,7 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
 
 auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr
 {
-    auto ctx = anzu::parser_context{
-        .curr = tokens.begin(), .end = tokens.end()
-    };
+    auto ctx = anzu::parser_context{ .curr = tokens.begin(), .end = tokens.end() };
 
     auto root = std::make_unique<anzu::node_stmt>();
     auto& seq = root->emplace<anzu::node_sequence_stmt>();

@@ -1,6 +1,7 @@
 #include "lexer.hpp"
 #include "object.hpp"
 #include "print.hpp"
+#include "vocabulary.hpp"
 
 #include <algorithm>
 #include <ranges>
@@ -89,13 +90,13 @@ auto parse_string_literal(int lineno, line_iterator& iter) -> std::string
 auto try_parse_symbol(line_iterator& iter) -> std::optional<std::string>
 {
     if (iter.has_next()) {
-        if (const auto pair = std::format("{}{}", iter.curr(), iter.next()); symbols.contains(pair)) {
+        if (const auto pair = std::format("{}{}", iter.curr(), iter.next()); anzu::is_symbol(pair)) {
             iter.consume();
             iter.consume();
             return pair;
         }
     }
-    if (const auto single = std::string{iter.curr()}; symbols.contains(single)) {
+    if (const auto single = std::string{iter.curr()}; anzu::is_symbol(single)) {
         iter.consume();
         return single;
     }
@@ -134,7 +135,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
 
         const auto token = parse_token(iter);
         if (!token.empty()) {
-            if (keywords.contains(token)) {
+            if (anzu::is_keyword(token)) {
                 push_token(token, col, token_type::keyword);
             }
             else if (anzu::is_int(token)) {
