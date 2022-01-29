@@ -80,8 +80,7 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         },
         [&](const node_for_stmt& node) {
             anzu::print("{}For:\n", spaces);
-            anzu::print("{}- Bind:\n",spaces);
-            print_node(*node.var, indent + 1);
+            anzu::print("{}- Bind: {}\n",spaces, node.var);
             anzu::print("{}- Container:\n",spaces);
             print_node(*node.container, indent + 1);
             anzu::print("{}- Body:\n",spaces);

@@ -11,3 +11,5 @@ list_push(l, z)
 for i in l do
     println(i)
 end
+
+x = 2 + 3

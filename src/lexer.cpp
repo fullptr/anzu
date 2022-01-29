@@ -63,10 +63,10 @@ public:
 
 
 template <typename... Args>
-auto lexer_error(int lineno, int col, std::string_view msg, Args&&... args) -> void
+[[noreturn]] void lexer_error(int lineno, int col, std::string_view msg, Args&&... args)
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[Lexer Error {}:{}] {}\n", lineno, col, formatted_msg);
+    anzu::print("[Lexer] ({}:{}) ERROR: {}\n", lineno, col, formatted_msg);
     std::exit(1);
 }
 

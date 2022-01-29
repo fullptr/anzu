@@ -158,8 +158,6 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
-    const auto var = std::get<anzu::node_variable_expr>(*node.var).name;
-
     // Push the container to the stack
     if (std::holds_alternative<anzu::node_variable_expr>(*node.container)) {
         const auto& cont = std::get<anzu::node_variable_expr>(*node.container).name;
@@ -203,7 +201,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
         .name="list_at",
         .func=anzu::fetch_builtin("list_at")
     });
-    ctx.program.emplace_back(anzu::op_store{ .name=var }); // Store in var
+    ctx.program.emplace_back(anzu::op_store{ .name=node.var }); // Store in var
 
     compile_node(*node.body, ctx);
 
