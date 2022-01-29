@@ -1,6 +1,11 @@
 
-list = [1, 2, 3]
 
-for x in ["hello world", 1, 2, 3, null, true, false] do
+for x in [1, 2, 3] do
     println(x)
+    if x == 2 do
+        while true do
+            break # To make sure that this break is not affected by the for
+        end 
+        break
+    end
 end
