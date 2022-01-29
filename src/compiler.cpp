@@ -39,6 +39,33 @@ auto link_up_jumps(
 auto compile_node(const node_expr& root, compiler_context& ctx) -> void;
 auto compile_node(const node_stmt& root, compiler_context& ctx) -> void;
 
+void compile_function_call(
+    const std::string& function,
+    const std::vector<node_expr_ptr>& args,
+    compiler_context& ctx
+)
+{
+    // Push the args to the stack
+    for (const auto& arg : args) {
+        compile_node(*arg, ctx);
+    }
+
+    if (const auto it = ctx.functions.find(function); it != ctx.functions.end()) {
+        const auto& function_def = it->second;
+        ctx.program.emplace_back(anzu::op_function_call{
+            .name=function,
+            .ptr=function_def.ptr + 1, // Jump into the function
+            .arg_names=function_def.arg_names
+        });
+    }
+    else {
+        ctx.program.emplace_back(anzu::op_builtin_call{
+            .name=function,
+            .func=anzu::fetch_builtin(function)
+        });
+    }
+}
+
 void compile_node(const node_literal_expr& node, compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_push_const{ .value=node.value });
@@ -74,33 +101,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
 
 void compile_node(const node_function_call_expr& node, compiler_context& ctx)
 {
-    // Push the args to the stack
-    for (const auto& arg : node.args) {
-        compile_node(*arg, ctx);
-    }
-
-    const auto& function_def = ctx.functions.at(node.function_name);
-
-    // Call the function
-    ctx.program.emplace_back(anzu::op_function_call{
-        .name=node.function_name,
-        .ptr=function_def.ptr + 1, // Jump into the function
-        .arg_names=function_def.arg_names
-    });
-}
-
-void compile_node(const node_builtin_call_expr& node, compiler_context& ctx)
-{
-    // Push the args to the stack
-    for (const auto& arg : node.args) {
-        compile_node(*arg, ctx);
-    }
-
-    // Call the function
-    ctx.program.emplace_back(anzu::op_builtin_call{
-        .name=node.function_name,
-        .func=anzu::fetch_builtin(node.function_name)
-    });
+    compile_function_call(node.function_name, node.args, ctx);
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
@@ -158,8 +159,6 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
-    const auto var = std::get<anzu::node_variable_expr>(*node.var).name;
-
     // Push the container to the stack
     if (std::holds_alternative<anzu::node_variable_expr>(*node.container)) {
         const auto& cont = std::get<anzu::node_variable_expr>(*node.container).name;
@@ -203,7 +202,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
         .name="list_at",
         .func=anzu::fetch_builtin("list_at")
     });
-    ctx.program.emplace_back(anzu::op_store{ .name=var }); // Store in var
+    ctx.program.emplace_back(anzu::op_store{ .name=node.var }); // Store in var
 
     compile_node(*node.body, ctx);
 
@@ -253,34 +252,7 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_function_call_stmt& node, compiler_context& ctx)
 {
-    // Push the args to the stack
-    for (const auto& arg : node.args) {
-        compile_node(*arg, ctx);
-    }
-
-    const auto& function_def = ctx.functions.at(node.function_name);
-
-    // Call the function
-    ctx.program.emplace_back(anzu::op_function_call{
-        .name=node.function_name,
-        .ptr=function_def.ptr + 1, // Jump into the function
-        .arg_names=function_def.arg_names
-    });
-    ctx.program.emplace_back(anzu::op_pop{});
-}
-
-void compile_node(const node_builtin_call_stmt& node, compiler_context& ctx)
-{
-    // Push the args to the stack
-    for (const auto& arg : node.args) {
-        compile_node(*arg, ctx);
-    }
-
-    // Call the function
-    ctx.program.emplace_back(anzu::op_builtin_call{
-        .name=node.function_name,
-        .func=anzu::fetch_builtin(node.function_name)
-    });
+    compile_function_call(node.function_name, node.args, ctx);
     ctx.program.emplace_back(anzu::op_pop{});
 }
 

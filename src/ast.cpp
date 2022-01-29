@@ -39,13 +39,6 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
             }
-        },
-        [&](const node_builtin_call_expr& node) {
-            anzu::print("{}BuiltinCall (Expr): {}\n", spaces, node.function_name);
-            anzu::print("{}- Args:\n", spaces);
-            for (const auto& arg : node.args) {
-                print_node(*arg, indent + 1);
-            }
         }
     }, root);
 }
@@ -80,8 +73,7 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         },
         [&](const node_for_stmt& node) {
             anzu::print("{}For:\n", spaces);
-            anzu::print("{}- Bind:\n",spaces);
-            print_node(*node.var, indent + 1);
+            anzu::print("{}- Bind: {}\n",spaces, node.var);
             anzu::print("{}- Container:\n",spaces);
             print_node(*node.container, indent + 1);
             anzu::print("{}- Body:\n",spaces);
@@ -114,19 +106,9 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
                 print_node(*arg, indent + 1);
             }
         },
-        [&](const node_builtin_call_stmt& node) {
-            anzu::print("{}BuiltinCall (Stmt): {}\n", spaces, node.function_name);
-            anzu::print("{}- Args:\n", spaces);
-            for (const auto& arg : node.args) {
-                print_node(*arg, indent + 1);
-            }
-        },
         [&](const node_return_stmt& node) {
             anzu::print("{}Return:\n", spaces);
             print_node(*node.return_value, indent + 1);
-        },
-        [&](const node_expr& node) {
-            print_node(node, indent + 1);
         }
     }, root);
 }
