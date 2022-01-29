@@ -40,9 +40,10 @@ factor:
   | '(' expression ')'
 
 statement:
-  | function_def_stmt
-  | while_stmt
+  | 'function' function_def_body
+  | 'while' while_body
   | 'if' if_body
+  | 'for' for_body
   | 'return'
   | 'break'
   | 'continue'
@@ -60,14 +61,18 @@ function_signature:
   | name ',' function_signature
   | name
 
-function_def_stmt:
-  | 'function' '(' function_signature ')' 'do' statement_list 'end'
-  | 'function' '(' function_signature ')' 'do' 'end'
+function_def_body:
+  | '(' function_signature ')' 'do' statement_list 'end'
+  | '(' function_signature ')' 'do' 'end'
 
-while_stmt:
-  | 'while' statement_list 'do' statement_list 'end'
-  | 'while' statement_list 'do' 'end'
+while_body:
+  | statement_list 'do' statement_list 'end'
+  | statement_list 'do' 'end'
 
 if_body:
   | statement_list 'do' statement_list 'elif' if_body
   | statement_list 'do' statement_list 'end'
+
+for_body:
+  | variable_name 'in' list_literal 'do' statement_list 'end'
+  | variable_name 'in' variable_name 'do' statement_list 'end'
