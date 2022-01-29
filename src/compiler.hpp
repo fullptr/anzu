@@ -1,8 +1,6 @@
 #pragma once
-#include "op_codes.hpp"
-#include "object.hpp"
-#include "lexer.hpp"
 #include "ast.hpp"
+#include "op_codes.hpp"
 
 #include <memory>
 #include <vector>
@@ -24,6 +22,6 @@ struct compiler_context
     std::unordered_map<std::string, function_def> functions;
 };
 
-auto compile(const std::unique_ptr<node_stmt>& root) -> std::vector<anzu::op>;
+auto compile(const anzu::node_stmt_ptr& root) -> std::vector<anzu::op>;
 
 }

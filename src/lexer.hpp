@@ -1,32 +1,8 @@
 #pragma once
 #include <vector>
 #include <string>
-#include <unordered_set>
 
 namespace anzu {
-
-static const std::unordered_set<std::string_view> keywords = {
-    "break",
-    "continue",
-    "do",
-    "elif",
-    "else",
-    "end",
-    "false",
-    "function",
-    "if",
-    "null",
-    "return",
-    "true",
-    "while",
-    "for",
-    "in"
-};
-
-static const std::unordered_set<std::string_view> symbols = {
-    "+", "-", "*", "/", "%", "=", "(",  ")", ":", "[", "]", ",", ".",
-    "==", "!=", "<", "<=", ">", ">=", "||", "&&"
-};
 
 enum class token_type
 {

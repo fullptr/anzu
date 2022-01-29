@@ -12,6 +12,7 @@ add_executable(anzu
                stack_frame.cpp
                op_codes.cpp
                object.cpp
-               functions.cpp)
+               functions.cpp
+               vocabulary.cpp)
 
 target_include_directories(anzu PRIVATE .)
