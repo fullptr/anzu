@@ -30,7 +30,7 @@ void print_program(const std::vector<anzu::op>& program)
 void run_program(const std::vector<anzu::op>& program)
 {
     anzu::context ctx;
-    ctx.push({});
+    ctx.push();
 
     while (ctx.top().ptr() < std::ssize(program)) {
         program[ctx.top().ptr()].apply(ctx);
@@ -40,7 +40,7 @@ void run_program(const std::vector<anzu::op>& program)
 void run_program_debug(const std::vector<anzu::op>& program)
 {
     anzu::context ctx;
-    ctx.push({});
+    ctx.push();
 
     while (ctx.top().ptr() < std::ssize(program)) {
         const auto& op = program[ctx.top().ptr()];

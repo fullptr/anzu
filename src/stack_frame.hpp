@@ -73,6 +73,14 @@ public:
     std::intptr_t ptr() const { return d_ptr; }
 };
 
-using context = anzu::stack<anzu::frame>;
+class context
+{
+    anzu::stack<frame> d_frames;
+
+public:
+    auto push() -> frame& { return d_frames.push({}); }
+    auto pop() -> frame { return d_frames.pop(); }
+    auto top(std::size_t index = 0) -> frame& { return d_frames.top(index); }
+};
 
 }

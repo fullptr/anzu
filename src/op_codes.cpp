@@ -150,7 +150,7 @@ void op_return::apply(anzu::context& ctx) const
 
 void op_function_call::apply(anzu::context& ctx) const
 {
-    auto& curr = ctx.push({}); // New frame
+    auto& curr = ctx.push(); // New frame
     auto& prev = ctx.top(1);   // One under the top
 
     curr.ptr() = ptr; // Jump into the function
