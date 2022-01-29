@@ -476,9 +476,7 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
         return parse_builtin_call_stmt(ctx);
     }
     else {
-        auto expression = parse_expression(ctx);
-        anzu::print("error: unused statement\n");
-        print_node(*expression);
+        anzu::print("parser error: unknown statement '{}'\n", ctx.curr->text);
         std::exit(1);
     }
 }
