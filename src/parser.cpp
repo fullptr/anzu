@@ -227,6 +227,23 @@ auto parse_if_body(parser_context& ctx) -> node_stmt_ptr
     return node;
 }
 
+auto parse_for_body(parser_context& ctx) -> node_stmt_ptr
+{
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_for_stmt>();
+    stmt.var = parse_expression(ctx);
+    if (!std::holds_alternative<anzu::node_variable_expr>(*stmt.var)) {
+        anzu::print("invalid for loop, invalid expression for bind target\n");
+        std::exit(1);
+    }
+    consume_only(ctx.curr, "in");
+    stmt.container = parse_expression(ctx); // TODO: When we have static typing, check this is a list
+    consume_only(ctx.curr, "do");
+    stmt.body = parse_statement_list(ctx);
+    consume_only(ctx.curr, "end");
+    return node;
+}
+
 auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
@@ -435,6 +452,9 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
     }
     else if (consume_maybe(ctx.curr, "if")) {
         return parse_if_body(ctx);
+    }
+    else if (consume_maybe(ctx.curr, "for")) {
+        return parse_for_body(ctx);
     }
     else if (consume_maybe(ctx.curr, "break")) {
         auto node = std::make_unique<anzu::node_stmt>();

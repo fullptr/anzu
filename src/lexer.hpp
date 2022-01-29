@@ -18,7 +18,9 @@ static const std::unordered_set<std::string_view> keywords = {
     "null",
     "return",
     "true",
-    "while"
+    "while",
+    "for",
+    "in"
 };
 
 static const std::unordered_set<std::string_view> symbols = {

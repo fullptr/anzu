@@ -53,7 +53,16 @@ void op_push_var::apply(anzu::context& ctx) const
 void op_pop::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    verify_stack(frame, 1, "pop");
     frame.pop();
+    frame.ptr() += 1;
+}
+
+void op_copy_index::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    verify_stack(frame, index + 1, "copy_index");
+    frame.push(frame.top(index));
     frame.ptr() += 1;
 }
 
@@ -91,6 +100,16 @@ void op_while_end::apply(anzu::context& ctx) const
     ctx.top().ptr() = jump;
 }
 
+void op_for::apply(anzu::context& ctx) const
+{
+    ctx.top().ptr() += 1;
+}
+
+void op_for_end::apply(anzu::context& ctx) const
+{
+    ctx.top().ptr() = jump;
+}
+
 void op_break::apply(anzu::context& ctx) const
 {
     ctx.top().ptr() = jump;
@@ -101,7 +120,7 @@ void op_continue::apply(anzu::context& ctx) const
     ctx.top().ptr() = jump;
 }
 
-void op_do::apply(anzu::context& ctx) const
+void op_jump_if_false::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
     if (frame.pop().to_bool()) {
@@ -143,7 +162,7 @@ void op_function_call::apply(anzu::context& ctx) const
     }
 }
 
-void op_builtin_function_call::apply(anzu::context& ctx) const
+void op_builtin_call::apply(anzu::context& ctx) const
 {
     func(ctx);
     ctx.top().ptr() += 1;

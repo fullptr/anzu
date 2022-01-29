@@ -34,6 +34,15 @@ struct op_pop
     void apply(anzu::context& ctx) const;
 };
 
+// 0 == OP_DUP, 1 == OP_OVER, ...
+struct op_copy_index
+{
+    int index;
+
+    std::string to_string() const { return std::format("OP_COPY_INDEX({})", index); }
+    void apply(anzu::context& ctx) const;
+};
+
 // Store Manipulation
 
 struct op_store
@@ -88,6 +97,24 @@ struct op_while_end
     void apply(anzu::context& ctx) const;
 };
 
+struct op_for
+{
+    std::string to_string() const { return "OP_FOR"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_for_end
+{
+    std::intptr_t jump = -1;
+
+    std::string to_string() const
+    {
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, "OP_END_FOR", jump_str);
+    }
+    void apply(anzu::context& ctx) const;
+};
+
 struct op_break
 {
     std::intptr_t jump = -1;
@@ -112,14 +139,14 @@ struct op_continue
     void apply(anzu::context& ctx) const;
 };
 
-struct op_do
+struct op_jump_if_false
 {
     std::intptr_t jump = -1;
 
     std::string to_string() const
     {
         const auto jump_str = std::format("JUMP -> {} IF FALSE", jump);
-        return std::format(FORMAT2, "OP_DO", jump_str);
+        return std::format(FORMAT2, "OP_JUMP_IF_FALSE", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -134,12 +161,12 @@ struct op_function_call
     void apply(anzu::context& ctx) const;
 };
 
-struct op_builtin_function_call
+struct op_builtin_call
 {
     std::string name;
     anzu::builtin_function func;
 
-    std::string to_string() const { return std::format("OP_BUILTIN_FUNCTION_CALL({})", name); }
+    std::string to_string() const { return std::format("OP_BUILTIN_CALL({})", name); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -257,6 +284,7 @@ class op
         op_push_const,
         op_push_var,
         op_pop,
+        op_copy_index,
 
         // Store Manipulation
         op_store,
@@ -267,9 +295,11 @@ class op
         op_else,
         op_while,
         op_while_end,
+        op_for,
+        op_for_end,
         op_break,
         op_continue,
-        op_do,
+        op_jump_if_false,
 
         // Numerical Operators
         op_add,
@@ -292,7 +322,7 @@ class op
         op_function_end,
         op_return,
         op_function_call,
-        op_builtin_function_call
+        op_builtin_call
     >;
 
     op_type d_type;

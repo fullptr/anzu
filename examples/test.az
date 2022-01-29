@@ -1,0 +1,13 @@
+
+
+x = 1
+y = 2
+z = 3
+l = []
+list_push(l, x)
+list_push(l, y)
+list_push(l, z)
+
+for i in l do
+    println(i)
+end

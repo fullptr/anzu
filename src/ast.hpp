@@ -24,6 +24,7 @@ using node_expr_ptr = std::unique_ptr<node_expr>;
 struct node_sequence_stmt;
 struct node_while_stmt;
 struct node_if_stmt;
+struct node_for_stmt;
 struct node_break_stmt;
 struct node_continue_stmt;
 struct node_assignment_stmt;
@@ -35,6 +36,7 @@ using node_stmt = std::variant<
     node_sequence_stmt,
     node_while_stmt,
     node_if_stmt,
+    node_for_stmt,
     node_break_stmt,
     node_continue_stmt,
     node_assignment_stmt,
@@ -91,6 +93,13 @@ struct node_if_stmt
     node_expr_ptr condition;
     node_stmt_ptr body;
     node_stmt_ptr else_body;
+};
+
+struct node_for_stmt
+{
+    node_expr_ptr var;
+    node_expr_ptr container;
+    node_stmt_ptr body;
 };
 
 struct node_break_stmt

@@ -70,3 +70,23 @@ end
 x = null
 y = println(x)
 println(y)
+
+# For loops
+println("list test, 3 elements with a break after the second, should only see two")
+println("additionally, there is a while loop with its own break statement which should be fine")
+for x in [1, 2, 3] do
+    println(x)
+    if x == 2 do
+        while true do
+            break # To make sure that this break is not affected by the for
+        end 
+        break
+    end
+end
+
+new_list = [[1, 2, 3, 4]]
+for list in new_list do
+    list_push(list, 5)
+end
+println("new_list should have 5 elements:")
+println(new_list)
