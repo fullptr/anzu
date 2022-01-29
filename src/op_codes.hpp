@@ -34,6 +34,12 @@ struct op_pop
     void apply(anzu::context& ctx) const;
 };
 
+struct op_dup
+{
+    std::string to_string() const { return "OP_DUP"; }
+    void apply(anzu::context& ctx) const;
+};
+
 // Store Manipulation
 
 struct op_store
@@ -257,6 +263,7 @@ class op
         op_push_const,
         op_push_var,
         op_pop,
+        op_dup,
 
         // Store Manipulation
         op_store,

@@ -57,6 +57,13 @@ void op_pop::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
+void op_dup::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    frame.push(frame.top());
+    frame.ptr() += 1;
+}
+
 
 void op_store::apply(anzu::context& ctx) const
 {
