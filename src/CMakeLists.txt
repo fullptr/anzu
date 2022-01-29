@@ -9,7 +9,7 @@ add_executable(anzu
                lexer.cpp
                parser.cpp
                compiler.cpp
-               stack_frame.cpp
+               runtime.cpp
                op_codes.cpp
                object.cpp
                functions.cpp

@@ -2,7 +2,7 @@
 #include "print.hpp"
 #include "object.hpp"
 
-#include "stack_frame.hpp"
+#include "runtime.hpp"
 
 #include <unordered_map>
 #include <string>
