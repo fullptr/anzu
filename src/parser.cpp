@@ -313,11 +313,12 @@ auto parse_return(parser_context& ctx) -> node_stmt_ptr
     return node;
 }
 
-auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr
+template <typename NodeVariant, typename NodeType>
+auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
 {
-    auto node = std::make_unique<anzu::node_expr>();
-    auto& expr = node->emplace<anzu::node_function_call_expr>();
-    expr.function_name = (ctx.curr++)->text;
+    auto node = std::make_unique<NodeVariant>();
+    auto& out = node->emplace<NodeType>();
+    out.function_name = (ctx.curr++)->text;
 
     consume_only(ctx, "(");
     bool expect_comma = false;
@@ -329,42 +330,25 @@ auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr
             ++ctx.curr;
         }
         else {
-            expr.args.push_back(parse_expression(ctx));
+            out.args.push_back(parse_expression(ctx));
         }
         expect_comma = !expect_comma;
     }
     consume_only(ctx, ")");
 
-    const auto argc = fetch_argc(ctx, expr.function_name);
-    check_argc(ctx, expr.function_name, argc, std::ssize(expr.args));
+    const auto argc = fetch_argc(ctx, out.function_name);
+    check_argc(ctx, out.function_name, argc, std::ssize(out.args));
     return node;
+}
+
+auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr
+{
+    return parse_function_call<anzu::node_expr, anzu::node_function_call_expr>(ctx);
 }
 
 auto parse_function_call_stmt(parser_context& ctx) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_function_call_stmt>();
-    stmt.function_name = (ctx.curr++)->text;
-
-    consume_only(ctx, "(");
-    bool expect_comma = false;
-    while (ctx.curr != ctx.end && ctx.curr->text != ")") {
-        if (expect_comma) {
-            if (ctx.curr->text != ",") { // skip commas, enforce later
-                parser_error(ctx, "expected comma in function call arg list");
-            }
-            ++ctx.curr;
-        }
-        else {
-            stmt.args.push_back(parse_expression(ctx));
-        }
-        expect_comma = !expect_comma;
-    }
-    consume_only(ctx, ")");
-
-    const auto argc = fetch_argc(ctx, stmt.function_name);
-    check_argc(ctx, stmt.function_name, argc, std::ssize(stmt.args));
-    return node;
+    return parse_function_call<anzu::node_stmt, anzu::node_function_call_stmt>(ctx);
 }
 
 auto parse_statement(parser_context& ctx) -> node_stmt_ptr
