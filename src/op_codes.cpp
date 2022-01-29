@@ -53,6 +53,7 @@ void op_push_var::apply(anzu::context& ctx) const
 void op_pop::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    verify_stack(frame, 1, "pop");
     frame.pop();
     frame.ptr() += 1;
 }
@@ -60,7 +61,24 @@ void op_pop::apply(anzu::context& ctx) const
 void op_dup::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
+    verify_stack(frame, 1, "dup");
     frame.push(frame.top());
+    frame.ptr() += 1;
+}
+
+void op_over::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    verify_stack(frame, 2, "over");
+    frame.push(frame.top(1));
+    frame.ptr() += 1;
+}
+
+void op_2over::apply(anzu::context& ctx) const
+{
+    auto& frame = ctx.top();
+    verify_stack(frame, 3, "2over");
+    frame.push(frame.top(2));
     frame.ptr() += 1;
 }
 
@@ -94,6 +112,16 @@ void op_while::apply(anzu::context& ctx) const
 }
 
 void op_while_end::apply(anzu::context& ctx) const
+{
+    ctx.top().ptr() = jump;
+}
+
+void op_for::apply(anzu::context& ctx) const
+{
+    ctx.top().ptr() += 1;
+}
+
+void op_for_end::apply(anzu::context& ctx) const
 {
     ctx.top().ptr() = jump;
 }

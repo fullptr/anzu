@@ -1,6 +1,6 @@
 
+list = [1, 2, 3]
 
-
-for x in [1, 2, 3] do
-    print(x)
+for x in ["hello world", 1, 2, 3, null, true, false] do
+    println(x)
 end

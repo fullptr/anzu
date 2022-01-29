@@ -40,6 +40,18 @@ struct op_dup
     void apply(anzu::context& ctx) const;
 };
 
+struct op_over
+{
+    std::string to_string() const { return "OP_OVER"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_2over
+{
+    std::string to_string() const { return "OP_2OVER"; }
+    void apply(anzu::context& ctx) const;
+};
+
 // Store Manipulation
 
 struct op_store
@@ -90,6 +102,24 @@ struct op_while_end
     {
         const auto jump_str = std::format("JUMP -> {}", jump);
         return std::format(FORMAT2, "OP_END_WHILE", jump_str);
+    }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_for
+{
+    std::string to_string() const { return "OP_FOR"; }
+    void apply(anzu::context& ctx) const;
+};
+
+struct op_for_end
+{
+    std::intptr_t jump = -1;
+
+    std::string to_string() const
+    {
+        const auto jump_str = std::format("JUMP -> {}", jump);
+        return std::format(FORMAT2, "OP_END_FOR", jump_str);
     }
     void apply(anzu::context& ctx) const;
 };
@@ -264,6 +294,8 @@ class op
         op_push_var,
         op_pop,
         op_dup,
+        op_over,
+        op_2over,
 
         // Store Manipulation
         op_store,
@@ -274,6 +306,8 @@ class op
         op_else,
         op_while,
         op_while_end,
+        op_for,
+        op_for_end,
         op_break,
         op_continue,
         op_do,

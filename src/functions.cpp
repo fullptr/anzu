@@ -149,12 +149,22 @@ auto is_builtin(const std::string& name) -> bool
 
 auto fetch_builtin(const std::string& name) -> builtin_function
 {
-    return builtins.at(name).ptr;
+    auto it = builtins.find(name);
+    if (it == builtins.end()) {
+        anzu::print("builtin error: could not find function '{}'\n", name);
+        std::exit(1);
+    }
+    return it->second.ptr;
 }
 
 auto fetch_builtin_argc(const std::string& name) -> std::int64_t
 {
-    return builtins.at(name).argc;
+    auto it = builtins.find(name);
+    if (it == builtins.end()) {
+        anzu::print("builtin error: could not find function '{}'\n", name);
+        std::exit(1);
+    }
+    return it->second.argc;
 }
 
 }

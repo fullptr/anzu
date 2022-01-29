@@ -144,6 +144,72 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
+    const auto var = std::get<anzu::node_variable_expr>(*node.var).name;
+    if (std::holds_alternative<anzu::node_variable_expr>(*node.container)) {
+        const auto& cont = std::get<anzu::node_variable_expr>(*node.container).name;
+        ctx.program.emplace_back(anzu::op_push_var{ .name=cont });
+    }
+    else if (std::holds_alternative<anzu::node_literal_expr>(*node.container)) {
+        const auto& cont = std::get<anzu::node_literal_expr>(*node.container).value;
+        ctx.program.emplace_back(anzu::op_push_const{ .value=cont });
+    }
+    else {
+        anzu::print("unknown container for a for-loop\n");
+        std::exit(1);
+    }
+
+    ctx.program.emplace_back(anzu::op_dup{}); // Duplicate the list
+    ctx.program.emplace_back(anzu::op_builtin_function_call{
+        .name="list_size",
+        .func=anzu::fetch_builtin("list_size")
+    });
+    ctx.program.emplace_back(anzu::op_push_const{ .value=0 });
+    // Stack: list, size, index(0)
+
+    const auto for_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_for{});
+
+    ctx.program.emplace_back(anzu::op_over{}); // Push size to stack
+    ctx.program.emplace_back(anzu::op_over{}); // Push index to stack
+    ctx.program.emplace_back(anzu::op_ne{});   // Eval size != index
+
+    const auto do_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_do{});   // If size == index, jump to end
+
+    // Stack: list, size, index(0)
+    ctx.program.emplace_back(anzu::op_2over{}); // Push container
+    ctx.program.emplace_back(anzu::op_over{});  // Push index
+    ctx.program.emplace_back(anzu::op_builtin_function_call{
+        .name="list_at",
+        .func=anzu::fetch_builtin("list_at")
+    });
+    ctx.program.emplace_back(anzu::op_store{ .name=var }); // Store in var
+
+    compile_node(*node.body, ctx);
+
+    // Increment the index
+    ctx.program.emplace_back(anzu::op_push_const{ .value=1 });
+    ctx.program.emplace_back(anzu::op_add{});
+
+    const auto end_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_for_end{ .jump=for_pos }); // Jump back to start
+
+    ctx.program.emplace_back(anzu::op_pop{}); // Pop index
+    ctx.program.emplace_back(anzu::op_pop{}); // Pop size
+    ctx.program.emplace_back(anzu::op_pop{}); // Pop container
+
+    // Setup the control flow jumps
+    ctx.program[do_pos].as<anzu::op_do>().jump = end_pos + 1; // Jump past the end if false
+    for (std::intptr_t idx = do_pos + 1; idx != end_pos; ++idx) {
+        // Only set break and continue jumps if they are currently not set, they may be set it
+        // there are nested while loops
+        if (auto op = ctx.program[idx].get_if<anzu::op_break>(); op && op->jump == -1) {
+            op->jump = end_pos + 1;
+        }
+        else if (auto op = ctx.program[idx].get_if<anzu::op_continue>(); op && op->jump == -1) {
+            op->jump = for_pos;
+        }
+    }
 }
 
 void compile_node(const node_break_stmt&, compiler_context& ctx)
