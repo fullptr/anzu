@@ -11,7 +11,7 @@ namespace {
 
 auto push_null(anzu::context& ctx) -> void
 {
-    ctx.peek_frame().push(anzu::null_object());
+    ctx.push_value(anzu::null_object());
 }
 
 auto verify(bool condition, std::string_view msg) -> void
@@ -31,91 +31,79 @@ auto builtin_print_frame(anzu::context& ctx) -> void
 
 auto builtin_list_push(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    verify(frame.stack_size() >= 2, "stack must contain two elements for list_push\n");
-    verify(frame.top(1).is<object_list>(), "second element on stack must be a list for list_push\n");
-    auto elem = frame.pop();
-    auto list = frame.pop();
+    verify(ctx.size() >= 2, "stack must contain two elements for list_push\n");
+    verify(ctx.peek_value(1).is<object_list>(), "second element on stack must be a list for list_push\n");
+    auto elem = ctx.pop_value();
+    auto list = ctx.pop_value();
     list.as<object_list>()->push_back(elem);
     push_null(ctx);
 }
 
 auto builtin_list_pop(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    verify(frame.top().is<object_list>(), "top element on stack must be a list for list_pop\n");
-    auto list = frame.pop();
-    frame.push(list.as<object_list>()->back());
+    verify(ctx.peek_value().is<object_list>(), "top element on stack must be a list for list_pop\n");
+    auto list = ctx.pop_value();
+    ctx.push_value(list.as<object_list>()->back());
     list.as<object_list>()->pop_back();
 }
 
 auto builtin_list_size(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    verify(frame.top().is<object_list>(), "top element on stack must be a list for list_size\n");
-    auto list = frame.pop();
-    frame.push(static_cast<int>(list.as<object_list>()->size()));
+    verify(ctx.peek_value().is<object_list>(), "top element on stack must be a list for list_size\n");
+    auto list = ctx.pop_value();
+    ctx.push_value(static_cast<int>(list.as<object_list>()->size()));
 }
 
 auto builtin_list_at(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    verify(frame.stack_size() >= 2, "stack must contain two elements for list_push\n");
-    verify(frame.top(0).is<int>(), "first element of stack must be an integer (index into list)\n");
-    verify(frame.top(1).is<object_list>(), "second element on stack must be a list for list_push\n");
-    auto pos = frame.pop();
-    auto list = frame.pop();
-    frame.push(list.as<object_list>()->at(static_cast<std::size_t>(pos.to_int())));
+    verify(ctx.size() >= 2, "stack must contain two elements for list_push\n");
+    verify(ctx.peek_value(0).is<int>(), "first element of stack must be an integer (index into list)\n");
+    verify(ctx.peek_value(1).is<object_list>(), "second element on stack must be a list for list_push\n");
+    auto pos = ctx.pop_value();
+    auto list = ctx.pop_value();
+    ctx.push_value(list.as<object_list>()->at(static_cast<std::size_t>(pos.to_int())));
 }
 
 auto builtin_to_int(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    frame.push(frame.pop().to_int());
+    ctx.push_value(ctx.pop_value().to_int());
 }
 
 auto builtin_to_bool(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    frame.push(frame.pop().to_bool());
+    ctx.push_value(ctx.pop_value().to_bool());
 }
 
 auto builtin_to_str(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    frame.push(frame.pop().to_str());
+    ctx.push_value(ctx.pop_value().to_str());
 }
 
 auto builtin_print(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    const auto obj = frame.pop();
+    const auto obj = ctx.peek_value();
     if (obj.is<std::string>()) {
         anzu::print("{}", anzu::format_special_chars(obj.as<std::string>()));
     } else {
         anzu::print("{}", obj);
     }
-    push_null(ctx);
 }
 
 auto builtin_println(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
-    const auto obj = frame.pop();
+    const auto obj = ctx.peek_value();
     if (obj.is<std::string>()) {
         anzu::print("{}\n", anzu::format_special_chars(obj.as<std::string>()));
     } else {
         anzu::print("{}\n", obj);
     }
-    push_null(ctx);
 }
 
 auto builtin_input(anzu::context& ctx) -> void
 {
-    auto& frame = ctx.peek_frame();
     std::string in;
     std::cin >> in;
-    frame.push(in);
+    ctx.push_value(in);
 }
 
 }

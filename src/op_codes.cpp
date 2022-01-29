@@ -18,51 +18,43 @@ void verify(bool condition, std::string_view msg, Args&&... args)
     }
 }
 
-void verify_stack(const anzu::frame& frame, int count, std::string_view name)
+void verify_stack(const context& ctx, int count, std::string_view name)
 {
     const auto type = count != 1 ? "args" : "arg";
     const auto err = "stack underflow: '{}' requires {} {}";
-    anzu::verify(frame.stack_size() >= count, err, name, count, type);
+    anzu::verify(ctx.size() >= count, err, name, count, type);
 }
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-
-void transfer_values(anzu::frame& src, anzu::frame& dst, int count)
-{
-    anzu::verify(src.stack_size() >= count, "could not transfer {} args\n", count);
-    for (int i = 0; i != count; ++i) { dst.push(src.top(count - 1 - i)); }
-    for (int i = 0; i != count; ++i) { src.pop(); }
-}
 
 }
 
 void op_push_const::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    frame.push(value);
+    ctx.push_value(value);
     frame.ptr() += 1;
 }
 
 void op_push_var::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    frame.push(frame.fetch(name));
+    ctx.push_value(frame.fetch(name));
     frame.ptr() += 1;
 }
 
 void op_pop::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    verify_stack(frame, 1, "pop");
-    frame.pop();
+    ctx.pop_value();
     frame.ptr() += 1;
 }
 
 void op_copy_index::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    verify_stack(frame, index + 1, "copy_index");
-    frame.push(frame.top(index));
+    verify_stack(ctx, index + 1, "copy_index");
+    ctx.push_value(ctx.peek_value(index));
     frame.ptr() += 1;
 }
 
@@ -70,8 +62,8 @@ void op_copy_index::apply(anzu::context& ctx) const
 void op_store::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 1, "store");
-    frame.load(name, frame.pop());
+    verify_stack(ctx, 1, "store");
+    frame.load(name, ctx.pop_value());
     frame.ptr() += 1;
 }
 
@@ -123,7 +115,7 @@ void op_continue::apply(anzu::context& ctx) const
 void op_jump_if_false::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    if (frame.pop().to_bool()) {
+    if (ctx.pop_value().to_bool()) {
         frame.ptr() += 1;
     } else {
         frame.ptr() = jump;
@@ -137,28 +129,25 @@ void op_function::apply(anzu::context& ctx) const
 
 void op_function_end::apply(anzu::context& ctx) const
 {
+    ctx.push_value(anzu::null_object());
     ctx.pop_frame();
-    ctx.peek_frame().push(anzu::null_object());
 }
 
 void op_return::apply(anzu::context& ctx) const
 {
-    auto return_value = ctx.peek_frame().pop();
     ctx.pop_frame();
-    ctx.peek_frame().push(return_value);
 }
 
 void op_function_call::apply(anzu::context& ctx) const
 {
-    auto& curr = ctx.push_frame(); // New frame
-    auto& prev = ctx.peek_frame(1);   // One under the top
+    ctx.peek_frame().ptr() += 1; // Position after function call
+    
+    auto& frame = ctx.push_frame(); 
+    frame.ptr() = ptr; // Jump into the function
 
-    curr.ptr() = ptr; // Jump into the function
-    prev.ptr() += 1;  // The position in the program where it will resume
-
-    // Pop elements off the previous stack and load them into the new function heap
+    // Pop elements off the stack and load them into the new scope
     for (const auto& arg_name : std::views::reverse(arg_names)) {
-        curr.load(arg_name, prev.pop());
+        frame.load(arg_name, ctx.pop_value());
     }
 }
 
@@ -174,10 +163,10 @@ concept addable = requires(A a, B b) { { a + b }; };
 void op_add::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "+");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a + b);
+    verify_stack(ctx, 2, "+");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a + b);
     frame.ptr() += 1;
 }
 
@@ -187,10 +176,10 @@ concept subtractable = requires(A a, B b) { { a - b }; };
 void op_sub::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "-");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a - b);
+    verify_stack(ctx, 2, "-");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a - b);
     frame.ptr() += 1;
 }
 
@@ -200,110 +189,110 @@ concept multipliable = requires(A a, B b) { { a * b }; };
 void op_mul::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "*");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a * b);
+    verify_stack(ctx, 2, "*");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a * b);
     frame.ptr() += 1;
 }
 
 void op_div::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "/");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a / b);
+    verify_stack(ctx, 2, "/");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a / b);
     frame.ptr() += 1;
 }
 
 void op_mod::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "%");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a % b);
+    verify_stack(ctx, 2, "%");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a % b);
     frame.ptr() += 1;
 }
 
 void op_eq::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "==");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a == b);
+    verify_stack(ctx, 2, "==");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a == b);
     frame.ptr() += 1;
 }
 
 void op_ne::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "!=");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a != b);
+    verify_stack(ctx, 2, "!=");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a != b);
     frame.ptr() += 1;
 }
 
 void op_lt::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "<");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a < b);
+    verify_stack(ctx, 2, "<");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a < b);
     frame.ptr() += 1;
 }
 
 void op_le::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "<=");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a <= b);
+    verify_stack(ctx, 2, "<=");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a <= b);
     frame.ptr() += 1;
 }
 
 void op_gt::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, ">");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a > b);
+    verify_stack(ctx, 2, ">");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a > b);
     frame.ptr() += 1;
 }
 
 void op_ge::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, ">=");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a >= b);
+    verify_stack(ctx, 2, ">=");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a >= b);
     frame.ptr() += 1;
 }
 
 void op_or::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "or");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a || b);
+    verify_stack(ctx, 2, "or");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a || b);
     frame.ptr() += 1;
 }
 
 void op_and::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.peek_frame();
-    anzu::verify_stack(frame, 2, "and");
-    auto b = frame.pop();
-    auto a = frame.pop();
-    frame.push(a && b);
+    verify_stack(ctx, 2, "and");
+    auto b = ctx.pop_value();
+    auto a = ctx.pop_value();
+    ctx.push_value(a && b);
     frame.ptr() += 1;
 }
 
