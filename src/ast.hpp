@@ -43,8 +43,7 @@ using node_stmt = std::variant<
     node_function_def_stmt,
     node_function_call_stmt,
     node_builtin_call_stmt,
-    node_return_stmt,
-    node_expr
+    node_return_stmt
 >;
 using node_stmt_ptr = std::unique_ptr<node_stmt>;
 

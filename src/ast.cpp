@@ -124,9 +124,6 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         [&](const node_return_stmt& node) {
             anzu::print("{}Return:\n", spaces);
             print_node(*node.return_value, indent + 1);
-        },
-        [&](const node_expr& node) {
-            print_node(node, indent + 1);
         }
     }, root);
 }
