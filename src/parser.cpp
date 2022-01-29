@@ -18,6 +18,12 @@ template <typename... Args>
     std::exit(1);
 }
 
+void check_argc(
+    const parser_context& ctx, std::string_view func, std::int64_t expected, std::int64_t actual
+) {
+    parser_error(ctx, "function '{}' expected {} args, got {}", func, expected, actual);
+}
+
 auto consume_maybe(parser_context& ctx, std::string_view tok) -> bool
 {
     if (ctx.curr->text == tok) {
@@ -178,10 +184,6 @@ auto parse_assign_expression(parser_context& ctx) -> node_stmt_ptr
 }
 
 auto parse_statement(parser_context& ctx) -> node_stmt_ptr;
-
-// statement_list:
-//     | statement
-//     | statement statement_list
 auto parse_statement_list(parser_context& ctx) -> node_stmt_ptr
 {
     static const auto sentinel = std::unordered_set<std::string_view>{"end", "elif", "do", "else"};
@@ -253,8 +255,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_function_def_stmt>();
     if (ctx.curr->type != token_type::name) {
-        anzu::print("syntax error: expected function name\n");
-        std::exit(1);
+        parser_error(ctx, "expected function name");
     }
     stmt.name = (ctx.curr++)->text;
     consume_only(ctx, "(");
@@ -262,8 +263,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     while (ctx.curr != ctx.end && ctx.curr->text != ")") {
         if (expect_comma) {
             if (ctx.curr->text != ",") { // skip commas, enforce later
-                anzu::print("syntax error: expected comma in function name list\n");
-                std::exit(1);
+                parser_error(ctx, "expected comma in function name list");
             }
             ++ctx.curr;
         }
@@ -273,8 +273,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
                 ++ctx.curr;          
             }
             else {
-                anzu::print("syntax error: failed to parse function signature\n");
-                std::exit(1);
+                parser_error(ctx, "failed to parse function signature");
             }
         }
         expect_comma = !expect_comma;
@@ -314,8 +313,7 @@ auto parse_builtin_call_expr(parser_context& ctx) -> node_expr_ptr
     while (ctx.curr != ctx.end && ctx.curr->text != ")") {
         if (expect_comma) {
             if (ctx.curr->text != ",") { // skip commas, enforce later
-                anzu::print("syntax error: expected comma in function call arg list\n");
-                std::exit(1);
+                parser_error(ctx, "expected comma in function call arg list");
             }
             ++ctx.curr;
         }
@@ -327,14 +325,7 @@ auto parse_builtin_call_expr(parser_context& ctx) -> node_expr_ptr
     consume_only(ctx, ")");
 
     const auto argc = anzu::fetch_builtin_argc(expr.function_name);
-    if (argc != std::ssize(expr.args)) {
-        anzu::print(
-            "error: function '{}' expected {} args, got {}\n",
-            expr.function_name, argc, std::ssize(expr.args)
-        );
-        std::exit(1);
-    }
-
+    check_argc(ctx, expr.function_name, argc, std::ssize(expr.args));
     return node;
 }
 
@@ -349,8 +340,7 @@ auto parse_builtin_call_stmt(parser_context& ctx) -> node_stmt_ptr
     while (ctx.curr != ctx.end && ctx.curr->text != ")") {
         if (expect_comma) {
             if (ctx.curr->text != ",") { // skip commas, enforce later
-                anzu::print("syntax error: expected comma in function call arg list\n");
-                std::exit(1);
+                parser_error(ctx, "expected comma in function call arg list");
             }
             ++ctx.curr;
         }
@@ -362,14 +352,7 @@ auto parse_builtin_call_stmt(parser_context& ctx) -> node_stmt_ptr
     consume_only(ctx, ")");
 
     const auto argc = anzu::fetch_builtin_argc(stmt.function_name);
-    if (argc != std::ssize(stmt.args)) {
-        anzu::print(
-            "error: function '{}' expected {} args, got {}\n",
-            stmt.function_name, argc, std::ssize(stmt.args)
-        );
-        std::exit(1);
-    }
-
+    check_argc(ctx, stmt.function_name, argc, std::ssize(stmt.args));
     return node;
 }
 
@@ -384,8 +367,7 @@ auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr
     while (ctx.curr != ctx.end && ctx.curr->text != ")") {
         if (expect_comma) {
             if (ctx.curr->text != ",") { // skip commas, enforce later
-                anzu::print("syntax error: expected comma in function call arg list\n");
-                std::exit(1);
+                parser_error(ctx, "expected comma in function call arg list");
             }
             ++ctx.curr;
         }
@@ -397,14 +379,7 @@ auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr
     consume_only(ctx, ")");
 
     const auto argc = ctx.functions.at(expr.function_name).argc;
-    if (argc != std::ssize(expr.args)) {
-        anzu::print(
-            "error: function '{}' expected {} args, got {}\n",
-            expr.function_name, argc, std::ssize(expr.args)
-        );
-        std::exit(1);
-    }
-
+    check_argc(ctx, expr.function_name, argc, std::ssize(expr.args));
     return node;
 }
 
@@ -419,8 +394,7 @@ auto parse_function_call_stmt(parser_context& ctx) -> node_stmt_ptr
     while (ctx.curr != ctx.end && ctx.curr->text != ")") {
         if (expect_comma) {
             if (ctx.curr->text != ",") { // skip commas, enforce later
-                anzu::print("syntax error: expected comma in function call arg list\n");
-                std::exit(1);
+                parser_error(ctx, "expected comma in function call arg list");
             }
             ++ctx.curr;
         }
@@ -432,14 +406,7 @@ auto parse_function_call_stmt(parser_context& ctx) -> node_stmt_ptr
     consume_only(ctx, ")");
 
     const auto argc = ctx.functions.at(stmt.function_name).argc;
-    if (argc != std::ssize(stmt.args)) {
-        anzu::print(
-            "error: function '{}' expected {} args, got {}\n",
-            stmt.function_name, argc, std::ssize(stmt.args)
-        );
-        std::exit(1);
-    }
-
+    check_argc(ctx, stmt.function_name, argc, std::ssize(stmt.args));
     return node;
 }
 
