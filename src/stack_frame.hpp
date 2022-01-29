@@ -1,5 +1,6 @@
 #pragma once
 #include "object.hpp"
+#include "op_codes.hpp"
 
 #include <stack>
 #include <unordered_map>
@@ -16,7 +17,6 @@ class memory
 public:
     auto insert(const std::string& name, const anzu::object& value) -> anzu::object&;
     auto get(const std::string& name) -> anzu::object&;
-
     auto print() const -> void;
 };
 
@@ -26,7 +26,7 @@ struct frame
     std::intptr_t ptr = 0;
 };
 
-class context
+class runtime_context
 {
     std::vector<frame>        d_frames;
     std::vector<anzu::object> d_values;
@@ -41,5 +41,8 @@ public:
     auto peek_value(std::size_t index = 0) -> object&;
     auto size() const -> std::size_t;
 };
+
+auto run_program(const std::vector<anzu::op>& program) -> void;
+auto run_program_debug(const std::vector<anzu::op>& program) -> void;
 
 }

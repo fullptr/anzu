@@ -27,28 +27,6 @@ void print_program(const std::vector<anzu::op>& program)
     }
 }
 
-void run_program(const std::vector<anzu::op>& program)
-{
-    anzu::context ctx;
-    ctx.push_frame();
-
-    while (ctx.peek_frame().ptr < std::ssize(program)) {
-        program[ctx.peek_frame().ptr].apply(ctx);
-    }
-}
-
-void run_program_debug(const std::vector<anzu::op>& program)
-{
-    anzu::context ctx;
-    ctx.push_frame();
-
-    while (ctx.peek_frame().ptr < std::ssize(program)) {
-        const auto& op = program[ctx.peek_frame().ptr];
-        anzu::print("{:>4} - {}\n", ctx.peek_frame().ptr, op);
-        op.apply(ctx);
-    }
-}
-
 void print_usage()
 {
     anzu::print("usage: anzu.exe <program_file> (lex|parse|com|debug|run)\n\n");
@@ -92,11 +70,11 @@ int main(int argc, char** argv)
     }
 
     if (mode == "run") {
-        run_program(program);
+        anzu::run_program(program);
         return 0;
     }
     else if (mode == "debug") {
-        run_program_debug(program);
+        anzu::run_program_debug(program);
         return 0;
     }
 

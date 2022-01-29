@@ -1,12 +1,12 @@
 #pragma once
 // Builtin functions that can be called from scripts
-#include "stack_frame.hpp"
 
 #include <string>
 
 namespace anzu {
 
-using builtin_function = void(*)(anzu::context&);
+class runtime_context;
+using builtin_function = void(*)(anzu::runtime_context&);
 
 struct builtin
 {
