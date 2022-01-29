@@ -11,6 +11,31 @@
 namespace anzu {
 namespace {
 
+// Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
+// This function links the do to jump to one past the end if false, makes breaks
+// jump past the end, and makes continues jump back to the beginning.
+auto link_up_jumps(
+    compiler_context& ctx,
+    std::intptr_t loop_begin,
+    std::intptr_t loop_do,
+    std::intptr_t loop_end
+)
+    -> void
+{
+    // Jump past the end if false
+    ctx.program[loop_do].as<anzu::op_do>().jump = loop_end + 1;
+        
+    // Only set unset jumps, there may be other already set from nested loops
+    for (std::intptr_t idx = loop_do + 1; idx != loop_end; ++idx) {
+        if (auto op = ctx.program[idx].get_if<anzu::op_break>(); op && op->jump == -1) {
+            op->jump = loop_end + 1;
+        }
+        else if (auto op = ctx.program[idx].get_if<anzu::op_continue>(); op && op->jump == -1) {
+            op->jump = loop_begin;
+        }
+    }
+}
+
 auto compile_node(const node_expr& root, compiler_context& ctx) -> void;
 auto compile_node(const node_stmt& root, compiler_context& ctx) -> void;
 
@@ -72,7 +97,7 @@ void compile_node(const node_builtin_call_expr& node, compiler_context& ctx)
     }
 
     // Call the function
-    ctx.program.emplace_back(anzu::op_builtin_function_call{
+    ctx.program.emplace_back(anzu::op_builtin_call{
         .name=node.function_name,
         .func=anzu::fetch_builtin(node.function_name)
     });
@@ -100,18 +125,7 @@ void compile_node(const node_while_stmt& node, compiler_context& ctx)
     const auto end_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_while_end{ .jump=while_pos }); // Jump back to start
 
-    // Setup the control flow jumps
-    ctx.program[do_pos].as<anzu::op_do>().jump = end_pos + 1; // Jump past the end if false
-    for (std::intptr_t idx = do_pos + 1; idx != end_pos; ++idx) {
-        // Only set break and continue jumps if they are currently not set, they may be set it
-        // there are nested while loops
-        if (auto op = ctx.program[idx].get_if<anzu::op_break>(); op && op->jump == -1) {
-            op->jump = end_pos + 1;
-        }
-        else if (auto op = ctx.program[idx].get_if<anzu::op_continue>(); op && op->jump == -1) {
-            op->jump = while_pos;
-        }
-    }
+    link_up_jumps(ctx, while_pos, do_pos, end_pos);
 }
 
 void compile_node(const node_if_stmt& node, compiler_context& ctx)
@@ -145,6 +159,8 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
     const auto var = std::get<anzu::node_variable_expr>(*node.var).name;
+
+    // Push the container to the stack
     if (std::holds_alternative<anzu::node_variable_expr>(*node.container)) {
         const auto& cont = std::get<anzu::node_variable_expr>(*node.container).name;
         ctx.program.emplace_back(anzu::op_push_var{ .name=cont });
@@ -158,28 +174,32 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
         std::exit(1);
     }
 
-    ctx.program.emplace_back(anzu::op_dup{}); // Duplicate the list
-    ctx.program.emplace_back(anzu::op_builtin_function_call{
+    // Push the container size to the stack
+    ctx.program.emplace_back(anzu::op_copy_index{0});
+    ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_size",
         .func=anzu::fetch_builtin("list_size")
     });
+
+    // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_push_const{ .value=0 });
-    // Stack: list, size, index(0)
+
+    // Stack: list, size, counter(0)
 
     const auto for_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_for{});
 
-    ctx.program.emplace_back(anzu::op_over{}); // Push size to stack
-    ctx.program.emplace_back(anzu::op_over{}); // Push index to stack
+    ctx.program.emplace_back(anzu::op_copy_index{1}); // Push size to stack
+    ctx.program.emplace_back(anzu::op_copy_index{1}); // Push index to stack
     ctx.program.emplace_back(anzu::op_ne{});   // Eval size != index
 
     const auto do_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_do{});   // If size == index, jump to end
 
     // Stack: list, size, index(0)
-    ctx.program.emplace_back(anzu::op_2over{}); // Push container
-    ctx.program.emplace_back(anzu::op_over{});  // Push index
-    ctx.program.emplace_back(anzu::op_builtin_function_call{
+    ctx.program.emplace_back(anzu::op_copy_index{2}); // Push container
+    ctx.program.emplace_back(anzu::op_copy_index{1}); // Push index
+    ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_at",
         .func=anzu::fetch_builtin("list_at")
     });
@@ -198,18 +218,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_pop{}); // Pop size
     ctx.program.emplace_back(anzu::op_pop{}); // Pop container
 
-    // Setup the control flow jumps
-    ctx.program[do_pos].as<anzu::op_do>().jump = end_pos + 1; // Jump past the end if false
-    for (std::intptr_t idx = do_pos + 1; idx != end_pos; ++idx) {
-        // Only set break and continue jumps if they are currently not set, they may be set it
-        // there are nested while loops
-        if (auto op = ctx.program[idx].get_if<anzu::op_break>(); op && op->jump == -1) {
-            op->jump = end_pos + 1;
-        }
-        else if (auto op = ctx.program[idx].get_if<anzu::op_continue>(); op && op->jump == -1) {
-            op->jump = for_pos;
-        }
-    }
+    link_up_jumps(ctx, for_pos, do_pos, end_pos);
 }
 
 void compile_node(const node_break_stmt&, compiler_context& ctx)
@@ -268,7 +277,7 @@ void compile_node(const node_builtin_call_stmt& node, compiler_context& ctx)
     }
 
     // Call the function
-    ctx.program.emplace_back(anzu::op_builtin_function_call{
+    ctx.program.emplace_back(anzu::op_builtin_call{
         .name=node.function_name,
         .func=anzu::fetch_builtin(node.function_name)
     });

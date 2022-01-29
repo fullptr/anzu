@@ -34,21 +34,12 @@ struct op_pop
     void apply(anzu::context& ctx) const;
 };
 
-struct op_dup
+// 0 == OP_DUP, 1 == OP_OVER, ...
+struct op_copy_index
 {
-    std::string to_string() const { return "OP_DUP"; }
-    void apply(anzu::context& ctx) const;
-};
+    int index;
 
-struct op_over
-{
-    std::string to_string() const { return "OP_OVER"; }
-    void apply(anzu::context& ctx) const;
-};
-
-struct op_2over
-{
-    std::string to_string() const { return "OP_2OVER"; }
+    std::string to_string() const { return std::format("OP_COPY_INDEX({})", index); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -170,12 +161,12 @@ struct op_function_call
     void apply(anzu::context& ctx) const;
 };
 
-struct op_builtin_function_call
+struct op_builtin_call
 {
     std::string name;
     anzu::builtin_function func;
 
-    std::string to_string() const { return std::format("OP_BUILTIN_FUNCTION_CALL({})", name); }
+    std::string to_string() const { return std::format("OP_BUILTIN_CALL({})", name); }
     void apply(anzu::context& ctx) const;
 };
 
@@ -293,9 +284,7 @@ class op
         op_push_const,
         op_push_var,
         op_pop,
-        op_dup,
-        op_over,
-        op_2over,
+        op_copy_index,
 
         // Store Manipulation
         op_store,
@@ -333,7 +322,7 @@ class op
         op_function_end,
         op_return,
         op_function_call,
-        op_builtin_function_call
+        op_builtin_call
     >;
 
     op_type d_type;

@@ -58,27 +58,11 @@ void op_pop::apply(anzu::context& ctx) const
     frame.ptr() += 1;
 }
 
-void op_dup::apply(anzu::context& ctx) const
+void op_copy_index::apply(anzu::context& ctx) const
 {
     auto& frame = ctx.top();
-    verify_stack(frame, 1, "dup");
-    frame.push(frame.top());
-    frame.ptr() += 1;
-}
-
-void op_over::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    verify_stack(frame, 2, "over");
-    frame.push(frame.top(1));
-    frame.ptr() += 1;
-}
-
-void op_2over::apply(anzu::context& ctx) const
-{
-    auto& frame = ctx.top();
-    verify_stack(frame, 3, "2over");
-    frame.push(frame.top(2));
+    verify_stack(frame, index + 1, "copy_index");
+    frame.push(frame.top(index));
     frame.ptr() += 1;
 }
 
@@ -178,7 +162,7 @@ void op_function_call::apply(anzu::context& ctx) const
     }
 }
 
-void op_builtin_function_call::apply(anzu::context& ctx) const
+void op_builtin_call::apply(anzu::context& ctx) const
 {
     func(ctx);
     ctx.top().ptr() += 1;
