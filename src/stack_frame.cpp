@@ -7,22 +7,24 @@ namespace anzu {
 
 auto frame::pop() -> anzu::object
 {
-    return d_values.pop();
+    auto ret = d_values.back();
+    d_values.pop_back();
+    return ret;
 }
 
 auto frame::push(const anzu::object& value) -> void
 {
-    d_values.push(value);
+    d_values.push_back(value);
 }
 
 auto frame::top(std::size_t index) -> anzu::object&
 {
-    return d_values.top(index);
+    return d_values[d_values.size() - index - 1];
 }
 
 auto frame::top(std::size_t index) const -> const anzu::object&
 {
-    return d_values.top(index);
+    return d_values[d_values.size() - index - 1];
 }
 
 auto frame::empty() const -> bool
@@ -47,13 +49,31 @@ auto frame::load(const std::string& name, const anzu::object& value) -> void
 auto frame::print() const -> void
 {
     anzu::print("Values:\n");
-    for (const auto& val : d_values.all()) {
+    for (const auto& val : d_values | std::views::reverse) {
         anzu::print(" - {}\n", val);
     }
     anzu::print("Symbols:\n");
     for (const auto& [key, val] : d_symbols) {
         anzu::print(" - {} -> {}\n", key, val);
     }
+}
+
+auto context::push() -> frame&
+{
+    d_frames.push_back({});
+    return d_frames.back();
+}
+
+auto context::pop() -> frame
+{
+    auto ret = d_frames.back();
+    d_frames.pop_back();
+    return ret;
+}
+
+auto context::top(std::size_t index) -> frame&
+{
+    return d_frames[d_frames.size() - index - 1];
 }
 
 }
