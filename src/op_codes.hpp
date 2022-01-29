@@ -133,7 +133,7 @@ struct op_continue
 
     std::string to_string() const
     {
-        const auto jump_str = std::format("JUMP -> {} IF FALSE", jump);
+        const auto jump_str = std::format("JUMP -> {}", jump);
         return std::format(FORMAT2, "OP_CONTINUE", jump_str);
     }
     void apply(anzu::context& ctx) const;
@@ -145,7 +145,7 @@ struct op_jump_if_false
 
     std::string to_string() const
     {
-        const auto jump_str = std::format("JUMP -> {}", jump);
+        const auto jump_str = std::format("JUMP -> {} IF FALSE", jump);
         return std::format(FORMAT2, "OP_JUMP_IF_FALSE", jump_str);
     }
     void apply(anzu::context& ctx) const;
