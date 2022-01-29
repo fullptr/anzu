@@ -142,6 +142,10 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
     }
 }
 
+void compile_node(const node_for_stmt& node, compiler_context& ctx)
+{
+}
+
 void compile_node(const node_break_stmt&, compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_break{});

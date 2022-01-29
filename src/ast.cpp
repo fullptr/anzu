@@ -78,6 +78,15 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
                 print_node(*node.else_body, indent + 1);
             }
         },
+        [&](const node_for_stmt& node) {
+            anzu::print("{}For:\n", spaces);
+            anzu::print("{}- Bind:\n",spaces);
+            print_node(*node.var, indent + 1);
+            anzu::print("{}- Container:\n",spaces);
+            print_node(*node.container, indent + 1);
+            anzu::print("{}- Body:\n",spaces);
+            print_node(*node.body, indent + 1);
+        },
         [&](const node_break_stmt& node) {
             anzu::print("{}Break\n", spaces);
         },
