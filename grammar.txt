@@ -44,7 +44,7 @@ statement:
   | 'while' while_body
   | 'if' if_body
   | 'for' for_body
-  | 'return'
+  | 'return' [expression]
   | 'break'
   | 'continue'
   | function_identifier
