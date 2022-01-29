@@ -41,9 +41,9 @@ class context
     std::vector<frame> d_frames;
 
 public:
-    auto push() -> frame&;
-    auto pop() -> frame;
-    auto top(std::size_t index = 0) -> frame&;
+    auto push_frame() -> frame&;
+    auto pop_frame() -> void;
+    auto peek_frame(std::size_t index = 0) -> frame&;
 };
 
 }

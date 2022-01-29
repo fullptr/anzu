@@ -58,20 +58,18 @@ auto frame::print() const -> void
     }
 }
 
-auto context::push() -> frame&
+auto context::push_frame() -> frame&
 {
     d_frames.push_back({});
     return d_frames.back();
 }
 
-auto context::pop() -> frame
+auto context::pop_frame() -> void
 {
-    auto ret = d_frames.back();
     d_frames.pop_back();
-    return ret;
 }
 
-auto context::top(std::size_t index) -> frame&
+auto context::peek_frame(std::size_t index) -> frame&
 {
     return d_frames[d_frames.size() - index - 1];
 }
