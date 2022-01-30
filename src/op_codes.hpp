@@ -10,150 +10,75 @@
 
 namespace anzu {
 
-class runtime_context;
-
-constexpr auto FORMAT2 = std::string_view{"{:<30} {}"};
-constexpr auto FORMAT3 = std::string_view{"{:<30} {:<20} {}"};
-
-// Stack Manipulation
-
 struct op_push_const
 {
     anzu::object value;
-
-    std::string to_string() const { return std::format("OP_PUSH_CONST({})", value.to_repr()); }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_push_var
 {
     std::string name;
-
-    std::string to_string() const { return std::format("OP_PUSH_VAR({})", name); }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_pop
 {
-    std::string to_string() const { return "OP_POP"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 // 0 == OP_DUP, 1 == OP_OVER, ...
 struct op_copy_index
 {
     int index;
-
-    std::string to_string() const { return std::format("OP_COPY_INDEX({})", index); }
-    void apply(anzu::runtime_context& ctx) const;
 };
-
-// Store Manipulation
 
 struct op_store
 {
     std::string name;
-
-    std::string to_string() const { return std::format("OP_STORE({})", name); }
-    void apply(anzu::runtime_context& ctx) const;
 };
-
-// Control Flow / Functions
 
 struct op_if
 {
-    std::string to_string() const { return "OP_IF"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_if_end
 {
-    std::string to_string() const { return "OP_END_IF"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_else
 {
     std::intptr_t jump = -1;
-
-    std::string to_string() const
-    {
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, "OP_ELSE", jump_str);
-    }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_while
 {
-    std::string to_string() const { return "OP_WHILE"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_while_end
 {
     std::intptr_t jump = -1;
-
-    std::string to_string() const
-    {
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, "OP_END_WHILE", jump_str);
-    }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_for
 {
-    std::string to_string() const { return "OP_FOR"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_for_end
 {
     std::intptr_t jump = -1;
-
-    std::string to_string() const
-    {
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, "OP_END_FOR", jump_str);
-    }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_break
 {
     std::intptr_t jump = -1;
-
-    std::string to_string() const
-    {
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, "OP_BREAK", jump_str);
-    }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_continue
 {
     std::intptr_t jump = -1;
-
-    std::string to_string() const
-    {
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, "OP_CONTINUE", jump_str);
-    }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_jump_if_false
 {
     std::intptr_t jump = -1;
-
-    std::string to_string() const
-    {
-        const auto jump_str = std::format("JUMP -> {} IF FALSE", jump);
-        return std::format(FORMAT2, "OP_JUMP_IF_FALSE", jump_str);
-    }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_function_call
@@ -161,100 +86,64 @@ struct op_function_call
     std::string   name;
     std::intptr_t ptr;
     std::vector<std::string> arg_names;
-
-    std::string to_string() const { return std::format("OP_FUNCTION_CALL({})", name); }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_builtin_call
 {
     std::string name;
     anzu::builtin_function func;
-
-    std::string to_string() const { return std::format("OP_BUILTIN_CALL({})", name); }
-    void apply(anzu::runtime_context& ctx) const;
 };
-
-// Numerical Operators
 
 struct op_add
 {
-    std::string to_string() const { return "OP_ADD"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_sub
 {
-    std::string to_string() const { return "OP_SUB"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_mul
 {
-    std::string to_string() const { return "OP_MUL"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_div
 {
-    std::string to_string() const { return "OP_DIV"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_mod
 {
-    std::string to_string() const { return "OP_MOD"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
-
-// Logical Operators
 
 struct op_eq
 {
-    std::string to_string() const { return "OP_EQ"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_ne
 {
-    std::string to_string() const { return "OP_NE"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_lt
 {
-    std::string to_string() const { return "OP_LT"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_le
 {
-    std::string to_string() const { return "OP_LE"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_gt
 {
-    std::string to_string() const { return "OP_GT"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_ge
 {
-    std::string to_string() const { return "OP_GE"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_or
 {
-    std::string to_string() const { return "OP_OR"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_and
 {
-    std::string to_string() const { return "OP_AND"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_function
@@ -262,25 +151,14 @@ struct op_function
     std::string              name;
     std::vector<std::string> arg_names;
     std::intptr_t            jump;
-    std::string to_string() const
-    {
-        const auto func_str = std::format("OP_FUNCTION({})", name);
-        const auto jump_str = std::format("JUMP -> {}", jump);
-        return std::format(FORMAT2, func_str, jump_str);
-    }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_function_end
 {
-    std::string to_string() const { return "OP_FUNCTION_END"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op_return
 {
-    std::string to_string() const { return "OP_RETURN"; }
-    void apply(anzu::runtime_context& ctx) const;
 };
 
 struct op : std::variant<
@@ -319,6 +197,8 @@ struct op : std::variant<
     op_builtin_call
 >
 {};
+
+using program = std::vector<op>;
 
 auto to_string(const op& op_code) -> std::string;
 

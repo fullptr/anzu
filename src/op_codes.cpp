@@ -1,288 +1,129 @@
 #include "op_codes.hpp"
 #include "object.hpp"
-#include "print.hpp"
-#include "functions.hpp"
-#include "runtime.hpp"
 
 #include <string>
 
 namespace anzu {
 namespace {
 
-template <typename... Args>
-void verify(bool condition, std::string_view msg, Args&&... args)
-{
-    if (!condition) {
-        anzu::print(msg, std::forward<Args>(args)...);
-        std::exit(1);
-    }
-}
-
-void verify_stack(const runtime_context& ctx, int count, std::string_view name)
-{
-    const auto type = count != 1 ? "args" : "arg";
-    const auto err = "stack underflow: '{}' requires {} {}";
-    anzu::verify(ctx.size() >= count, err, name, count, type);
-}
-
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
-}
+constexpr auto FORMAT2 = std::string_view{"{:<30} {}"};
+constexpr auto FORMAT3 = std::string_view{"{:<30} {:<20} {}"};
 
-void op_push_const::apply(anzu::runtime_context& ctx) const
-{
-    ctx.push_value(value);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_push_var::apply(anzu::runtime_context& ctx) const
-{
-    auto& frame = ctx.peek_frame();
-    ctx.push_value(frame.memory.get(name));
-    frame.ptr += 1;
-}
-
-void op_pop::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 1, "pop");
-    ctx.pop_value();
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_copy_index::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, index + 1, "copy_index");
-    ctx.push_value(ctx.peek_value(index));
-    ctx.peek_frame().ptr += 1;
-}
-
-
-void op_store::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 1, "store");
-    auto& frame = ctx.peek_frame();
-    frame.memory.insert(name, ctx.pop_value());
-    frame.ptr += 1;
-}
-
-void op_if::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_if_end::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_else::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr = jump;
-}
-
-void op_while::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_while_end::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr = jump;
-}
-
-void op_for::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_for_end::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr = jump;
-}
-
-void op_break::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr = jump;
-}
-
-void op_continue::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr = jump;
-}
-
-void op_jump_if_false::apply(anzu::runtime_context& ctx) const
-{
-    if (ctx.pop_value().to_bool()) {
-        ctx.peek_frame().ptr += 1;
-    } else {
-        ctx.peek_frame().ptr = jump;
-    }
-}
-
-void op_function::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr = jump;
-}
-
-void op_function_end::apply(anzu::runtime_context& ctx) const
-{
-    ctx.push_value(anzu::null_object());
-    ctx.pop_frame();
-}
-
-void op_return::apply(anzu::runtime_context& ctx) const
-{
-    ctx.pop_frame();
-}
-
-void op_function_call::apply(anzu::runtime_context& ctx) const
-{
-    ctx.peek_frame().ptr += 1; // Position after function call
-
-    auto& frame = ctx.push_frame(); 
-    frame.ptr = ptr; // Jump into the function
-
-    // Pop elements off the stack and load them into the new scope
-    for (const auto& arg : arg_names | std::views::reverse) {
-        frame.memory.insert(arg, ctx.pop_value());
-    }
-}
-
-void op_builtin_call::apply(anzu::runtime_context& ctx) const
-{
-    func(ctx);
-    ctx.peek_frame().ptr += 1;
-}
-
-template <typename A, typename B>
-concept addable = requires(A a, B b) { { a + b }; };
-
-void op_add::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "+");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a + b);
-    ctx.peek_frame().ptr += 1;
-}
-
-template <typename A, typename B>
-concept subtractable = requires(A a, B b) { { a - b }; };
-
-void op_sub::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "-");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a - b);
-    ctx.peek_frame().ptr += 1;
-}
-
-template <typename A, typename B>
-concept multipliable = requires(A a, B b) { { a * b }; };
-
-void op_mul::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "*");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a * b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_div::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "/");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a / b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_mod::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "%");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a % b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_eq::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "==");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a == b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_ne::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "!=");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a != b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_lt::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "<");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a < b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_le::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "<=");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a <= b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_gt::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, ">");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a > b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_ge::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, ">=");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a >= b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_or::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "or");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a || b);
-    ctx.peek_frame().ptr += 1;
-}
-
-void op_and::apply(anzu::runtime_context& ctx) const
-{
-    verify_stack(ctx, 2, "and");
-    auto b = ctx.pop_value();
-    auto a = ctx.pop_value();
-    ctx.push_value(a && b);
-    ctx.peek_frame().ptr += 1;
 }
 
 auto to_string(const op& op_code) -> std::string
 {
-    return std::visit([](const auto& o) { return o.to_string(); }, op_code);
+    return std::visit(overloaded {
+        [&](const op_push_const& op) {
+            return std::format("OP_PUSH_CONST({})", op.value.to_repr());
+        },
+        [&](const op_push_var& op) {
+            return std::format("OP_PUSH_VAR({})", op.name);
+        },
+        [&](const op_pop& op) {
+            return std::string{"OP_POP"};
+        },
+        [&](const op_copy_index& op) {
+            return std::format("OP_COPY_INDEX({})", op.index);
+        },
+        [&](const op_store& op) {
+            return std::format("OP_STORE({})", op.name);
+        },
+        [&](const op_if& op) {
+            return std::string{"OP_IF"};
+        },
+        [&](const op_if_end& op) {
+            return std::string{"OP_END_IF"};
+        },
+        [&](const op_else& op) {
+            const auto jump_str = std::format("JUMP -> {}", op.jump);
+            return std::format(FORMAT2, "OP_ELSE", jump_str);
+        },
+        [&](const op_while& op) {
+            return std::string{"OP_WHILE"};
+        },
+        [&](const op_while_end& op) {
+            const auto jump_str = std::format("JUMP -> {}", op.jump);
+            return std::format(FORMAT2, "OP_END_WHILE", jump_str);
+        },
+        [&](const op_for& op) {
+            return std::string{"OP_FOR"};
+        },
+        [&](const op_for_end& op) {
+            const auto jump_str = std::format("JUMP -> {}", op.jump);
+            return std::format(FORMAT2, "OP_END_FOR", jump_str);
+        },
+        [&](const op_break& op) {
+            const auto jump_str = std::format("JUMP -> {}", op.jump);
+            return std::format(FORMAT2, "OP_BREAK", jump_str);
+        },
+        [&](const op_continue& op) {
+            const auto jump_str = std::format("JUMP -> {}", op.jump);
+            return std::format(FORMAT2, "OP_CONTINUE", jump_str);
+        },
+        [&](const op_jump_if_false& op) {
+            const auto jump_str = std::format("JUMP -> {} IF FALSE", op.jump);
+            return std::format(FORMAT2, "OP_JUMP_IF_FALSE", jump_str);
+        },
+        [&](const op_function& op) {
+            const auto func_str = std::format("OP_FUNCTION({})", op.name);
+            const auto jump_str = std::format("JUMP -> {}", op.jump);
+            return std::format(FORMAT2, func_str, jump_str);
+        },
+        [&](const op_function_end& op) {
+            return std::string{"OP_FUNCTION_END"};
+        },
+        [&](const op_return& op) {
+            return std::string{"OP_RETURN"};
+        },
+        [&](const op_function_call& op) {
+            return std::format("OP_FUNCTION_CALL({})", op.name);
+        },
+        [&](const op_builtin_call& op) {
+            return std::format("OP_BUILTIN_CALL({})", op.name);
+        },
+        [&](const op_add& op) {
+            return std::string{"OP_ADD"};
+        },
+        [&](const op_sub& op) {
+            return std::string{"OP_SUB"};
+        },
+        [&](const op_mul& op) {
+            return std::string{"OP_MUL"};
+        },
+        [&](const op_div& op) {
+            return std::string{"OP_DIV"};
+        },
+        [&](const op_mod& op) {
+            return std::string{"OP_MOD"};
+        },
+        [&](const op_eq& op) {
+            return std::string{"OP_EQ"};
+        },
+        [&](const op_ne& op) {
+            return std::string{"OP_NE"};
+        },
+        [&](const op_lt& op) {
+            return std::string{"OP_LT"};
+        },
+        [&](const op_le& op) {
+            return std::string{"OP_LE"};
+        },
+        [&](const op_gt& op) {
+            return std::string{"OP_GT"};
+        },
+        [&](const op_ge& op) {
+            return std::string{"OP_GE"};
+        },
+        [&](const op_or& op) {
+            return std::string{"OP_OR"};
+        },
+        [&](const op_and& op) {
+            return std::string{"OP_AND"};
+        }
+    }, op_code);
 }
 
 }
