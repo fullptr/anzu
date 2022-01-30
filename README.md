@@ -53,6 +53,33 @@ print(4 + 5)
     ```
 * All the common arithmetic, comparison and logical operators. More will be implemented.
 
+## The Pipeline
+The way this langauage is processed and ran is similar to other langages. The lexer, parser, compiler and runtime modules are completely separate, and act as a pipeline by each one outputting a representation that the next one can understand. Below is a diagram showing how everything fits together.
+
+
+```
+Processing Pipeline
+
+  Input
+   |
+Lexer    -- lexer.hpp    : Converts a .az file into a vector of tokens
+   |
+   |
+   |
+Parser   -- parser.hpp   : Converts a vector of tokens into an AST
+   |
+   |     -- ast.hpp      : Definitions of AST nodes and utility
+   |
+Compiler -- compiler.hpp : Converts an AST into a program
+   |
+   |     -- program.hpp  : Definitions of program op codes and utility
+   |
+Runtime  -- runtime.hpp  : Executes the program
+   |
+  Output
+
+```
+
 # Upcoming Features
 * Static type checking
 * Maps (dictionaries)
