@@ -1,6 +1,6 @@
 #pragma once
 #include "object.hpp"
-#include "op_codes.hpp"
+#include "program.hpp"
 
 #include <stack>
 #include <unordered_map>

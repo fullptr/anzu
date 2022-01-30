@@ -1,6 +1,6 @@
 #pragma once
 #include "ast.hpp"
-#include "op_codes.hpp"
+#include "program.hpp"
 
 #include <memory>
 #include <vector>
@@ -23,6 +23,6 @@ struct compiler_context
     std::unordered_map<std::string, function_def> functions;
 };
 
-auto compile(const anzu::node_stmt_ptr& root) -> std::vector<anzu::op>;
+auto compile(const anzu::node_stmt_ptr& root) -> anzu::program;
 
 }

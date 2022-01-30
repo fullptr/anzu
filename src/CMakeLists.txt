@@ -10,7 +10,7 @@ add_executable(anzu
                parser.cpp
                compiler.cpp
                runtime.cpp
-               op_codes.cpp
+               program.cpp
                object.cpp
                functions.cpp
                vocabulary.cpp)

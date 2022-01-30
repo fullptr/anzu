@@ -1,7 +1,7 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "compiler.hpp"
-#include "op_codes.hpp"
+#include "program.hpp"
 #include "runtime.hpp"
 #include "print.hpp"
 
