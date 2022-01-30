@@ -12,7 +12,6 @@ enum class token_type
     number,
     string
 };
-auto to_string(token_type type) -> std::string;
 
 struct token
 {
@@ -23,5 +22,7 @@ struct token
 };
 
 auto lex(const std::string& file) -> std::vector<anzu::token>;
+auto to_string(token_type type) -> std::string;
+auto print_tokens(const std::vector<anzu::token>& tokens) -> void;
 
 }

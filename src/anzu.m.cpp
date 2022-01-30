@@ -1,23 +1,10 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "compiler.hpp"
-#include "program.hpp"
 #include "runtime.hpp"
 #include "print.hpp"
 
 #include <string>
-#include <variant>
-
-void print_tokens(const std::vector<anzu::token>& tokens)
-{
-    for (const auto& token : tokens) {
-        const auto text = std::format("'{}'", token.text);
-        anzu::print(
-            "{:<10} - {:<20} {:<5} {:<5}\n",
-            anzu::to_string(token.type), text, token.line, token.col
-        );
-    }
-}
 
 void print_usage()
 {
