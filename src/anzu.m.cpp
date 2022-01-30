@@ -1,53 +1,10 @@
-#include "stack_frame.hpp"
-#include "op_codes.hpp"
-#include "print.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "compiler.hpp"
+#include "runtime.hpp"
+#include "print.hpp"
 
 #include <string>
-#include <variant>
-
-void print_tokens(const std::vector<anzu::token>& tokens)
-{
-    for (const auto& token : tokens) {
-        const auto text = std::format("'{}'", token.text);
-        anzu::print(
-            "{:<10} - {:<20} {:<5} {:<5}\n",
-            anzu::to_string(token.type), text, token.line, token.col
-        );
-    }
-}
-
-void print_program(const std::vector<anzu::op>& program)
-{
-    int lineno = 0;
-    for (const auto& op : program) {
-        anzu::print("{:>4} - {}\n", lineno++, op);
-    }
-}
-
-void run_program(const std::vector<anzu::op>& program)
-{
-    anzu::context ctx;
-    ctx.push({});
-
-    while (ctx.top().ptr() < std::ssize(program)) {
-        program[ctx.top().ptr()].apply(ctx);
-    }
-}
-
-void run_program_debug(const std::vector<anzu::op>& program)
-{
-    anzu::context ctx;
-    ctx.push({});
-
-    while (ctx.top().ptr() < std::ssize(program)) {
-        const auto& op = program[ctx.top().ptr()];
-        anzu::print("{:>4} - {}\n", ctx.top().ptr(), op);
-        op.apply(ctx);
-    }
-}
 
 void print_usage()
 {
@@ -79,24 +36,24 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    const auto root = anzu::parse(tokens);
+    const auto ast = anzu::parse(tokens);
     if (mode == "parse") {
-        print_node(*root);
+        print_node(*ast);
         return 0;
     }
 
-    const auto program = anzu::compile(root);
+    const auto program = anzu::compile(ast);
     if (mode == "com") {
-        print_program(program);
+        anzu::print_program(program);
         return 0;
     }
 
     if (mode == "run") {
-        run_program(program);
+        anzu::run_program(program);
         return 0;
     }
     else if (mode == "debug") {
-        run_program_debug(program);
+        anzu::run_program_debug(program);
         return 0;
     }
 

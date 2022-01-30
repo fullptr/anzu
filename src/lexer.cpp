@@ -153,18 +153,6 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
 
 }
 
-auto to_string(token_type type) -> std::string
-{
-    switch (type) {
-        break; case token_type::keyword: { return "keyword"; };
-        break; case token_type::symbol:  { return "symbol"; };
-        break; case token_type::name:    { return "name"; };
-        break; case token_type::number:  { return "number"; };
-        break; case token_type::string:  { return "string"; };
-        break; default:                  { return "UNKNOWN"; };
-    }
-}
-
 auto lex(const std::string& file) -> std::vector<anzu::token>
 {
     // Loop over the lines in the program, and then split each line into tokens.
@@ -178,6 +166,29 @@ auto lex(const std::string& file) -> std::vector<anzu::token>
         ++lineno;
     }
     return tokens;
+}
+
+auto to_string(token_type type) -> std::string
+{
+    switch (type) {
+        break; case token_type::keyword: { return "keyword"; };
+        break; case token_type::symbol:  { return "symbol"; };
+        break; case token_type::name:    { return "name"; };
+        break; case token_type::number:  { return "number"; };
+        break; case token_type::string:  { return "string"; };
+        break; default:                  { return "UNKNOWN"; };
+    }
+}
+
+auto print_tokens(const std::vector<anzu::token>& tokens) -> void
+{
+    for (const auto& token : tokens) {
+        const auto text = std::format("'{}'", token.text);
+        anzu::print(
+            "{:<10} - {:<20} {:<5} {:<5}\n",
+            anzu::to_string(token.type), text, token.line, token.col
+        );
+    }
 }
 
 }
