@@ -67,13 +67,18 @@ auto runtime_context::size() const -> std::size_t
     return d_values.size();
 }
 
+auto apply_op(runtime_context& ctx, const op& op_code) -> void
+{
+    std::visit([&](const auto& op) { op.apply(ctx); }, op_code);
+}
+
 auto run_program(const std::vector<anzu::op>& program) -> void
 {
     runtime_context ctx;
     ctx.push_frame();
 
     while (ctx.peek_frame().ptr < std::ssize(program)) {
-        program[ctx.peek_frame().ptr].apply(ctx);
+        apply_op(ctx, program[ctx.peek_frame().ptr]);
     }
 }
 
@@ -84,8 +89,8 @@ auto run_program_debug(const std::vector<anzu::op>& program) -> void
 
     while (ctx.peek_frame().ptr < std::ssize(program)) {
         const auto& op = program[ctx.peek_frame().ptr];
-        anzu::print("{:>4} - {}\n", ctx.peek_frame().ptr, op);
-        op.apply(ctx);
+        anzu::print("{:>4} - {}\n", ctx.peek_frame().ptr, anzu::to_string(op));
+        apply_op(ctx, program[ctx.peek_frame().ptr]);
     }
 }
 

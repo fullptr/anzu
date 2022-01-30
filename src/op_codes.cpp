@@ -280,4 +280,9 @@ void op_and::apply(anzu::runtime_context& ctx) const
     ctx.peek_frame().ptr += 1;
 }
 
+auto to_string(const op& op_code) -> std::string
+{
+    return std::visit([](const auto& o) { return o.to_string(); }, op_code);
+}
+
 }

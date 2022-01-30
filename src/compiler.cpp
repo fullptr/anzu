@@ -23,14 +23,14 @@ auto link_up_jumps(
     -> void
 {
     // Jump past the end if false
-    ctx.program[loop_do].as<anzu::op_jump_if_false>().jump = loop_end + 1;
+    std::get<anzu::op_jump_if_false>(ctx.program[loop_do]).jump = loop_end + 1;
         
     // Only set unset jumps, there may be other already set from nested loops
     for (std::intptr_t idx = loop_do + 1; idx != loop_end; ++idx) {
-        if (auto op = ctx.program[idx].get_if<anzu::op_break>(); op && op->jump == -1) {
+        if (auto op = std::get_if<anzu::op_break>(&ctx.program[idx]); op && op->jump == -1) {
             op->jump = loop_end + 1;
         }
-        else if (auto op = ctx.program[idx].get_if<anzu::op_continue>(); op && op->jump == -1) {
+        else if (auto op = std::get_if<anzu::op_continue>(&ctx.program[idx]); op && op->jump == -1) {
             op->jump = loop_begin;
         }
     }
@@ -80,19 +80,19 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
 {
     compile_node(*node.lhs, ctx);
     compile_node(*node.rhs, ctx);
-    if      (node.op == "+")  { ctx.program.push_back(anzu::op_add{}); }
-    else if (node.op == "-")  { ctx.program.push_back(anzu::op_sub{}); }
-    else if (node.op == "*")  { ctx.program.push_back(anzu::op_mul{}); }
-    else if (node.op == "/")  { ctx.program.push_back(anzu::op_div{}); }
-    else if (node.op == "%")  { ctx.program.push_back(anzu::op_mod{}); }
-    else if (node.op == "<")  { ctx.program.push_back(anzu::op_lt{}); }
-    else if (node.op == "<=") { ctx.program.push_back(anzu::op_le{}); }
-    else if (node.op == ">")  { ctx.program.push_back(anzu::op_gt{}); }
-    else if (node.op == ">=") { ctx.program.push_back(anzu::op_ge{}); }
-    else if (node.op == "==") { ctx.program.push_back(anzu::op_eq{}); }
-    else if (node.op == "!=") { ctx.program.push_back(anzu::op_ne{}); }
-    else if (node.op == "||") { ctx.program.push_back(anzu::op_or{}); }
-    else if (node.op == "&&") { ctx.program.push_back(anzu::op_and{}); }
+    if      (node.op == "+")  { ctx.program.emplace_back(anzu::op_add{}); }
+    else if (node.op == "-")  { ctx.program.emplace_back(anzu::op_sub{}); }
+    else if (node.op == "*")  { ctx.program.emplace_back(anzu::op_mul{}); }
+    else if (node.op == "/")  { ctx.program.emplace_back(anzu::op_div{}); }
+    else if (node.op == "%")  { ctx.program.emplace_back(anzu::op_mod{}); }
+    else if (node.op == "<")  { ctx.program.emplace_back(anzu::op_lt{}); }
+    else if (node.op == "<=") { ctx.program.emplace_back(anzu::op_le{}); }
+    else if (node.op == ">")  { ctx.program.emplace_back(anzu::op_gt{}); }
+    else if (node.op == ">=") { ctx.program.emplace_back(anzu::op_ge{}); }
+    else if (node.op == "==") { ctx.program.emplace_back(anzu::op_eq{}); }
+    else if (node.op == "!=") { ctx.program.emplace_back(anzu::op_ne{}); }
+    else if (node.op == "||") { ctx.program.emplace_back(anzu::op_or{}); }
+    else if (node.op == "&&") { ctx.program.emplace_back(anzu::op_and{}); }
     else {
         anzu::print("syntax error: unknown binary operator: '{}'\n", node.op);
         std::exit(1);
@@ -150,10 +150,10 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 
     ctx.program.emplace_back(anzu::op_if_end{});
     if (else_pos == -1) {
-        ctx.program[do_pos].as<anzu::op_jump_if_false>().jump = std::ssize(ctx.program); // Jump past the end if false
+        std::get<anzu::op_jump_if_false>(ctx.program[do_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
     } else {
-        ctx.program[do_pos].as<anzu::op_jump_if_false>().jump = else_pos + 1; // Jump into the else block if false
-        ctx.program[else_pos].as<anzu::op_else>().jump = std::ssize(ctx.program); // Jump past the end if false
+        std::get<anzu::op_jump_if_false>(ctx.program[do_pos]).jump = else_pos + 1; // Jump into the else block if false
+        std::get<anzu::op_else>(ctx.program[else_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
     }
 }
 
@@ -247,7 +247,7 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
     const auto end_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_function_end{});
 
-    ctx.program[start_pos].as<anzu::op_function>().jump = end_pos + 1;
+    std::get<anzu::op_function>(ctx.program[start_pos]).jump = end_pos + 1;
 }
 
 void compile_node(const node_function_call_stmt& node, compiler_context& ctx)

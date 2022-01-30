@@ -6,6 +6,7 @@
 #include <format>
 #include <vector>
 #include <string>
+#include <string_view>
 
 namespace anzu {
 
@@ -282,87 +283,43 @@ struct op_return
     void apply(anzu::runtime_context& ctx) const;
 };
 
-class op
-{
-    using op_type = std::variant<
-        op_push_const,
-        op_push_var,
-        op_pop,
-        op_copy_index,
+struct op : std::variant<
+    op_push_const,
+    op_push_var,
+    op_pop,
+    op_copy_index,
+    op_store,
+    op_if,
+    op_if_end,
+    op_else,
+    op_while,
+    op_while_end,
+    op_for,
+    op_for_end,
+    op_break,
+    op_continue,
+    op_jump_if_false,
+    op_add,
+    op_sub,
+    op_mul,
+    op_div,
+    op_mod,
+    op_eq,
+    op_ne,
+    op_lt,
+    op_le,
+    op_gt,
+    op_ge,
+    op_or,
+    op_and,
+    op_function,
+    op_function_end,
+    op_return,
+    op_function_call,
+    op_builtin_call
+>
+{};
 
-        // Store Manipulation
-        op_store,
-
-        // Control Flow
-        op_if,
-        op_if_end,
-        op_else,
-        op_while,
-        op_while_end,
-        op_for,
-        op_for_end,
-        op_break,
-        op_continue,
-        op_jump_if_false,
-
-        // Numerical Operators
-        op_add,
-        op_sub,
-        op_mul,
-        op_div,
-        op_mod,
-
-        // Logical Operators
-        op_eq,
-        op_ne,
-        op_lt,
-        op_le,
-        op_gt,
-        op_ge,
-        op_or,
-        op_and,
-
-        op_function,
-        op_function_end,
-        op_return,
-        op_function_call,
-        op_builtin_call
-    >;
-
-    op_type d_type;
-
-public:
-    template <typename Op>
-    op(const Op& op_type) : d_type(op_type) {}
-
-    template <typename Op>
-    Op* get_if() { return std::get_if<Op>(&d_type); }
-
-    template <typename Op>
-    Op& as() {
-        auto* ret = get_if<Op>();
-        if (ret == nullptr) {
-            anzu::print("parser error: op code did not contain the expected type\n");
-            std::exit(1);
-        }
-        return *ret;
-    }
-
-    inline std::string to_string() const {
-        return std::visit([](auto&& o) { return o.to_string(); }, d_type);
-    }
-
-    inline void apply(anzu::runtime_context& ctx) const {
-        return std::visit([&](auto&& o) { o.apply(ctx); }, d_type);
-    }
-};
+auto to_string(const op& op_code) -> std::string;
 
 }
-
-template <> struct std::formatter<anzu::op> : std::formatter<std::string> {
-    auto format(const anzu::op& op, auto& ctx) {
-        return std::formatter<std::string>::format(
-            std::format("{}", op.to_string()), ctx
-        );
-    }
-};

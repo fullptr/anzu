@@ -23,7 +23,7 @@ void print_program(const std::vector<anzu::op>& program)
 {
     int lineno = 0;
     for (const auto& op : program) {
-        anzu::print("{:>4} - {}\n", lineno++, op);
+        anzu::print("{:>4} - {}\n", lineno++, anzu::to_string(op));
     }
 }
 
