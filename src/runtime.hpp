@@ -44,7 +44,7 @@ public:
 
 auto apply_op(runtime_context& ctx, const op& op_code) -> void;
 
-auto run_program(const std::vector<anzu::op>& program) -> void;
-auto run_program_debug(const std::vector<anzu::op>& program) -> void;
+auto run_program(const anzu::program& program) -> void;
+auto run_program_debug(const anzu::program& program) -> void;
 
 }

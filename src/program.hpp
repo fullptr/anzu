@@ -201,5 +201,6 @@ struct op : std::variant<
 using program = std::vector<op>;
 
 auto to_string(const op& op_code) -> std::string;
+auto print_program(const anzu::program& program) -> void;
 
 }

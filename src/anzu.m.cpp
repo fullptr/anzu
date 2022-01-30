@@ -19,14 +19,6 @@ void print_tokens(const std::vector<anzu::token>& tokens)
     }
 }
 
-void print_program(const std::vector<anzu::op>& program)
-{
-    int lineno = 0;
-    for (const auto& op : program) {
-        anzu::print("{:>4} - {}\n", lineno++, anzu::to_string(op));
-    }
-}
-
 void print_usage()
 {
     anzu::print("usage: anzu.exe <program_file> (lex|parse|com|debug|run)\n\n");
@@ -57,15 +49,15 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    const auto root = anzu::parse(tokens);
+    const auto ast = anzu::parse(tokens);
     if (mode == "parse") {
-        print_node(*root);
+        print_node(*ast);
         return 0;
     }
 
-    const auto program = anzu::compile(root);
+    const auto program = anzu::compile(ast);
     if (mode == "com") {
-        print_program(program);
+        anzu::print_program(program);
         return 0;
     }
 

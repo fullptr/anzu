@@ -274,7 +274,7 @@ auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
 
 }
 
-auto compile(const std::unique_ptr<node_stmt>& root) -> std::vector<anzu::op>
+auto compile(const std::unique_ptr<node_stmt>& root) -> anzu::program
 {
     anzu::compiler_context ctx;
     compile_node(*root, ctx);

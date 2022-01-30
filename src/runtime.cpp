@@ -88,7 +88,7 @@ auto runtime_context::size() const -> std::size_t
     return d_values.size();
 }
 
-auto run_program(const std::vector<anzu::op>& program) -> void
+auto run_program(const anzu::program& program) -> void
 {
     runtime_context ctx;
     ctx.push_frame();
@@ -98,7 +98,7 @@ auto run_program(const std::vector<anzu::op>& program) -> void
     }
 }
 
-auto run_program_debug(const std::vector<anzu::op>& program) -> void
+auto run_program_debug(const anzu::program& program) -> void
 {
     anzu::runtime_context ctx;
     ctx.push_frame();

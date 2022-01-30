@@ -19,7 +19,7 @@ struct compiler_context
         std::intptr_t ptr;
     };
 
-    std::vector<anzu::op> program;
+    anzu::program program;
     std::unordered_map<std::string, function_def> functions;
 };
 

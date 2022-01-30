@@ -126,4 +126,12 @@ auto to_string(const op& op_code) -> std::string
     }, op_code);
 }
 
+auto print_program(const anzu::program& program) -> void
+{
+    int lineno = 0;
+    for (const auto& op : program) {
+        anzu::print("{:>4} - {}\n", lineno++, anzu::to_string(op));
+    }
+}
+
 }
