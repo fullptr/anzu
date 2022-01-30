@@ -88,28 +88,6 @@ auto runtime_context::size() const -> std::size_t
     return d_values.size();
 }
 
-auto run_program(const anzu::program& program) -> void
-{
-    runtime_context ctx;
-    ctx.push_frame();
-
-    while (ctx.peek_frame().ptr < std::ssize(program)) {
-        apply_op(ctx, program[ctx.peek_frame().ptr]);
-    }
-}
-
-auto run_program_debug(const anzu::program& program) -> void
-{
-    anzu::runtime_context ctx;
-    ctx.push_frame();
-
-    while (ctx.peek_frame().ptr < std::ssize(program)) {
-        const auto& op = program[ctx.peek_frame().ptr];
-        anzu::print("{:>4} - {}\n", ctx.peek_frame().ptr, anzu::to_string(op));
-        apply_op(ctx, program[ctx.peek_frame().ptr]);
-    }
-}
-
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
@@ -289,6 +267,28 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.peek_frame().ptr += 1;
         }
     }, op_code);
+}
+
+auto run_program(const anzu::program& program) -> void
+{
+    runtime_context ctx;
+    ctx.push_frame();
+
+    while (ctx.peek_frame().ptr < std::ssize(program)) {
+        apply_op(ctx, program[ctx.peek_frame().ptr]);
+    }
+}
+
+auto run_program_debug(const anzu::program& program) -> void
+{
+    anzu::runtime_context ctx;
+    ctx.push_frame();
+
+    while (ctx.peek_frame().ptr < std::ssize(program)) {
+        const auto& op = program[ctx.peek_frame().ptr];
+        anzu::print("{:>4} - {}\n", ctx.peek_frame().ptr, anzu::to_string(op));
+        apply_op(ctx, program[ctx.peek_frame().ptr]);
+    }
 }
 
 }

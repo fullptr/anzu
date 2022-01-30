@@ -42,8 +42,6 @@ public:
     auto size() const -> std::size_t;
 };
 
-auto apply_op(runtime_context& ctx, const op& op_code) -> void;
-
 auto run_program(const anzu::program& program) -> void;
 auto run_program_debug(const anzu::program& program) -> void;
 

@@ -7,8 +7,24 @@
 #include <string_view>
 #include <optional>
 #include <tuple>
+#include <unordered_map>
 
 namespace anzu {
+
+// Struct used to store information while compiling an AST. Contains the output program
+// as well as information such as function definitions.
+struct compiler_context
+{
+    struct function_def
+    {
+        std::vector<std::string> arg_names;
+        std::intptr_t ptr;
+    };
+
+    anzu::program program;
+    std::unordered_map<std::string, function_def> functions;
+};
+
 namespace {
 
 // Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
