@@ -64,7 +64,7 @@ Processing Pipeline
    |
 Lexer    -- lexer.hpp    : Converts a .az file into a vector of tokens
    |
-   |
+   |     -- token.hpp    : Definition of a token and utility
    |
 Parser   -- parser.hpp   : Converts a vector of tokens into an AST
    |
@@ -78,6 +78,14 @@ Runtime  -- runtime.hpp  : Executes the program
    |
   Output
 
+Common Modules
+-- functions.hpp   : Definitions of builtin functions
+-- object.hpp      : Definition of an object in anzu
+-- vocabulary.hpp  : Definitions of keywords and symbols
+
+Utility Modules (in src/utility)
+-- print.hpp       : Wrapper for std::format, similar to {fmt}
+-- peekstream.hpp  : A data structure used in the lexer
 ```
 
 # Upcoming Features

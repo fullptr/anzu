@@ -1,5 +1,5 @@
 #pragma once
-#include "lexer.hpp"
+#include "token.hpp"
 #include "ast.hpp"
 
 namespace anzu {
