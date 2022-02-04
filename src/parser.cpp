@@ -12,10 +12,6 @@
 
 namespace anzu {
 
-using token_iterator = std::vector<anzu::token>::const_iterator;
-
-// Context used while constructing an AST. Has non-owning pointers into the
-// tokens as well as keeping track of function names.
 struct parser_context
 {
     struct function_info
@@ -29,12 +25,6 @@ struct parser_context
 
 namespace {
 
-auto is_function(const parser_context& ctx) -> bool
-{
-    const auto& name = ctx.tokens.curr().text;
-    return ctx.functions.contains(name) || is_builtin(name);
-}
-
 template <typename... Args>
 [[noreturn]] void parser_error(const parser_context& ctx, std::string_view msg, Args&&... args)
 {
@@ -44,15 +34,56 @@ template <typename... Args>
     std::exit(1);
 }
 
-void check_argc(
+auto consume_only(parser_context& ctx, std::string_view tok) -> void
+{
+    const auto& token = ctx.tokens.curr();
+    if (!ctx.tokens.consume_maybe(tok)) {
+        parser_error(ctx, "expected '{}', got '{}'", tok, token.text);
+    }
+}
+
+template <typename Func>
+auto comma_separated_list(
+    parser_context& ctx, std::string_view sentinel, Func&& callback
+)
+    -> void
+{
+    auto& tokens = ctx.tokens;
+    bool expect_comma = false;
+    while (tokens.valid() && tokens.curr().text != sentinel) {
+        if (expect_comma) {
+            if (!tokens.consume_maybe(tk_comma)) { // skip commas, enforce later
+                parser_error(ctx, "expected comma while parsing list");
+            }
+        }
+        else {
+            callback();
+        }
+        expect_comma = !expect_comma;
+    }
+    if (!tokens.valid()) {
+        parser_error(ctx, "list literal never closed");
+    }
+    consume_only(ctx, sentinel);
+}
+
+auto is_function(const parser_context& ctx) -> bool
+{
+    const auto& name = ctx.tokens.curr().text;
+    return ctx.functions.contains(name) || is_builtin(name);
+}
+
+auto check_argc(
     const parser_context& ctx, std::string_view func, std::int64_t expected, std::int64_t actual
-){
+)
+    -> void
+{
     if (expected != actual) {
         parser_error(ctx, "function '{}' expected {} args, got {}", func, expected, actual);
     }
 }
 
-std::int64_t fetch_argc(const parser_context& ctx, const std::string& function_name)
+auto fetch_argc(const parser_context& ctx, const std::string& function_name) -> std::int64_t
 {
     if (auto it = ctx.functions.find(function_name); it != ctx.functions.end()) {
         return it->second.argc;
@@ -63,15 +94,6 @@ std::int64_t fetch_argc(const parser_context& ctx, const std::string& function_n
     }
 
     parser_error(ctx, "could not find function '{}'", function_name);
-}
-
-auto consume_only(parser_context& ctx, std::string_view tok) -> std::string
-{
-    const auto& token = ctx.tokens.curr();
-    if (!ctx.tokens.consume_maybe(tok)) {
-        parser_error(ctx, "expected '{}', got '{}'", tok, token.text);
-    }
-    return token.text;
 }
 
 auto handle_list_literal(parser_context& ctx) -> anzu::object;
@@ -103,30 +125,13 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
 auto handle_list_literal(parser_context& ctx) -> anzu::object
 {
     auto list = std::make_shared<std::vector<anzu::object>>();
-    auto& tokens = ctx.tokens;
-
-    bool expect_comma = false;
-    while (tokens.valid() && tokens.curr().text != tk_rbracket) {
-        if (expect_comma) {
-            if (!tokens.consume_maybe(tk_comma)) { // skip commas, enforce later
-                parser_error(ctx, "expected command in list literal");
-            }
+    comma_separated_list(ctx, tk_rbracket, [&]() {
+        auto obj = try_parse_literal(ctx);
+        if (!obj.has_value()) {
+            parser_error(ctx, "failed to parse string literal");
         }
-        else {
-            if (auto obj = try_parse_literal(ctx); obj.has_value()) {
-                list->push_back(*obj);            
-            }
-            else {
-                parser_error(ctx, "failed to parse string literal");
-            }
-        }
-        expect_comma = !expect_comma;
-    }
-    if (!tokens.valid()) {
-        parser_error(ctx, "list literal never closed");
-    }
-    consume_only(ctx, tk_rbracket);
-
+        list->push_back(obj.value());
+    });
     return { list };
 }
 
@@ -288,23 +293,13 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     }
     stmt.name = ctx.tokens.consume().text;
     consume_only(ctx, tk_lparen);
-    bool expect_comma = false;
-    while (ctx.tokens.valid() && ctx.tokens.curr().text != tk_rparen) {
-        if (expect_comma) {
-            if (!ctx.tokens.consume_maybe(tk_comma)) {
-                parser_error(ctx, "expected comma in function name list");
-            }
+    comma_separated_list(ctx, tk_rparen, [&] {
+        if (ctx.tokens.curr().type != token_type::name) {
+            parser_error(ctx, "failed to parse function signature");
         }
-        else {
-            if (ctx.tokens.curr().type != token_type::name) {
-                parser_error(ctx, "failed to parse function signature");
-            }
-            stmt.arg_names.push_back(ctx.tokens.consume().text);
-        }
-        expect_comma = !expect_comma;
-    }
+        stmt.arg_names.push_back(ctx.tokens.consume().text);
+    });
     ctx.functions[stmt.name] = { .argc=std::ssize(stmt.arg_names) };
-    consume_only(ctx, tk_rparen);
     consume_only(ctx, tk_do);
     stmt.body = parse_statement_list(ctx);
     consume_only(ctx, tk_end);
@@ -333,19 +328,9 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
     out.function_name = ctx.tokens.consume().text;
 
     consume_only(ctx, tk_lparen);
-    bool expect_comma = false;
-    while (ctx.tokens.valid() && ctx.tokens.curr().text != tk_rparen) {
-        if (expect_comma) {
-            if (!ctx.tokens.consume_maybe(tk_comma)) {
-                parser_error(ctx, "expected comma in function call arg list");
-            }
-        }
-        else {
-            out.args.push_back(parse_expression(ctx));
-        }
-        expect_comma = !expect_comma;
-    }
-    consume_only(ctx, tk_rparen);
+    comma_separated_list(ctx, tk_rparen, [&] {
+        out.args.push_back(parse_expression(ctx));
+    });
 
     const auto argc = fetch_argc(ctx, out.function_name);
     check_argc(ctx, out.function_name, argc, std::ssize(out.args));
