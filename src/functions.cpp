@@ -1,8 +1,7 @@
 #include "functions.hpp"
-#include "print.hpp"
 #include "object.hpp"
-
 #include "runtime.hpp"
+#include "utility/print.hpp"
 
 #include <unordered_map>
 #include <string>

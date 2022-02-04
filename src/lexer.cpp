@@ -1,7 +1,7 @@
 #include "lexer.hpp"
 #include "object.hpp"
-#include "print.hpp"
 #include "vocabulary.hpp"
+#include "utility/print.hpp"
 
 #include <algorithm>
 #include <ranges>

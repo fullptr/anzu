@@ -5,7 +5,7 @@
 #include <variant>
 #include <vector>
 
-#include "print.hpp"
+#include "utility/print.hpp"
 
 namespace anzu {
 
