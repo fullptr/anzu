@@ -1,6 +1,5 @@
 #include "object.hpp"
-#include "print.hpp"
-#include "print.hpp"
+#include "utility/print.hpp"
 
 #include <algorithm>
 #include <ranges>

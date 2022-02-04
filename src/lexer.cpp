@@ -1,7 +1,8 @@
 #include "lexer.hpp"
 #include "object.hpp"
-#include "print.hpp"
 #include "vocabulary.hpp"
+#include "utility/print.hpp"
+#include "utility/peekstream.hpp"
 
 #include <algorithm>
 #include <ranges>
@@ -12,56 +13,18 @@
 namespace anzu {
 namespace {
 
-using string_iter = std::string::const_iterator;
+using line_iterator = peekstream<std::string>;
 
-class line_iterator
+auto is_alphanumeric(const line_iterator& iter) -> bool
 {
-    string_iter d_curr;
-    string_iter d_end;
-    int         d_col;
+    return iter.valid() && (std::isalnum(iter.curr()) || iter.curr() == '_');
+}
 
-public:
-    line_iterator(const std::string& line)
-        : d_curr(line.begin()) , d_end(line.end()) , d_col(1)
-    {
-    }
-
-    auto valid() const -> bool { return d_curr != d_end; }
-    auto has_next() const -> bool { return std::next(d_curr) != d_end; }
-
-    auto curr() const -> char { return *d_curr; }
-    auto next() const -> char { return *std::next(d_curr); }
-    auto col() const -> int { return d_col; }
-
-    auto is_alphanumeric() const -> bool
-    {
-        return valid() && (std::isalpha(curr()) || std::isdigit(curr()) || curr() == '_');
-    }
-
-    auto consume() -> char
-    {
-        auto ret = curr();
-        ++d_curr;
-        ++d_col;
-        return ret;
-    }
-
-    auto consume_maybe(char c) -> bool
-    {
-        if (curr() == c) {
-            consume();
-            return true;
-        }
-        return false;
-    };
-    
-    auto move_to_next() -> bool
-    {
-        while (valid() && std::isspace(curr())) { consume(); }
-        return valid();
-    }
-};
-
+auto move_to_next(line_iterator& iter) -> bool
+{
+    while (iter.valid() && std::isspace(iter.curr())) { iter.consume(); }
+    return iter.valid();
+}
 
 template <typename... Args>
 [[noreturn]] void lexer_error(int lineno, int col, std::string_view msg, Args&&... args)
@@ -73,7 +36,7 @@ template <typename... Args>
 
 auto parse_string_literal(int lineno, line_iterator& iter) -> std::string
 {
-    const auto col = iter.col() - 1;
+    const auto col = iter.position();
     std::string return_value;
     while (true) {
         if (!iter.valid()) {
@@ -106,7 +69,7 @@ auto try_parse_symbol(line_iterator& iter) -> std::optional<std::string>
 auto parse_token(line_iterator& iter) -> std::string
 {
     std::string return_value;
-    while (iter.is_alphanumeric()) {
+    while (is_alphanumeric(iter)) {
         return_value += iter.consume();
     }
     return return_value;
@@ -119,8 +82,8 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
     };
 
     auto iter = line_iterator{line};
-    while (iter.move_to_next()) {
-        const int col = iter.col();
+    while (move_to_next(iter)) {
+        const int col = iter.position() + 1;
 
         if (iter.consume_maybe('"')) {
             const auto literal = parse_string_literal(lineno, iter);
@@ -166,29 +129,6 @@ auto lex(const std::string& file) -> std::vector<anzu::token>
         ++lineno;
     }
     return tokens;
-}
-
-auto to_string(token_type type) -> std::string
-{
-    switch (type) {
-        break; case token_type::keyword: { return "keyword"; };
-        break; case token_type::symbol:  { return "symbol"; };
-        break; case token_type::name:    { return "name"; };
-        break; case token_type::number:  { return "number"; };
-        break; case token_type::string:  { return "string"; };
-        break; default:                  { return "UNKNOWN"; };
-    }
-}
-
-auto print_tokens(const std::vector<anzu::token>& tokens) -> void
-{
-    for (const auto& token : tokens) {
-        const auto text = std::format("'{}'", token.text);
-        anzu::print(
-            "{:<10} - {:<20} {:<5} {:<5}\n",
-            anzu::to_string(token.type), text, token.line, token.col
-        );
-    }
 }
 
 }

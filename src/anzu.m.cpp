@@ -2,7 +2,7 @@
 #include "parser.hpp"
 #include "compiler.hpp"
 #include "runtime.hpp"
-#include "print.hpp"
+#include "utility/print.hpp"
 
 #include <string>
 

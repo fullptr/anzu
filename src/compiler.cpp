@@ -1,8 +1,8 @@
 #include "compiler.hpp"
 #include "lexer.hpp"
 #include "object.hpp"
-#include "print.hpp"
 #include "parser.hpp"
+#include "utility/print.hpp"
 
 #include <string_view>
 #include <optional>
