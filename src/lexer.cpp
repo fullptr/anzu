@@ -16,13 +16,13 @@ using string_iter = std::string::const_iterator;
 
 class line_iterator
 {
+    string_iter d_begin;
     string_iter d_curr;
     string_iter d_end;
-    int         d_col;
 
 public:
     line_iterator(const std::string& line)
-        : d_curr(line.begin()) , d_end(line.end()) , d_col(1)
+        : d_begin(line.begin()), d_curr(line.begin()) , d_end(line.end())
     {
     }
 
@@ -31,18 +31,12 @@ public:
 
     auto curr() const -> char { return *d_curr; }
     auto next() const -> char { return *std::next(d_curr); }
-    auto col() const -> int { return d_col; }
-
-    auto is_alphanumeric() const -> bool
-    {
-        return valid() && (std::isalpha(curr()) || std::isdigit(curr()) || curr() == '_');
-    }
+    auto position() const -> int { return std::distance(d_begin, d_curr); }
 
     auto consume() -> char
     {
         auto ret = curr();
         ++d_curr;
-        ++d_col;
         return ret;
     }
 
@@ -54,14 +48,18 @@ public:
         }
         return false;
     };
-    
-    auto move_to_next() -> bool
-    {
-        while (valid() && std::isspace(curr())) { consume(); }
-        return valid();
-    }
 };
 
+auto is_alphanumeric(const line_iterator& iter) -> bool
+{
+    return iter.valid() && (std::isalnum(iter.curr()) || iter.curr() == '_');
+}
+
+auto move_to_next(line_iterator& iter) -> bool
+{
+    while (iter.valid() && std::isspace(iter.curr())) { iter.consume(); }
+    return iter.valid();
+}
 
 template <typename... Args>
 [[noreturn]] void lexer_error(int lineno, int col, std::string_view msg, Args&&... args)
@@ -73,7 +71,7 @@ template <typename... Args>
 
 auto parse_string_literal(int lineno, line_iterator& iter) -> std::string
 {
-    const auto col = iter.col() - 1;
+    const auto col = iter.position();
     std::string return_value;
     while (true) {
         if (!iter.valid()) {
@@ -106,7 +104,7 @@ auto try_parse_symbol(line_iterator& iter) -> std::optional<std::string>
 auto parse_token(line_iterator& iter) -> std::string
 {
     std::string return_value;
-    while (iter.is_alphanumeric()) {
+    while (is_alphanumeric(iter)) {
         return_value += iter.consume();
     }
     return return_value;
@@ -119,8 +117,8 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
     };
 
     auto iter = line_iterator{line};
-    while (iter.move_to_next()) {
-        const int col = iter.col();
+    while (move_to_next(iter)) {
+        const int col = iter.position() + 1;
 
         if (iter.consume_maybe('"')) {
             const auto literal = parse_string_literal(lineno, iter);
