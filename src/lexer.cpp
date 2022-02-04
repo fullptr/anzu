@@ -2,6 +2,7 @@
 #include "object.hpp"
 #include "vocabulary.hpp"
 #include "utility/print.hpp"
+#include "utility/peekstream.hpp"
 
 #include <algorithm>
 #include <ranges>
@@ -12,43 +13,7 @@
 namespace anzu {
 namespace {
 
-using string_iter = std::string::const_iterator;
-
-class line_iterator
-{
-    string_iter d_begin;
-    string_iter d_curr;
-    string_iter d_end;
-
-public:
-    line_iterator(const std::string& line)
-        : d_begin(line.begin()), d_curr(line.begin()) , d_end(line.end())
-    {
-    }
-
-    auto valid() const -> bool { return d_curr != d_end; }
-    auto has_next() const -> bool { return std::next(d_curr) != d_end; }
-
-    auto curr() const -> char { return *d_curr; }
-    auto next() const -> char { return *std::next(d_curr); }
-    auto position() const -> int { return std::distance(d_begin, d_curr); }
-
-    auto consume() -> char
-    {
-        auto ret = curr();
-        ++d_curr;
-        return ret;
-    }
-
-    auto consume_maybe(char c) -> bool
-    {
-        if (curr() == c) {
-            consume();
-            return true;
-        }
-        return false;
-    };
-};
+using line_iterator = peekstream<std::string>;
 
 auto is_alphanumeric(const line_iterator& iter) -> bool
 {
