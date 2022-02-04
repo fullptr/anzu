@@ -49,17 +49,13 @@ auto comma_separated_list(
     -> void
 {
     auto& tokens = ctx.tokens;
-    bool expect_comma = false;
+    if (tokens.consume_maybe(sentinel)) { // Empty list
+        return;
+    }
+    callback(); // Parse first
     while (tokens.valid() && tokens.curr().text != sentinel) {
-        if (expect_comma) {
-            if (!tokens.consume_maybe(tk_comma)) { // skip commas, enforce later
-                parser_error(ctx, "expected comma while parsing list");
-            }
-        }
-        else {
-            callback();
-        }
-        expect_comma = !expect_comma;
+        consume_only(ctx, tk_comma);
+        callback();
     }
     if (!tokens.valid()) {
         parser_error(ctx, "list literal never closed");
@@ -125,7 +121,7 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
 auto handle_list_literal(parser_context& ctx) -> anzu::object
 {
     auto list = std::make_shared<std::vector<anzu::object>>();
-    comma_separated_list(ctx, tk_rbracket, [&]() {
+    comma_separated_list(ctx, tk_rbracket, [&] {
         auto obj = try_parse_literal(ctx);
         if (!obj.has_value()) {
             parser_error(ctx, "failed to parse string literal");
