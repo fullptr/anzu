@@ -26,4 +26,17 @@ auto print_tokens(const std::vector<anzu::token>& tokens) -> void
     }
 }
 
+tokenstream::tokenstream(const std::vector<token>& tokens)
+    : peekstream{tokens}
+{}
+
+auto tokenstream::consume_maybe(std::string_view text) -> bool
+{
+    if (curr().text == text) {
+        consume();
+        return true;
+    }
+    return false;
+}
+
 }

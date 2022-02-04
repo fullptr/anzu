@@ -22,8 +22,8 @@ public:
     auto valid() const -> bool { return d_curr != d_end; }
     auto has_next() const -> bool { return std::next(d_curr) != d_end; }
 
-    auto curr() const -> value_type { return *d_curr; }
-    auto next() const -> value_type { return *std::next(d_curr); }
+    auto curr() const -> const value_type& { return *d_curr; }
+    auto next() const -> const value_type& { return *std::next(d_curr); }
     auto position() const -> int { return std::distance(d_begin, d_curr) + 1; }
 
     auto consume() -> value_type
