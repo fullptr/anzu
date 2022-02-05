@@ -9,6 +9,7 @@ add_executable(anzu
                lexer.cpp
                token.cpp
                parser.cpp
+               types.cpp
                optimiser.cpp
                compiler.cpp
                runtime.cpp

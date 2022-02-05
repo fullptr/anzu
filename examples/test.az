@@ -1,2 +1,7 @@
 
-x = 2 * (3 + 1) / 2 + 10
+function foo(a: any, b: any) do
+    return a + b
+end
+
+x = foo("hello ", "world")
+println(x)

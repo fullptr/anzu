@@ -31,6 +31,7 @@ class tokenstream : public anzu::peekstream<std::vector<token>>
 public:
     tokenstream(const std::vector<token>& tokens);
     auto consume_maybe(std::string_view text) -> bool;
+    auto consume_only(std::string_view text) -> void;
 };
     
 }
