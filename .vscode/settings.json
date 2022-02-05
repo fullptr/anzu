@@ -76,6 +76,8 @@
         "variant": "cpp",
         "iostream": "cpp",
         "unordered_set": "cpp",
-        "*.rh": "cpp"
+        "*.rh": "cpp",
+        "memory_resource": "cpp",
+        "mutex": "cpp"
     }
 }

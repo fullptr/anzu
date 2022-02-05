@@ -1,5 +1,6 @@
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "optimiser.hpp"
 #include "compiler.hpp"
 #include "runtime.hpp"
 #include "utility/print.hpp"
@@ -8,7 +9,7 @@
 
 void print_usage()
 {
-    anzu::print("usage: anzu.exe <program_file> (lex|parse|com|debug|run)\n\n");
+    anzu::print("usage: anzu.exe <program_file> (lex|parse|com|debug|run) [-o]\n\n");
     anzu::print("The Anzu Programming Language\n\n");
     anzu::print("options:\n");
     anzu::print("    lex   - runs the lexer and prints the tokens\n");
@@ -16,6 +17,8 @@ void print_usage()
     anzu::print("    com   - runs the compiler and prints the bytecode\n");
     anzu::print("    debug - runs the program and prints each op code executed\n");
     anzu::print("    run   - runs the program\n");
+    anzu::print("flags:\n");
+    anzu::print("    -o    - optimises the AST before compiling\n");
 }
 
 int main(int argc, char** argv)
@@ -28,6 +31,14 @@ int main(int argc, char** argv)
     const auto file = std::string{argv[1]};
     const auto mode = std::string{argv[2]};
 
+    if (argc == 4) {
+        const auto flag = std::string{argv[3]};
+        if (flag != "-o") {
+            print_usage();
+            return 1;
+        }
+    }
+
     anzu::print("loading file '{}'\n", file);
 
     const auto tokens = anzu::lex(file);
@@ -36,7 +47,11 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    const auto ast = anzu::parse(tokens);
+    auto ast = anzu::parse(tokens);
+    if (argc == 4) {
+        anzu::optimise_ast(*ast);
+    }
+
     if (mode == "parse") {
         print_node(*ast);
         return 0;
