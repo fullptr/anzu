@@ -1,5 +1,2 @@
 
-
-if input() == 2 do
-    println("hello")
-end
+x = 2 * (3 + 1) / 2 + 10
