@@ -167,8 +167,8 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             frame.ptr = op.ptr; // Jump into the function
 
             // Pop elements off the stack and load them into the new scope
-            for (const auto& arg : op.arg_names | std::views::reverse) {
-                frame.memory.insert(arg, ctx.pop_value());
+            for (const auto& arg : op.sig.args | std::views::reverse) {
+                frame.memory.insert(arg.name, ctx.pop_value());
             }
         },
         [&](const op_builtin_call& op) {

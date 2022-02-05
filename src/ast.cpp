@@ -93,10 +93,10 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         },
         [&](const node_function_def_stmt& node) {
             anzu::print("{}Function: {}", spaces, node.name);
-            for (const auto& arg : node.arg_names) {
-                anzu::print(" {}", arg);
+            for (const auto& [name, type] : node.sig.args) {
+                anzu::print(" {}:{}", name, type);
             }
-            anzu::print("\n");
+            anzu::print(" -> {}\n", node.sig.return_type);
             print_node(*node.body, indent + 1);
         },
         [&](const node_function_call_stmt& node) {

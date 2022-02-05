@@ -1,9 +1,20 @@
 #pragma once
-// Builtin functions that can be called from scripts
-
 #include <string>
+#include <vector>
 
 namespace anzu {
+
+struct function_signature
+{
+    struct arg
+    {
+        std::string name;
+        std::string type = "any";
+    };
+
+    std::vector<arg> args;
+    std::string return_type = "any";
+};
 
 class runtime_context;
 using builtin_function = void(*)(anzu::runtime_context&);

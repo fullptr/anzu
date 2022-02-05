@@ -15,13 +15,8 @@ namespace anzu {
 
 struct parser_context
 {
-    struct function_info
-    {
-        std::int64_t argc;
-    };
-
     anzu::tokenstream tokens;
-    std::unordered_map<std::string, function_info> functions;
+    std::unordered_map<std::string, function_signature> functions;
     anzu::type_store types;
 };
 
@@ -73,7 +68,7 @@ auto check_argc(
 auto fetch_argc(const parser_context& ctx, const std::string& function_name) -> std::int64_t
 {
     if (auto it = ctx.functions.find(function_name); it != ctx.functions.end()) {
-        return it->second.argc;
+        return it->second.args.size();
     }
 
     if (anzu::is_builtin(function_name)) {
@@ -286,16 +281,28 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
         if (ctx.tokens.curr().type != token_type::name) {
             parser_error(ctx, "failed to parse function argument");
         }
-        stmt.arg_names.push_back(ctx.tokens.consume().text);
+        auto arg = function_signature::arg{};
+        arg.name = ctx.tokens.consume().text;
 
         if (ctx.tokens.consume_maybe(tk_colon)) {
             const auto type = ctx.tokens.consume();
             if (!ctx.types.is_valid_type(type)) {
                 parser_error(ctx, error_msg, stmt.name, type.text);
             }
+            arg.type = type.text;
         }
+
+        stmt.sig.args.push_back(arg);
     });
-    ctx.functions[stmt.name] = { .argc=std::ssize(stmt.arg_names) };
+    ctx.functions[stmt.name] = stmt.sig;
+
+    if (ctx.tokens.consume_maybe(tk_rarrow)) {
+        const auto type = ctx.tokens.consume();
+        if (!ctx.types.is_valid_type(type)) {
+            parser_error(ctx, error_msg, stmt.name, type.text);
+        }
+    }
+
     ctx.tokens.consume_only(tk_do);
     stmt.body = parse_statement_list(ctx);
     ctx.tokens.consume_only(tk_end);

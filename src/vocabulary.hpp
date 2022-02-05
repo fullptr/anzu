@@ -44,6 +44,7 @@ constexpr auto tk_period    = sv{"."};
 constexpr auto tk_rbracket  = sv{"]"};
 constexpr auto tk_rparen    = sv{")"};
 constexpr auto tk_sub       = sv{"-"};
+constexpr auto tk_rarrow    = sv{"->"};
 
 auto is_keyword  (std::string_view token) -> bool;
 auto is_sentinel (std::string_view token) -> bool;

@@ -2,6 +2,7 @@
 #include "lexer.hpp"
 #include "object.hpp"
 #include "parser.hpp"
+#include "functions.hpp"
 #include "utility/print.hpp"
 
 #include <string_view>
@@ -17,8 +18,8 @@ struct compiler_context
 {
     struct function_def
     {
-        std::vector<std::string> arg_names;
-        std::intptr_t ptr;
+        function_signature sig;
+        std::intptr_t      ptr;
     };
 
     anzu::program program;
@@ -71,7 +72,7 @@ void compile_function_call(
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
             .ptr=function_def.ptr + 1, // Jump into the function
-            .arg_names=function_def.arg_names
+            .sig=function_def.sig
         });
     }
     else {
@@ -255,8 +256,8 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
     const auto start_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_function{ .name=node.name, .arg_names=node.arg_names });
-    ctx.functions[node.name] = { .arg_names=node.arg_names ,.ptr=start_pos };
+    ctx.program.emplace_back(anzu::op_function{ .name=node.name, .sig=node.sig });
+    ctx.functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
     compile_node(*node.body, ctx);
 
