@@ -2,6 +2,3 @@
 function foo(a: any, b: any) -> any do
     return a + b
 end
-
-x = foo("hello ", "world")
-println(x)
