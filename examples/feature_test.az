@@ -85,8 +85,8 @@ for x in [1, 2, 3] do
 end
 
 new_list = [[1, 2, 3, 4]]
-for list in new_list do
-    list_push(list, 5)
+for l in new_list do
+    list_push(l, 5)
 end
 println("new_list should have 5 elements:")
 println(new_list)
