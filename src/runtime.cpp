@@ -172,7 +172,15 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
         },
         [&](const op_builtin_call& op) {
-            op.ptr(ctx);
+            const auto argc = op.sig.args.size();
+            auto args = std::vector<anzu::object>{};
+            args.resize(argc);
+            for (std::size_t i = 0; i != argc; ++i) {
+                args[argc - 1 - i] = ctx.pop_value();
+            }
+
+            // Call the builtin function with the given args and push the return value
+            ctx.push_value(op.ptr(args));
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_add& op) {

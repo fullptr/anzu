@@ -23,87 +23,77 @@ auto verify(bool condition, std::string_view msg) -> void
     }
 }
 
-auto builtin_print_frame(anzu::runtime_context& ctx) -> void
+auto builtin_list_push(const std::vector<object>& args) -> object
 {
-    ctx.peek_frame().memory.print();
-    push_null(ctx);
+    auto& list = args[0].as<object_list>();
+    auto& obj = args[1];
+    list->push_back(obj);
+    return null_object();
 }
 
-auto builtin_list_push(anzu::runtime_context& ctx) -> void
+auto builtin_list_pop(const std::vector<object>& args) -> object
 {
-    verify(ctx.size() >= 2, "stack must contain two elements for list_push\n");
-    verify(ctx.peek_value(1).is<object_list>(), "second element on stack must be a list for list_push\n");
-    auto elem = ctx.pop_value();
-    auto list = ctx.pop_value();
-    list.as<object_list>()->push_back(elem);
-    push_null(ctx);
+    auto& list = args[0].as<object_list>();
+    auto ret = list->back();
+    list->pop_back();
+    return ret;
 }
 
-auto builtin_list_pop(anzu::runtime_context& ctx) -> void
+auto builtin_list_size(const std::vector<object>& args) -> object
 {
-    verify(ctx.peek_value().is<object_list>(), "top element on stack must be a list for list_pop\n");
-    auto list = ctx.pop_value();
-    ctx.push_value(list.as<object_list>()->back());
-    list.as<object_list>()->pop_back();
+    const auto& list = args[0].as<object_list>();
+    return static_cast<int>(list->size());
 }
 
-auto builtin_list_size(anzu::runtime_context& ctx) -> void
+auto builtin_list_at(const std::vector<object>& args) -> object
 {
-    verify(ctx.peek_value().is<object_list>(), "top element on stack must be a list for list_size\n");
-    auto list = ctx.pop_value();
-    ctx.push_value(static_cast<int>(list.as<object_list>()->size()));
+    const auto& list = args[0].as<object_list>();
+    const auto& idx = args[1].as<int>();
+    return list->at(idx);
 }
 
-auto builtin_list_at(anzu::runtime_context& ctx) -> void
+auto builtin_to_int(const std::vector<object>& args) -> object
 {
-    verify(ctx.size() >= 2, "stack must contain two elements for list_push\n");
-    verify(ctx.peek_value(0).is<int>(), "first element of stack must be an integer (index into list)\n");
-    verify(ctx.peek_value(1).is<object_list>(), "second element on stack must be a list for list_push\n");
-    auto pos = ctx.pop_value();
-    auto list = ctx.pop_value();
-    ctx.push_value(list.as<object_list>()->at(static_cast<std::size_t>(pos.to_int())));
+    return args[0].to_int();
 }
 
-auto builtin_to_int(anzu::runtime_context& ctx) -> void
+auto builtin_to_bool(const std::vector<object>& args) -> object
 {
-    ctx.push_value(ctx.pop_value().to_int());
+    return args[0].to_bool();
 }
 
-auto builtin_to_bool(anzu::runtime_context& ctx) -> void
+auto builtin_to_str(const std::vector<object>& args) -> object
 {
-    ctx.push_value(ctx.pop_value().to_bool());
+    return args[0].to_str();
 }
 
-auto builtin_to_str(anzu::runtime_context& ctx) -> void
+auto builtin_print(const std::vector<object>& args) -> object
 {
-    ctx.push_value(ctx.pop_value().to_str());
-}
-
-auto builtin_print(anzu::runtime_context& ctx) -> void
-{
-    const auto obj = ctx.peek_value();
+    const auto& obj = args[0];
     if (obj.is<std::string>()) {
         anzu::print("{}", anzu::format_special_chars(obj.as<std::string>()));
     } else {
         anzu::print("{}", obj);
     }
+    return null_object();
 }
 
-auto builtin_println(anzu::runtime_context& ctx) -> void
+auto builtin_println(const std::vector<object>& args) -> object
 {
-    const auto obj = ctx.peek_value();
+    const auto& obj = args[0];
     if (obj.is<std::string>()) {
         anzu::print("{}\n", anzu::format_special_chars(obj.as<std::string>()));
     } else {
         anzu::print("{}\n", obj);
     }
+    return null_object();
 }
 
-auto builtin_input(anzu::runtime_context& ctx) -> void
+auto builtin_input(const std::vector<object>& args) -> object
 {
     std::string in;
     std::cin >> in;
-    ctx.push_value(in);
+    return in;
 }
 
 }
@@ -151,14 +141,6 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
                 { .name = "index",    .type = "int"  }
             },
             .return_type = "any"
-        }
-    });
-
-    builtins.emplace("__print_frame__", builtin{
-        .ptr = builtin_print_frame,
-        .sig = {
-            .args = {},
-            .return_type = "null"
         }
     });
 

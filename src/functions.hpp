@@ -16,8 +16,8 @@ struct function_signature
     std::string return_type = "any";
 };
 
-class runtime_context;
-using builtin_function = void(*)(anzu::runtime_context&);
+class object;
+using builtin_function = object(*)(const std::vector<object>&);
 
 struct builtin
 {
