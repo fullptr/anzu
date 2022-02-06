@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <span>
 
 namespace anzu {
 
@@ -17,7 +18,7 @@ struct function_signature
 };
 
 class object;
-using builtin_function = object(*)(const std::vector<object>&);
+using builtin_function = object(*)(std::span<const object>);
 
 struct builtin
 {

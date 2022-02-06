@@ -23,7 +23,7 @@ auto verify(bool condition, std::string_view msg) -> void
     }
 }
 
-auto builtin_list_push(const std::vector<object>& args) -> object
+auto builtin_list_push(std::span<const object> args) -> object
 {
     auto& list = args[0].as<object_list>();
     auto& obj = args[1];
@@ -31,7 +31,7 @@ auto builtin_list_push(const std::vector<object>& args) -> object
     return null_object();
 }
 
-auto builtin_list_pop(const std::vector<object>& args) -> object
+auto builtin_list_pop(std::span<const object> args) -> object
 {
     auto& list = args[0].as<object_list>();
     auto ret = list->back();
@@ -39,35 +39,35 @@ auto builtin_list_pop(const std::vector<object>& args) -> object
     return ret;
 }
 
-auto builtin_list_size(const std::vector<object>& args) -> object
+auto builtin_list_size(std::span<const object> args) -> object
 {
     const auto& list = args[0].as<object_list>();
     return static_cast<int>(list->size());
 }
 
-auto builtin_list_at(const std::vector<object>& args) -> object
+auto builtin_list_at(std::span<const object> args) -> object
 {
     const auto& list = args[0].as<object_list>();
     const auto& idx = args[1].as<int>();
     return list->at(idx);
 }
 
-auto builtin_to_int(const std::vector<object>& args) -> object
+auto builtin_to_int(std::span<const object> args) -> object
 {
     return args[0].to_int();
 }
 
-auto builtin_to_bool(const std::vector<object>& args) -> object
+auto builtin_to_bool(std::span<const object> args) -> object
 {
     return args[0].to_bool();
 }
 
-auto builtin_to_str(const std::vector<object>& args) -> object
+auto builtin_to_str(std::span<const object> args) -> object
 {
     return args[0].to_str();
 }
 
-auto builtin_print(const std::vector<object>& args) -> object
+auto builtin_print(std::span<const object> args) -> object
 {
     const auto& obj = args[0];
     if (obj.is<std::string>()) {
@@ -78,7 +78,7 @@ auto builtin_print(const std::vector<object>& args) -> object
     return null_object();
 }
 
-auto builtin_println(const std::vector<object>& args) -> object
+auto builtin_println(std::span<const object> args) -> object
 {
     const auto& obj = args[0];
     if (obj.is<std::string>()) {
@@ -89,7 +89,7 @@ auto builtin_println(const std::vector<object>& args) -> object
     return null_object();
 }
 
-auto builtin_input(const std::vector<object>& args) -> object
+auto builtin_input(std::span<const object> args) -> object
 {
     std::string in;
     std::cin >> in;
