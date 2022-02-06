@@ -9,8 +9,18 @@
 #include <memory>
 #include <unordered_map>
 #include <string>
+#include <stack>
 
 namespace anzu {
+namespace {
+
+template <typename... Args>
+[[noreturn]] void parser_error(const token& tok, std::string_view msg, Args&&... args)
+{
+    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
+    anzu::print("[Parser] ({}:{}) ERROR: {}\n", tok.line, tok.col, formatted_msg);
+    std::exit(1);
+}
 
 auto typeof(const anzu::object& object) -> std::string_view
 {
@@ -32,11 +42,14 @@ auto typeof(const anzu::object& object) -> std::string_view
     return tk_any;
 }
 
-auto typeof_bin_op(std::string_view lhs, std::string_view rhs, std::string_view op) -> std::string_view
+auto typeof_bin_op(
+    std::string_view lhs, std::string_view rhs, const token& op_token
+)
+    -> std::string_view
 {
+    auto op = op_token.text;
     auto invalid_expr = [=]() {
-        anzu::print("type error: could not evaluate '{} {} {}'\n", lhs, op, rhs);
-        std::exit(1);
+        parser_error(op_token, "could not evaluate '{} {} {}'", lhs, op, rhs);
     };
 
     if (lhs == tk_any || rhs == tk_any) {
@@ -75,18 +88,8 @@ struct parser_context
 {
     anzu::tokenstream tokens;
     std::unordered_map<std::string, function_signature> functions;
-    std::unordered_map<std::string, std::string_view> object_types;
+    std::stack<std::unordered_map<std::string, std::string>> object_types;
 };
-
-namespace {
-
-template <typename... Args>
-[[noreturn]] void parser_error(const token& tok, std::string_view msg, Args&&... args)
-{
-    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[Parser] ({}:{}) ERROR: {}\n", tok.line, tok.col, formatted_msg);
-    std::exit(1);
-}
 
 template <typename Func>
 auto comma_separated_list(
@@ -214,6 +217,7 @@ auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
     auto node = std::make_unique<anzu::node_expr>();
     auto& expr = node->emplace<anzu::node_variable_expr>();
     expr.name = tokens.consume().text;
+    node->type = ctx.object_types.top().at(expr.name);
     return node;
 }
 
@@ -226,14 +230,15 @@ auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_expr
 
     auto left = parse_compound_factor(ctx, level - 1);
     while (ctx.tokens.valid() && bin_ops_table[level].contains(ctx.tokens.curr().text)) {
-        auto op = ctx.tokens.consume().text;
+        auto op_token = ctx.tokens.consume();
+        auto op = op_token.text;
 
         auto node = std::make_unique<anzu::node_expr>();
         auto& expr = node->emplace<anzu::node_bin_op_expr>();
         expr.lhs = std::move(left);
         expr.op = op;
         expr.rhs = parse_compound_factor(ctx, level - 1);
-        node->type = typeof_bin_op(expr.lhs->type, expr.rhs->type, op);
+        node->type = typeof_bin_op(expr.lhs->type, expr.rhs->type, op_token);
 
         left = std::move(node);
     }
@@ -257,6 +262,7 @@ auto parse_assign_expression(parser_context& ctx) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_assignment_stmt>();
     stmt.name = name;
     stmt.expr = parse_expression(ctx);
+    ctx.object_types.top()[name] = stmt.expr->type;
     return node;
 }
 
@@ -317,6 +323,7 @@ auto parse_for_body(parser_context& ctx) -> node_stmt_ptr
         parser_error(ctx.tokens.curr(), "invalid for loop, bind target must be a name");
     }
     stmt.var = ctx.tokens.consume().text;
+    ctx.object_types.top()[stmt.var] = tk_any;
     ctx.tokens.consume_only(tk_in);
     stmt.container = parse_expression(ctx); // TODO: When we have static typing, check this is a list
     ctx.tokens.consume_only(tk_do);
@@ -328,6 +335,8 @@ auto parse_for_body(parser_context& ctx) -> node_stmt_ptr
 auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
 {
     constexpr auto error_msg = std::string_view{"failed to parse signature for '{}', '{}' is not a type"};
+
+    ctx.object_types.emplace(); // New namespace for types.
 
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_function_def_stmt>();
@@ -354,6 +363,9 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
         stmt.sig.args.push_back(arg);
     });
     ctx.functions[stmt.name] = stmt.sig;
+    for (const auto& arg : stmt.sig.args) {
+        ctx.object_types.top()[arg.name] = arg.type;
+    }
 
     if (ctx.tokens.consume_maybe(tk_rarrow)) {
         const auto type = ctx.tokens.consume();
@@ -365,6 +377,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     ctx.tokens.consume_only(tk_do);
     stmt.body = parse_statement_list(ctx);
     ctx.tokens.consume_only(tk_end);
+    ctx.object_types.pop();
     return node;
 }
 
@@ -454,6 +467,7 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
 auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr
 {
     auto ctx = anzu::parser_context{ .tokens = {tokens} };
+    ctx.object_types.emplace();
 
     auto root = std::make_unique<anzu::node_stmt>();
     auto& seq = root->emplace<anzu::node_sequence_stmt>();

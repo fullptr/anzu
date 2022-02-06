@@ -41,7 +41,7 @@ struct node_expr : std::variant<
     node_bin_op_expr,
     node_function_call_expr>
 {
-    std::string_view type = tk_any;
+    std::string type = std::string{tk_any};
 };
 
 struct node_stmt;
