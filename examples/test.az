@@ -1,4 +1,2 @@
 
-function foo (a: int, b: int) do
-    return a + b
-end
+x = println("hello world", 2)

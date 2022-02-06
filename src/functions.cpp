@@ -230,24 +230,14 @@ auto is_builtin(const std::string& name) -> bool
     return builtins.contains(name);
 }
 
-auto fetch_builtin(const std::string& name) -> builtin_function
+auto fetch_builtin(const std::string& name) -> const builtin&
 {
     auto it = builtins.find(name);
     if (it == builtins.end()) {
         anzu::print("builtin error: could not find function '{}'\n", name);
         std::exit(1);
     }
-    return it->second.ptr;
-}
-
-auto fetch_builtin_argc(const std::string& name) -> std::int64_t
-{
-    auto it = builtins.find(name);
-    if (it == builtins.end()) {
-        anzu::print("builtin error: could not find function '{}'\n", name);
-        std::exit(1);
-    }
-    return it->second.sig.args.size();
+    return it->second;
 }
 
 }

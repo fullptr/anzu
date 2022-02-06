@@ -26,7 +26,6 @@ struct builtin
 };
 
 auto is_builtin(const std::string& name) -> bool;
-auto fetch_builtin(const std::string& name) -> builtin_function;
-auto fetch_builtin_argc(const std::string& name) -> std::int64_t;
+auto fetch_builtin(const std::string& name) -> const builtin&;
     
 }

@@ -23,11 +23,10 @@ struct parser_context
 namespace {
 
 template <typename... Args>
-[[noreturn]] void parser_error(const parser_context& ctx, std::string_view msg, Args&&... args)
+[[noreturn]] void parser_error(const token& tok, std::string_view msg, Args&&... args)
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    const auto& curr = ctx.tokens.curr();
-    anzu::print("[Parser] ({}:{}) ERROR: {}\n",curr.line, curr.col, formatted_msg);
+    anzu::print("[Parser] ({}:{}) ERROR: {}\n", tok.line, tok.col, formatted_msg);
     std::exit(1);
 }
 
@@ -56,12 +55,12 @@ auto is_function(const parser_context& ctx) -> bool
 }
 
 auto check_argc(
-    const parser_context& ctx, std::string_view func, std::int64_t expected, std::int64_t actual
+    const token& tok, std::string_view func, std::int64_t expected, std::int64_t actual
 )
     -> void
 {
     if (expected != actual) {
-        parser_error(ctx, "function '{}' expected {} args, got {}", func, expected, actual);
+        parser_error(tok, "function '{}' expected {} args, got {}", func, expected, actual);
     }
 }
 
@@ -72,10 +71,10 @@ auto fetch_argc(const parser_context& ctx, const std::string& function_name) -> 
     }
 
     if (anzu::is_builtin(function_name)) {
-        return anzu::fetch_builtin_argc(function_name);
+        return std::ssize(anzu::fetch_builtin(function_name).sig.args);
     }
 
-    parser_error(ctx, "could not find function '{}'", function_name);
+    parser_error(ctx.tokens.curr(), "could not find function '{}'", function_name);
 }
 
 auto handle_list_literal(parser_context& ctx) -> anzu::object;
@@ -110,7 +109,7 @@ auto handle_list_literal(parser_context& ctx) -> anzu::object
     comma_separated_list(ctx, tk_rbracket, [&] {
         auto obj = try_parse_literal(ctx);
         if (!obj.has_value()) {
-            parser_error(ctx, "failed to parse string literal");
+            parser_error(ctx.tokens.curr(), "failed to parse string literal");
         }
         list->push_back(obj.value());
     });
@@ -151,7 +150,7 @@ auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
         return parse_function_call_expr(ctx);
     }
     else if (tokens.curr().type != token_type::name) {
-        parser_error(ctx, "'{}' is not a name, cannot be used in an expresion", tokens.curr().text);
+        parser_error(ctx.tokens.curr(), "'{}' is not a name, cannot be used in an expresion", tokens.curr().text);
     }
     auto node = std::make_unique<anzu::node_expr>();
     auto& expr = node->emplace<anzu::node_variable_expr>();
@@ -189,7 +188,7 @@ auto parse_expression(parser_context& ctx) -> node_expr_ptr
 auto parse_assign_expression(parser_context& ctx) -> node_stmt_ptr
 {
     if (ctx.tokens.curr().type != token_type::name) {
-        parser_error(ctx, "'{}' is not a valid name", ctx.tokens.curr().text);
+        parser_error(ctx.tokens.curr(), "'{}' is not a valid name", ctx.tokens.curr().text);
     }
     auto name = ctx.tokens.consume().text;
     ctx.tokens.consume_only(tk_assign);
@@ -255,7 +254,7 @@ auto parse_for_body(parser_context& ctx) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_for_stmt>();
     if (ctx.tokens.curr().type != token_type::name) {
-        parser_error(ctx, "invalid for loop, bind target must be a name");
+        parser_error(ctx.tokens.curr(), "invalid for loop, bind target must be a name");
     }
     stmt.var = ctx.tokens.consume().text;
     ctx.tokens.consume_only(tk_in);
@@ -273,13 +272,13 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_function_def_stmt>();
     if (ctx.tokens.curr().type != token_type::name) {
-        parser_error(ctx, "expected function name");
+        parser_error(ctx.tokens.curr(), "expected function name");
     }
     stmt.name = ctx.tokens.consume().text;
     ctx.tokens.consume_only(tk_lparen);
     comma_separated_list(ctx, tk_rparen, [&] {
         if (ctx.tokens.curr().type != token_type::name) {
-            parser_error(ctx, "failed to parse function argument");
+            parser_error(ctx.tokens.curr(), "failed to parse function argument");
         }
         auto arg = function_signature::arg{};
         arg.name = ctx.tokens.consume().text;
@@ -287,7 +286,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
         if (ctx.tokens.consume_maybe(tk_colon)) {
             const auto type = ctx.tokens.consume();
             if (!ctx.types.is_valid_type(type)) {
-                parser_error(ctx, error_msg, stmt.name, type.text);
+                parser_error(ctx.tokens.curr(), error_msg, stmt.name, type.text);
             }
             arg.type = type.text;
         }
@@ -299,7 +298,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     if (ctx.tokens.consume_maybe(tk_rarrow)) {
         const auto type = ctx.tokens.consume();
         if (!ctx.types.is_valid_type(type)) {
-            parser_error(ctx, error_msg, stmt.name, type.text);
+            parser_error(ctx.tokens.curr(), error_msg, stmt.name, type.text);
         }
     }
 
@@ -328,7 +327,8 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
 {
     auto node = std::make_unique<NodeVariant>();
     auto& out = node->emplace<NodeType>();
-    out.function_name = ctx.tokens.consume().text;
+    const auto token = ctx.tokens.consume();
+    out.function_name = token.text;
 
     ctx.tokens.consume_only(tk_lparen);
     comma_separated_list(ctx, tk_rparen, [&] {
@@ -336,7 +336,7 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
     });
 
     const auto argc = fetch_argc(ctx, out.function_name);
-    check_argc(ctx, out.function_name, argc, std::ssize(out.args));
+    check_argc(token, out.function_name, argc, std::ssize(out.args));
     return node;
 }
 
@@ -385,7 +385,7 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
         return parse_function_call_stmt(ctx);
     }
     else {
-        parser_error(ctx, "unknown statement '{}'", ctx.tokens.curr().text);
+        parser_error(ctx.tokens.curr(), "unknown statement '{}'", ctx.tokens.curr().text);
     }
 }
 

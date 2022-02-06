@@ -78,7 +78,7 @@ void compile_function_call(
     else {
         ctx.program.emplace_back(anzu::op_builtin_call{
             .name=function,
-            .func=anzu::fetch_builtin(function)
+            .func=anzu::fetch_builtin(function).ptr
         });
     }
 }
@@ -194,7 +194,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_copy_index{0});
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_size",
-        .func=anzu::fetch_builtin("list_size")
+        .func=anzu::fetch_builtin("list_size").ptr
     });
 
     // Push the counter to the stack
@@ -217,7 +217,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_copy_index{1}); // Push index
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_at",
-        .func=anzu::fetch_builtin("list_at")
+        .func=anzu::fetch_builtin("list_at").ptr
     });
     ctx.program.emplace_back(anzu::op_store{ .name=node.var }); // Store in var
 
