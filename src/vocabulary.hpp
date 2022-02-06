@@ -54,9 +54,10 @@ constexpr auto tk_rparen    = sv{")"};
 constexpr auto tk_sub       = sv{"-"};
 constexpr auto tk_rarrow    = sv{"->"};
 
-auto is_keyword  (sv token) -> bool;
-auto is_sentinel (sv token) -> bool;
-auto is_symbol   (sv token) -> bool;
-auto is_type     (sv token) -> bool;
+auto is_keyword    (sv token) -> bool;
+auto is_sentinel   (sv token) -> bool;
+auto is_symbol     (sv token) -> bool;
+auto is_comparison (sv token) -> bool;
+auto is_type       (sv token) -> bool;
 
 }

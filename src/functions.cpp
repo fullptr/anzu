@@ -10,19 +10,6 @@
 namespace anzu {
 namespace {
 
-auto push_null(anzu::runtime_context& ctx) -> void
-{
-    ctx.push_value(anzu::null_object());
-}
-
-auto verify(bool condition, std::string_view msg) -> void
-{
-    if (!condition) {
-        anzu::print(msg);
-        std::exit(1);
-    }
-}
-
 auto builtin_list_push(std::span<const object> args) -> object
 {
     auto& list = args[0].as<object_list>();

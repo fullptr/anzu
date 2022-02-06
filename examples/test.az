@@ -1,2 +1,5 @@
 
-x = println("hello world", 2)
+t = 5
+y = (1 + t) * 4 - 4 + 56
+
+x = println("hello world")

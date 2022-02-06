@@ -1,6 +1,7 @@
 #pragma once
 #include "object.hpp"
 #include "functions.hpp"
+#include "vocabulary.hpp"
 
 #include <variant>
 #include <vector>
@@ -40,6 +41,7 @@ struct node_expr : std::variant<
     node_bin_op_expr,
     node_function_call_expr>
 {
+    std::string_view type = tk_any;
 };
 
 struct node_stmt;

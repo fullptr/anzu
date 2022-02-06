@@ -34,6 +34,14 @@ auto is_symbol(std::string_view token) -> bool
     return tokens.contains(token);
 }
 
+auto is_comparison(sv token) -> bool
+{
+    static const std::unordered_set<std::string_view> tokens = {
+        tk_lt, tk_le, tk_gt, tk_ge, tk_eq, tk_ne
+    };
+    return tokens.contains(token);
+}
+
 auto is_type(std::string_view token) -> bool
 {
     static const std::unordered_set<std::string_view> tokens = {

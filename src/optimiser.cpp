@@ -32,7 +32,7 @@ auto evaluate_bin_op(
     }
 }
 
-auto evaluate_const_expressions_recurse(const node_expr& expr) -> std::optional<anzu::object>
+auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::object>
 {
     using return_type = std::optional<anzu::object>;
     return std::visit(overloaded {
@@ -45,11 +45,13 @@ auto evaluate_const_expressions_recurse(const node_expr& expr) -> std::optional<
         [](const node_function_call_expr& node) -> return_type {
             return std::nullopt;
         },
-        [](const node_bin_op_expr& node) -> return_type {
+        [&](const node_bin_op_expr& node) -> return_type {
             auto lhs = evaluate_const_expressions_recurse(*node.lhs);
             auto rhs = evaluate_const_expressions_recurse(*node.rhs);
             if (lhs.has_value() && rhs.has_value()) {
-                return evaluate_bin_op(lhs.value(), rhs.value(), node.op);
+                auto val = evaluate_bin_op(lhs.value(), rhs.value(), node.op);
+                expr.emplace<anzu::node_literal_expr>(val);
+                return val;
             }
             return std::nullopt;
         }

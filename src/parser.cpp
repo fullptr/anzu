@@ -12,10 +12,70 @@
 
 namespace anzu {
 
+auto typeof(const anzu::object& object) -> std::string_view
+{
+    if (object.is<int>()) {
+        return tk_int;
+    }
+    if (object.is<bool>()) {
+        return tk_bool;
+    }
+    if (object.is<std::string>()) {
+        return tk_str;
+    }
+    if (object.is<object_list>()) {
+        return tk_list;
+    }
+    if (object.is<object_null>()) {
+        return tk_null_type;
+    }
+    return tk_any;
+}
+
+auto typeof_bin_op(std::string_view lhs, std::string_view rhs, std::string_view op) -> std::string_view
+{
+    auto invalid_expr = [=]() {
+        anzu::print("type error: could not evaluate '{} {} {}'\n", lhs, op, rhs);
+        std::exit(1);
+    };
+
+    if (lhs == tk_any || rhs == tk_any) {
+        return tk_any;
+    }
+
+    if (lhs != rhs) {
+        invalid_expr();
+    }
+
+    if (lhs == tk_list || lhs == tk_null_type) { // No support for having these in binary ops.
+        invalid_expr();
+    }
+
+    if (lhs == tk_str) {
+        if (op == tk_add) { // String concatenation
+            return tk_str;
+        }
+        invalid_expr();
+    }
+
+    if (lhs == tk_bool) {
+        if (op == tk_or || op == tk_and) {
+            return tk_bool;
+        }
+        invalid_expr();
+    }
+
+    if (is_comparison(op)) {
+        return tk_bool;
+    }
+    return tk_int;
+}
+
 struct parser_context
 {
     anzu::tokenstream tokens;
     std::unordered_map<std::string, function_signature> functions;
+    std::unordered_map<std::string, std::string_view> object_types;
 };
 
 namespace {
@@ -142,6 +202,7 @@ auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
         auto node = std::make_unique<anzu::node_expr>();
         auto& expr = node->emplace<anzu::node_literal_expr>();
         expr.value = *factor;
+        node->type = typeof(expr.value);
         return node;
     }
     else if (is_function(ctx)) {
@@ -172,6 +233,7 @@ auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_expr
         expr.lhs = std::move(left);
         expr.op = op;
         expr.rhs = parse_compound_factor(ctx, level - 1);
+        node->type = typeof_bin_op(expr.lhs->type, expr.rhs->type, op);
 
         left = std::move(node);
     }
