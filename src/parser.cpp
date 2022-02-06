@@ -1,7 +1,6 @@
 #include "parser.hpp"
 #include "functions.hpp"
 #include "vocabulary.hpp"
-#include "types.hpp"
 
 #include <optional>
 #include <unordered_set>
@@ -17,7 +16,6 @@ struct parser_context
 {
     anzu::tokenstream tokens;
     std::unordered_map<std::string, function_signature> functions;
-    anzu::type_store types;
 };
 
 namespace {
@@ -285,7 +283,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
 
         if (ctx.tokens.consume_maybe(tk_colon)) {
             const auto type = ctx.tokens.consume();
-            if (!ctx.types.is_valid_type(type)) {
+            if (!is_type(type.text)) {
                 parser_error(ctx.tokens.curr(), error_msg, stmt.name, type.text);
             }
             arg.type = type.text;
@@ -297,7 +295,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
 
     if (ctx.tokens.consume_maybe(tk_rarrow)) {
         const auto type = ctx.tokens.consume();
-        if (!ctx.types.is_valid_type(type)) {
+        if (!is_type(type.text)) {
             parser_error(ctx.tokens.curr(), error_msg, stmt.name, type.text);
         }
     }
