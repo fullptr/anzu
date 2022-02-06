@@ -57,6 +57,6 @@ constexpr auto tk_rarrow    = sv{"->"};
 auto is_keyword  (sv token) -> bool;
 auto is_sentinel (sv token) -> bool;
 auto is_symbol   (sv token) -> bool;
-auto it_type     (sv token) -> bool;
+auto is_type     (sv token) -> bool;
 
 }

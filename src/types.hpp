@@ -1,6 +1,5 @@
 #pragma once
 #include <string>
-#include <unordered_set>
 
 #include "token.hpp"
 
@@ -10,8 +9,6 @@ namespace anzu {
 // begin with, but will be extended to allow for custom types.
 class type_store
 {
-    std::unordered_set<std::string> d_types;
-
 public:
     type_store();
     auto is_valid_type(const std::string& type) -> bool;

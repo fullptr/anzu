@@ -34,7 +34,7 @@ auto is_symbol(std::string_view token) -> bool
     return tokens.contains(token);
 }
 
-auto it_type(std::string_view token) -> bool
+auto is_type(std::string_view token) -> bool
 {
     static const std::unordered_set<std::string_view> tokens = {
         tk_int, tk_bool, tk_str, tk_list, tk_null_type, tk_any
