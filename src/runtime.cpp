@@ -172,7 +172,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
         },
         [&](const op_builtin_call& op) {
-            op.func(ctx);
+            op.ptr(ctx);
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_add& op) {

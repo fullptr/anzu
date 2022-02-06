@@ -76,9 +76,11 @@ void compile_function_call(
         });
     }
     else {
+        const auto& builtin = anzu::fetch_builtin(function);
         ctx.program.emplace_back(anzu::op_builtin_call{
             .name=function,
-            .func=anzu::fetch_builtin(function).ptr
+            .ptr=builtin.ptr,
+            .sig=builtin.sig
         });
     }
 }
@@ -192,9 +194,11 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Push the container size to the stack
     ctx.program.emplace_back(anzu::op_copy_index{0});
+    const auto& list_size = anzu::fetch_builtin("list_size");
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_size",
-        .func=anzu::fetch_builtin("list_size").ptr
+        .ptr=list_size.ptr,
+        .sig=list_size.sig
     });
 
     // Push the counter to the stack
@@ -215,9 +219,11 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     // Stack: list, size, index(0)
     ctx.program.emplace_back(anzu::op_copy_index{2}); // Push container
     ctx.program.emplace_back(anzu::op_copy_index{1}); // Push index
+    const auto& list_at = anzu::fetch_builtin("list_at");
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_at",
-        .func=anzu::fetch_builtin("list_at").ptr
+        .ptr=list_at.ptr,
+        .sig=list_at.sig
     });
     ctx.program.emplace_back(anzu::op_store{ .name=node.var }); // Store in var
 

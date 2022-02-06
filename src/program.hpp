@@ -90,8 +90,9 @@ struct op_function_call
 
 struct op_builtin_call
 {
-    std::string name;
-    anzu::builtin_function func;
+    std::string        name;
+    builtin_function   ptr;
+    function_signature sig;
 };
 
 struct op_add
