@@ -22,24 +22,24 @@ template <typename... Args>
     std::exit(1);
 }
 
-auto typeof(const anzu::object& object) -> std::string_view
+auto typeof(const anzu::object& object) -> std::string
 {
     if (object.is<int>()) {
-        return tk_int;
+        return std::string{tk_int};
     }
     if (object.is<bool>()) {
-        return tk_bool;
+        return std::string{tk_bool};
     }
     if (object.is<std::string>()) {
-        return tk_str;
+        return std::string{tk_str};
     }
     if (object.is<object_list>()) {
-        return tk_list;
+        return std::string{tk_list};
     }
     if (object.is<object_null>()) {
-        return tk_null_type;
+        return std::string{tk_null_type};
     }
-    return tk_any;
+    return std::string{tk_any};
 }
 
 auto typeof_bin_op(
@@ -123,6 +123,22 @@ auto check_argc(
     if (expected != actual) {
         parser_error(tok, "function '{}' expected {} args, got {}", func, expected, actual);
     }
+}
+
+auto fetch_function_signature(
+    const parser_context& ctx, const std::string& function_name
+)
+    -> function_signature
+{
+    if (auto it = ctx.functions.find(function_name); it != ctx.functions.end()) {
+        return it->second;
+    }
+
+    if (anzu::is_builtin(function_name)) {
+        return anzu::fetch_builtin(function_name).sig;
+    }
+
+    parser_error(ctx.tokens.curr(), "could not find function '{}'", function_name);
 }
 
 auto fetch_argc(const parser_context& ctx, const std::string& function_name) -> std::int64_t
@@ -408,8 +424,17 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
         out.args.push_back(parse_expression(ctx));
     });
 
-    const auto argc = fetch_argc(ctx, out.function_name);
-    check_argc(token, out.function_name, argc, std::ssize(out.args));
+    const auto sig = fetch_function_signature(ctx, out.function_name);
+    check_argc(token, out.function_name, std::ssize(sig.args), std::ssize(out.args));
+    for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
+        const auto& expected = sig.args.at(idx).type;
+        const auto& actual = out.args.at(idx)->type;
+        if (expected != tk_any && expected != actual) {
+            parser_error(
+                token, "invalid function call, arg {} expects type {}, got {}\n", idx, expected, actual
+            );
+        }
+    }
     return node;
 }
 
