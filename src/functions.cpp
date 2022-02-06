@@ -108,27 +108,122 @@ auto builtin_input(anzu::runtime_context& ctx) -> void
 
 }
 
-static const std::unordered_map<std::string, builtin> builtins = {
+auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
+{
+    auto builtins = std::unordered_map<std::string, builtin>{};
 
-    // List functions
-    { "list_push",       builtin{ builtin_list_push,   2 }},
-    { "list_pop",        builtin{ builtin_list_pop,    1 }},
-    { "list_size",       builtin{ builtin_list_size,   1 }},
-    { "list_at",         builtin{ builtin_list_at,     2 }},
+    builtins.emplace("list_push", builtin{
+        .ptr = builtin_list_push,
+        .sig = {
+            .args = {
+                { .name = "list_obj", .type = "list" },
+                { .name = "value",    .type = "any"  }
+            },
+            .return_type = "null"
+        }
+    });
 
-    // Debug functions
-    { "__print_frame__", builtin{ builtin_print_frame, 0 }},
+    builtins.emplace("list_pop", builtin{
+        .ptr = builtin_list_pop,
+        .sig = {
+            .args = {
+                { .name = "list_obj", .type = "list" }
+            },
+            .return_type = "any"
+        }
+    });
 
-    // Old Op Codes
-    { "to_int",          builtin{ builtin_to_int,      1 }},
-    { "to_bool",         builtin{ builtin_to_bool,     1 }},
-    { "to_str",          builtin{ builtin_to_str,      1 }},
+    builtins.emplace("list_size", builtin{
+        .ptr = builtin_list_size,
+        .sig = {
+            .args = {
+                { .name = "list_obj", .type = "list" }
+            },
+            .return_type = "int"
+        }
+    });
 
-    // I/O
-    { "print",           builtin{ builtin_print,       1 }},
-    { "println",         builtin{ builtin_println,     1 }},
-    { "input",           builtin{ builtin_input,       0 }}
-};
+    builtins.emplace("list_at", builtin{
+        .ptr = builtin_list_at,
+        .sig = {
+            .args = {
+                { .name = "list_obj", .type = "list" },
+                { .name = "index",    .type = "int"  }
+            },
+            .return_type = "any"
+        }
+    });
+
+    builtins.emplace("__print_frame__", builtin{
+        .ptr = builtin_print_frame,
+        .sig = {
+            .args = {},
+            .return_type = "null"
+        }
+    });
+
+    builtins.emplace("to_int", builtin{
+        .ptr = builtin_to_int,
+        .sig = {
+            .args = {
+                { .name = "obj", .type = "any" }
+            },
+            .return_type = "int"
+        }
+    });
+
+    builtins.emplace("to_bool", builtin{
+        .ptr = builtin_to_bool,
+        .sig = {
+            .args = {
+                { .name = "obj", .type = "any" }
+            },
+            .return_type = "bool"
+        }
+    });
+
+    builtins.emplace("to_str", builtin{
+        .ptr = builtin_to_int,
+        .sig = {
+            .args = {
+                { .name = "obj", .type = "any" }
+            },
+            .return_type = "str"
+        }
+    });
+
+    builtins.emplace("print", builtin{
+        .ptr = builtin_print,
+        .sig = {
+            .args = {
+                { .name = "obj", .type = "any" }
+            },
+            .return_type = "null"
+        }
+    });
+
+    builtins.emplace("println", builtin{
+        .ptr = builtin_println,
+        .sig = {
+            .args = {
+                { .name = "obj", .type = "any" }
+            },
+            .return_type = "null"
+        }
+    });
+
+    builtins.emplace("input", builtin{
+        .ptr = builtin_println,
+        .sig = {
+            .args = {},
+            .return_type = "str"
+        }
+    });
+
+    return builtins;
+}
+
+static const std::unordered_map<std::string, builtin> builtins = construct_builtin_map();
 
 auto is_builtin(const std::string& name) -> bool
 {
@@ -152,7 +247,7 @@ auto fetch_builtin_argc(const std::string& name) -> std::int64_t
         anzu::print("builtin error: could not find function '{}'\n", name);
         std::exit(1);
     }
-    return it->second.argc;
+    return it->second.sig.args.size();
 }
 
 }

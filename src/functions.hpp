@@ -21,8 +21,8 @@ using builtin_function = void(*)(anzu::runtime_context&);
 
 struct builtin
 {
-    builtin_function ptr;
-    std::int64_t     argc;
+    builtin_function   ptr;
+    function_signature sig;
 };
 
 auto is_builtin(const std::string& name) -> bool;
