@@ -39,4 +39,13 @@ auto tokenstream::consume_maybe(std::string_view text) -> bool
     return false;
 }
 
+auto tokenstream::consume_only(std::string_view text) -> void
+{
+    if (!consume_maybe(text)) {
+        const auto& [tok_text, line, col, type] = curr();
+        anzu::print("[ERROR] ({}:{}) expected '{}', got '{}\n", line, col, text, tok_text);
+        std::exit(1);
+    }
+}
+
 }

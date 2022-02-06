@@ -83,15 +83,16 @@ struct op_jump_if_false
 
 struct op_function_call
 {
-    std::string   name;
-    std::intptr_t ptr;
-    std::vector<std::string> arg_names;
+    std::string        name;
+    std::intptr_t      ptr;
+    function_signature sig;
 };
 
 struct op_builtin_call
 {
-    std::string name;
-    anzu::builtin_function func;
+    std::string        name;
+    builtin_function   ptr;
+    function_signature sig;
 };
 
 struct op_add
@@ -148,9 +149,9 @@ struct op_and
 
 struct op_function
 {
-    std::string              name;
-    std::vector<std::string> arg_names;
-    std::intptr_t            jump;
+    std::string        name;
+    function_signature sig;
+    std::intptr_t      jump;
 };
 
 struct op_function_end

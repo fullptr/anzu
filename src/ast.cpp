@@ -1,9 +1,27 @@
 #include "ast.hpp"
 
+#include <functional>
+#include <ranges>
+
 namespace anzu {
 namespace {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+
+template <typename T, typename Func>
+auto print_comma_separated(
+    const std::vector<T>& values, Func&& formatter
+)
+    -> void
+{
+    if (values.size() == 0) {
+        return;
+    }
+    anzu::print(formatter(values[0]));
+    for (const auto& value : values | std::views::drop(1)) {
+        anzu::print(", {}", formatter(value));
+    }
+}
 
 }
 
@@ -92,11 +110,11 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
             print_node(*node.expr, indent + 1);
         },
         [&](const node_function_def_stmt& node) {
-            anzu::print("{}Function: {}", spaces, node.name);
-            for (const auto& arg : node.arg_names) {
-                anzu::print(" {}", arg);
-            }
-            anzu::print("\n");
+            anzu::print("{}Function: {} (", spaces, node.name);
+            anzu::print_comma_separated(node.sig.args, [](const auto& arg) {
+                return std::format("{}: {}", arg.name, arg.type);
+            });
+            anzu::print(") -> {}\n", node.sig.return_type);
             print_node(*node.body, indent + 1);
         },
         [&](const node_function_call_stmt& node) {

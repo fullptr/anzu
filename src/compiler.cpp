@@ -2,6 +2,7 @@
 #include "lexer.hpp"
 #include "object.hpp"
 #include "parser.hpp"
+#include "functions.hpp"
 #include "utility/print.hpp"
 
 #include <string_view>
@@ -17,8 +18,8 @@ struct compiler_context
 {
     struct function_def
     {
-        std::vector<std::string> arg_names;
-        std::intptr_t ptr;
+        function_signature sig;
+        std::intptr_t      ptr;
     };
 
     anzu::program program;
@@ -71,13 +72,15 @@ void compile_function_call(
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
             .ptr=function_def.ptr + 1, // Jump into the function
-            .arg_names=function_def.arg_names
+            .sig=function_def.sig
         });
     }
     else {
+        const auto& builtin = anzu::fetch_builtin(function);
         ctx.program.emplace_back(anzu::op_builtin_call{
             .name=function,
-            .func=anzu::fetch_builtin(function)
+            .ptr=builtin.ptr,
+            .sig=builtin.sig
         });
     }
 }
@@ -191,9 +194,11 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Push the container size to the stack
     ctx.program.emplace_back(anzu::op_copy_index{0});
+    const auto& list_size = anzu::fetch_builtin("list_size");
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_size",
-        .func=anzu::fetch_builtin("list_size")
+        .ptr=list_size.ptr,
+        .sig=list_size.sig
     });
 
     // Push the counter to the stack
@@ -214,9 +219,11 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     // Stack: list, size, index(0)
     ctx.program.emplace_back(anzu::op_copy_index{2}); // Push container
     ctx.program.emplace_back(anzu::op_copy_index{1}); // Push index
+    const auto& list_at = anzu::fetch_builtin("list_at");
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_at",
-        .func=anzu::fetch_builtin("list_at")
+        .ptr=list_at.ptr,
+        .sig=list_at.sig
     });
     ctx.program.emplace_back(anzu::op_store{ .name=node.var }); // Store in var
 
@@ -255,8 +262,8 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
     const auto start_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_function{ .name=node.name, .arg_names=node.arg_names });
-    ctx.functions[node.name] = { .arg_names=node.arg_names ,.ptr=start_pos };
+    ctx.program.emplace_back(anzu::op_function{ .name=node.name, .sig=node.sig });
+    ctx.functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
     compile_node(*node.body, ctx);
 

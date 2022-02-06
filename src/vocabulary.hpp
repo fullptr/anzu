@@ -22,6 +22,14 @@ constexpr auto tk_while     = sv{"while"};
 constexpr auto tk_function  = sv{"function"};
 constexpr auto tk_return    = sv{"return"};
 
+// Builtin Types
+constexpr auto tk_int       = sv{"int"};
+constexpr auto tk_bool      = sv{"bool"};
+constexpr auto tk_str       = sv{"str"};
+constexpr auto tk_list      = sv{"list"};
+constexpr auto tk_null_type = sv{"null_type"};
+constexpr auto tk_any       = sv{"any"};
+
 // Symbols
 constexpr auto tk_add       = sv{"+"};
 constexpr auto tk_and       = sv{"&&"};
@@ -44,9 +52,11 @@ constexpr auto tk_period    = sv{"."};
 constexpr auto tk_rbracket  = sv{"]"};
 constexpr auto tk_rparen    = sv{")"};
 constexpr auto tk_sub       = sv{"-"};
+constexpr auto tk_rarrow    = sv{"->"};
 
-auto is_keyword  (std::string_view token) -> bool;
-auto is_sentinel (std::string_view token) -> bool;
-auto is_symbol   (std::string_view token) -> bool;
+auto is_keyword  (sv token) -> bool;
+auto is_sentinel (sv token) -> bool;
+auto is_symbol   (sv token) -> bool;
+auto is_type     (sv token) -> bool;
 
 }

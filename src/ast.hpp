@@ -1,5 +1,6 @@
 #pragma once
 #include "object.hpp"
+#include "functions.hpp"
 
 #include <variant>
 #include <vector>
@@ -85,9 +86,9 @@ struct node_assignment_stmt
 
 struct node_function_def_stmt
 {
-    std::string              name;
-    std::vector<std::string> arg_names;
-    node_stmt_ptr            body;
+    std::string        name;
+    function_signature sig;
+    node_stmt_ptr      body;
 };
 
 struct node_function_call_stmt

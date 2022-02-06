@@ -83,7 +83,7 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
 
     auto iter = line_iterator{line};
     while (move_to_next(iter)) {
-        const int col = iter.position() + 1;
+        const int col = iter.position();
 
         if (iter.consume_maybe('"')) {
             const auto literal = parse_string_literal(lineno, iter);

@@ -1,21 +1,32 @@
 #pragma once
-// Builtin functions that can be called from scripts
-
 #include <string>
+#include <vector>
+#include <span>
 
 namespace anzu {
 
-class runtime_context;
-using builtin_function = void(*)(anzu::runtime_context&);
+struct function_signature
+{
+    struct arg
+    {
+        std::string name;
+        std::string type = "any";
+    };
+
+    std::vector<arg> args;
+    std::string return_type = "any";
+};
+
+class object;
+using builtin_function = object(*)(std::span<const object>);
 
 struct builtin
 {
-    builtin_function ptr;
-    std::int64_t     argc;
+    builtin_function   ptr;
+    function_signature sig;
 };
 
 auto is_builtin(const std::string& name) -> bool;
-auto fetch_builtin(const std::string& name) -> builtin_function;
-auto fetch_builtin_argc(const std::string& name) -> std::int64_t;
+auto fetch_builtin(const std::string& name) -> const builtin&;
     
 }
