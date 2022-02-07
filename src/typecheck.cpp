@@ -112,7 +112,7 @@ auto type_of_expr(const parser_context& ctx, const node_expr& expr) -> std::stri
             return type_of_bin_op(
                 type_of_expr(ctx, *node.lhs),
                 type_of_expr(ctx, *node.rhs),
-                node.op_token
+                node.op
             );
         }
     }, expr);

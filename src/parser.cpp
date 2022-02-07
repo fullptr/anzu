@@ -160,15 +160,13 @@ auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_expr
 
     auto left = parse_compound_factor(ctx, level - 1);
     while (ctx.tokens.valid() && bin_ops_table[level].contains(ctx.tokens.curr().text)) {
-        auto op_token = ctx.tokens.consume();
-        auto op = op_token.text;
+        auto op = ctx.tokens.consume();
 
         auto node = std::make_unique<anzu::node_expr>();
         auto& expr = node->emplace<anzu::node_bin_op_expr>();
         expr.lhs = std::move(left);
         expr.op = op;
         expr.rhs = parse_compound_factor(ctx, level - 1);
-        expr.op_token = op_token;
 
         left = std::move(node);
     }

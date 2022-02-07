@@ -49,7 +49,7 @@ auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::
             auto lhs = evaluate_const_expressions_recurse(*node.lhs);
             auto rhs = evaluate_const_expressions_recurse(*node.rhs);
             if (lhs.has_value() && rhs.has_value()) {
-                auto val = evaluate_bin_op(lhs.value(), rhs.value(), node.op);
+                auto val = evaluate_bin_op(lhs.value(), rhs.value(), node.op.text);
                 expr.emplace<anzu::node_literal_expr>(val);
                 return val;
             }
