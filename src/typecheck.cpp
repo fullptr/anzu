@@ -1,5 +1,6 @@
 #include "typecheck.hpp"
 #include "parser.hpp"
+#include "vocabulary.hpp"
 
 namespace anzu {
 namespace {

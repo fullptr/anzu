@@ -8,14 +8,6 @@ namespace {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
-auto verify(bool cond, std::string_view message)
-{
-    if (!cond) {
-        anzu::print(message);
-        std::exit(1);
-    }
-}
-
 template <typename T, typename Func>
 auto print_comma_separated(
     const std::vector<T>& values, Func&& formatter
