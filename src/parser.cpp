@@ -93,6 +93,22 @@ struct parser_context
     std::stack<std::unordered_map<std::string, std::string>> object_types;
 };
 
+auto fetch_function_signature(
+    const parser_context& ctx, const std::string& function_name
+)
+    -> function_signature
+{
+    if (auto it = ctx.functions.find(function_name); it != ctx.functions.end()) {
+        return it->second;
+    }
+
+    if (anzu::is_builtin(function_name)) {
+        return anzu::fetch_builtin(function_name).sig;
+    }
+
+    parser_error(ctx.tokens.curr(), "could not find function '{}'", function_name);
+}
+
 auto typeof_expr(const parser_context& ctx, const node_expr& expr) -> std::string
 {
     return std::visit(overloaded {
@@ -103,7 +119,7 @@ auto typeof_expr(const parser_context& ctx, const node_expr& expr) -> std::strin
             return ctx.object_types.top().at(node.name);
         },
         [&](const node_function_call_expr& node) {
-            const auto& func_def = ctx.functions.at(node.function_name);
+            const auto& func_def = fetch_function_signature(ctx, node.function_name);
             return func_def.return_type;
         },
         [&](const node_bin_op_expr& node) {
@@ -148,22 +164,6 @@ auto check_argc(
     if (expected != actual) {
         parser_error(tok, "function '{}' expected {} args, got {}", func, expected, actual);
     }
-}
-
-auto fetch_function_signature(
-    const parser_context& ctx, const std::string& function_name
-)
-    -> function_signature
-{
-    if (auto it = ctx.functions.find(function_name); it != ctx.functions.end()) {
-        return it->second;
-    }
-
-    if (anzu::is_builtin(function_name)) {
-        return anzu::fetch_builtin(function_name).sig;
-    }
-
-    parser_error(ctx.tokens.curr(), "could not find function '{}'", function_name);
 }
 
 auto fetch_argc(const parser_context& ctx, const std::string& function_name) -> std::int64_t
@@ -246,7 +246,6 @@ auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
         auto node = std::make_unique<anzu::node_expr>();
         auto& expr = node->emplace<anzu::node_literal_expr>();
         expr.value = *factor;
-        node->type = typeof(expr.value);
         return node;
     }
     else if (is_function(ctx)) {
@@ -258,7 +257,6 @@ auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
     auto node = std::make_unique<anzu::node_expr>();
     auto& expr = node->emplace<anzu::node_variable_expr>();
     expr.name = tokens.consume().text;
-    node->type = ctx.object_types.top().at(expr.name);
     return node;
 }
 
@@ -280,7 +278,6 @@ auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_expr
         expr.op = op;
         expr.rhs = parse_compound_factor(ctx, level - 1);
         expr.op_token = op_token;
-        node->type = typeof_bin_op(expr.lhs->type, expr.rhs->type, op_token);
 
         left = std::move(node);
     }
@@ -289,10 +286,12 @@ auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_expr
 
 auto parse_expression(parser_context& ctx) -> node_expr_ptr
 {
-    return parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
+    auto ret = parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
+    typeof_expr(ctx, *ret); // Typecheck the expression
+    return ret;
 }
 
-auto parse_assign_expression(parser_context& ctx) -> node_stmt_ptr
+auto parse_assigment_stmt(parser_context& ctx) -> node_stmt_ptr
 {
     if (ctx.tokens.curr().type != token_type::name) {
         parser_error(ctx.tokens.curr(), "'{}' is not a valid name", ctx.tokens.curr().text);
@@ -304,7 +303,7 @@ auto parse_assign_expression(parser_context& ctx) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_assignment_stmt>();
     stmt.name = name;
     stmt.expr = parse_expression(ctx);
-    ctx.object_types.top()[name] = stmt.expr->type;
+    ctx.object_types.top()[stmt.name] = typeof_expr(ctx, *stmt.expr);
     return node;
 }
 
@@ -454,7 +453,7 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
     check_argc(token, out.function_name, std::ssize(sig.args), std::ssize(out.args));
     for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
         const auto& expected = sig.args.at(idx).type;
-        const auto& actual = out.args.at(idx)->type;
+        const auto& actual = typeof_expr(ctx, *out.args.at(idx));
         if (expected != tk_any && expected != actual) {
             parser_error(
                 token, "invalid function call, arg {} expects type {}, got {}\n", idx, expected, actual
@@ -503,7 +502,7 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
         return node;
     }
     else if (tokens.has_next() && tokens.next().text == tk_assign) {
-        return parse_assign_expression(ctx);
+        return parse_assigment_stmt(ctx);
     }
     else if (is_function(ctx)) {
         return parse_function_call_stmt(ctx);

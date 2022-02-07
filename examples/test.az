@@ -1,7 +1,7 @@
 
-function foo(t: any) -> int do
+function foo(t: int) -> int do
     return 2 * t
 end
 
 println("hello")
-foo("hello")
+foo(5)

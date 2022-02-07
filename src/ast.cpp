@@ -30,13 +30,13 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
     const auto spaces = std::string(4 * indent, ' ');
     std::visit(overloaded {
         [&](const node_literal_expr& node) {
-            anzu::print("{}Literal: {} ({})\n", spaces, node.value.to_repr(), root.type);
+            anzu::print("{}Literal: {}\n", spaces, node.value.to_repr());
         },
         [&](const node_variable_expr& node) {
-            anzu::print("{}Variable: {} ({})\n", spaces, node.name, root.type);
+            anzu::print("{}Variable: {}\n", spaces, node.name);
         },
         [&](const node_bin_op_expr& node) {
-            anzu::print("{}BinOp ({})\n", spaces, root.type);
+            anzu::print("{}BinOp:\n", spaces);
             anzu::print("{}- Op: {}\n", spaces, node.op);
             anzu::print("{}- Lhs:\n", spaces);
             print_node(*node.lhs, indent + 1);
@@ -44,7 +44,7 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
             print_node(*node.rhs, indent + 1);
         },
         [&](const node_function_call_expr& node) {
-            anzu::print("{}FunctionCall (Expr) ({}): {}\n", spaces, node.function_name, root.type);
+            anzu::print("{}FunctionCall (Expr): {}\n", spaces, node.function_name);
             anzu::print("{}- Args:\n", spaces);
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
