@@ -12,7 +12,7 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 auto type_error(const anzu::object& lhs, const anzu::object& rhs, std::string_view op) -> void
 {
-    anzu::print("type error: cannot evaluate {} {} {}\n", lhs.to_repr(), rhs.to_repr(), op);
+    anzu::print("type error: cannot evaluate {} {} {}\n", lhs.to_repr(), op, rhs.to_repr());
     std::exit(1);
 }
 

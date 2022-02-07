@@ -37,7 +37,7 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
         },
         [&](const node_bin_op_expr& node) {
             anzu::print("{}BinOp\n", spaces);
-            anzu::print("{}- Op: {}\n", spaces, node.op);
+            anzu::print("{}- Op: {}\n", spaces, node.op.text);
             anzu::print("{}- Lhs:\n", spaces);
             if (!node.lhs) {
                 anzu::print("bin op has no lhs\n");

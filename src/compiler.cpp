@@ -99,21 +99,21 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
 {
     compile_node(*node.lhs, ctx);
     compile_node(*node.rhs, ctx);
-    if      (node.op == "+")  { ctx.program.emplace_back(anzu::op_add{}); }
-    else if (node.op == "-")  { ctx.program.emplace_back(anzu::op_sub{}); }
-    else if (node.op == "*")  { ctx.program.emplace_back(anzu::op_mul{}); }
-    else if (node.op == "/")  { ctx.program.emplace_back(anzu::op_div{}); }
-    else if (node.op == "%")  { ctx.program.emplace_back(anzu::op_mod{}); }
-    else if (node.op == "<")  { ctx.program.emplace_back(anzu::op_lt{}); }
-    else if (node.op == "<=") { ctx.program.emplace_back(anzu::op_le{}); }
-    else if (node.op == ">")  { ctx.program.emplace_back(anzu::op_gt{}); }
-    else if (node.op == ">=") { ctx.program.emplace_back(anzu::op_ge{}); }
-    else if (node.op == "==") { ctx.program.emplace_back(anzu::op_eq{}); }
-    else if (node.op == "!=") { ctx.program.emplace_back(anzu::op_ne{}); }
-    else if (node.op == "||") { ctx.program.emplace_back(anzu::op_or{}); }
-    else if (node.op == "&&") { ctx.program.emplace_back(anzu::op_and{}); }
+    if      (node.op.text == "+")  { ctx.program.emplace_back(anzu::op_add{}); }
+    else if (node.op.text == "-")  { ctx.program.emplace_back(anzu::op_sub{}); }
+    else if (node.op.text == "*")  { ctx.program.emplace_back(anzu::op_mul{}); }
+    else if (node.op.text == "/")  { ctx.program.emplace_back(anzu::op_div{}); }
+    else if (node.op.text == "%")  { ctx.program.emplace_back(anzu::op_mod{}); }
+    else if (node.op.text == "<")  { ctx.program.emplace_back(anzu::op_lt{}); }
+    else if (node.op.text == "<=") { ctx.program.emplace_back(anzu::op_le{}); }
+    else if (node.op.text == ">")  { ctx.program.emplace_back(anzu::op_gt{}); }
+    else if (node.op.text == ">=") { ctx.program.emplace_back(anzu::op_ge{}); }
+    else if (node.op.text == "==") { ctx.program.emplace_back(anzu::op_eq{}); }
+    else if (node.op.text == "!=") { ctx.program.emplace_back(anzu::op_ne{}); }
+    else if (node.op.text == "||") { ctx.program.emplace_back(anzu::op_or{}); }
+    else if (node.op.text == "&&") { ctx.program.emplace_back(anzu::op_and{}); }
     else {
-        anzu::print("syntax error: unknown binary operator: '{}'\n", node.op);
+        anzu::print("syntax error: unknown binary operator: '{}'\n", node.op.text);
         std::exit(1);
     }
 }

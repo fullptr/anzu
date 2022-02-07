@@ -1,2 +1,7 @@
 
-x = println("hello world", 2)
+function foo(t: int) -> int do
+    return 2 * t
+end
+
+println("hello")
+foo(5)

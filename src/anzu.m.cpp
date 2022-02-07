@@ -39,16 +39,18 @@ int main(int argc, char** argv)
         }
     }
 
-    anzu::print("loading file '{}'\n", file);
-
+    anzu::print("Loading file '{}'\n", file);
+    anzu::print("-> Lexing\n");
     const auto tokens = anzu::lex(file);
     if (mode == "lex") {
         print_tokens(tokens);
         return 0;
     }
 
+    anzu::print("-> Parsing\n");
     auto ast = anzu::parse(tokens);
     if (argc == 4) {
+        anzu::print("-> Optimising\n");
         anzu::optimise_ast(*ast);
     }
 
@@ -57,12 +59,14 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    anzu::print("-> Compiling\n");
     const auto program = anzu::compile(ast);
     if (mode == "com") {
         anzu::print_program(program);
         return 0;
     }
 
+    anzu::print("-> Running\n\n");
     if (mode == "run") {
         anzu::run_program(program);
         return 0;

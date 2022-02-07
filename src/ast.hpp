@@ -1,6 +1,7 @@
 #pragma once
 #include "object.hpp"
 #include "functions.hpp"
+#include "token.hpp"
 
 #include <variant>
 #include <vector>
@@ -23,7 +24,7 @@ struct node_variable_expr
 
 struct node_bin_op_expr
 {
-    std::string op; // TODO: make into enum
+    anzu::token   op; // Keep as token for debugging info
     node_expr_ptr lhs;
     node_expr_ptr rhs;
 };
