@@ -2,6 +2,7 @@
 #include "object.hpp"
 #include "functions.hpp"
 #include "vocabulary.hpp"
+#include "token.hpp"
 
 #include <variant>
 #include <vector>
@@ -27,6 +28,8 @@ struct node_bin_op_expr
     std::string op; // TODO: make into enum
     node_expr_ptr lhs;
     node_expr_ptr rhs;
+
+    anzu::token op_token; // For debugging
 };
 
 struct node_function_call_expr

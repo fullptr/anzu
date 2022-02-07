@@ -1,6 +1,5 @@
 
-
-function foo(t: str) -> int do
+function foo(t: any) -> int do
     return 2 * t
 end
 

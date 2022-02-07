@@ -14,11 +14,13 @@
 namespace anzu {
 namespace {
 
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+
 template <typename... Args>
 [[noreturn]] void parser_error(const token& tok, std::string_view msg, Args&&... args)
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[Parser] ({}:{}) ERROR: {}\n", tok.line, tok.col, formatted_msg);
+    anzu::print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
     std::exit(1);
 }
 
@@ -45,15 +47,15 @@ auto typeof(const anzu::object& object) -> std::string
 auto typeof_bin_op(
     std::string_view lhs, std::string_view rhs, const token& op_token
 )
-    -> std::string_view
+    -> std::string
 {
-    auto op = op_token.text;
-    auto invalid_expr = [=]() {
+    const auto op = op_token.text;
+    const auto invalid_expr = [=]() {
         parser_error(op_token, "could not evaluate '{} {} {}'", lhs, op, rhs);
     };
 
     if (lhs == tk_any || rhs == tk_any) {
-        return tk_any;
+        return std::string{tk_any};
     }
 
     if (lhs != rhs) {
@@ -66,22 +68,22 @@ auto typeof_bin_op(
 
     if (lhs == tk_str) {
         if (op == tk_add) { // String concatenation
-            return tk_str;
+            return std::string{tk_str};
         }
         invalid_expr();
     }
 
     if (lhs == tk_bool) {
         if (op == tk_or || op == tk_and) {
-            return tk_bool;
+            return std::string{tk_bool};
         }
         invalid_expr();
     }
 
     if (is_comparison(op)) {
-        return tk_bool;
+        return std::string{tk_bool};
     }
-    return tk_int;
+    return std::string{tk_int};
 }
 
 struct parser_context
@@ -89,6 +91,29 @@ struct parser_context
     anzu::tokenstream tokens;
     std::unordered_map<std::string, function_signature> functions;
     std::stack<std::unordered_map<std::string, std::string>> object_types;
+};
+
+auto typeof_expr(const parser_context& ctx, const node_expr& expr) -> std::string
+{
+    return std::visit(overloaded {
+        [&](const node_literal_expr& node) {
+            return typeof(node.value);
+        },
+        [&](const node_variable_expr& node) {
+            return ctx.object_types.top().at(node.name);
+        },
+        [&](const node_function_call_expr& node) {
+            const auto& func_def = ctx.functions.at(node.function_name);
+            return func_def.return_type;
+        },
+        [&](const node_bin_op_expr& node) {
+            return typeof_bin_op(
+                typeof_expr(ctx, *node.lhs),
+                typeof_expr(ctx, *node.rhs),
+                node.op_token
+            );
+        }
+    }, expr);
 };
 
 template <typename Func>
@@ -254,6 +279,7 @@ auto parse_compound_factor(parser_context& ctx, std::int64_t level) -> node_expr
         expr.lhs = std::move(left);
         expr.op = op;
         expr.rhs = parse_compound_factor(ctx, level - 1);
+        expr.op_token = op_token;
         node->type = typeof_bin_op(expr.lhs->type, expr.rhs->type, op_token);
 
         left = std::move(node);
