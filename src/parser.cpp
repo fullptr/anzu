@@ -343,7 +343,7 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
     for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
         const auto& expected = sig.args.at(idx).type;
         const auto& actual = type_of_expr(ctx, *out.args.at(idx));
-        if (expected != tk_any && expected != actual) {
+        if (expected != tk_any && actual != tk_any && expected != actual) {
             parser_error(
                 token, "invalid function call, arg {} expects type {}, got {}\n", idx, expected, actual
             );
