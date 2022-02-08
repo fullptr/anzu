@@ -79,7 +79,9 @@ auto to_string(const op& op_code) -> std::string
             return std::string{"OP_RETURN"};
         },
         [&](const op_function_call& op) {
-            return std::format("OP_FUNCTION_CALL({})", op.name);
+            const auto func_str = std::format("OP_FUNCTION_CALL({})", op.name);
+            const auto jump_str = std::format("JUMP -> {}", op.ptr);
+            return std::format(FORMAT2, func_str, jump_str);
         },
         [&](const op_builtin_call& op) {
             return std::format("OP_BUILTIN_CALL({})", op.name);

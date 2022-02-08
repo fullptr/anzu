@@ -322,6 +322,10 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     ctx.scopes.top().functions[stmt.name] = stmt.sig;
     
     ctx.scopes.emplace();
+
+    // Add the function to its own scope to allow for recursion
+    ctx.scopes.top().functions[stmt.name] = stmt.sig;
+
     for (const auto& arg : stmt.sig.args) {
         add_variable(ctx, arg.name, arg.type);
     }

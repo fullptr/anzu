@@ -12,4 +12,4 @@ while i < 1000 do
     i = i + 1
 end
 
-count print
+println(count)
