@@ -55,7 +55,7 @@ auto tokenstream::peek(std::string_view text) -> bool
 
 auto tokenstream::peek_next(std::string_view text) -> bool
 {
-    return has_next() && curr().text == text;
+    return has_next() && next().text == text;
 }
 
 }

@@ -425,10 +425,10 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
         node->emplace<anzu::node_continue_stmt>();
         return node;
     }
-    else if (tokens.peek_next(tk_assign)) {
+    else if (tokens.peek_next(tk_assign)) { // <name> '='
         return parse_assigment_stmt(ctx);
     }
-    else if (tokens.peek_next(tk_lparen)) {
+    else if (tokens.peek_next(tk_lparen)) { // <name> '('
         return parse_function_call_stmt(ctx);
     }
     else {

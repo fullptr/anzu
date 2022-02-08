@@ -8,6 +8,6 @@ function foo(a: int, b: int) -> int do
     return nested(a + b)
 end
 
-x = nested(2, 3)
+x = foo(2, 3)
 
 println(x)
