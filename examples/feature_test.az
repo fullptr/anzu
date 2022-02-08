@@ -55,12 +55,12 @@ println(true && false)
 println(true || false)
 
 # functions
-function adder(a, b, c) do
+function adder(a: int, b: int, c: int) -> int do
     return a + b + c
 end
 
 print("Does adder(1, 2, 3) == 6? ")
-if adder(1, 2, 3) == 6 do
+if to_bool(adder(1, 2, 3) == 6) do
     println("yes")
 else
     println("no")
@@ -76,7 +76,7 @@ println("list test, 3 elements with a break after the second, should only see tw
 println("additionally, there is a while loop with its own break statement which should be fine")
 for x in [1, 2, 3] do
     println(x)
-    if x == 2 do
+    if to_int(x) == 2 do
         while true do
             break # To make sure that this break is not affected by the for
         end 

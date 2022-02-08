@@ -58,14 +58,18 @@ auto type_of_bin_op(
     }
 
     if (lhs == tk_str) {
-        if (op == tk_add) { // String concatenation
+        // Allowed: string concatenation and equality check
+        if (op == tk_add) {
             return std::string{tk_str};
+        }
+        if (op == tk_eq || op == tk_ne) {
+            return std::string{tk_bool};
         }
         invalid_expr();
     }
 
     if (lhs == tk_bool) {
-        if (op == tk_or || op == tk_and) {
+        if (op == tk_or || op == tk_and || op == tk_eq || op == tk_ne) {
             return std::string{tk_bool};
         }
         invalid_expr();
@@ -84,7 +88,8 @@ auto fetch_function_signature(
 )
     -> function_signature
 {
-    if (auto it = ctx.functions.find(function_name); it != ctx.functions.end()) {
+    const auto& scope = ctx.current_scope();
+    if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
         return it->second;
     }
 
@@ -102,7 +107,9 @@ auto type_of_expr(const parser_context& ctx, const node_expr& expr) -> std::stri
             return type_of(node.value);
         },
         [&](const node_variable_expr& node) {
-            return ctx.object_types.top().at(node.name);
+            anzu::print("looking for {}\n", node.name);
+            const auto& top = ctx.scopes.top();
+            return top.variables.at(node.name);
         },
         [&](const node_function_call_expr& node) {
             const auto& func_def = fetch_function_signature(ctx, node.function_name);
@@ -110,9 +117,7 @@ auto type_of_expr(const parser_context& ctx, const node_expr& expr) -> std::stri
         },
         [&](const node_bin_op_expr& node) {
             return type_of_bin_op(
-                type_of_expr(ctx, *node.lhs),
-                type_of_expr(ctx, *node.rhs),
-                node.op
+                type_of_expr(ctx, *node.lhs), type_of_expr(ctx, *node.rhs), node.op
             );
         }
     }, expr);

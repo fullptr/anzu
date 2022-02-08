@@ -32,6 +32,7 @@ public:
     tokenstream(const std::vector<token>& tokens);
     auto consume_maybe(std::string_view text) -> bool;
     auto consume_only(std::string_view text) -> void;
+    auto peek(std::string_view text) -> bool;
 };
     
 }

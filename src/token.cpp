@@ -48,4 +48,9 @@ auto tokenstream::consume_only(std::string_view text) -> void
     }
 }
 
+auto tokenstream::peek(std::string_view text) -> bool
+{
+    return curr().text == text;
+}
+
 }

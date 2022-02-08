@@ -1,7 +1,8 @@
 
-function foo(t: int) -> int do
-    return 2 * t
+if input() == "2" do
+    function foo(a, b) do
+        return a + b
+    end
 end
 
-println("hello")
-foo(5)
+println(foo(2, 5))
