@@ -2,6 +2,8 @@
 #include "parser.hpp"
 #include "vocabulary.hpp"
 
+#include <ranges>
+
 namespace anzu {
 namespace {
 
@@ -13,6 +15,12 @@ template <typename... Args>
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
     anzu::print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
     std::exit(1);
+}
+
+template <typename... Args>
+[[noreturn]] void type_error(const parser_context& ctx, std::string_view msg, Args&&... args)
+{
+    type_error(ctx.tokens.curr(), msg, std::forward<Args>(args)...);
 }
 
 auto type_of(const anzu::object& object) -> std::string
@@ -97,7 +105,34 @@ auto fetch_function_signature(
         return anzu::fetch_builtin(function_name).sig;
     }
 
-    type_error(ctx.tokens.curr(), "could not find function '{}'", function_name);
+    type_error(ctx, "could not find function '{}'", function_name);
+}
+
+auto type_check_function_call(
+    const parser_context& ctx,
+    const std::string& function_name,
+    std::span<const node_expr_ptr> args
+)
+    -> void
+{
+    const auto sig = fetch_function_signature(ctx, function_name);
+    if (sig.args.size() != args.size()) {
+        type_error(
+            ctx, "function '{}' expected {} args, got {}",
+            function_name, sig.args.size(), args.size()
+        );
+    }
+
+    for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
+        const auto& expected = sig.args.at(idx).type;
+        const auto& actual = type_of_expr(ctx, *args[idx]);
+        if (expected != tk_any && actual != tk_any && expected != actual) {
+            type_error(
+                ctx, "invalid function call, arg {} expects type {}, got {}\n",
+                idx, expected, actual
+            );
+        }
+    }
 }
 
 auto type_of_expr(const parser_context& ctx, const node_expr& expr) -> std::string

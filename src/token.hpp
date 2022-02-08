@@ -1,4 +1,5 @@
 #pragma once
+#include "vocabulary.hpp"
 #include "utility/peekstream.hpp"
 
 #include <string>
@@ -32,6 +33,20 @@ public:
     tokenstream(const std::vector<token>& tokens);
     auto consume_maybe(std::string_view text) -> bool;
     auto consume_only(std::string_view text) -> void;
+
+    template <typename Func>
+    auto consume_comma_separated_list(std::string_view sentinel, Func&& callback) -> void
+    {
+        if (consume_maybe(sentinel)) { // Empty list
+            return;
+        }
+        callback(); // Parse first
+        while (!peek(sentinel)) {
+            consume_only(tk_comma);
+            callback();
+        }
+        consume_only(sentinel);
+    }
 
     // TODO: Rename these and the peekstream functions to be more consistent
     auto peek(std::string_view text) -> bool;

@@ -6,9 +6,13 @@ namespace anzu {
 
 struct parser_context;
 
-auto fetch_function_signature(
-    const parser_context& ctx, const std::string& function_name
-) -> function_signature;
+// Given a context and function name along with a set of arguments, verify that the
+// arguments match the function signature.
+auto type_check_function_call(
+    const parser_context& ctx,
+    const std::string& function_name,
+    std::span<const node_expr_ptr> args
+) -> void;
 
 // Evaluates a given expression node with the given context. Produces an error if the
 // expression is invalid, otherwise the returns the type of the expression.

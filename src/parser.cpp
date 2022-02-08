@@ -23,58 +23,9 @@ template <typename... Args>
     std::exit(1);
 }
 
-void assert_type(const token& tok, std::string_view actual, std::string_view expected)
+void add_variable(parser_context& ctx, std::string_view name, std::string_view type)
 {
-    if (actual != expected) {
-        parser_error(tok, "expected '{}', got '{}'", expected, actual);
-    }
-}
-
-void add_variable(parser_context& ctx, const std::string& name, std::string_view type)
-{
-    ctx.current_scope().variables[name] = std::string{type};
-}
-
-template <typename Func>
-auto comma_separated_list(
-    parser_context& ctx, std::string_view sentinel, Func&& callback
-)
-    -> void
-{
-    auto& tokens = ctx.tokens;
-    if (tokens.consume_maybe(sentinel)) { // Empty list
-        return;
-    }
-    callback(); // Parse first
-    while (tokens.valid() && tokens.curr().text != sentinel) {
-        ctx.tokens.consume_only(tk_comma);
-        callback();
-    }
-    ctx.tokens.consume_only(sentinel);
-}
-
-auto check_argc(
-    const token& tok, std::string_view func, std::int64_t expected, std::int64_t actual
-)
-    -> void
-{
-    if (expected != actual) {
-        parser_error(tok, "function '{}' expected {} args, got {}", func, expected, actual);
-    }
-}
-
-auto fetch_argc(const parser_context& ctx, const std::string& function_name) -> std::int64_t
-{
-    const auto& scope = ctx.current_scope();
-    if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
-        return it->second.args.size();
-    }
-
-    if (anzu::is_builtin(function_name)) {
-        return std::ssize(anzu::fetch_builtin(function_name).sig.args);
-    }
-
-    parser_error(ctx.tokens.curr(), "could not find function '{}'", function_name);
+    ctx.current_scope().variables[std::string{name}] = std::string{type};
 }
 
 auto handle_list_literal(parser_context& ctx) -> anzu::object;
@@ -106,7 +57,7 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
 auto handle_list_literal(parser_context& ctx) -> anzu::object
 {
     auto list = std::make_shared<std::vector<anzu::object>>();
-    comma_separated_list(ctx, tk_rbracket, [&] {
+    ctx.tokens.consume_comma_separated_list(tk_rbracket, [&] {
         auto obj = try_parse_literal(ctx);
         if (!obj.has_value()) {
             parser_error(ctx.tokens.curr(), "failed to parse string literal");
@@ -185,11 +136,23 @@ auto parse_expression(parser_context& ctx) -> node_expr_ptr
     return parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
 }
 
-auto parse_typed_expression(parser_context& ctx) -> std::pair<node_expr_ptr, std::string>
+auto parse_expression_type_checked(parser_context& ctx, std::string_view exp_type) -> node_expr_ptr
+{
+    auto& tok = ctx.tokens.curr();
+    auto expr = parse_expression(ctx);
+    auto type = type_of_expr(ctx, *expr);
+    if (type != tk_any && exp_type != type) {
+        parser_error(tok, "expected '{}', got '{}'", exp_type, type);
+    }
+    return expr;
+}
+
+auto parse_expression_store_type(parser_context& ctx, std::string_view name) -> node_expr_ptr
 {
     auto expr = parse_expression(ctx);
-    auto type = type_of_expr(ctx, *expr); // Typecheck the expression
-    return {std::move(expr), type};
+    auto type = type_of_expr(ctx, *expr);
+    add_variable(ctx, name, type);
+    return expr;
 }
 
 auto parse_assigment_stmt(parser_context& ctx) -> node_stmt_ptr
@@ -203,9 +166,7 @@ auto parse_assigment_stmt(parser_context& ctx) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_assignment_stmt>();
     stmt.name = name;
-    auto [expr, type] = parse_typed_expression(ctx);
-    stmt.expr = std::move(expr);
-    add_variable(ctx, stmt.name, type);
+    stmt.expr = parse_expression_store_type(ctx, stmt.name);
     return node;
 }
 
@@ -225,15 +186,6 @@ auto parse_statement_list(parser_context& ctx) -> node_stmt_ptr
     return node;
 }
 
-auto parse_expression_type_checked(parser_context& ctx, std::string_view exp_type) -> node_expr_ptr
-{
-    auto& tok = ctx.tokens.curr();
-    auto [expr, type] = parse_typed_expression(ctx);
-    assert_type(tok, type, exp_type);
-    auto ret = std::move(expr);
-    return ret;
-}
-
 auto parse_while_body(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
@@ -249,10 +201,7 @@ auto parse_if_body(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_if_stmt>();
-    const auto& tok = ctx.tokens.curr();
-    auto [expr, type] = parse_typed_expression(ctx);
-    stmt.condition = std::move(expr);
-    assert_type(tok, type, tk_bool);
+    stmt.condition = parse_expression_type_checked(ctx, tk_bool);
     ctx.tokens.consume_only(tk_do);
     stmt.body = parse_statement_list(ctx);
 
@@ -280,10 +229,7 @@ auto parse_for_body(parser_context& ctx) -> node_stmt_ptr
     stmt.var = ctx.tokens.consume().text;
     add_variable(ctx, stmt.var, tk_any);
     ctx.tokens.consume_only(tk_in);
-    const auto& tok = ctx.tokens.curr();
-    auto [expr, type] = parse_typed_expression(ctx);
-    stmt.container = std::move(expr);
-    assert_type(tok, type, tk_list);
+    stmt.container = parse_expression_type_checked(ctx, tk_list);
     ctx.tokens.consume_only(tk_do);
     stmt.body = parse_statement_list(ctx);
     ctx.tokens.consume_only(tk_end);
@@ -294,15 +240,14 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
 {
     constexpr auto error_msg = std::string_view{"failed to parse signature for '{}', '{}' is not a type"};
 
-
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_function_def_stmt>();
     if (ctx.tokens.curr().type != token_type::name) {
         parser_error(ctx.tokens.curr(), "expected function name");
-    }
+    }   
     stmt.name = ctx.tokens.consume().text;
     ctx.tokens.consume_only(tk_lparen);
-    comma_separated_list(ctx, tk_rparen, [&] {
+    ctx.tokens.consume_comma_separated_list(tk_rparen, [&] {
         if (ctx.tokens.curr().type != token_type::name) {
             parser_error(ctx.tokens.curr(), "failed to parse function argument");
         }
@@ -321,6 +266,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     });
     ctx.scopes.top().functions[stmt.name] = stmt.sig;
     
+    // New scope for variable definitions
     ctx.scopes.emplace();
 
     // Add the function to its own scope to allow for recursion
@@ -349,7 +295,8 @@ auto parse_return(parser_context& ctx) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_return_stmt>();
     
     if (!anzu::is_sentinel(ctx.tokens.curr().text)) {
-        auto [expr, type] = parse_typed_expression(ctx);
+        auto expr = parse_expression(ctx);
+        auto type = type_of_expr(ctx, *expr);
         stmt.return_value = std::move(expr);
         // TODO: Check type against function signature.
     } else {
@@ -365,29 +312,15 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
 {
     auto node = std::make_unique<NodeVariant>();
     auto& out = node->emplace<NodeType>();
-    const auto token = ctx.tokens.consume();
-    out.function_name = token.text;
 
-    std::vector<std::string> types;
-
+    out.function_name = ctx.tokens.consume().text;
     ctx.tokens.consume_only(tk_lparen);
-    comma_separated_list(ctx, tk_rparen, [&] {
-        auto [expr, type] = parse_typed_expression(ctx);
-        out.args.push_back(std::move(expr));
-        types.push_back(type);
+    
+    ctx.tokens.consume_comma_separated_list(tk_rparen, [&] {
+        out.args.push_back(parse_expression(ctx));
     });
 
-    const auto sig = fetch_function_signature(ctx, out.function_name);
-    check_argc(token, out.function_name, std::ssize(sig.args), std::ssize(out.args));
-    for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
-        const auto& expected = sig.args.at(idx).type;
-        const auto& actual = types[idx];
-        if (expected != tk_any && actual != tk_any && expected != actual) {
-            parser_error(
-                token, "invalid function call, arg {} expects type {}, got {}\n", idx, expected, actual
-            );
-        }
-    }
+    type_check_function_call(ctx, out.function_name, out.args);
     return node;
 }
 
