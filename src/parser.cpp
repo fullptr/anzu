@@ -53,12 +53,6 @@ auto comma_separated_list(
     ctx.tokens.consume_only(sentinel);
 }
 
-auto is_function(const parser_context& ctx) -> bool
-{
-    const auto& name = ctx.tokens.curr().text;
-    return ctx.current_scope().functions.contains(name) || is_builtin(name);
-}
-
 auto check_argc(
     const token& tok, std::string_view func, std::int64_t expected, std::int64_t actual
 )
@@ -152,7 +146,7 @@ auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
         expr.value = *factor;
         return node;
     }
-    else if (is_function(ctx)) {
+    else if (tokens.peek_next(tk_lparen)) {
         return parse_function_call_expr(ctx);
     }
     else if (tokens.curr().type != token_type::name) {
@@ -431,10 +425,10 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
         node->emplace<anzu::node_continue_stmt>();
         return node;
     }
-    else if (tokens.has_next() && tokens.next().text == tk_assign) {
+    else if (tokens.peek_next(tk_assign)) {
         return parse_assigment_stmt(ctx);
     }
-    else if (is_function(ctx)) {
+    else if (tokens.peek_next(tk_lparen)) {
         return parse_function_call_stmt(ctx);
     }
     else {

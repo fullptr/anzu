@@ -1,8 +1,13 @@
 
-if input() == "2" do
-    function foo(a, b) do
-        return a + b
+function foo(a: int, b: int) -> int do
+    
+    function nested(c: int) -> int do
+        return c
     end
+
+    return nested(a + b)
 end
 
-println(foo(2, 5))
+x = nested(2, 3)
+
+println(x)

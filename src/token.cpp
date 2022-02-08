@@ -50,7 +50,12 @@ auto tokenstream::consume_only(std::string_view text) -> void
 
 auto tokenstream::peek(std::string_view text) -> bool
 {
-    return curr().text == text;
+    return valid() && curr().text == text;
+}
+
+auto tokenstream::peek_next(std::string_view text) -> bool
+{
+    return has_next() && curr().text == text;
 }
 
 }

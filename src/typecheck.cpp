@@ -107,7 +107,6 @@ auto type_of_expr(const parser_context& ctx, const node_expr& expr) -> std::stri
             return type_of(node.value);
         },
         [&](const node_variable_expr& node) {
-            anzu::print("looking for {}\n", node.name);
             const auto& top = ctx.scopes.top();
             return top.variables.at(node.name);
         },
