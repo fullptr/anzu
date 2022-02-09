@@ -85,7 +85,7 @@ println(outer(1, 2))
 # For loops
 println("list test, 3 elements with a break after the second, should only see two")
 println("additionally, there is a while loop with its own break statement which should be fine")
-for x in [1, 2, 3] do
+for x in [1, 2, 3] {
     println(x)
     if to_int(x) == 2 {
         while true {
@@ -93,11 +93,11 @@ for x in [1, 2, 3] do
         }
         break
     }
-end
+}
 
 new_list = [[1, 2, 3, 4]]
-for l in new_list do
+for l in new_list {
     list_push(l, 5)
-end
+}
 println("new_list should have 5 elements:")
 println(new_list)

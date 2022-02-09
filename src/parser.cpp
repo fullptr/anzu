@@ -155,6 +155,16 @@ auto parse_expression_store_type(parser_context& ctx, std::string_view name) -> 
     return expr;
 }
 
+auto parse_variable_name(parser_context& ctx, std::string_view type) -> std::string
+{
+    const auto token = ctx.tokens.consume();
+    if (token.type != token_type::name) {
+        parser_error(token, "expected a variable name");
+    }
+    add_variable(ctx, token.text, type);
+    return token.text;
+}
+
 auto parse_assigment_stmt(parser_context& ctx) -> node_stmt_ptr
 {
     if (ctx.tokens.curr().type != token_type::name) {
@@ -211,20 +221,16 @@ auto parse_if_stmt(parser_context& ctx) -> node_stmt_ptr
     return node;
 }
 
-auto parse_for_body(parser_context& ctx) -> node_stmt_ptr
+auto parse_for_stmt(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_for_stmt>();
-    if (ctx.tokens.curr().type != token_type::name) {
-        parser_error(ctx.tokens.curr(), "invalid for loop, bind target must be a name");
-    }
-    stmt.var = ctx.tokens.consume().text;
-    add_variable(ctx, stmt.var, tk_any);
+
+    ctx.tokens.consume_only(tk_for);
+    stmt.var = parse_variable_name(ctx, tk_any);
     ctx.tokens.consume_only(tk_in);
     stmt.container = parse_expression_type_checked(ctx, tk_list);
-    ctx.tokens.consume_only(tk_do);
-    stmt.body = parse_statement_list(ctx);
-    ctx.tokens.consume_only(tk_end);
+    stmt.body = parse_statement(ctx);
     return node;
 }
 
@@ -279,11 +285,12 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     return node;
 }
 
-auto parse_return(parser_context& ctx) -> node_stmt_ptr
+auto parse_return_stmt(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_return_stmt>();
     
+    ctx.tokens.consume_only(tk_return);
     if (!anzu::is_sentinel(ctx.tokens.curr().text)) {
         auto expr = parse_expression(ctx);
         auto type = type_of_expr(ctx, *expr);
@@ -337,8 +344,8 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
     if (tokens.consume_maybe(tk_function)) {
         return parse_function_def(ctx);
     }
-    else if (tokens.consume_maybe(tk_return)) {
-        return parse_return(ctx);
+    else if (tokens.peek(tk_return)) {
+        return parse_return_stmt(ctx);
     }
     else if (tokens.peek(tk_while)) {
         return parse_while_stmt(ctx);
@@ -346,8 +353,8 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
     else if (tokens.peek(tk_if)) {
         return parse_if_stmt(ctx);
     }
-    else if (tokens.consume_maybe(tk_for)) {
-        return parse_for_body(ctx);
+    else if (tokens.peek(tk_for)) {
+        return parse_for_stmt(ctx);
     }
     else if (tokens.consume_maybe(tk_break)) {
         auto node = std::make_unique<anzu::node_stmt>();
