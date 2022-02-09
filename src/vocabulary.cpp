@@ -8,9 +8,9 @@ namespace anzu {
 auto is_keyword(std::string_view token) -> bool
 {
     static const std::unordered_set<std::string_view> tokens = {
-        tk_break, tk_continue, tk_do, tk_elif, tk_else, tk_end,
-        tk_false, tk_for, tk_if, tk_in, tk_null, tk_true, tk_while,
-        tk_int, tk_bool, tk_str, tk_list, tk_null_type, tk_any
+        tk_break, tk_continue, tk_else, tk_false, tk_for, tk_if,
+        tk_in, tk_null, tk_true, tk_while, tk_int, tk_bool, tk_str,
+        tk_list, tk_null_type, tk_any
     };
     return tokens.contains(token);
 }
@@ -18,7 +18,7 @@ auto is_keyword(std::string_view token) -> bool
 auto is_sentinel(std::string_view token) -> bool
 {
     static const std::unordered_set<std::string_view> tokens = {
-        tk_do, tk_elif, tk_else, tk_end, tk_rbrace
+        tk_else, tk_rbrace
     };
     return tokens.contains(token);
 }

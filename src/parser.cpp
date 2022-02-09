@@ -3,7 +3,6 @@
 #include "typecheck.hpp"
 #include "vocabulary.hpp"
 
-#include <optional>
 #include <unordered_set>
 #include <string_view>
 #include <vector>
@@ -225,15 +224,16 @@ auto parse_return_stmt(parser_context& ctx) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_return_stmt>();
     
     ctx.tokens.consume_only(tk_return);
+
+    // TODO: Make return statements mandatory and check the expr type
+    // against the function signature
     if (!anzu::is_sentinel(ctx.tokens.curr().text)) {
         auto expr = parse_expression(ctx);
         auto type = type_of_expr(ctx, *expr);
         stmt.return_value = std::move(expr);
-        // TODO: Check type against function signature.
     } else {
         stmt.return_value = std::make_unique<anzu::node_expr>();
         stmt.return_value->emplace<anzu::node_literal_expr>().value = anzu::null_object();
-        // TODO: Disallow, always require a return statement.
     }
     return node;
 }
