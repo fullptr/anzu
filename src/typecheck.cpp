@@ -9,6 +9,14 @@ namespace {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
+struct typecheck_scope
+{
+    std::unordered_map<std::string, function_signature> functions;
+    std::unordered_map<std::string, std::string>        variables;
+};
+
+using typecheck_context = std::stack<typecheck_scope>;
+
 template <typename... Args>
 [[noreturn]] void type_error(const token& tok, std::string_view msg, Args&&... args)
 {
@@ -21,6 +29,14 @@ template <typename... Args>
 [[noreturn]] void type_error(const parser_context& ctx, std::string_view msg, Args&&... args)
 {
     type_error(ctx.tokens.curr(), msg, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+[[noreturn]] void type_error(std::string_view msg, Args&&... args)
+{
+    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
+    anzu::print("[ERROR] ({}:{}) {}\n", "?", "?", formatted_msg);
+    std::exit(1);
 }
 
 auto type_of_bin_op(
@@ -156,5 +172,133 @@ auto type_of_expr(const parser_context& ctx, const node_expr& expr) -> std::stri
         }
     }, expr);
 };
+
+auto fetch_function_signature(
+    const typecheck_context& ctx, const std::string& function_name
+)
+    -> function_signature
+{
+    const auto& scope = ctx.top();
+    if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
+        return it->second;
+    }
+
+    if (anzu::is_builtin(function_name)) {
+        return anzu::fetch_builtin(function_name).sig;
+    }
+
+    type_error("could not find function '{}'", function_name);
+}
+
+auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> std::string
+{
+    return std::visit(overloaded {
+        [&](const node_literal_expr& node) {
+            return type_of(node.value);
+        },
+        [&](const node_variable_expr& node) {
+            const auto& top = ctx.top();
+            return top.variables.at(node.name);
+        },
+        [&](const node_function_call_expr& node) {
+            const auto& func_def = fetch_function_signature(ctx, node.function_name);
+            return func_def.return_type;
+        },
+        [&](const node_bin_op_expr& node) {
+            return type_of_bin_op(
+                type_of_expr(ctx, *node.lhs), type_of_expr(ctx, *node.rhs), node.op
+            );
+        }
+    }, expr);
+};
+
+auto type_check_function_call(
+    const typecheck_context& ctx,
+    const std::string& function_name,
+    std::span<const node_expr_ptr> args
+)
+    -> void
+{
+    const auto sig = fetch_function_signature(ctx, function_name);
+    if (sig.args.size() != args.size()) {
+        type_error(
+            "function '{}' expected {} args, got {}",
+            function_name, sig.args.size(), args.size()
+        );
+    }
+
+    for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
+        const auto& expected = sig.args.at(idx).type;
+        const auto& actual = type_of_expr(ctx, *args[idx]);
+        if (expected != tk_any && actual != tk_any && expected != actual) {
+            type_error(
+                "invalid function call, arg {} expects type {}, got {}\n",
+                idx, expected, actual
+            );
+        }
+    }
+}
+
+namespace {
+
+auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
+
+auto typecheck_node(typecheck_context& ctx, const node_sequence_stmt& node) -> void
+{
+    for (const auto& child : node.sequence) {
+        typecheck_node(ctx, *child);
+    }
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_while_stmt& node) -> void
+{
+
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
+{
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
+{
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_break_stmt&) -> void
+{
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_continue_stmt&) -> void
+{
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) -> void
+{
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
+{
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
+{
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)
+{
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
+{
+    std::visit([&](const auto& n) { typecheck_node(ctx, n); }, node);
+}
+
+}
+
+auto typecheck_ast(const node_stmt_ptr& ast) -> void
+{
+    auto ctx = typecheck_context{};
+    ctx.emplace(); // Global scope
+    typecheck_node(ctx, *ast);
+}
 
 }
