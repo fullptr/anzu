@@ -1,11 +1,11 @@
 # fibbonacci to demonstrate functions and recursion
 
 function fibb(n: int) -> int do
-    if n == 0 do
+    if n == 0 {
         return 0
-    elif n == 1 do
+    } else if n == 1 {
         return 1
-    end
+    }
 
     return fibb(n - 1) + fibb(n - 2)
 end

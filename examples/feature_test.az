@@ -20,32 +20,32 @@ println("")
 
 # if-statements
 # basic if
-if true do
+if true {
     print("in true block\n")
-end
+}
 
 # if with else
-if 2 < 1 do
+if 2 < 1 {
     # never entered
-else
+} else {
     println("in else block")
-end
+}
 
 # if with elif
-if 1 > 3 do
+if 1 > 3 {
     # not entered
-elif 2 == 1 + 1 do  # also testing an expression
+} else if 2 == 1 + 1 {  # also testing an expression
     println("i just evaluated 2 == 1 + 1")
-end
+}
 
 # if with elif and else
-if false do
+if false {
     # nah
-elif false do
+} else if false {
     # also nah
-else
+} else {
     println("in else after skipping the if and elif")
-end
+}
 
 # simple expressions
 println(2 + 2)
@@ -60,11 +60,11 @@ function adder(a: int, b: int, c: int) -> int do
 end
 
 print("Does adder(1, 2, 3) == 6? ")
-if to_bool(adder(1, 2, 3) == 6) do
+if to_bool(adder(1, 2, 3) == 6) {
     println("yes")
-else
+} else {
     println("no")
-end
+}
 
 # printing null and showing functions with no return value return null
 x = null
@@ -87,12 +87,12 @@ println("list test, 3 elements with a break after the second, should only see tw
 println("additionally, there is a while loop with its own break statement which should be fine")
 for x in [1, 2, 3] do
     println(x)
-    if to_int(x) == 2 do
+    if to_int(x) == 2 {
         while true do
             break # To make sure that this break is not affected by the for
         end 
         break
-    end
+    }
 end
 
 new_list = [[1, 2, 3, 4]]

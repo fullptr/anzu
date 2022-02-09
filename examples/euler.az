@@ -4,11 +4,11 @@ count = 0
 i = 0
 
 while i < 1000 do
-    if i % 3 == 0 do
+    if i % 3 == 0 {
         count = count + i
-    elif i % 5 == 0 do
+    } else if i % 5 == 0 {
         count = count + i
-    end
+    }
     i = i + 1
 end
 
