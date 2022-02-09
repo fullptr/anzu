@@ -186,21 +186,23 @@ auto parse_statement_list(parser_context& ctx) -> node_stmt_ptr
     return node;
 }
 
-auto parse_while_body(parser_context& ctx) -> node_stmt_ptr
+auto parse_while_stmt(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_while_stmt>();
+
+    ctx.tokens.consume_only(tk_while);
     stmt.condition = parse_expression_type_checked(ctx, tk_bool);
-    ctx.tokens.consume_only(tk_do);
-    stmt.body = parse_statement_list(ctx);
-    ctx.tokens.consume_only(tk_end);
+    stmt.body = parse_statement(ctx);
     return node;
 }
 
-auto parse_if_body(parser_context& ctx) -> node_stmt_ptr
+auto parse_if_stmt(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_if_stmt>();
+
+    ctx.tokens.consume_only(tk_if);
     stmt.condition = parse_expression_type_checked(ctx, tk_bool);
     stmt.body = parse_statement(ctx);
     if (ctx.tokens.consume_maybe(tk_else)) {
@@ -338,11 +340,11 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
     else if (tokens.consume_maybe(tk_return)) {
         return parse_return(ctx);
     }
-    else if (tokens.consume_maybe(tk_while)) {
-        return parse_while_body(ctx);
+    else if (tokens.peek(tk_while)) {
+        return parse_while_stmt(ctx);
     }
-    else if (tokens.consume_maybe(tk_if)) {
-        return parse_if_body(ctx);
+    else if (tokens.peek(tk_if)) {
+        return parse_if_stmt(ctx);
     }
     else if (tokens.consume_maybe(tk_for)) {
         return parse_for_body(ctx);

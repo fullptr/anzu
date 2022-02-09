@@ -11,7 +11,7 @@ function fibb(n: int) -> int do
 end
 
 i = 0
-while i < 10 do
+while i < 10 {
     println(fibb(i))
     i = i + 1
-end
+}
