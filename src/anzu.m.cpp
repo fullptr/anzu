@@ -1,5 +1,6 @@
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "typecheck.hpp"
 #include "optimiser.hpp"
 #include "compiler.hpp"
 #include "runtime.hpp"
@@ -49,6 +50,10 @@ int main(int argc, char** argv)
 
     anzu::print("-> Parsing\n");
     auto ast = anzu::parse(tokens);
+    
+    anzu::print("-> Type Checking\n");
+    anzu::typecheck_ast(ast);
+
     if (argc == 4) {
         anzu::print("-> Optimising\n");
         anzu::optimise_ast(*ast);

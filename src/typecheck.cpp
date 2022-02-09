@@ -241,6 +241,20 @@ auto type_check_function_call(
 
 namespace {
 
+void verify_type(std::string_view actual, std::string_view expected)
+{
+    if (actual != tk_any && actual != expected)
+    {
+        type_error("expected '{}', got '{}'", expected, actual);
+    }
+}
+
+void verify_expression_type(typecheck_context& ctx, const node_expr& expr, std::string_view expected)
+{
+    const auto expr_type = type_of_expr(ctx, expr);
+    verify_type(expr_type, expected);
+}
+
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
 
 auto typecheck_node(typecheck_context& ctx, const node_sequence_stmt& node) -> void
@@ -252,15 +266,21 @@ auto typecheck_node(typecheck_context& ctx, const node_sequence_stmt& node) -> v
 
 auto typecheck_node(typecheck_context& ctx, const node_while_stmt& node) -> void
 {
-
+    verify_expression_type(ctx, *node.condition, tk_bool);
+    typecheck_node(ctx, *node.body);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 {
+    verify_expression_type(ctx, *node.condition, tk_bool);
+    typecheck_node(ctx, *node.body);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
+    ctx.top().variables[node.var] = tk_any; // Variable is made available, cant know type yet :(
+    verify_expression_type(ctx, *node.container, tk_list);
+    typecheck_node(ctx, *node.body);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_break_stmt&) -> void
@@ -273,18 +293,33 @@ auto typecheck_node(typecheck_context& ctx, const node_continue_stmt&) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) -> void
 {
+    ctx.top().variables[node.name] = type_of_expr(ctx, *node.expr);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
 {
+    ctx.top().functions[node.name] = node.sig; // Make name available in outer scope
+
+    ctx.emplace();
+    for (const auto& arg : node.sig.args) {
+        // TODO: Check that arg.type is a valid type.
+        ctx.top().variables[arg.name] = arg.type;
+    }
+    ctx.top().variables["$return"] = node.sig.return_type; // Expose the return type for children
+    ctx.top().functions[node.name] = node.sig;             // Make available for recursion
+    typecheck_node(ctx, *node.body);
+    ctx.pop();
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
 {
+    type_check_function_call(ctx, node.function_name, node.args);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)
 {
+    const auto& return_type = ctx.top().variables.at("$return");
+    verify_expression_type(ctx, *node.return_value, return_type);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void

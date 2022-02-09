@@ -4,4 +4,4 @@ function foo(a: int, b: int) -> int
     return "hello"
 }
 
-println(foo(a, b))
+println(foo(1, 2))
