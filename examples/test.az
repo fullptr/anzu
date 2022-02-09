@@ -5,6 +5,9 @@ function foo(a: int, b: int) -> int do
         return c
     end
 
+    x = nested(a + b)
+    println(typeof(x))
+
     return nested(a + b)
 end
 

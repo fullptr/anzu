@@ -71,6 +71,17 @@ x = null
 y = println(x)
 println(y)
 
+# Nested functions
+function outer(a: int, b: int) -> int do
+    
+    function nested(c: int) -> int do
+        return c
+    end
+
+    return nested(a + b)
+end
+println(outer(1, 2))
+
 # For loops
 println("list test, 3 elements with a break after the second, should only see two")
 println("additionally, there is a while loop with its own break statement which should be fine")

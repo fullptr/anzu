@@ -32,7 +32,7 @@ class tokenstream : public anzu::peekstream<std::vector<token>>
 public:
     tokenstream(const std::vector<token>& tokens);
     auto consume_maybe(std::string_view text) -> bool;
-    auto consume_only(std::string_view text) -> void;
+    auto consume_only(std::string_view text) -> token;
 
     template <typename Func>
     auto consume_comma_separated_list(std::string_view sentinel, Func&& callback) -> void

@@ -23,26 +23,6 @@ template <typename... Args>
     type_error(ctx.tokens.curr(), msg, std::forward<Args>(args)...);
 }
 
-auto type_of(const anzu::object& object) -> std::string
-{
-    if (object.is<int>()) {
-        return std::string{tk_int};
-    }
-    if (object.is<bool>()) {
-        return std::string{tk_bool};
-    }
-    if (object.is<std::string>()) {
-        return std::string{tk_str};
-    }
-    if (object.is<object_list>()) {
-        return std::string{tk_list};
-    }
-    if (object.is<object_null>()) {
-        return std::string{tk_null_type};
-    }
-    return std::string{tk_any};
-}
-
 auto type_of_bin_op(
     std::string_view lhs, std::string_view rhs, const token& op_token
 )
@@ -89,8 +69,6 @@ auto type_of_bin_op(
     return std::string{tk_int};
 }
 
-}
-
 auto fetch_function_signature(
     const parser_context& ctx, const std::string& function_name
 )
@@ -106,6 +84,28 @@ auto fetch_function_signature(
     }
 
     type_error(ctx, "could not find function '{}'", function_name);
+}
+
+}
+
+auto type_of(const anzu::object& object) -> std::string
+{
+    if (object.is<int>()) {
+        return std::string{tk_int};
+    }
+    if (object.is<bool>()) {
+        return std::string{tk_bool};
+    }
+    if (object.is<std::string>()) {
+        return std::string{tk_str};
+    }
+    if (object.is<object_list>()) {
+        return std::string{tk_list};
+    }
+    if (object.is<object_null>()) {
+        return std::string{tk_null_type};
+    }
+    return std::string{tk_any};
 }
 
 auto type_check_function_call(

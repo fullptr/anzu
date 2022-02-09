@@ -1,6 +1,7 @@
 #include "functions.hpp"
 #include "object.hpp"
 #include "runtime.hpp"
+#include "typecheck.hpp"
 #include "utility/print.hpp"
 
 #include <unordered_map>
@@ -81,6 +82,12 @@ auto builtin_input(std::span<const object> args) -> object
     std::string in;
     std::cin >> in;
     return in;
+}
+
+auto builtin_typeof(std::span<const object> args) -> object
+{
+    const auto& obj = args[0];
+    return type_of(obj);
 }
 
 }
@@ -185,6 +192,16 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_println,
         .sig = {
             .args = {},
+            .return_type = "str"
+        }
+    });
+
+    builtins.emplace("typeof", builtin{
+        .ptr = builtin_typeof,
+        .sig = {
+            .args = {
+                { .name = "obj", .type = "any" }
+            },
             .return_type = "str"
         }
     });
