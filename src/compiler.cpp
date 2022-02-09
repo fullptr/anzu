@@ -178,19 +178,7 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
-    // Push the container to the stack
-    if (std::holds_alternative<anzu::node_variable_expr>(*node.container)) {
-        const auto& cont = std::get<anzu::node_variable_expr>(*node.container).name;
-        ctx.program.emplace_back(anzu::op_push_var{ .name=cont });
-    }
-    else if (std::holds_alternative<anzu::node_literal_expr>(*node.container)) {
-        const auto& cont = std::get<anzu::node_literal_expr>(*node.container).value;
-        ctx.program.emplace_back(anzu::op_push_const{ .value=cont });
-    }
-    else {
-        anzu::print("unknown container for a for-loop\n");
-        std::exit(1);
-    }
+    compile_node(*node.container, ctx);
 
     // Push the container size to the stack
     ctx.program.emplace_back(anzu::op_copy_index{0});

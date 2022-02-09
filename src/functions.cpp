@@ -1,6 +1,7 @@
 #include "functions.hpp"
 #include "object.hpp"
 #include "runtime.hpp"
+#include "typecheck.hpp"
 #include "utility/print.hpp"
 
 #include <unordered_map>
@@ -81,6 +82,22 @@ auto builtin_input(std::span<const object> args) -> object
     std::string in;
     std::cin >> in;
     return in;
+}
+
+auto builtin_typeof(std::span<const object> args) -> object
+{
+    const auto& obj = args[0];
+    return type_of(obj);
+}
+
+auto builtin_range(std::span<const object> args) -> object
+{
+    const auto& max = args[0].as<int>();
+    auto list = std::make_shared<std::vector<object>>();
+    for (int i = 0; i != max; ++i) {
+        list->push_back(i);
+    }
+    return list;
 }
 
 }
@@ -182,10 +199,30 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
     });
 
     builtins.emplace("input", builtin{
-        .ptr = builtin_println,
+        .ptr = builtin_input,
         .sig = {
             .args = {},
             .return_type = "str"
+        }
+    });
+
+    builtins.emplace("typeof", builtin{
+        .ptr = builtin_typeof,
+        .sig = {
+            .args = {
+                { .name = "obj", .type = "any" }
+            },
+            .return_type = "str"
+        }
+    });
+
+    builtins.emplace("range", builtin{
+        .ptr = builtin_range,
+        .sig = {
+            .args = {
+                { .name = "max", .type = "int" }
+            },
+            .return_type = "list"
         }
     });
 

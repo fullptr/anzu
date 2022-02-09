@@ -8,10 +8,7 @@ using sv = std::string_view;
 // Keywords
 constexpr auto tk_break     = sv{"break"};
 constexpr auto tk_continue  = sv{"continue"};
-constexpr auto tk_do        = sv{"do"};
-constexpr auto tk_elif      = sv{"elif"};
 constexpr auto tk_else      = sv{"else"};
-constexpr auto tk_end       = sv{"end"};
 constexpr auto tk_false     = sv{"false"};
 constexpr auto tk_for       = sv{"for"};
 constexpr auto tk_if        = sv{"if"};
@@ -53,6 +50,8 @@ constexpr auto tk_rbracket  = sv{"]"};
 constexpr auto tk_rparen    = sv{")"};
 constexpr auto tk_sub       = sv{"-"};
 constexpr auto tk_rarrow    = sv{"->"};
+constexpr auto tk_lbrace    = sv{"{"};
+constexpr auto tk_rbrace    = sv{"}"};
 
 auto is_keyword    (sv token) -> bool;
 auto is_sentinel   (sv token) -> bool;

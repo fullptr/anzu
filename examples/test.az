@@ -1,7 +1,7 @@
 
-function foo(t: int) -> int do
-    return 2 * t
-end
+function foo(a: int, b: int) -> int
+{
+    return "hello"
+}
 
-println("hello")
-foo(5)
+println(foo(a, b))
