@@ -1,9 +1,5 @@
 program:
-  | statement_list
-
-statement_list:
-  | statement
-  | statement statement_list
+  | [statement]*
 
 literal:
   | int_literal
@@ -40,10 +36,10 @@ factor:
   | '(' expression ')'
 
 statement:
-  | 'function' function_def_body
-  | 'while' while_body
-  | 'if' if_body
-  | 'for' for_body
+  | function-def-stmt
+  | while-stmt
+  | if-stmt
+  | for-stmt
   | 'return' [expression]
   | 'break'
   | 'continue'
@@ -57,22 +53,17 @@ function_identifier:
 builtin_identifier:
   | string_literal
 
-function_signature:
-  | name ',' function_signature
-  | name
+function-def-stmt:
+  | 'function' '(' function-sig ')' ['->' type] statement
 
-function_def_body:
-  | '(' function_signature ')' 'do' statement_list 'end'
-  | '(' function_signature ')' 'do' 'end'
+function-sig:
+  | name [':' type] [',' name [':' type]]*
 
-while_body:
-  | statement_list 'do' statement_list 'end'
-  | statement_list 'do' 'end'
+while-stmt:
+  | 'while' expression statement
 
-if_body:
-  | statement_list 'do' statement_list 'elif' if_body
-  | statement_list 'do' statement_list 'end'
+if-stmt:
+  | 'if' expression statement 'else' statement
 
-for_body:
-  | variable_name 'in' list_literal 'do' statement_list 'end'
-  | variable_name 'in' variable_name 'do' statement_list 'end'
+for-stmt:
+  | 'for' variable_name 'in' expression statement
