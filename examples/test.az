@@ -1,7 +1,7 @@
 
 function foo(a: int, b: int) -> int
 {
-    return "hello"
+    return 5
 }
 
 println(foo(1, 2))

@@ -21,11 +21,6 @@ template <typename... Args>
 
 auto parse_expression(parser_context& ctx) -> node_expr_ptr;
 
-void add_variable(parser_context& ctx, std::string_view name, std::string_view type)
-{
-    ctx.current_scope().variables[std::string{name}] = std::string{type};
-}
-
 auto parse_literal(parser_context& ctx) -> anzu::object
 {
     auto& tokens = ctx.tokens;
@@ -65,7 +60,6 @@ auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
     ctx.tokens.consume_comma_separated_list(tk_rparen, [&] {
         out.args.push_back(parse_expression(ctx));
     });
-    type_check_function_call(ctx, out.function_name, out.args);
     return node;
 }
 
@@ -138,25 +132,6 @@ auto parse_expression(parser_context& ctx) -> node_expr_ptr
     return parse_compound_factor(ctx, std::ssize(bin_ops_table) - 1i64);
 }
 
-auto parse_expression_type_checked(parser_context& ctx, std::string_view exp_type) -> node_expr_ptr
-{
-    const auto token = ctx.tokens.curr();
-    auto expr = parse_expression(ctx);
-    auto type = type_of_expr(ctx, *expr);
-    if (type != tk_any && exp_type != type) {
-        parser_error(token, "expected '{}', got '{}'", exp_type, type);
-    }
-    return expr;
-}
-
-auto parse_expression_store_type(parser_context& ctx, std::string_view name) -> node_expr_ptr
-{
-    auto expr = parse_expression(ctx);
-    auto type = type_of_expr(ctx, *expr);
-    add_variable(ctx, name, type);
-    return expr;
-}
-
 auto parse_name(parser_context& ctx)
 {
     const auto token = ctx.tokens.consume();
@@ -166,22 +141,13 @@ auto parse_name(parser_context& ctx)
     return token.text;   
 }
 
-auto parse_name_typed(parser_context& ctx, std::string_view type) -> std::string
+auto parse_type(parser_context& ctx)
 {
-    const auto name = parse_name(ctx);
-    add_variable(ctx, name, type);
-    return name;
-}
-
-auto parse_variable_type(parser_context& ctx, std::string_view function_name) -> std::string
-{
-    constexpr auto error_msg = "failed to parse signature for '{}', '{}' is not a type";
-
-    const auto type = ctx.tokens.consume();
-    if (!is_type(type.text)) {
-        parser_error(type, error_msg, function_name, type.text);
+    const auto token = ctx.tokens.consume();
+    if (token.type != token_type::keyword) {
+        parser_error(token, "'{}' is not a valid type", token.text);
     }
-    return type.text;
+    return token.text;   
 }
 
 auto parse_statement(parser_context& ctx) -> node_stmt_ptr;
@@ -199,15 +165,14 @@ auto parse_function_def_stmt(parser_context& ctx) -> node_stmt_ptr
         auto arg = function_signature::arg{};
         arg.name = parse_name(ctx);
         if (ctx.tokens.consume_maybe(tk_colon)) {
-            arg.type = parse_variable_type(ctx, stmt.name);
+            arg.type = parse_type(ctx);
         }
-        add_variable(ctx, arg.name, arg.type);
 
         stmt.sig.args.push_back(arg);
     });    
 
     if (ctx.tokens.consume_maybe(tk_rarrow)) {
-        stmt.sig.return_type = parse_variable_type(ctx, stmt.name); // TODO: Check this
+        stmt.sig.return_type = parse_type(ctx); // TODO: Check this
     }
 
     ctx.scopes.top().functions[stmt.name] = stmt.sig; // Allows for recursion
@@ -244,7 +209,7 @@ auto parse_while_stmt(parser_context& ctx) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_while_stmt>();
 
     ctx.tokens.consume_only(tk_while);
-    stmt.condition = parse_expression_type_checked(ctx, tk_bool);
+    stmt.condition = parse_expression(ctx);
     stmt.body = parse_statement(ctx);
     return node;
 }
@@ -255,7 +220,7 @@ auto parse_if_stmt(parser_context& ctx) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_if_stmt>();
 
     ctx.tokens.consume_only(tk_if);
-    stmt.condition = parse_expression_type_checked(ctx, tk_bool);
+    stmt.condition = parse_expression(ctx);
     stmt.body = parse_statement(ctx);
     if (ctx.tokens.consume_maybe(tk_else)) {
         stmt.else_body = parse_statement(ctx);
@@ -269,9 +234,9 @@ auto parse_for_stmt(parser_context& ctx) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_for_stmt>();
 
     ctx.tokens.consume_only(tk_for);
-    stmt.var = parse_name_typed(ctx, tk_any);
+    stmt.var = parse_name(ctx);
     ctx.tokens.consume_only(tk_in);
-    stmt.container = parse_expression_type_checked(ctx, tk_list);
+    stmt.container = parse_expression(ctx);
     stmt.body = parse_statement(ctx);
     return node;
 }
@@ -283,7 +248,7 @@ auto parse_assignment_stmt(parser_context& ctx) -> node_stmt_ptr
 
     stmt.name = parse_name(ctx);
     ctx.tokens.consume_only(tk_assign);
-    stmt.expr = parse_expression_store_type(ctx, stmt.name);
+    stmt.expr = parse_expression(ctx);
     return node;
 }
 
