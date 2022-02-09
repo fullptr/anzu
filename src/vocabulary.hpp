@@ -53,6 +53,8 @@ constexpr auto tk_rbracket  = sv{"]"};
 constexpr auto tk_rparen    = sv{")"};
 constexpr auto tk_sub       = sv{"-"};
 constexpr auto tk_rarrow    = sv{"->"};
+constexpr auto tk_lbrace    = sv{"{"};
+constexpr auto tk_rbrace    = sv{"}"};
 
 auto is_keyword    (sv token) -> bool;
 auto is_sentinel   (sv token) -> bool;

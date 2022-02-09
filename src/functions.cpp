@@ -189,7 +189,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
     });
 
     builtins.emplace("input", builtin{
-        .ptr = builtin_println,
+        .ptr = builtin_input,
         .sig = {
             .args = {},
             .return_type = "str"

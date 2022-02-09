@@ -39,13 +39,32 @@ auto tokenstream::consume_maybe(std::string_view text) -> bool
     return false;
 }
 
-auto tokenstream::consume_only(std::string_view text) -> void
+auto tokenstream::consume_only(std::string_view text) -> token
 {
-    if (!consume_maybe(text)) {
-        const auto& [tok_text, line, col, type] = curr();
-        anzu::print("[ERROR] ({}:{}) expected '{}', got '{}\n", line, col, text, tok_text);
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected '{}'\n", text);
         std::exit(1);
     }
+    if (!peek(text)) {
+        const auto& [tok_text, line, col, type] = curr();
+        anzu::print("[ERROR] ({}:{}}) expected '{}', got '{}\n", line, col, text, tok_text);
+        std::exit(1);
+    }
+    return consume();
+}
+
+auto tokenstream::consume_only(token_type type) -> token
+{
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected a type\n");
+        std::exit(1);
+    }
+    if (curr().type != type) {
+        const auto& [tok_text, line, col, type] = curr();
+        anzu::print("[ERROR] ({}:{}}) expected  a type, got '{}\n", line, col, tok_text);
+        std::exit(1);
+    }
+    return consume();
 }
 
 auto tokenstream::peek(std::string_view text) -> bool

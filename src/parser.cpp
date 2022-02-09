@@ -202,20 +202,10 @@ auto parse_if_body(parser_context& ctx) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_if_stmt>();
     stmt.condition = parse_expression_type_checked(ctx, tk_bool);
-    ctx.tokens.consume_only(tk_do);
-    stmt.body = parse_statement_list(ctx);
-
-    if (ctx.tokens.consume_maybe(tk_elif)) {
-        stmt.else_body = parse_if_body(ctx);
+    stmt.body = parse_statement(ctx);
+    if (ctx.tokens.consume_maybe(tk_else)) {
+        stmt.else_body = parse_statement(ctx);
     }
-    else if (ctx.tokens.consume_maybe(tk_else)) {
-        stmt.else_body = parse_statement_list(ctx);
-        ctx.tokens.consume_only(tk_end);
-    }
-    else {
-        ctx.tokens.consume_only(tk_end);
-    }
-    
     return node;
 }
 
@@ -268,9 +258,7 @@ auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
     
     // New scope for variable definitions
     ctx.scopes.emplace();
-
-    // Add the function to its own scope to allow for recursion
-    ctx.scopes.top().functions[stmt.name] = stmt.sig;
+    ctx.scopes.top().functions[stmt.name] = stmt.sig; // Allows for recursion
 
     for (const auto& arg : stmt.sig.args) {
         add_variable(ctx, arg.name, arg.type);
@@ -305,6 +293,13 @@ auto parse_return(parser_context& ctx) -> node_stmt_ptr
         // TODO: Disallow, always require a return statement.
     }
     return node;
+}
+
+auto parse_braced_statement_list(parser_context& ctx) -> node_stmt_ptr
+{
+    auto ret = parse_statement_list(ctx);
+    ctx.tokens.consume_only(tk_rbrace);
+    return ret;
 }
 
 template <typename NodeVariant, typename NodeType>
@@ -367,6 +362,9 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
     }
     else if (tokens.peek_next(tk_lparen)) { // <name> '('
         return parse_function_call_stmt(ctx);
+    }
+    else if (tokens.consume_maybe(tk_lbrace)) {
+        return parse_braced_statement_list(ctx);
     }
     else {
         parser_error(ctx.tokens.curr(), "unknown statement '{}'", ctx.tokens.curr().text);

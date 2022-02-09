@@ -95,22 +95,24 @@ auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const i
         else if (const auto symbol = try_parse_symbol(iter); symbol.has_value()) {
             push_token(*symbol, col, token_type::symbol);
         }
-
-        const auto token = parse_token(iter);
-        if (!token.empty()) {
-            if (anzu::is_keyword(token)) {
-                push_token(token, col, token_type::keyword);
-            }
-            else if (anzu::is_int(token)) {
-                push_token(token, col, token_type::number);
-            }
-            else if (!std::isdigit(token[0])) {
-                push_token(token, col, token_type::name);
-            }
-            else {
-                lexer_error(lineno, col, "invalid name '{}' - names cannot start with a digit", token);
+        else {
+            const auto token = parse_token(iter);
+            if (!token.empty()) {
+                if (anzu::is_keyword(token)) {
+                    push_token(token, col, token_type::keyword);
+                }
+                else if (anzu::is_int(token)) {
+                    push_token(token, col, token_type::number);
+                }
+                else if (!std::isdigit(token[0])) {
+                    push_token(token, col, token_type::name);
+                }
+                else {
+                    lexer_error(lineno, col, "invalid name '{}' - names cannot start with a digit", token);
+                }
             }
         }
+
     }
 }
 

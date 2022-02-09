@@ -1,16 +1,10 @@
 
-function foo(a: int, b: int) -> int do
-    
-    function nested(c: int) -> int do
-        return c
-    end
+x = to_int(input())
 
-    x = nested(a + b)
-    println(typeof(x))
-
-    return nested(a + b)
-end
-
-x = foo(2, 3)
-
-println(x)
+if x == 2 {
+    println("equals two")
+} else if x == 3 {
+    println("equals three")
+} else {
+    println("does not equal two or three")
+}
