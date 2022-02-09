@@ -55,9 +55,10 @@ println(true && false)
 println(true || false)
 
 # functions
-function adder(a: int, b: int, c: int) -> int do
+function adder(a: int, b: int, c: int) -> int
+{
     return a + b + c
-end
+}
 
 print("Does adder(1, 2, 3) == 6? ")
 if to_bool(adder(1, 2, 3) == 6) {
@@ -72,14 +73,15 @@ y = println(x)
 println(y)
 
 # Nested functions
-function outer(a: int, b: int) -> int do
-    
-    function nested(c: int) -> int do
+function outer(a: int, b: int) -> int
+{   
+    function nested(c: int) -> int
+    {
         return c
-    end
+    }
 
     return nested(a + b)
-end
+}
 println(outer(1, 2))
 
 # For loops

@@ -1,6 +1,7 @@
 # fibbonacci to demonstrate functions and recursion
 
-function fibb(n: int) -> int do
+function fibb(n: int) -> int
+{
     if n == 0 {
         return 0
     } else if n == 1 {
@@ -8,7 +9,7 @@ function fibb(n: int) -> int do
     }
 
     return fibb(n - 1) + fibb(n - 2)
-end
+}
 
 i = 0
 while i < 10 {

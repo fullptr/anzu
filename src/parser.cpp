@@ -8,9 +8,6 @@
 #include <string_view>
 #include <vector>
 #include <memory>
-#include <unordered_map>
-#include <string>
-#include <stack>
 
 namespace anzu {
 namespace {
@@ -23,12 +20,12 @@ template <typename... Args>
     std::exit(1);
 }
 
+auto parse_expression(parser_context& ctx) -> node_expr_ptr;
+
 void add_variable(parser_context& ctx, std::string_view name, std::string_view type)
 {
     ctx.current_scope().variables[std::string{name}] = std::string{type};
 }
-
-auto handle_list_literal(parser_context& ctx) -> anzu::object;
 
 auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
 {
@@ -49,22 +46,32 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
         return anzu::null_object();
     }
     if (tokens.consume_maybe(tk_lbracket)) {
-        return { handle_list_literal(ctx) };
+        auto list = std::make_shared<std::vector<anzu::object>>();
+        ctx.tokens.consume_comma_separated_list(tk_rbracket, [&] {
+            if (auto obj = try_parse_literal(ctx); obj.has_value()) {
+                list->push_back(obj.value());
+            } else {
+                parser_error(ctx.tokens.curr(), "failed to parse string literal");
+            }
+        });
+        return { list };
     }
     return std::nullopt;
 };
 
-auto handle_list_literal(parser_context& ctx) -> anzu::object
+template <typename NodeVariant, typename NodeType>
+auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
 {
-    auto list = std::make_shared<std::vector<anzu::object>>();
-    ctx.tokens.consume_comma_separated_list(tk_rbracket, [&] {
-        auto obj = try_parse_literal(ctx);
-        if (!obj.has_value()) {
-            parser_error(ctx.tokens.curr(), "failed to parse string literal");
-        }
-        list->push_back(obj.value());
+    auto node = std::make_unique<NodeVariant>();
+    auto& out = node->emplace<NodeType>();
+
+    out.function_name = ctx.tokens.consume().text;
+    ctx.tokens.consume_only(tk_lparen);
+    ctx.tokens.consume_comma_separated_list(tk_rparen, [&] {
+        out.args.push_back(parse_expression(ctx));
     });
-    return { list };
+    type_check_function_call(ctx, out.function_name, out.args);
+    return node;
 }
 
 auto precedence_table()
@@ -80,8 +87,10 @@ auto precedence_table()
 }
 static const auto bin_ops_table = precedence_table();
 
-auto parse_expression(parser_context& ctx) -> node_expr_ptr;
-auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr;
+auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr
+{
+    return parse_function_call<anzu::node_expr, anzu::node_function_call_expr>(ctx);
+}
 
 auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
 {
@@ -138,11 +147,11 @@ auto parse_expression(parser_context& ctx) -> node_expr_ptr
 
 auto parse_expression_type_checked(parser_context& ctx, std::string_view exp_type) -> node_expr_ptr
 {
-    auto& tok = ctx.tokens.curr();
+    const auto token = ctx.tokens.curr();
     auto expr = parse_expression(ctx);
     auto type = type_of_expr(ctx, *expr);
     if (type != tk_any && exp_type != type) {
-        parser_error(tok, "expected '{}', got '{}'", exp_type, type);
+        parser_error(token, "expected '{}', got '{}'", exp_type, type);
     }
     return expr;
 }
@@ -155,43 +164,82 @@ auto parse_expression_store_type(parser_context& ctx, std::string_view name) -> 
     return expr;
 }
 
-auto parse_variable_name(parser_context& ctx, std::string_view type) -> std::string
+auto parse_name(parser_context& ctx)
 {
     const auto token = ctx.tokens.consume();
     if (token.type != token_type::name) {
-        parser_error(token, "expected a variable name");
+        parser_error(token, "'{}' is not a valid name", token.text);
     }
-    add_variable(ctx, token.text, type);
-    return token.text;
+    return token.text;   
 }
 
-auto parse_assigment_stmt(parser_context& ctx) -> node_stmt_ptr
+auto parse_name_typed(parser_context& ctx, std::string_view type) -> std::string
 {
-    if (ctx.tokens.curr().type != token_type::name) {
-        parser_error(ctx.tokens.curr(), "'{}' is not a valid name", ctx.tokens.curr().text);
-    }
-    auto name = ctx.tokens.consume().text;
-    ctx.tokens.consume_only(tk_assign);
+    const auto name = parse_name(ctx);
+    add_variable(ctx, name, type);
+    return name;
+}
 
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_assignment_stmt>();
-    stmt.name = name;
-    stmt.expr = parse_expression_store_type(ctx, stmt.name);
-    return node;
+auto parse_variable_type(parser_context& ctx, std::string_view function_name) -> std::string
+{
+    constexpr auto error_msg = "failed to parse signature for '{}', '{}' is not a type";
+
+    const auto type = ctx.tokens.consume();
+    if (!is_type(type.text)) {
+        parser_error(type, error_msg, function_name, type.text);
+    }
+    return type.text;
 }
 
 auto parse_statement(parser_context& ctx) -> node_stmt_ptr;
-auto parse_statement_list(parser_context& ctx) -> node_stmt_ptr
+
+auto parse_function_def_stmt(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_sequence_stmt>();
-    while (ctx.tokens.valid() && !anzu::is_sentinel(ctx.tokens.curr().text)) {
-        stmt.sequence.push_back(parse_statement(ctx));
+    auto& stmt = node->emplace<anzu::node_function_def_stmt>();
+
+    ctx.scopes.emplace();
+    ctx.tokens.consume_only(tk_function);
+    stmt.name = parse_name(ctx);
+    ctx.tokens.consume_only(tk_lparen);
+    ctx.tokens.consume_comma_separated_list(tk_rparen, [&] {
+        auto arg = function_signature::arg{};
+        arg.name = parse_name(ctx);
+        if (ctx.tokens.consume_maybe(tk_colon)) {
+            arg.type = parse_variable_type(ctx, stmt.name);
+        }
+        add_variable(ctx, arg.name, arg.type);
+
+        stmt.sig.args.push_back(arg);
+    });    
+
+    if (ctx.tokens.consume_maybe(tk_rarrow)) {
+        stmt.sig.return_type = parse_variable_type(ctx, stmt.name); // TODO: Check this
     }
 
-    // If there is only one element in the sequence, return that directly
-    if (stmt.sequence.size() == 1) {
-        node = std::move(stmt.sequence.back());
+    ctx.scopes.top().functions[stmt.name] = stmt.sig; // Allows for recursion
+    stmt.body = parse_statement(ctx);
+    ctx.scopes.pop();
+
+    ctx.scopes.top().functions[stmt.name] = stmt.sig; // Make function available
+    return node;
+}
+
+auto parse_return_stmt(parser_context& ctx) -> node_stmt_ptr
+{
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_return_stmt>();
+    
+    ctx.tokens.consume_only(tk_return);
+    if (!anzu::is_sentinel(ctx.tokens.curr().text)) {
+        auto expr = parse_expression(ctx);
+        auto type = type_of_expr(ctx, *expr);
+        stmt.return_value = std::move(expr);
+        // TODO: Check type against function signature.
+    } else {
+        stmt.return_value = std::make_unique<anzu::node_expr>();
+        stmt.return_value->emplace<anzu::node_literal_expr>().value = anzu::null_object();
+        // TODO: Disallow, always require a return statement.
     }
     return node;
 }
@@ -227,110 +275,22 @@ auto parse_for_stmt(parser_context& ctx) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_for_stmt>();
 
     ctx.tokens.consume_only(tk_for);
-    stmt.var = parse_variable_name(ctx, tk_any);
+    stmt.var = parse_name_typed(ctx, tk_any);
     ctx.tokens.consume_only(tk_in);
     stmt.container = parse_expression_type_checked(ctx, tk_list);
     stmt.body = parse_statement(ctx);
     return node;
 }
 
-auto parse_function_def(parser_context& ctx) -> node_stmt_ptr
-{
-    constexpr auto error_msg = std::string_view{"failed to parse signature for '{}', '{}' is not a type"};
-
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_function_def_stmt>();
-    if (ctx.tokens.curr().type != token_type::name) {
-        parser_error(ctx.tokens.curr(), "expected function name");
-    }   
-    stmt.name = ctx.tokens.consume().text;
-    ctx.tokens.consume_only(tk_lparen);
-    ctx.tokens.consume_comma_separated_list(tk_rparen, [&] {
-        if (ctx.tokens.curr().type != token_type::name) {
-            parser_error(ctx.tokens.curr(), "failed to parse function argument");
-        }
-        auto arg = function_signature::arg{};
-        arg.name = ctx.tokens.consume().text;
-
-        if (ctx.tokens.consume_maybe(tk_colon)) {
-            const auto type = ctx.tokens.consume();
-            if (!is_type(type.text)) {
-                parser_error(ctx.tokens.curr(), error_msg, stmt.name, type.text);
-            }
-            arg.type = type.text;
-        }
-
-        stmt.sig.args.push_back(arg);
-    });
-    ctx.scopes.top().functions[stmt.name] = stmt.sig;
-    
-    // New scope for variable definitions
-    ctx.scopes.emplace();
-    ctx.scopes.top().functions[stmt.name] = stmt.sig; // Allows for recursion
-
-    for (const auto& arg : stmt.sig.args) {
-        add_variable(ctx, arg.name, arg.type);
-    }
-
-    if (ctx.tokens.consume_maybe(tk_rarrow)) {
-        const auto type = ctx.tokens.consume();
-        if (!is_type(type.text)) {
-            parser_error(ctx.tokens.curr(), error_msg, stmt.name, type.text);
-        }
-    }
-    ctx.tokens.consume_only(tk_do);
-    stmt.body = parse_statement_list(ctx);
-    ctx.tokens.consume_only(tk_end);
-    ctx.scopes.pop();
-    return node;
-}
-
-auto parse_return_stmt(parser_context& ctx) -> node_stmt_ptr
+auto parse_assignment_stmt(parser_context& ctx) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_return_stmt>();
-    
-    ctx.tokens.consume_only(tk_return);
-    if (!anzu::is_sentinel(ctx.tokens.curr().text)) {
-        auto expr = parse_expression(ctx);
-        auto type = type_of_expr(ctx, *expr);
-        stmt.return_value = std::move(expr);
-        // TODO: Check type against function signature.
-    } else {
-        stmt.return_value = std::make_unique<anzu::node_expr>();
-        stmt.return_value->emplace<anzu::node_literal_expr>().value = anzu::null_object();
-        // TODO: Disallow, always require a return statement.
-    }
+    auto& stmt = node->emplace<anzu::node_assignment_stmt>();
+
+    stmt.name = parse_name(ctx);
+    ctx.tokens.consume_only(tk_assign);
+    stmt.expr = parse_expression_store_type(ctx, stmt.name);
     return node;
-}
-
-auto parse_braced_statement_list(parser_context& ctx) -> node_stmt_ptr
-{
-    auto ret = parse_statement_list(ctx);
-    ctx.tokens.consume_only(tk_rbrace);
-    return ret;
-}
-
-template <typename NodeVariant, typename NodeType>
-auto parse_function_call(parser_context& ctx) -> std::unique_ptr<NodeVariant>
-{
-    auto node = std::make_unique<NodeVariant>();
-    auto& out = node->emplace<NodeType>();
-
-    out.function_name = ctx.tokens.consume().text;
-    ctx.tokens.consume_only(tk_lparen);
-    
-    ctx.tokens.consume_comma_separated_list(tk_rparen, [&] {
-        out.args.push_back(parse_expression(ctx));
-    });
-
-    type_check_function_call(ctx, out.function_name, out.args);
-    return node;
-}
-
-auto parse_function_call_expr(parser_context& ctx) -> node_expr_ptr
-{
-    return parse_function_call<anzu::node_expr, anzu::node_function_call_expr>(ctx);
 }
 
 auto parse_function_call_stmt(parser_context& ctx) -> node_stmt_ptr
@@ -338,11 +298,29 @@ auto parse_function_call_stmt(parser_context& ctx) -> node_stmt_ptr
     return parse_function_call<anzu::node_stmt, anzu::node_function_call_stmt>(ctx);
 }
 
+auto parse_braced_statement_list(parser_context& ctx) -> node_stmt_ptr
+{
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_sequence_stmt>();
+    
+    ctx.tokens.consume_only(tk_lbrace);
+    while (ctx.tokens.valid() && !anzu::is_sentinel(ctx.tokens.curr().text)) {
+        stmt.sequence.push_back(parse_statement(ctx));
+    }
+    ctx.tokens.consume_only(tk_rbrace);
+
+    // If there is only one element in the sequence, return that directly
+    if (stmt.sequence.size() == 1) {
+        node = std::move(stmt.sequence.back());
+    }
+    return node;
+}
+
 auto parse_statement(parser_context& ctx) -> node_stmt_ptr
 {
     auto& tokens = ctx.tokens;
-    if (tokens.consume_maybe(tk_function)) {
-        return parse_function_def(ctx);
+    if (tokens.peek(tk_function)) {
+        return parse_function_def_stmt(ctx);
     }
     else if (tokens.peek(tk_return)) {
         return parse_return_stmt(ctx);
@@ -367,12 +345,12 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
         return node;
     }
     else if (tokens.peek_next(tk_assign)) { // <name> '='
-        return parse_assigment_stmt(ctx);
+        return parse_assignment_stmt(ctx);
     }
     else if (tokens.peek_next(tk_lparen)) { // <name> '('
         return parse_function_call_stmt(ctx);
     }
-    else if (tokens.consume_maybe(tk_lbrace)) {
+    else if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(ctx);
     }
     else {
