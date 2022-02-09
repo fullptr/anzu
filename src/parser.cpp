@@ -27,7 +27,7 @@ void add_variable(parser_context& ctx, std::string_view name, std::string_view t
     ctx.current_scope().variables[std::string{name}] = std::string{type};
 }
 
-auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
+auto parse_literal(parser_context& ctx) -> anzu::object
 {
     auto& tokens = ctx.tokens;
     if (tokens.curr().type == token_type::number) {
@@ -48,15 +48,11 @@ auto try_parse_literal(parser_context& ctx) -> std::optional<anzu::object>
     if (tokens.consume_maybe(tk_lbracket)) {
         auto list = std::make_shared<std::vector<anzu::object>>();
         ctx.tokens.consume_comma_separated_list(tk_rbracket, [&] {
-            if (auto obj = try_parse_literal(ctx); obj.has_value()) {
-                list->push_back(obj.value());
-            } else {
-                parser_error(ctx.tokens.curr(), "failed to parse string literal");
-            }
+            list->push_back(parse_literal(ctx));
         });
         return { list };
     }
-    return std::nullopt;
+    parser_error(ctx.tokens.curr(), "failed to parse string literal");
 };
 
 template <typename NodeVariant, typename NodeType>
@@ -100,21 +96,19 @@ auto parse_single_factor(parser_context& ctx) -> node_expr_ptr
         ctx.tokens.consume_only(tk_rparen);
         return expr;
     }  
-    else if (auto factor = anzu::try_parse_literal(ctx); factor.has_value()) {
-        auto node = std::make_unique<anzu::node_expr>();
-        auto& expr = node->emplace<anzu::node_literal_expr>();
-        expr.value = *factor;
-        return node;
-    }
-    else if (tokens.peek_next(tk_lparen)) {
+    if (tokens.peek_next(tk_lparen)) {
         return parse_function_call_expr(ctx);
     }
-    else if (tokens.curr().type != token_type::name) {
-        parser_error(ctx.tokens.curr(), "'{}' is not a name, cannot be used in an expresion", tokens.curr().text);
+    if (tokens.curr().type == token_type::name) {
+        auto node = std::make_unique<anzu::node_expr>();
+        auto& expr = node->emplace<anzu::node_variable_expr>();
+        expr.name = tokens.consume().text;
+        return node;
     }
+
     auto node = std::make_unique<anzu::node_expr>();
-    auto& expr = node->emplace<anzu::node_variable_expr>();
-    expr.name = tokens.consume().text;
+    auto& expr = node->emplace<anzu::node_literal_expr>();
+    expr.value = parse_literal(ctx);
     return node;
 }
 
@@ -322,40 +316,38 @@ auto parse_statement(parser_context& ctx) -> node_stmt_ptr
     if (tokens.peek(tk_function)) {
         return parse_function_def_stmt(ctx);
     }
-    else if (tokens.peek(tk_return)) {
+    if (tokens.peek(tk_return)) {
         return parse_return_stmt(ctx);
     }
-    else if (tokens.peek(tk_while)) {
+    if (tokens.peek(tk_while)) {
         return parse_while_stmt(ctx);
     }
-    else if (tokens.peek(tk_if)) {
+    if (tokens.peek(tk_if)) {
         return parse_if_stmt(ctx);
     }
-    else if (tokens.peek(tk_for)) {
+    if (tokens.peek(tk_for)) {
         return parse_for_stmt(ctx);
     }
-    else if (tokens.consume_maybe(tk_break)) {
+    if (tokens.consume_maybe(tk_break)) {
         auto node = std::make_unique<anzu::node_stmt>();
         node->emplace<anzu::node_break_stmt>();
         return node;
     }
-    else if (tokens.consume_maybe(tk_continue)) {
+    if (tokens.consume_maybe(tk_continue)) {
         auto node = std::make_unique<anzu::node_stmt>();
         node->emplace<anzu::node_continue_stmt>();
         return node;
     }
-    else if (tokens.peek_next(tk_assign)) { // <name> '='
+    if (tokens.peek_next(tk_assign)) { // <name> '='
         return parse_assignment_stmt(ctx);
     }
-    else if (tokens.peek_next(tk_lparen)) { // <name> '('
+    if (tokens.peek_next(tk_lparen)) { // <name> '('
         return parse_function_call_stmt(ctx);
     }
-    else if (tokens.peek(tk_lbrace)) {
+    if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(ctx);
     }
-    else {
-        parser_error(ctx.tokens.curr(), "unknown statement '{}'", ctx.tokens.curr().text);
-    }
+    parser_error(ctx.tokens.curr(), "unknown statement '{}'", ctx.tokens.curr().text);
 }
 
 }
