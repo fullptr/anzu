@@ -110,16 +110,16 @@ auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr
         return parse_single_factor(tokens);
     }
 
-    auto left = parse_compound_factor(tokens, level - 1);
+    auto factor = parse_compound_factor(tokens, level - 1);
     while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().text)) {
         auto node = std::make_unique<anzu::node_expr>();
         auto& expr = node->emplace<anzu::node_bin_op_expr>();
-        expr.lhs = std::move(left);
-        expr.op = tokens.consume();;
+        expr.lhs = std::move(factor);
+        expr.op = tokens.consume();
         expr.rhs = parse_compound_factor(tokens, level - 1);
-        left = std::move(node);
+        factor = std::move(node);
     }
-    return left;
+    return factor;
 }
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr
