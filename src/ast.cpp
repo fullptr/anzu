@@ -9,17 +9,13 @@ namespace {
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 template <typename T, typename Func>
-auto print_comma_separated(
-    const std::vector<T>& values, Func&& formatter
-)
-    -> void
+auto print_comma_separated(const std::vector<T>& values, Func&& formatter) -> void
 {
-    if (values.size() == 0) {
-        return;
-    }
-    anzu::print(formatter(values[0]));
-    for (const auto& value : values | std::views::drop(1)) {
-        anzu::print(", {}", formatter(value));
+    if (!values.empty()) {
+        anzu::print(formatter(values.front()));
+        for (const auto& value : values | std::views::drop(1)) {
+            anzu::print(", {}", formatter(value));
+        }
     }
 }
 
@@ -39,16 +35,8 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
             anzu::print("{}BinOp\n", spaces);
             anzu::print("{}- Op: {}\n", spaces, node.op.text);
             anzu::print("{}- Lhs:\n", spaces);
-            if (!node.lhs) {
-                anzu::print("bin op has no lhs\n");
-                std::exit(1);
-            }
             print_node(*node.lhs, indent + 1);
             anzu::print("{}- Rhs:\n", spaces);
-            if (!node.rhs) {
-                anzu::print("bin op has no rhs\n");
-                std::exit(1);
-            }
             print_node(*node.rhs, indent + 1);
         },
         [&](const node_function_call_expr& node) {

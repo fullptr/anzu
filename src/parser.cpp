@@ -172,7 +172,6 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_return_stmt>();
     
     tokens.consume_only(tk_return);
-
     if (!anzu::is_sentinel(tokens.curr().text)) {
         stmt.return_value = parse_expression(tokens);
     } else {
@@ -271,14 +270,10 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         return parse_for_stmt(tokens);
     }
     if (tokens.consume_maybe(tk_break)) {
-        auto node = std::make_unique<anzu::node_stmt>();
-        node->emplace<anzu::node_break_stmt>();
-        return node;
+        return std::make_unique<node_stmt>(node_break_stmt{});
     }
     if (tokens.consume_maybe(tk_continue)) {
-        auto node = std::make_unique<anzu::node_stmt>();
-        node->emplace<anzu::node_continue_stmt>();
-        return node;
+        return std::make_unique<node_stmt>(node_continue_stmt{});
     }
     if (tokens.peek_next(tk_assign)) { // <name> '='
         return parse_assignment_stmt(tokens);
