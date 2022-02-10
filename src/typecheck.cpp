@@ -150,7 +150,7 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
-    ctx.top().variables[node.var] = tk_any; // Variable is made available, cant know type yet :(
+    ctx.top().variables[node.var] = tk_any; // Can't know type yet :(
     verify_expression_type(ctx, *node.container, tk_list);
     typecheck_node(ctx, *node.body);
 }
