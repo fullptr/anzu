@@ -156,10 +156,8 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     tokens.consume_comma_separated_list(tk_rparen, [&] {
         auto arg = function_signature::arg{};
         arg.name = parse_name(tokens);
-        if (tokens.consume_maybe(tk_colon)) {
-            arg.type = parse_type(tokens);
-        }
-
+        tokens.consume_only(tk_colon);
+        arg.type = parse_type(tokens);
         stmt.sig.args.push_back(arg);
     });    
 
@@ -247,10 +245,9 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_sequence_stmt>();
     
     tokens.consume_only(tk_lbrace);
-    while (tokens.valid() && !anzu::is_sentinel(tokens.curr().text)) {
+    while (!tokens.consume_maybe(tk_rbrace)) {
         stmt.sequence.push_back(parse_statement(tokens));
     }
-    tokens.consume_only(tk_rbrace);
 
     // If there is only one element in the sequence, return that directly
     if (stmt.sequence.size() == 1) {
