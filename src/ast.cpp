@@ -1,4 +1,5 @@
 #include "ast.hpp"
+#include "utility/print.hpp"
 
 #include <functional>
 #include <ranges>
@@ -7,17 +8,6 @@ namespace anzu {
 namespace {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-
-template <typename T, typename Func>
-auto print_comma_separated(const std::vector<T>& values, Func&& formatter) -> void
-{
-    if (!values.empty()) {
-        anzu::print(formatter(values.front()));
-        for (const auto& value : values | std::views::drop(1)) {
-            anzu::print(", {}", formatter(value));
-        }
-    }
-}
 
 }
 

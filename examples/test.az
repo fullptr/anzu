@@ -1,8 +1,8 @@
 
-fn foo(a: int, b: int) -> int
+
+fn test3() -> int
 {
-    return 5
-}
+    a = 10
 
 x = "("
 println(x)
