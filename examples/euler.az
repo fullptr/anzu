@@ -13,3 +13,4 @@ while i < 1000 {
 }
 
 println(count)
+x = 3 + "string"
