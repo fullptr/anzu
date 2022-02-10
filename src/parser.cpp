@@ -160,11 +160,8 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         arg.type = parse_type(tokens);
         stmt.sig.args.push_back(arg);
     });    
-
-    if (tokens.consume_maybe(tk_rarrow)) {
-        stmt.sig.return_type = parse_type(tokens); // TODO: Check this
-    }
-
+    tokens.consume_only(tk_rarrow);
+    stmt.sig.return_type = parse_type(tokens);
     stmt.body = parse_statement(tokens);
     return node;
 }
