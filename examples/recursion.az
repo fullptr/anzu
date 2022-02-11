@@ -1,6 +1,6 @@
 # fibbonacci to demonstrate functions and recursion
 
-function fibb(n: int) -> int
+fn fibb(n: int) -> int
 {
     if n == 0 {
         return 0
