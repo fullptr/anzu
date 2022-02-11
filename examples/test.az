@@ -1,7 +1,4 @@
 
-function foo(a: int, b: int) -> int
-{
-    return 5
-}
+x = "("
 
-println(foo(1, 2))
+println(x)

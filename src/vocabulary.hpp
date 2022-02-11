@@ -16,7 +16,7 @@ constexpr auto tk_in        = sv{"in"};
 constexpr auto tk_null      = sv{"null"};
 constexpr auto tk_true      = sv{"true"};
 constexpr auto tk_while     = sv{"while"};
-constexpr auto tk_function  = sv{"function"};
+constexpr auto tk_function  = sv{"fn"};
 constexpr auto tk_return    = sv{"return"};
 
 // Builtin Types

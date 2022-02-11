@@ -55,7 +55,7 @@ println(true && false)
 println(true || false)
 
 # functions
-function adder(a: int, b: int, c: int) -> int
+fn adder(a: int, b: int, c: int) -> int
 {
     return a + b + c
 }
@@ -73,9 +73,9 @@ y = println(x)
 println(y)
 
 # Nested functions
-function outer(a: int, b: int) -> int
+fn outer(a: int, b: int) -> int
 {   
-    function nested(c: int) -> int
+    fn nested(c: int) -> int
     {
         return c
     }
