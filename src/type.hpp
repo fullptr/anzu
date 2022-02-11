@@ -66,16 +66,11 @@ class type_store
     std::unordered_map<std::string, type> d_types;
 
 public:
+    type_store();
 
+    auto is_registered_type(const std::string& t) -> bool;
+
+    // auto register(const type& t) -> void;
 };
 
 }
-
-template <>
-struct std::hash<anzu::type>
-{
-    auto operator()(const anzu::type& t) -> std::size_t
-    {
-        return anzu::hash(t);
-    }
-};

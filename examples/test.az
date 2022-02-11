@@ -1,8 +1,8 @@
 
 
-fn test3() -> int
+fn foo(x: blam) -> str
 {
-    a = 10
+    return to_str(x)
+}
 
-x = "("
-println(x)
+println(foo(5))

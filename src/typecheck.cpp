@@ -1,5 +1,6 @@
 #include "typecheck.hpp"
 #include "vocabulary.hpp"
+#include "type.hpp"
 
 #include <ranges>
 #include <unordered_map>
@@ -16,7 +17,11 @@ struct typecheck_scope
     std::unordered_map<std::string, std::string>        variables;
 };
 
-using typecheck_context = std::stack<typecheck_scope>;
+struct typecheck_context
+{
+    std::stack<typecheck_scope> scopes;
+    anzu::type_store types;
+};
 
 template <typename... Args>
 [[noreturn]] void type_error(const token& tok, std::string_view msg, Args&&... args)
@@ -85,7 +90,7 @@ auto fetch_function_signature(
 )
     -> function_signature
 {
-    const auto& scope = ctx.top();
+    const auto& scope = ctx.scopes.top();
     if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
         return it->second;
     }
@@ -104,7 +109,7 @@ auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> std::s
             return type_of(node.value);
         },
         [&](const node_variable_expr& node) {
-            const auto& top = ctx.top();
+            const auto& top = ctx.scopes.top();
             return top.variables.at(node.name);
         },
         [&](const node_function_call_expr& node) {
@@ -150,7 +155,7 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
-    ctx.top().variables[node.var] = tk_any; // Can't know type yet :(
+    ctx.scopes.top().variables[node.var] = tk_any; // Can't know type yet :(
     verify_expression_type(ctx, *node.container, tk_list);
     typecheck_node(ctx, *node.body);
 }
@@ -165,22 +170,24 @@ auto typecheck_node(typecheck_context& ctx, const node_continue_stmt&) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) -> void
 {
-    ctx.top().variables[node.name] = type_of_expr(ctx, *node.expr);
+    ctx.scopes.top().variables[node.name] = type_of_expr(ctx, *node.expr);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
 {
-    ctx.top().functions[node.name] = node.sig; // Make name available in outer scope
+    ctx.scopes.top().functions[node.name] = node.sig; // Make name available in outer scope
 
-    ctx.emplace();
+    ctx.scopes.emplace();
     for (const auto& arg : node.sig.args) {
-        // TODO: Check that arg.type is a valid type.
-        ctx.top().variables[arg.name] = arg.type;
+        if (!ctx.types.is_registered_type(arg.type)) {
+            type_error("'{}' is not a recognised type", arg.type);
+        }
+        ctx.scopes.top().variables[arg.name] = arg.type;
     }
-    ctx.top().variables["$return"] = node.sig.return_type; // Expose the return type for children
-    ctx.top().functions[node.name] = node.sig;             // Make available for recursion
+    ctx.scopes.top().variables["$return"] = node.sig.return_type; // Expose the return type for children
+    ctx.scopes.top().functions[node.name] = node.sig;             // Make available for recursion
     typecheck_node(ctx, *node.body);
-    ctx.pop();
+    ctx.scopes.pop();
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
@@ -207,7 +214,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
 
 auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)
 {
-    const auto& return_type = ctx.top().variables.at("$return");
+    const auto& return_type = ctx.scopes.top().variables.at("$return");
     verify_expression_type(ctx, *node.return_value, return_type);
 }
 
@@ -241,7 +248,7 @@ auto type_of(const anzu::object& object) -> std::string
 auto typecheck_ast(const node_stmt_ptr& ast) -> void
 {
     auto ctx = typecheck_context{};
-    ctx.emplace(); // Global scope
+    ctx.scopes.emplace(); // Global scope
     typecheck_node(ctx, *ast);
 }
 

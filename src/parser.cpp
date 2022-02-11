@@ -136,15 +136,6 @@ auto parse_name(tokenstream& tokens)
     return token.text;   
 }
 
-auto parse_type(tokenstream& tokens)
-{
-    const auto token = tokens.consume();
-    if (token.type != token_type::keyword) {
-        parser_error(token, "'{}' is not a valid type", token.text);
-    }
-    return token.text;   
-}
-
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
@@ -157,11 +148,11 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         auto arg = function_signature::arg{};
         arg.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
-        arg.type = parse_type(tokens);
+        arg.type = tokens.consume().text;
         stmt.sig.args.push_back(arg);
     });    
     tokens.consume_only(tk_rarrow);
-    stmt.sig.return_type = parse_type(tokens);
+    stmt.sig.return_type = tokens.consume().text;
     stmt.body = parse_statement(tokens);
     return node;
 }

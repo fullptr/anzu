@@ -50,5 +50,20 @@ auto hash(const type_generic& type) -> std::size_t
 {
     return std::hash<int>{}(type.id);
 }
-    
+
+type_store::type_store()
+{
+    d_types.emplace("int", make_int());
+    d_types.emplace("bool", make_bool());
+    d_types.emplace("str", make_str());
+    d_types.emplace("list", make_list());
+    d_types.emplace("null_type", make_null());
+    d_types.emplace("any", make_any());
+}
+
+auto type_store::is_registered_type(const std::string& t) -> bool
+{
+    return d_types.contains(t);
+}
+
 }
