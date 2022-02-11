@@ -32,7 +32,7 @@ tokenstream::tokenstream(const std::vector<token>& tokens)
 
 auto tokenstream::consume_maybe(std::string_view text) -> bool
 {
-    if (curr().text == text) {
+    if (curr().text == text && (curr().type == token_type::keyword || curr().type == token_type::symbol)) {
         consume();
         return true;
     }
@@ -45,23 +45,9 @@ auto tokenstream::consume_only(std::string_view text) -> token
         anzu::print("[ERROR] (EOF) expected '{}'\n", text);
         std::exit(1);
     }
-    if (!peek(text)) {
-        const auto& [tok_text, line, col, type] = curr();
-        anzu::print("[ERROR] ({}:{}}) expected '{}', got '{}\n", line, col, text, tok_text);
-        std::exit(1);
-    }
-    return consume();
-}
-
-auto tokenstream::consume_only(token_type type) -> token
-{
-    if (!valid()) {
-        anzu::print("[ERROR] (EOF) expected a type\n");
-        std::exit(1);
-    }
-    if (curr().type != type) {
-        const auto& [tok_text, line, col, type] = curr();
-        anzu::print("[ERROR] ({}:{}}) expected  a type, got '{}\n", line, col, tok_text);
+    if (curr().text != text || (curr().type == token_type::name || curr().type == token_type::string)) {
+        const auto [tok_text, line, col, type] = curr();
+        anzu::print("[ERROR] ({}:{}) expected '{}', got '{}\n", line, col, text, tok_text);
         std::exit(1);
     }
     return consume();
@@ -69,12 +55,12 @@ auto tokenstream::consume_only(token_type type) -> token
 
 auto tokenstream::peek(std::string_view text) -> bool
 {
-    return valid() && curr().text == text;
+    return valid() && curr().text == text && (curr().type == token_type::keyword || curr().type == token_type::symbol);
 }
 
 auto tokenstream::peek_next(std::string_view text) -> bool
 {
-    return has_next() && next().text == text;
+    return has_next() && next().text == text && (next().type == token_type::keyword || next().type == token_type::symbol);
 }
 
 }

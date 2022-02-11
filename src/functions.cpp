@@ -40,6 +40,19 @@ auto builtin_list_at(std::span<const object> args) -> object
     return list->at(idx);
 }
 
+auto builtin_str_size(std::span<const object> args) -> object
+{
+    const auto& str = args[0].as<std::string>();
+    return static_cast<int>(str.size());
+}
+
+auto builtin_str_at(std::span<const object> args) -> object
+{
+    const auto& str = args[0].as<std::string>();
+    const auto& idx = args[1].as<int>();
+    return std::string{str.at(idx)};
+}
+
 auto builtin_to_int(std::span<const object> args) -> object
 {
     return args[0].to_int();
@@ -145,6 +158,27 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
                 { .name = "index",    .type = "int"  }
             },
             .return_type = "any"
+        }
+    });
+
+    builtins.emplace("str_size", builtin{
+        .ptr = builtin_str_size,
+        .sig = {
+            .args = {
+                { .name = "string", .type = "str" }
+            },
+            .return_type = "int"
+        }
+    });
+
+    builtins.emplace("str_at", builtin{
+        .ptr = builtin_str_at,
+        .sig = {
+            .args = {
+                { .name = "string", .type = "str" },
+                { .name = "index",    .type = "int"  }
+            },
+            .return_type = "str"
         }
     });
 

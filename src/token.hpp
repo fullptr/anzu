@@ -33,7 +33,6 @@ public:
     tokenstream(const std::vector<token>& tokens);
     auto consume_maybe(std::string_view text) -> bool;
     auto consume_only(std::string_view text) -> token;
-    auto consume_only(token_type type) -> token;
 
     template <typename Func>
     auto consume_comma_separated_list(std::string_view sentinel, Func&& callback) -> void
