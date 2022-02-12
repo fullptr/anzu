@@ -125,6 +125,9 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_and& op) {
             return std::string{"OP_AND"};
         },
+        [&](const op_build_list& op) {
+            return std::format("OP_BUILD_LIST({})", op.size);
+        },
         [&](const op_debug& op) {
             return std::string{"OP_DEBUG"};
         }

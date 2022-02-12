@@ -35,6 +35,13 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
             }
+        },
+        [&](const node_list_expr& node) {
+            anzu::print("{}List (Expr):\n", spaces);
+            anzu::print("{}- Elements:\n", spaces);
+            for (const auto& element : node.elements) {
+                print_node(*element, indent + 1);
+            }
         }
     }, root);
 }

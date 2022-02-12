@@ -124,6 +124,14 @@ void compile_node(const node_function_call_expr& node, compiler_context& ctx)
     compile_function_call(node.function_name, node.args, ctx);
 }
 
+void compile_node(const node_list_expr& node, compiler_context& ctx)
+{
+    for (const auto& element : node.elements | std::views::reverse) {
+        compile_node(*element, ctx);
+    }
+    ctx.program.emplace_back(anzu::op_build_list{ .size = node.elements.size() });
+}
+
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
 {
     for (const auto& seq_node : node.sequence) {

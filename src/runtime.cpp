@@ -242,6 +242,14 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.push_value(a && b);
             ctx.peek_frame().ptr += 1;
         },
+        [&](const op_build_list& op) {
+            auto list = std::make_shared<std::vector<anzu::object>>();
+            for (std::size_t i = 0; i != op.size; ++i) {
+                list->push_back(ctx.pop_value());
+            }
+            ctx.push_value(list);
+            ctx.peek_frame().ptr += 1;
+        },
         [&](const op_debug& op) {
             auto& frame = ctx.peek_frame();
             anzu::print("frame memory:\n");
