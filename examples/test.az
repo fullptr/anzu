@@ -1,6 +1,6 @@
 
 
-fn foo() -> int
+fn foo() -> null
 {
     println("abc")
 }

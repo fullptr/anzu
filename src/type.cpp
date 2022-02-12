@@ -53,12 +53,12 @@ auto hash(const type_generic& type) -> std::size_t
 
 type_store::type_store()
 {
-    d_types.emplace("int", make_int());
-    d_types.emplace("bool", make_bool());
-    d_types.emplace("str", make_str());
-    d_types.emplace("list", make_list());
-    d_types.emplace("null_type", make_null());
-    d_types.emplace("any", make_any());
+    d_types.emplace(tk_int,  make_int());
+    d_types.emplace(tk_bool, make_bool());
+    d_types.emplace(tk_str,  make_str());
+    d_types.emplace(tk_list, make_list());
+    d_types.emplace(tk_null, make_null());
+    d_types.emplace(tk_any,  make_any());
 }
 
 auto type_store::is_registered_type(const type& t) -> bool
