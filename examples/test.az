@@ -2,8 +2,9 @@
 
 fn foo(x: list) -> int
 {
-    return to_str(x)
+    return
 }
 
 y = foo(10) + "abc"
 println(y)
+
