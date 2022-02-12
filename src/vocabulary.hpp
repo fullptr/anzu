@@ -25,7 +25,6 @@ constexpr auto tk_int       = sv{"int"};
 constexpr auto tk_bool      = sv{"bool"};
 constexpr auto tk_str       = sv{"str"};
 constexpr auto tk_list      = sv{"list"};
-constexpr auto tk_null_type = sv{"null_type"};
 constexpr auto tk_any       = sv{"any"};
 
 // Symbols

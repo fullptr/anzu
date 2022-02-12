@@ -67,8 +67,8 @@ Lexer    -- lexer.hpp     : Converts a .az file into a vector of tokens
    |     -- token.hpp     : Definition of a token and utility
    |
 Parser   -- parser.hpp    : Converts a vector of tokens into an AST
-   |     -- typecheck.hpp : Verifies all expressions have a well defined type
-   |                        and checks function definitions and calls.
+   |     -- typecheck.hpp : Type checks expressions and function defs/calls.
+   |     -- optimiser.hpp : Modifies an AST to produce a smaller, equivalent AST
    |
    |     -- ast.hpp       : Definitions of AST nodes and utility
    |
@@ -93,5 +93,3 @@ Utility Modules (in src/utility)
 
 # Upcoming Features
 * Remove the binary operation op codes and replace by function pointers to implementations. Now that we have static type checking, the correct functions can be found at compile time and there will be no need to go through the implementations on the object class, which is good because currently if something slips through the type checker, a type error can still arise at runtime, which is weird. We should tighten up the typechecker and put the binary operation functions pointers directly in the bytecode.
-* Enforce that functions return a value of the correct type. Currently a function could be annotated as returning a str, but a return statement may never get hit. Instead it could reach the end of the function and return null, which will slip past the type checker. This is the main hole alluded to above. We can be first implemented by forcing the expression in the function body to either be a return statement, or a statement list where the last statement in it is a return. This can be relaxed later on.
-* Add tokens to all ast nodes. This is essential for debugging and printing lines and columns for type errors.
