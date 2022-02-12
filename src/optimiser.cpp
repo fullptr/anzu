@@ -54,6 +54,19 @@ auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::
                 return val;
             }
             return std::nullopt;
+        },
+        [&](const node_list_expr& node) -> return_type {
+            auto values = std::make_shared<std::vector<anzu::object>>();
+            values->reserve(node.elements.size());
+            for (const auto& element : node.elements) {
+                auto val = evaluate_const_expressions_recurse(*element);
+                if (!val) {
+                    return std::nullopt;  // Non-literal value in this list.
+                }
+                values->push_back(*val);
+            }
+            expr.emplace<anzu::node_literal_expr>(values);
+            return anzu::object{values};
         }
     }, expr);
 }

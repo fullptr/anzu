@@ -1,5 +1,4 @@
 
 
-x = 4
-
-l = [1, 2, x]
+x = [[1, 2, 3], "hello world", true, null, [["duffman"]]]
+print(typeof(list_at(x, 1)))

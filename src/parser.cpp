@@ -81,6 +81,15 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         auto expr = parse_expression(tokens);
         tokens.consume_only(tk_rparen);
         return expr;
+    }
+    if (tokens.peek(tk_lbracket)) {
+        auto node = std::make_unique<anzu::node_expr>();
+        auto& expr = node->emplace<anzu::node_list_expr>();
+        expr.token = tokens.consume();
+        tokens.consume_comma_separated_list(tk_rbracket, [&] {
+            expr.elements.push_back(parse_expression(tokens));
+        });
+        return node;
     }  
     if (tokens.peek_next(tk_lparen)) {
         return parse_function_call_expr(tokens);

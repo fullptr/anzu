@@ -130,6 +130,9 @@ auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> type
             return type_of_bin_op(
                 type_of_expr(ctx, *node.lhs), type_of_expr(ctx, *node.rhs), node.token
             );
+        },
+        [&](const node_list_expr& node) {
+            return make_list();
         }
     }, expr);
 };

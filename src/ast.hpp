@@ -45,13 +45,16 @@ struct node_function_call_expr
 struct node_list_expr
 {
     std::vector<node_expr_ptr> elements;
+
+    anzu::token token;
 };
 
 struct node_expr : std::variant<
     node_literal_expr,
     node_variable_expr,
     node_bin_op_expr,
-    node_function_call_expr>
+    node_function_call_expr,
+    node_list_expr>
 {
 };
 
