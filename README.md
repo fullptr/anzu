@@ -89,8 +89,6 @@ Utility Modules (in src/utility)
 ```
 
 # Upcoming Features
-* Static type checking
-* Maps (dictionaries)
-* Better support for functions, function pointers?
-* Classes
-* More operations when needed.
+* Remove the binary operation op codes and replace by function pointers to implementations. Now that we have static type checking, the correct functions can be found at compile time and there will be no need to go through the implementations on the object class, which is good because currently if something slips through the type checker, a type error can still arise at runtime, which is weird. We should tighten up the typechecker and put the binary operation functions pointers directly in the bytecode.
+* Enforce that functions return a value of the correct type. Currently a function could be annotated as returning a str, but a return statement may never get hit. Instead it could reach the end of the function and return null, which will slip past the type checker. This is the main hole alluded to above. We can be first implemented by forcing the expression in the function body to either be a return statement, or a statement list where the last statement in it is a return. This can be relaxed later on.
+* Add tokens to all ast nodes. This is essential for debugging and printing lines and columns for type errors.

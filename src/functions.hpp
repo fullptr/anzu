@@ -1,4 +1,6 @@
 #pragma once
+#include "type.hpp"
+
 #include <string>
 #include <vector>
 #include <span>
@@ -10,11 +12,11 @@ struct function_signature
     struct arg
     {
         std::string name;
-        std::string type = "any";
+        anzu::type  type = make_any();
     };
 
     std::vector<arg> args;
-    std::string return_type = "any";
+    anzu::type       return_type = make_any();
 };
 
 class object;

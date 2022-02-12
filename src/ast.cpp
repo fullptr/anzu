@@ -1,4 +1,5 @@
 #include "ast.hpp"
+#include "utility/print.hpp"
 
 #include <functional>
 #include <ranges>
@@ -7,17 +8,6 @@ namespace anzu {
 namespace {
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-
-template <typename T, typename Func>
-auto print_comma_separated(const std::vector<T>& values, Func&& formatter) -> void
-{
-    if (!values.empty()) {
-        anzu::print(formatter(values.front()));
-        for (const auto& value : values | std::views::drop(1)) {
-            anzu::print(", {}", formatter(value));
-        }
-    }
-}
 
 }
 
@@ -100,9 +90,9 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         [&](const node_function_def_stmt& node) {
             anzu::print("{}Function: {} (", spaces, node.name);
             anzu::print_comma_separated(node.sig.args, [](const auto& arg) {
-                return std::format("{}: {}", arg.name, arg.type);
+                return std::format("{}: {}", arg.name, to_string(arg.type));
             });
-            anzu::print(") -> {}\n", node.sig.return_type);
+            anzu::print(") -> {}\n", to_string(node.sig.return_type));
             print_node(*node.body, indent + 1);
         },
         [&](const node_function_call_stmt& node) {
@@ -115,6 +105,9 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         [&](const node_return_stmt& node) {
             anzu::print("{}Return:\n", spaces);
             print_node(*node.return_value, indent + 1);
+        },
+        [&](const node_debug_stmt& node) {
+            anzu::print("{}--Debug--\n", spaces);
         }
     }, root);
 }

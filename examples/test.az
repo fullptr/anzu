@@ -1,4 +1,9 @@
 
-x = "("
 
-println(x)
+fn foo(x: list) -> str
+{
+    return to_str(x)
+}
+
+y = foo(10) + "abc"
+println(y)

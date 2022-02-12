@@ -3,19 +3,22 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS}")
 
-add_executable(anzu
-               anzu.m.cpp
-               ast.cpp
-               lexer.cpp
-               token.cpp
-               parser.cpp
-               typecheck.cpp
-               optimiser.cpp
-               compiler.cpp
-               runtime.cpp
-               program.cpp
-               object.cpp
-               functions.cpp
-               vocabulary.cpp)
+add_executable(
+    anzu
+    anzu.m.cpp
+    lexer.cpp
+    token.cpp
+    parser.cpp
+    ast.cpp
+    typecheck.cpp
+    optimiser.cpp
+    compiler.cpp
+    program.cpp
+    runtime.cpp
+    object.cpp
+    type.cpp
+    functions.cpp
+    vocabulary.cpp
+)
 
 target_include_directories(anzu PRIVATE .)

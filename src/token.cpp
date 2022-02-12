@@ -61,6 +61,20 @@ auto tokenstream::consume_only(std::string_view text) -> token
     return consume();
 }
 
+auto tokenstream::consume_int() -> int
+{
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected a number\n");
+        std::exit(1);
+    }
+    if (curr().type != token_type::number) {
+        const auto [tok_text, line, col, type] = curr();
+        anzu::print("[ERROR] ({}:{}) expected a number, got '{}\n", line, col, tok_text);
+        std::exit(1);
+    }
+    return std::stoi(consume().text);
+}
+
 auto tokenstream::peek(std::string_view text) -> bool
 {
     return valid() && curr().text == text && is_consumable_type(curr().type);
