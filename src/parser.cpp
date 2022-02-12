@@ -39,13 +39,6 @@ auto parse_literal(tokenstream& tokens) -> anzu::object
     if (tokens.consume_maybe(tk_null)) {
         return anzu::null_object();
     }
-    if (tokens.consume_maybe(tk_lbracket)) {
-        auto list = std::make_shared<std::vector<anzu::object>>();
-        tokens.consume_comma_separated_list(tk_rbracket, [&] {
-            list->push_back(parse_literal(tokens));
-        });
-        return { list };
-    }
     parser_error(tokens.curr(), "failed to parse literal");
 };
 
