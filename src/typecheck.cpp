@@ -39,6 +39,13 @@ template <typename... Args>
     std::exit(1);
 }
 
+auto verify_real_type(typecheck_context& ctx, const type& t) -> void
+{
+    if (!ctx.types.is_registered_type(t)) {
+        type_error("'{}' is not a recognised type", t);
+    }
+}
+
 auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> type
 {
     const auto op = op_token.text;
@@ -176,11 +183,10 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
 
     ctx.scopes.emplace();
     for (const auto& arg : node.sig.args) {
-        if (!ctx.types.is_registered_type(arg.type)) {
-            type_error("'{}' is not a recognised type", to_string(arg.type));
-        }
+        verify_real_type(ctx, arg.type);
         ctx.scopes.top().variables[arg.name] = arg.type;
     }
+    verify_real_type(ctx, node.sig.return_type);
     ctx.scopes.top().variables["$return"] = node.sig.return_type; // Expose the return type for children
     ctx.scopes.top().functions[node.name] = node.sig;             // Make available for recursion
     typecheck_node(ctx, *node.body);
