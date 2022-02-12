@@ -14,7 +14,7 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 struct typecheck_scope
 {
     std::unordered_map<std::string, function_signature> functions;
-    std::unordered_map<std::string, std::string>        variables;
+    std::unordered_map<std::string, type>               variables;
 };
 
 struct typecheck_context
@@ -39,50 +39,47 @@ template <typename... Args>
     std::exit(1);
 }
 
-auto type_of_bin_op(
-    std::string_view lhs, std::string_view rhs, const token& op_token
-)
-    -> std::string
+auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> type
 {
     const auto op = op_token.text;
     const auto invalid_expr = [=]() {
         type_error(op_token, "could not evaluate '{} {} {}'", lhs, op, rhs);
     };
 
-    if (lhs == tk_any || rhs == tk_any) {
-        return std::string{tk_any};
+    if (lhs == make_any() || rhs == make_any()) {
+        return make_any();
     }
 
     if (lhs != rhs) {
         invalid_expr();
     }
 
-    if (lhs == tk_list || lhs == tk_null_type) { // No support for having these in binary ops.
+    if (lhs == make_list() || lhs == make_null()) { // No support for having these in binary ops.
         invalid_expr();
     }
 
-    if (lhs == tk_str) {
+    if (lhs == make_str()) {
         // Allowed: string concatenation and equality check
         if (op == tk_add) {
-            return std::string{tk_str};
+            return make_str();
         }
         if (op == tk_eq || op == tk_ne) {
-            return std::string{tk_bool};
+            return make_bool();
         }
         invalid_expr();
     }
 
-    if (lhs == tk_bool) {
+    if (lhs == make_bool()) {
         if (op == tk_or || op == tk_and || op == tk_eq || op == tk_ne) {
-            return std::string{tk_bool};
+            return make_bool();
         }
         invalid_expr();
     }
 
     if (is_comparison(op)) {
-        return std::string{tk_bool};
+        return make_bool();
     }
-    return std::string{tk_int};
+    return make_int();
 }
 
 auto fetch_function_signature(
@@ -102,7 +99,7 @@ auto fetch_function_signature(
     type_error("could not find function '{}'", function_name);
 }
 
-auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> std::string
+auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> type
 {
     return std::visit(overloaded {
         [&](const node_literal_expr& node) {
@@ -124,11 +121,11 @@ auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> std::s
     }, expr);
 };
 
-void verify_expression_type(typecheck_context& ctx, const node_expr& expr, std::string_view expected)
+void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const type& expected)
 {
     const auto actual = type_of_expr(ctx, expr);
-    if (actual != tk_any && actual != expected) {
-        type_error("expected '{}', got '{}'", expected, actual);
+    if (actual != make_any() && actual != expected) {
+        type_error("expected '{}', got '{}'", to_string(expected), to_string(actual));
     }
 }
 
@@ -143,20 +140,20 @@ auto typecheck_node(typecheck_context& ctx, const node_sequence_stmt& node) -> v
 
 auto typecheck_node(typecheck_context& ctx, const node_while_stmt& node) -> void
 {
-    verify_expression_type(ctx, *node.condition, tk_bool);
+    verify_expression_type(ctx, *node.condition, make_bool());
     typecheck_node(ctx, *node.body);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 {
-    verify_expression_type(ctx, *node.condition, tk_bool);
+    verify_expression_type(ctx, *node.condition, make_bool());
     typecheck_node(ctx, *node.body);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
-    ctx.scopes.top().variables[node.var] = tk_any; // Can't know type yet :(
-    verify_expression_type(ctx, *node.container, tk_list);
+    ctx.scopes.top().variables[node.var] = make_any(); // Can't know type yet :(
+    verify_expression_type(ctx, *node.container, make_list());
     typecheck_node(ctx, *node.body);
 }
 
@@ -180,7 +177,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
     ctx.scopes.emplace();
     for (const auto& arg : node.sig.args) {
         if (!ctx.types.is_registered_type(arg.type)) {
-            type_error("'{}' is not a recognised type", arg.type);
+            type_error("'{}' is not a recognised type", to_string(arg.type));
         }
         ctx.scopes.top().variables[arg.name] = arg.type;
     }
@@ -203,7 +200,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
     for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
         const auto& expected = sig.args.at(idx).type;
         const auto& actual = type_of_expr(ctx, *node.args[idx]);
-        if (expected != tk_any && actual != tk_any && expected != actual) {
+        if (expected != make_any() && actual != make_any() && expected != actual) {
             type_error(
                 "invalid function call, arg {} expects type {}, got {}\n",
                 idx, expected, actual
@@ -218,6 +215,10 @@ auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)
     verify_expression_type(ctx, *node.return_value, return_type);
 }
 
+auto typecheck_node(typecheck_context& ctx, const node_debug_stmt& node)
+{
+}
+
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 {
     std::visit([&](const auto& n) { typecheck_node(ctx, n); }, node);
@@ -225,24 +226,24 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 
 }
 
-auto type_of(const anzu::object& object) -> std::string
+auto type_of(const anzu::object& object) -> type
 {
     if (object.is<int>()) {
-        return std::string{tk_int};
+        return make_int();
     }
     if (object.is<bool>()) {
-        return std::string{tk_bool};
+        return make_bool();
     }
     if (object.is<std::string>()) {
-        return std::string{tk_str};
+        return make_str();
     }
     if (object.is<object_list>()) {
-        return std::string{tk_list};
+        return make_list();
     }
     if (object.is<object_null>()) {
-        return std::string{tk_null_type};
+        return make_null();
     }
-    return std::string{tk_any};
+    return make_any();
 }
 
 auto typecheck_ast(const node_stmt_ptr& ast) -> void

@@ -1,6 +1,7 @@
 #include "parser.hpp"
 #include "functions.hpp"
 #include "vocabulary.hpp"
+#include "type.hpp"
 
 #include <unordered_set>
 #include <string_view>
@@ -136,6 +137,26 @@ auto parse_name(tokenstream& tokens)
     return token.text;   
 }
 
+auto parse_type(tokenstream& tokens) -> type
+{
+    if (tokens.consume_maybe(tk_lbracket)) {
+        const auto id = tokens.consume_int();
+        tokens.consume_only(tk_rbracket);
+        return { type_generic{ .id = id } };
+    }
+    const auto type_name = tokens.consume().text;
+    if (tokens.consume_maybe(tk_gt)) {
+        auto ret = type{};
+        auto& compound = ret.emplace<type_compound>();
+        compound.name = type_name;
+        tokens.consume_comma_separated_list(tk_lt, [&] {
+            compound.subtypes.push_back(parse_type(tokens));
+        });
+        return ret;
+    }
+    return { type_simple{ .name = type_name } };
+}
+
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
@@ -148,11 +169,11 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         auto arg = function_signature::arg{};
         arg.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
-        arg.type = tokens.consume().text;
+        arg.type = parse_type(tokens);
         stmt.sig.args.push_back(arg);
     });    
     tokens.consume_only(tk_rarrow);
-    stmt.sig.return_type = tokens.consume().text;
+    stmt.sig.return_type = parse_type(tokens);
     stmt.body = parse_statement(tokens);
     return node;
 }
@@ -274,6 +295,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     }
     if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(tokens);
+    }
+    if (tokens.consume_maybe(tk_debug)) {
+        return std::make_unique<node_stmt>(node_debug_stmt{});
     }
     parser_error(tokens.curr(), "unknown statement '{}'", tokens.curr().text);
 }

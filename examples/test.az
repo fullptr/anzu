@@ -1,8 +1,9 @@
 
 
-fn foo(x: blam) -> str
+fn foo(x: int) -> str
 {
     return to_str(x)
 }
 
-println(foo(5))
+y = foo(10) + "abc"
+println(y)

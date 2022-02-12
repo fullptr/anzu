@@ -61,9 +61,9 @@ type_store::type_store()
     d_types.emplace("any", make_any());
 }
 
-auto type_store::is_registered_type(const std::string& t) -> bool
+auto type_store::is_registered_type(const type& t) -> bool
 {
-    return d_types.contains(t);
+    return d_types.contains(to_string(t));
 }
 
 }

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <variant>
+#include <format>
 #include <vector>
 #include <unordered_map>
 
@@ -13,18 +14,32 @@ struct type;
 struct type_simple
 {
     std::string name;
+
 };
+inline auto operator==(const type_simple& lhs, const type_simple& rhs) -> bool
+{
+    return lhs.name == rhs.name;
+}
 
 struct type_compound
 {
     std::string       name;
     std::vector<type> subtypes;
+
 };
+inline auto operator==(const type_compound& lhs, const type_compound& rhs) -> bool {
+    return std::tie(lhs.name, lhs.subtypes) == std::tie(rhs.name, rhs.subtypes);
+}
 
 struct type_generic
 {
     int id;
+
 };
+inline auto operator==(const type_generic& lhs, const type_generic& rhs) -> bool
+{
+    return lhs.id == rhs.id;
+}
 
 struct type : std::variant<type_simple, type_compound, type_generic> {};
 
@@ -54,11 +69,6 @@ inline auto make_list_generic() -> type
     }};
 }
 
-inline auto make_list_typed(const type& subtype) -> type
-{
-    return { type_simple{ .name = std::string{tk_int} } };
-}
-
 class type_store
 {
     // key = string representation of type
@@ -68,9 +78,16 @@ class type_store
 public:
     type_store();
 
-    auto is_registered_type(const std::string& t) -> bool;
+    auto is_registered_type(const type& t) -> bool;
 
     // auto register(const type& t) -> void;
 };
 
 }
+
+template <> struct std::formatter<anzu::type> : std::formatter<std::string>
+{
+    auto format(const anzu::type& type, auto& ctx) {
+        return std::formatter<std::string>::format(anzu::to_string(type), ctx);
+    }
+};

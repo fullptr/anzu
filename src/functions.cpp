@@ -100,7 +100,7 @@ auto builtin_input(std::span<const object> args) -> object
 auto builtin_typeof(std::span<const object> args) -> object
 {
     const auto& obj = args[0];
-    return type_of(obj);
+    return to_string(type_of(obj));
 }
 
 auto builtin_range(std::span<const object> args) -> object
@@ -123,10 +123,10 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_list_push,
         .sig = {
             .args = {
-                { .name = "list_obj", .type = "list" },
-                { .name = "value",    .type = "any"  }
+                { .name = "list_obj", .type = make_list() },
+                { .name = "value",    .type = make_any()  }
             },
-            .return_type = "null"
+            .return_type = make_null()
         }
     });
 
@@ -134,9 +134,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_list_pop,
         .sig = {
             .args = {
-                { .name = "list_obj", .type = "list" }
+                { .name = "list_obj", .type = make_list() }
             },
-            .return_type = "any"
+            .return_type = make_any()
         }
     });
 
@@ -144,9 +144,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_list_size,
         .sig = {
             .args = {
-                { .name = "list_obj", .type = "list" }
+                { .name = "list_obj", .type = make_list() }
             },
-            .return_type = "int"
+            .return_type = make_int()
         }
     });
 
@@ -154,10 +154,10 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_list_at,
         .sig = {
             .args = {
-                { .name = "list_obj", .type = "list" },
-                { .name = "index",    .type = "int"  }
+                { .name = "list_obj", .type = make_list() },
+                { .name = "index",    .type = make_int() }
             },
-            .return_type = "any"
+            .return_type = make_any()
         }
     });
 
@@ -165,9 +165,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_str_size,
         .sig = {
             .args = {
-                { .name = "string", .type = "str" }
+                { .name = "string", .type = make_str() }
             },
-            .return_type = "int"
+            .return_type = make_int()
         }
     });
 
@@ -175,10 +175,10 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_str_at,
         .sig = {
             .args = {
-                { .name = "string", .type = "str" },
-                { .name = "index",    .type = "int"  }
+                { .name = "string", .type = make_str() },
+                { .name = "index",    .type = make_int() }
             },
-            .return_type = "str"
+            .return_type = make_str()
         }
     });
 
@@ -186,9 +186,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_to_int,
         .sig = {
             .args = {
-                { .name = "obj", .type = "any" }
+                { .name = "obj", .type = make_any() }
             },
-            .return_type = "int"
+            .return_type = make_int()
         }
     });
 
@@ -196,19 +196,19 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_to_bool,
         .sig = {
             .args = {
-                { .name = "obj", .type = "any" }
+                { .name = "obj", .type = make_any() }
             },
-            .return_type = "bool"
+            .return_type = make_bool()
         }
     });
 
     builtins.emplace("to_str", builtin{
-        .ptr = builtin_to_int,
+        .ptr = builtin_to_str,
         .sig = {
             .args = {
-                { .name = "obj", .type = "any" }
+                { .name = "obj", .type = make_any() }
             },
-            .return_type = "str"
+            .return_type = make_str()
         }
     });
 
@@ -216,9 +216,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_print,
         .sig = {
             .args = {
-                { .name = "obj", .type = "any" }
+                { .name = "obj", .type = make_any() }
             },
-            .return_type = "null"
+            .return_type = make_null()
         }
     });
 
@@ -226,9 +226,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_println,
         .sig = {
             .args = {
-                { .name = "obj", .type = "any" }
+                { .name = "obj", .type = make_any() }
             },
-            .return_type = "null"
+            .return_type = make_null()
         }
     });
 
@@ -236,7 +236,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_input,
         .sig = {
             .args = {},
-            .return_type = "str"
+            .return_type = make_str()
         }
     });
 
@@ -244,9 +244,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_typeof,
         .sig = {
             .args = {
-                { .name = "obj", .type = "any" }
+                { .name = "obj", .type = make_any() }
             },
-            .return_type = "str"
+            .return_type = make_str()
         }
     });
 
@@ -254,9 +254,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_range,
         .sig = {
             .args = {
-                { .name = "max", .type = "int" }
+                { .name = "max", .type = make_int() }
             },
-            .return_type = "list"
+            .return_type = make_list()
         }
     });
 

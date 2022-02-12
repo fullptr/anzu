@@ -162,6 +162,11 @@ struct op_return
 {
 };
 
+struct op_debug
+{
+
+};
+
 struct op : std::variant<
     op_push_const,
     op_push_var,
@@ -195,7 +200,8 @@ struct op : std::variant<
     op_function_end,
     op_return,
     op_function_call,
-    op_builtin_call
+    op_builtin_call,
+    op_debug
 >
 {};
 

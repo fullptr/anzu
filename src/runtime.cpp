@@ -29,7 +29,7 @@ auto memory::print() const -> void
 {
     anzu::print("Values:\n");
     for (const auto& [key, val] : d_values) {
-        anzu::print(" - {} -> {}\n", key, val);
+        anzu::print(" - {} -> {}\n", key, val.to_repr());
     }
 }
 
@@ -241,6 +241,12 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             auto a = ctx.pop_value();
             ctx.push_value(a && b);
             ctx.peek_frame().ptr += 1;
+        },
+        [&](const op_debug& op) {
+            auto& frame = ctx.peek_frame();
+            anzu::print("frame memory:\n");
+            frame.memory.print();
+            frame.ptr += 1;
         }
     }, op_code);
 }
