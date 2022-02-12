@@ -1,6 +1,6 @@
 
 
-fn foo(x: int) -> str
+fn foo(x: list) -> str
 {
     return to_str(x)
 }

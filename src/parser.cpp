@@ -145,11 +145,11 @@ auto parse_type(tokenstream& tokens) -> type
         return { type_generic{ .id = id } };
     }
     const auto type_name = tokens.consume().text;
-    if (tokens.consume_maybe(tk_gt)) {
+    if (tokens.consume_maybe(tk_lt)) {
         auto ret = type{};
         auto& compound = ret.emplace<type_compound>();
         compound.name = type_name;
-        tokens.consume_comma_separated_list(tk_lt, [&] {
+        tokens.consume_comma_separated_list(tk_gt, [&] {
             compound.subtypes.push_back(parse_type(tokens));
         });
         return ret;
