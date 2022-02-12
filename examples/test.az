@@ -1,10 +1,9 @@
 
 
-fn foo(x: list) -> int
+fn foo() -> int
 {
-    return
+    println("abc")
 }
 
-y = foo(10) + "abc"
-println(y)
 
+foo()

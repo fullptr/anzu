@@ -183,6 +183,33 @@ auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) ->
     ctx.scopes.top().variables[node.name] = type_of_expr(ctx, *node.expr);
 }
 
+auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
+{
+    // Functions returning null don't need a return statement.
+    if (node.sig.return_type == make_null()) {
+        return;
+    }
+
+    const auto bad_function = [&]() {
+        type_error(node.token, "function '{}' does not end in a return statement\n", node.name);
+    };
+
+    const auto& body = *node.body;
+    if (std::holds_alternative<node_return_stmt>(body)) {
+        return;
+    }
+
+    if (std::holds_alternative<node_sequence_stmt>(body)) {
+        const auto& seq = std::get<node_sequence_stmt>(body).sequence;
+        if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
+            bad_function();
+        }
+    }
+    else {
+        bad_function();
+    }
+}
+
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
 {
     ctx.scopes.top().functions[node.name] = node.sig; // Make name available in outer scope
@@ -197,6 +224,8 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
     ctx.scopes.top().functions[node.name] = node.sig;             // Make available for recursion
     typecheck_node(ctx, *node.body);
     ctx.scopes.pop();
+
+    check_function_ends_with_return(node);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
