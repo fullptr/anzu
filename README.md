@@ -22,34 +22,34 @@ print(4 + 5)
 * `if` statements (with optional `else` and `elif` too).
 
     ```
-    if <condition> do
+    if <condition> {
         ...
-    elif <condition> do
+    } else if <condition> {
         ...
-    else
+    } else {
         ...
-    end
+    }
     ```
 * `while` loops (with optional `break` and `continue`):
 
     ```
-    while <condition> do
+    while <condition> {
         ...
-    end
+    }
     ```
 * `for` loops (with optional `break` and `continue`):
 
     ```
-    for <variable_name> in <list_object> do
+    for <variable_name> in <list_object> {
         ...
-    end
+    }
     ```
 * `function` statements (with optional `return`):
 
     ```
-    function <name>(<args>) do
+    function <name>([<arg>: <type>]*) -> <return_type> {
         ...
-    end
+    }
     ```
 * All the common arithmetic, comparison and logical operators. More will be implemented.
 
@@ -62,25 +62,28 @@ Processing Pipeline
 
   Input
    |
-Lexer    -- lexer.hpp    : Converts a .az file into a vector of tokens
+Lexer    -- lexer.hpp     : Converts a .az file into a vector of tokens
    |
-   |     -- token.hpp    : Definition of a token and utility
+   |     -- token.hpp     : Definition of a token and utility
    |
-Parser   -- parser.hpp   : Converts a vector of tokens into an AST
+Parser   -- parser.hpp    : Converts a vector of tokens into an AST
+   |     -- typecheck.hpp : Verifies all expressions have a well defined type
+   |                        and checks function definitions and calls.
    |
-   |     -- ast.hpp      : Definitions of AST nodes and utility
+   |     -- ast.hpp       : Definitions of AST nodes and utility
    |
-Compiler -- compiler.hpp : Converts an AST into a program
+Compiler -- compiler.hpp  : Converts an AST into a program
    |
-   |     -- program.hpp  : Definitions of program op codes and utility
+   |     -- program.hpp   : Definitions of program op codes and utility
    |
-Runtime  -- runtime.hpp  : Executes the program
+Runtime  -- runtime.hpp   : Executes the program
    |
   Output
 
 Common Modules
 -- functions.hpp   : Definitions of builtin functions
 -- object.hpp      : Definition of an object in anzu
+-- type.hpp        : Definition of a type in anzu
 -- vocabulary.hpp  : Definitions of keywords and symbols
 
 Utility Modules (in src/utility)

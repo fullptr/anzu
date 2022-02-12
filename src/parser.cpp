@@ -54,8 +54,9 @@ auto parse_function_call(tokenstream& tokens) -> std::unique_ptr<NodeVariant>
 {
     auto node = std::make_unique<NodeVariant>();
     auto& out = node->emplace<NodeType>();
+    out.token = tokens.consume();
 
-    out.function_name = tokens.consume().text;
+    out.function_name = out.token.text;
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&] {
         out.args.push_back(parse_expression(tokens));
@@ -94,12 +95,14 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     if (tokens.curr().type == token_type::name) {
         auto node = std::make_unique<anzu::node_expr>();
         auto& expr = node->emplace<anzu::node_variable_expr>();
-        expr.name = tokens.consume().text;
+        expr.token = tokens.consume();
+        expr.name = expr.token.text;
         return node;
     }
 
     auto node = std::make_unique<anzu::node_expr>();
     auto& expr = node->emplace<anzu::node_literal_expr>();
+    expr.token = tokens.curr();
     expr.value = parse_literal(tokens);
     return node;
 }
@@ -116,7 +119,7 @@ auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr
         auto node = std::make_unique<anzu::node_expr>();
         auto& expr = node->emplace<anzu::node_bin_op_expr>();
         expr.lhs = std::move(factor);
-        expr.op = tokens.consume();
+        expr.token = tokens.consume();
         expr.rhs = parse_compound_factor(tokens, level - 1);
         factor = std::move(node);
     }
@@ -162,7 +165,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_function_def_stmt>();
 
-    tokens.consume_only(tk_function);
+    stmt.token = tokens.consume_only(tk_function);
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&] {
@@ -183,7 +186,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_return_stmt>();
     
-    tokens.consume_only(tk_return);
+    stmt.token = tokens.consume_only(tk_return);
     if (!anzu::is_sentinel(tokens.curr().text)) {
         stmt.return_value = parse_expression(tokens);
     } else {
@@ -198,7 +201,7 @@ auto parse_while_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_while_stmt>();
 
-    tokens.consume_only(tk_while);
+    stmt.token = tokens.consume_only(tk_while);
     stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
     return node;
@@ -209,7 +212,7 @@ auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_if_stmt>();
 
-    tokens.consume_only(tk_if);
+    stmt.token = tokens.consume_only(tk_if);
     stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
     if (tokens.consume_maybe(tk_else)) {
@@ -223,7 +226,7 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_for_stmt>();
 
-    tokens.consume_only(tk_for);
+    stmt.token = tokens.consume_only(tk_for);
     stmt.var = parse_name(tokens);
     tokens.consume_only(tk_in);
     stmt.container = parse_expression(tokens);
@@ -237,7 +240,7 @@ auto parse_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_assignment_stmt>();
 
     stmt.name = parse_name(tokens);
-    tokens.consume_only(tk_assign);
+    stmt.token = tokens.consume_only(tk_assign);
     stmt.expr = parse_expression(tokens);
     return node;
 }
@@ -252,7 +255,7 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_sequence_stmt>();
     
-    tokens.consume_only(tk_lbrace);
+    stmt.token = tokens.consume_only(tk_lbrace);
     while (!tokens.consume_maybe(tk_rbrace)) {
         stmt.sequence.push_back(parse_statement(tokens));
     }
@@ -281,11 +284,11 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek(tk_for)) {
         return parse_for_stmt(tokens);
     }
-    if (tokens.consume_maybe(tk_break)) {
-        return std::make_unique<node_stmt>(node_break_stmt{});
+    if (tokens.peek(tk_break)) {
+        return std::make_unique<node_stmt>(node_break_stmt{ tokens.consume() });
     }
-    if (tokens.consume_maybe(tk_continue)) {
-        return std::make_unique<node_stmt>(node_continue_stmt{});
+    if (tokens.peek(tk_continue)) {
+        return std::make_unique<node_stmt>(node_continue_stmt{ tokens.consume() });
     }
     if (tokens.peek_next(tk_assign)) { // <name> '='
         return parse_assignment_stmt(tokens);
@@ -296,8 +299,8 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(tokens);
     }
-    if (tokens.consume_maybe(tk_debug)) {
-        return std::make_unique<node_stmt>(node_debug_stmt{});
+    if (tokens.peek(tk_debug)) {
+        return std::make_unique<node_stmt>(node_debug_stmt{ tokens.consume() });
     }
     parser_error(tokens.curr(), "unknown statement '{}'", tokens.curr().text);
 }

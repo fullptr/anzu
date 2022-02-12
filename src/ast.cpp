@@ -23,7 +23,7 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
         },
         [&](const node_bin_op_expr& node) {
             anzu::print("{}BinOp: \n", spaces);
-            anzu::print("{}- Op: {}\n", spaces, node.op.text);
+            anzu::print("{}- Op: {}\n", spaces, node.token.text);
             anzu::print("{}- Lhs:\n", spaces);
             print_node(*node.lhs, indent + 1);
             anzu::print("{}- Rhs:\n", spaces);
