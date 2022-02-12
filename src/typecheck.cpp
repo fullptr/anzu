@@ -23,6 +23,16 @@ struct typecheck_context
     anzu::type_store types;
 };
 
+auto get_token(const node_stmt& node) -> token
+{
+    return std::visit([](const auto& n) { return n.token; }, node);
+}
+
+auto get_token(const node_expr& node) -> token
+{
+    return std::visit([](const auto& n) { return n.token; }, node);
+}
+
 template <typename... Args>
 [[noreturn]] void type_error(const token& tok, std::string_view msg, Args&&... args)
 {
@@ -31,18 +41,10 @@ template <typename... Args>
     std::exit(1);
 }
 
-template <typename... Args>
-[[noreturn]] void type_error(std::string_view msg, Args&&... args)
-{
-    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[ERROR] ({}:{}) {}\n", "?", "?", formatted_msg);
-    std::exit(1);
-}
-
-auto verify_real_type(typecheck_context& ctx, const type& t) -> void
+auto verify_real_type(typecheck_context& ctx, const token& tok, const type& t) -> void
 {
     if (!ctx.types.is_registered_type(t)) {
-        type_error("'{}' is not a recognised type", t);
+        type_error(tok, "'{}' is not a recognised type", t);
     }
 }
 
@@ -90,7 +92,9 @@ auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> 
 }
 
 auto fetch_function_signature(
-    const typecheck_context& ctx, const std::string& function_name
+    const typecheck_context& ctx,
+    const token& tok,
+    const std::string& function_name
 )
     -> function_signature
 {
@@ -103,7 +107,7 @@ auto fetch_function_signature(
         return anzu::fetch_builtin(function_name).sig;
     }
 
-    type_error("could not find function '{}'", function_name);
+    type_error(tok, "could not find function '{}'", function_name);
 }
 
 auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> type
@@ -117,7 +121,9 @@ auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> type
             return top.variables.at(node.name);
         },
         [&](const node_function_call_expr& node) {
-            const auto& func_def = fetch_function_signature(ctx, node.function_name);
+            const auto& func_def = fetch_function_signature(
+                ctx, node.token, node.function_name
+            );
             return func_def.return_type;
         },
         [&](const node_bin_op_expr& node) {
@@ -132,7 +138,7 @@ void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const
 {
     const auto actual = type_of_expr(ctx, expr);
     if (actual != make_any() && actual != expected) {
-        type_error("expected '{}', got '{}'", to_string(expected), to_string(actual));
+        type_error(get_token(expr), "expected '{}', got '{}'", expected, actual);
     }
 }
 
@@ -183,10 +189,10 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
 
     ctx.scopes.emplace();
     for (const auto& arg : node.sig.args) {
-        verify_real_type(ctx, arg.type);
+        verify_real_type(ctx, node.token, arg.type);
         ctx.scopes.top().variables[arg.name] = arg.type;
     }
-    verify_real_type(ctx, node.sig.return_type);
+    verify_real_type(ctx, node.token, node.sig.return_type);
     ctx.scopes.top().variables["$return"] = node.sig.return_type; // Expose the return type for children
     ctx.scopes.top().functions[node.name] = node.sig;             // Make available for recursion
     typecheck_node(ctx, *node.body);
@@ -195,9 +201,10 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
 
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
 {
-    const auto sig = fetch_function_signature(ctx, node.function_name);
+    const auto sig = fetch_function_signature(ctx, node.token, node.function_name);
     if (sig.args.size() != node.args.size()) {
         type_error(
+            node.token,
             "function '{}' expected {} args, got {}",
             node.function_name, sig.args.size(), node.args.size()
         );
@@ -208,6 +215,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
         const auto& actual = type_of_expr(ctx, *node.args[idx]);
         if (expected != make_any() && actual != make_any() && expected != actual) {
             type_error(
+                node.token,
                 "invalid function call, arg {} expects type {}, got {}\n",
                 idx, expected, actual
             );
