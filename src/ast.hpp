@@ -15,24 +15,31 @@ using node_expr_ptr = std::unique_ptr<node_expr>;
 struct node_literal_expr
 {
     anzu::object value;
+
+    anzu::token token;
 };
 
 struct node_variable_expr
 {
     std::string name;
+
+    anzu::token token;
 };
 
 struct node_bin_op_expr
 {
-    anzu::token   op; // Keep as token for debugging info
     node_expr_ptr lhs;
     node_expr_ptr rhs;
+
+    anzu::token token;
 };
 
 struct node_function_call_expr
 {
     std::string                function_name;
     std::vector<node_expr_ptr> args;
+
+    anzu::token token;
 };
 
 struct node_expr : std::variant<
@@ -49,12 +56,16 @@ using node_stmt_ptr = std::unique_ptr<node_stmt>;
 struct node_sequence_stmt
 {
     std::vector<node_stmt_ptr> sequence;
+
+    anzu::token token;
 };
 
 struct node_while_stmt
 {
     node_expr_ptr condition;
     node_stmt_ptr body;
+
+    anzu::token token;
 };
 
 struct node_if_stmt
@@ -62,6 +73,8 @@ struct node_if_stmt
     node_expr_ptr condition;
     node_stmt_ptr body;
     node_stmt_ptr else_body;
+
+    anzu::token token;
 };
 
 struct node_for_stmt
@@ -69,20 +82,26 @@ struct node_for_stmt
     std::string   var;
     node_expr_ptr container;
     node_stmt_ptr body;
+
+    anzu::token token;
 };
 
 struct node_break_stmt
 {
+    anzu::token token;
 };
 
 struct node_continue_stmt
 {
+    anzu::token token;
 };
 
 struct node_assignment_stmt
 {
     std::string   name;
     node_expr_ptr expr;
+
+    anzu::token token;
 };
 
 struct node_function_def_stmt
@@ -90,21 +109,28 @@ struct node_function_def_stmt
     std::string        name;
     function_signature sig;
     node_stmt_ptr      body;
+
+    anzu::token token;
 };
 
 struct node_function_call_stmt
 {
     std::string                function_name;
     std::vector<node_expr_ptr> args;
+
+    anzu::token token;
 };
 
 struct node_return_stmt
 {
     node_expr_ptr return_value;
+
+    anzu::token token;
 };
 
 struct node_debug_stmt
 {
+    anzu::token token;
 };
 
 struct node_stmt : std::variant<

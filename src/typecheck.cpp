@@ -122,7 +122,7 @@ auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> type
         },
         [&](const node_bin_op_expr& node) {
             return type_of_bin_op(
-                type_of_expr(ctx, *node.lhs), type_of_expr(ctx, *node.rhs), node.op
+                type_of_expr(ctx, *node.lhs), type_of_expr(ctx, *node.rhs), node.token
             );
         }
     }, expr);
