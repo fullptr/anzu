@@ -122,16 +122,79 @@ auto is_type_complete(const type& t) -> bool
     }, t);
 }
 
+// Loads each key/value pair from src into dst. If the key already exists in dst and has a
+// different value, stop and return false.
+auto update(
+    std::unordered_map<int, type>& dst, const std::unordered_map<int, type>& src
+)
+    -> bool
+{
+    for (const auto& [key, value] : src) {
+        if (auto it = dst.find(key); it != dst.end()) {
+            if (it->second != value) {
+                return false;
+            }
+        } else {
+            dst.emplace(key, value);
+        }
+    }
+    return true;
+}
+
 auto match(const type& concrete, const type& pattern) -> std::optional<std::unordered_map<int, type>>
 {
-    assert(is_type_complete(concrete));
+    // Pre-condition, concrete must be a complete type (non-generic and no generic subtypes)
+    if (!is_type_complete(concrete)) {
+        anzu::print("cannot match an incomplete type\n");
+        std::exit(1);
+    }
 
+    // Check 1: Trivial case - pattern is generic, matches entire concrete type
     if (std::holds_alternative<type_generic>(pattern)) {
         auto match_result = std::unordered_map<int, type>{};
         match_result.emplace(std::get<type_generic>(pattern).id, concrete);
         return match_result;
     }
-    return {};
+
+    // At this point, neither 'concrete' nor 'pattern' are generic
+
+    // Check 2: Trivial case - equality implies match
+    if (concrete == pattern) {
+        return std::unordered_map<int, type>{};
+    }
+
+    // If either are simple, there there is no match because:
+    //   - if both are simple, they are not equal (check 2)
+    //   - simple cannot match compound and vice versa
+    if (std::holds_alternative<type_simple>(pattern) || std::holds_alternative<type_simple>(concrete)) {
+        return std::nullopt; // No match
+    }
+
+    // At this point, both 'concrete' and 'pattern' are compound
+    const auto& p = std::get<type_compound>(pattern);
+    const auto& c = std::get<type_compound>(concrete);
+    if (p.name != c.name || p.subtypes.size() != c.subtypes.size()) {
+        return std::nullopt;
+    }
+
+    auto matches = std::unordered_map<int, type>{};
+
+    // Loop through the subtypes and do pairwise matches. Any successful matches should be
+    // lifted into our match map. If an index is already in our map with a different type,
+    // the match fails and we return nullopt. (std::views::zip in C++23 would be nice here)
+    auto cit = c.subtypes.begin();
+    auto pit = p.subtypes.begin();
+    for (; cit != c.subtypes.end(); ++cit, ++pit) {
+        const auto submatch = match(*cit, *pit);
+        if (!submatch.has_value()) {
+            return std::nullopt;
+        }
+        if (!update(matches, submatch.value())) {
+            return std::nullopt;
+        }
+    }
+
+    return matches;
 }
 
 auto is_match(const type& concrete, const type& pattern) -> bool
