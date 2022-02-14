@@ -9,6 +9,12 @@
 namespace anzu {
 namespace {
 
+auto return_key() -> std::string
+{
+    static const auto ret = std::string{tk_return};
+    return ret;
+}
+
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 struct typecheck_scope
@@ -132,7 +138,18 @@ auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> type
             );
         },
         [&](const node_list_expr& node) {
-            return make_list();
+            // For now, empty lists are lists of ints. When we can explicitly state the type when
+            // declaring a value, this is a compile time error.
+            if (node.elements.empty()) {
+                return make_list_of(make_int());
+            }
+            const auto subtype = type_of_expr(ctx, *node.elements.front());
+            for (const auto& subexpr : node.elements | std::views::drop(1)) {
+                if (type_of_expr(ctx, *subexpr) != subtype) {
+                    type_error(node.token, "list elements must all be the same type\n");
+                }
+            }
+            return make_list_of(subtype);
         }
     }, expr);
 };
@@ -223,7 +240,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
         ctx.scopes.top().variables[arg.name] = arg.type;
     }
     verify_real_type(ctx, node.token, node.sig.return_type);
-    ctx.scopes.top().variables["$return"] = node.sig.return_type; // Expose the return type for children
+    ctx.scopes.top().variables[return_key()] = node.sig.return_type; // Expose the return type for children
     ctx.scopes.top().functions[node.name] = node.sig;             // Make available for recursion
     typecheck_node(ctx, *node.body);
     ctx.scopes.pop();
@@ -257,7 +274,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
 
 auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)
 {
-    const auto& return_type = ctx.scopes.top().variables.at("$return");
+    const auto& return_type = ctx.scopes.top().variables.at(return_key());
     verify_expression_type(ctx, *node.return_value, return_type);
 }
 
@@ -284,7 +301,18 @@ auto type_of(const anzu::object& object) -> type
         return make_str();
     }
     if (object.is<object_list>()) {
-        return make_list();
+        const auto& list = object.as<object_list>();
+        if (list->empty()) {
+            return make_list_of(make_int());
+        }
+        const auto subtype = type_of(list->front());
+        for (const auto& subelem : *list | std::views::drop(1)) {
+            if (type_of(subelem) != subtype) {
+                anzu::print("WHOOPS! Not a homogeneous list (temporary)\n");
+                std::exit(1);
+            }
+        }
+        return make_list_of(subtype);
     }
     if (object.is<object_null>()) {
         return make_null();

@@ -1,4 +1,4 @@
 
 
-x = [[1, 2, 3], "hello world", true, null, [["duffman"]]]
+x = ["1", "2", "3"]
 print(typeof(x))

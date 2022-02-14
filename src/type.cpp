@@ -94,6 +94,14 @@ auto make_generic(int id) -> type
     return {type_generic{ .id = id }};
 }
 
+auto make_list_of(const type& t) -> type
+{
+    return {type_compound{
+        .name = std::string{tk_list},
+        .subtypes = { t }
+    }};
+}
+
 auto make_list_generic() -> type
 {
     return {type_compound{

@@ -62,6 +62,7 @@ auto make_null() -> type;
 auto make_any()  -> type;
 auto make_generic(int id) -> type;
 
+auto make_list_of(const type& t) -> type;
 auto make_list_generic() -> type;
 
 auto is_type_complete(const type& type) -> bool;
