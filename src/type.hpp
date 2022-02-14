@@ -5,6 +5,7 @@
 #include <variant>
 #include <format>
 #include <vector>
+#include <optional>
 #include <unordered_map>
 
 namespace anzu {
@@ -53,21 +54,19 @@ auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
 
-inline auto make_int()  -> type { return {type_simple{ .name = std::string{tk_int}  }}; }
-inline auto make_bool() -> type { return {type_simple{ .name = std::string{tk_bool} }}; }
-inline auto make_str()  -> type { return {type_simple{ .name = std::string{tk_str}  }}; }
-inline auto make_list() -> type { return {type_simple{ .name = std::string{tk_list} }}; }
-inline auto make_null() -> type { return {type_simple{ .name = std::string{tk_null} }}; }
-inline auto make_any()  -> type { return {type_simple{ .name = std::string{tk_any}  }}; }
-inline auto make_generic(int id) -> type { return {type_generic{ .id = id }}; }
+auto make_int()  -> type;
+auto make_bool() -> type;
+auto make_str()  -> type;
+auto make_list() -> type;
+auto make_null() -> type;
+auto make_any()  -> type;
+auto make_generic(int id) -> type;
 
-inline auto make_list_generic() -> type
-{
-    return {type_compound{
-        .name = std::string{tk_list},
-        .subtypes = { make_generic(0) }
-    }};
-}
+auto make_list_generic() -> type;
+
+auto is_type_complete(const type& type) -> bool;
+
+auto match(const type& concrete, const type& pattern) -> std::optional<std::unordered_map<int, type>>;
 
 class type_store
 {
