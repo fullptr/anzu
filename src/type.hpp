@@ -57,7 +57,6 @@ auto hash(const type_generic& type) -> std::size_t;
 auto make_int()  -> type;
 auto make_bool() -> type;
 auto make_str()  -> type;
-auto make_list() -> type;
 auto make_null() -> type;
 auto make_any()  -> type;
 auto make_generic(int id) -> type;
@@ -68,6 +67,7 @@ auto make_list_generic() -> type;
 auto is_type_complete(const type& type) -> bool;
 
 auto match(const type& concrete, const type& pattern) -> std::optional<std::unordered_map<int, type>>;
+auto is_match(const type& concrete, const type& pattern) -> bool;
 
 class type_store
 {

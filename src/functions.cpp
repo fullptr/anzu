@@ -123,7 +123,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_list_push,
         .sig = {
             .args = {
-                { .name = "list_obj", .type = make_list() },
+                { .name = "list_obj", .type = make_list_generic() },
                 { .name = "value",    .type = make_any()  }
             },
             .return_type = make_null()
@@ -134,9 +134,9 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_list_pop,
         .sig = {
             .args = {
-                { .name = "list_obj", .type = make_list() }
+                { .name = "list_obj", .type = make_list_generic() }
             },
-            .return_type = make_any()
+            .return_type = make_generic(0)
         }
     });
 
@@ -144,7 +144,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_list_size,
         .sig = {
             .args = {
-                { .name = "list_obj", .type = make_list() }
+                { .name = "list_obj", .type = make_list_generic() }
             },
             .return_type = make_int()
         }
@@ -154,10 +154,10 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_list_at,
         .sig = {
             .args = {
-                { .name = "list_obj", .type = make_list() },
+                { .name = "list_obj", .type = make_list_generic() },
                 { .name = "index",    .type = make_int() }
             },
-            .return_type = make_any()
+            .return_type = make_generic(0)
         }
     });
 
@@ -256,7 +256,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
             .args = {
                 { .name = "max", .type = make_int() }
             },
-            .return_type = make_list()
+            .return_type = make_list_of(make_int())
         }
     });
 

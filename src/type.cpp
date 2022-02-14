@@ -74,11 +74,6 @@ auto make_str()  -> type
     return {type_simple{ .name = std::string{tk_str}  }};
 }
 
-auto make_list() -> type
-{
-    return {type_simple{ .name = std::string{tk_list} }};
-}
-
 auto make_null() -> type
 {
     return {type_simple{ .name = std::string{tk_null} }};
@@ -137,6 +132,11 @@ auto match(const type& concrete, const type& pattern) -> std::optional<std::unor
         return match_result;
     }
     return {};
+}
+
+auto is_match(const type& concrete, const type& pattern) -> bool
+{
+    return match(concrete, pattern).has_value();
 }
 
 type_store::type_store()

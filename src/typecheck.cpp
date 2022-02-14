@@ -69,7 +69,11 @@ auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> 
         invalid_expr();
     }
 
-    if (lhs == make_list() || lhs == make_null()) { // No support for having these in binary ops.
+    if (is_match(lhs, make_list_generic())) {// No support for having these in binary ops.
+        invalid_expr();
+    }
+
+    if (lhs == make_null()) { // No support for having these in binary ops.
         invalid_expr();
     }
 
@@ -186,7 +190,7 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
     ctx.scopes.top().variables[node.var] = make_any(); // Can't know type yet :(
-    verify_expression_type(ctx, *node.container, make_list());
+    verify_expression_type(ctx, *node.container, make_list_generic());
     typecheck_node(ctx, *node.body);
 }
 
