@@ -26,6 +26,11 @@ void print_usage()
 
 int main(int argc, char** argv)
 {
+    const auto store = anzu::type_store{};
+    anzu::print("{}\n", store.is_registered_type(anzu::make_list_generic()));
+    anzu::print("{}\n", store.is_registered_type(anzu::make_int()));
+    anzu::print("{}\n", store.is_registered_type(anzu::make_list_of(anzu::make_bool())));
+
     if (argc != 3 && argc != 4) {
         print_usage();
         return 1;

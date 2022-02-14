@@ -6,6 +6,7 @@
 #include <format>
 #include <vector>
 #include <optional>
+#include <unordered_set>
 #include <unordered_map>
 
 namespace anzu {
@@ -42,7 +43,7 @@ inline auto operator==(const type_generic& lhs, const type_generic& rhs) -> bool
     return lhs.id == rhs.id;
 }
 
-struct type : std::variant<type_simple, type_compound, type_generic> {};
+struct type : public std::variant<type_simple, type_compound, type_generic> {};
 
 auto to_string(const type& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
@@ -69,16 +70,21 @@ auto is_type_complete(const type& type) -> bool;
 auto match(const type& concrete, const type& pattern) -> std::optional<std::unordered_map<int, type>>;
 auto is_match(const type& concrete, const type& pattern) -> bool;
 
+struct type_hash
+{
+    std::size_t operator()(const type& t) const noexcept { return anzu::hash(t); }
+};
+
 class type_store
 {
-    // key = string representation of type
-    // value = type object
-    std::unordered_map<std::string, type> d_types;
+    std::unordered_set<type, type_hash> d_types;
+    std::unordered_set<type, type_hash> d_generics;
 
 public:
     type_store();
 
-    auto is_registered_type(const type& t) -> bool;
+    // Checks if the given type is registered or matches a registered generic.
+    auto is_registered_type(const type& t) const -> bool;
 
     // auto register(const type& t) -> void;
 };

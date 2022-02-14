@@ -204,17 +204,28 @@ auto is_match(const type& concrete, const type& pattern) -> bool
 
 type_store::type_store()
 {
-    d_types.emplace(tk_int,  make_int());
-    d_types.emplace(tk_bool, make_bool());
-    d_types.emplace(tk_str,  make_str());
-    d_types.emplace("list<[0]>", make_list_generic());
-    d_types.emplace(tk_null, make_null());
-    d_types.emplace(tk_any,  make_any());
+    d_types.emplace(make_int());
+    d_types.emplace(make_bool());
+    d_types.emplace(make_str());
+    d_types.emplace(make_null());
+    d_types.emplace(make_any());
+
+    d_generics.emplace(make_list_generic());
 }
 
-auto type_store::is_registered_type(const type& t) -> bool
+auto type_store::is_registered_type(const type& t) const -> bool
 {
-    return d_types.contains(to_string(t));
+    if (d_types.contains(t)) {
+        return true;
+    }
+
+    if (d_generics.contains(t)) {
+        return true;
+    }
+
+    return std::any_of(begin(d_generics), end(d_generics), [&](const auto& generic) {
+        return is_match(t, generic);
+    });
 }
 
 }
