@@ -127,7 +127,21 @@ auto fetch_function_signature(
     type_error(tok, "could not find function '{}'", function_name);
 }
 
-auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> type
+auto typecheck_signature(
+    typecheck_context& ctx,
+    const node_function_def_stmt& node,
+    const std::vector<node_expr_ptr>& args
+)
+    -> function_signature;
+
+auto typecheck_function_body_with_signature(
+    typecheck_context& ctx,
+    const node_function_def_stmt& node,
+    const function_signature& sig
+)
+    -> void;
+
+auto type_of_expr(typecheck_context& ctx, const node_expr& expr) -> type
 {
     return std::visit(overloaded {
         [&](const node_literal_expr& node) {
@@ -141,6 +155,14 @@ auto type_of_expr(const typecheck_context& ctx, const node_expr& expr) -> type
             const auto& func_def = fetch_function_signature(
                 ctx, node.token, node.function_name
             );
+
+            if (ctx.scopes.top().generic_functions.contains(node.function_name)) {
+                const auto* function_def = ctx.scopes.top().functions.at(node.function_name);
+                const auto signature = typecheck_signature(ctx, *function_def, node.args);
+                typecheck_function_body_with_signature(ctx, *function_def, signature);
+                anzu::print("rt={}\n", to_string(signature.return_type));
+                return signature.return_type;
+            }
             return func_def.return_type;
         },
         [&](const node_bin_op_expr& node) {

@@ -1,7 +1,9 @@
 
 fn foo(x: list<[0]>) -> [0]
 {
-    return "5"
+    return 5
 }
 
-foo(["1", "2", "3"])
+x = foo([1, 2, 3])
+println(typeof(x))
+println(x)
