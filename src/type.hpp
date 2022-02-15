@@ -59,7 +59,6 @@ auto make_int()  -> type;
 auto make_bool() -> type;
 auto make_str()  -> type;
 auto make_null() -> type;
-auto make_any()  -> type;
 auto make_generic(int id) -> type;
 
 auto make_list_of(const type& t) -> type;

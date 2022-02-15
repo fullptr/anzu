@@ -68,10 +68,6 @@ auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> 
         type_error(op_token, "could not evaluate '{} {} {}'", lhs, op, rhs);
     };
 
-    if (lhs == make_any() || rhs == make_any()) {
-        return make_any();
-    }
-
     if (lhs != rhs) {
         invalid_expr();
     }
@@ -257,7 +253,7 @@ auto typecheck_signature(
 void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const type& expected)
 {
     const auto actual = type_of_expr(ctx, expr);
-    if (actual != make_any() && actual != expected) {
+    if (!match(actual, expected)) {
         type_error(get_token(expr), "expected '{}', got '{}'", expected, actual);
     }
 }
@@ -285,8 +281,13 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
-    ctx.scopes.top().variables[node.var] = make_any(); // Can't know type yet :(
-    verify_expression_type(ctx, *node.container, make_list_generic());
+    const auto container_type = type_of_expr(ctx, *node.container);
+    const auto expected_type = make_list_generic();
+    auto matches = match(container_type, expected_type);
+    if (!matches.has_value()) {
+        type_error(get_token(*node.container), "expected '{}', got '{}'", expected_type, container_type);
+    }
+    ctx.scopes.top().variables[node.var] = matches->at(0);
     typecheck_node(ctx, *node.body);
 }
 
@@ -467,7 +468,9 @@ auto type_of(const anzu::object& object) -> type
     if (object.is<object_null>()) {
         return make_null();
     }
-    return make_any();
+    anzu::print("WHOOPS! Unknown type\n");
+    std::exit(1);
+    return make_null();
 }
 
 auto typecheck_ast(const node_stmt_ptr& ast) -> void

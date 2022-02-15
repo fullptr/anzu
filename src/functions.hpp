@@ -12,11 +12,11 @@ struct function_signature
     struct arg
     {
         std::string name;
-        anzu::type  type = make_any();
+        anzu::type  type = make_generic(0);
     };
 
     std::vector<arg> args;
-    anzu::type       return_type = make_any();
+    anzu::type       return_type = make_generic(0);
 };
 
 class object;

@@ -79,11 +79,6 @@ auto make_null() -> type
     return {type_simple{ .name = std::string{tk_null} }};
 }
 
-auto make_any()  -> type
-{
-    return {type_simple{ .name = std::string{tk_any}  }};
-}
-
 auto make_generic(int id) -> type
 {
     return {type_generic{ .id = id }};
@@ -232,7 +227,6 @@ type_store::type_store()
     d_types.emplace(make_bool());
     d_types.emplace(make_str());
     d_types.emplace(make_null());
-    d_types.emplace(make_any());
 
     d_generics.emplace(make_list_generic());
 }
