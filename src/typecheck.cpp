@@ -332,6 +332,10 @@ auto typecheck_signature(
         ret_sig.args.push_back(arg);
     }
 
+    ret_sig.return_type = fill_type(node.sig.return_type, matches);
+    if (!is_type_complete(ret_sig.return_type)) {
+        type_error(node.token, "could not deduce return type for '{}'", node.name);
+    }
     return ret_sig;
 }
 

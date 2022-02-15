@@ -202,6 +202,30 @@ auto is_match(const type& concrete, const type& pattern) -> bool
     return match(concrete, pattern).has_value();
 }
 
+auto replace(type& ret, const std::unordered_map<int, type>& matches) -> void
+{
+    std::visit(overloaded {
+        [&](type_simple&) {},
+        [&](type_generic& type) {
+            if (auto it = matches.find(type.id); it != matches.end()) {
+                ret = it->second;
+            }
+        },
+        [&](type_compound& type) {
+            for (auto& subtype : type.subtypes) {
+                replace(subtype, matches);
+            }
+        }
+    }, ret);
+}
+
+auto fill_type(const type& incomplete, const std::unordered_map<int, type>& matches) -> type
+{
+    auto ret_type = incomplete;
+    replace(ret_type, matches);
+    return ret_type;
+}
+
 type_store::type_store()
 {
     d_types.emplace(make_int());

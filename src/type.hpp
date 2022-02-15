@@ -70,6 +70,10 @@ auto is_type_complete(const type& type) -> bool;
 auto match(const type& concrete, const type& pattern) -> std::optional<std::unordered_map<int, type>>;
 auto is_match(const type& concrete, const type& pattern) -> bool;
 
+// Given an incomplete type and a map of types, replace the generics in the incomplete type
+// with those from the map.
+auto fill_type(const type& incomplete, const std::unordered_map<int, type>& matches) -> type;
+
 struct type_hash
 {
     std::size_t operator()(const type& t) const noexcept { return anzu::hash(t); }
