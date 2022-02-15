@@ -1,3 +1,7 @@
 
-x = [1, 2, 3]
-print(x)
+fn foo(x: list<[0]>) -> [0]
+{
+    return x > 5
+}
+
+println(typeof(foo(5)))

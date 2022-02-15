@@ -2,6 +2,7 @@
 #include "vocabulary.hpp"
 #include "type.hpp"
 
+#include <algorithm>
 #include <ranges>
 #include <unordered_map>
 #include <stack>
@@ -19,8 +20,14 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 struct typecheck_scope
 {
-    std::unordered_map<std::string, function_signature> functions;
-    std::unordered_map<std::string, type>               variables;
+    std::unordered_map<std::string, const node_function_def_stmt*> functions;
+    std::unordered_map<std::string, type>                          variables;
+    
+    // These are functions with incomplete types in their signatures. We need to store
+    // these so that they can be type checked at the call sites. TODO: This will be
+    // insufficient; we need to avoid typechecking functions for the same types multiple
+    // times otherwise recursive calls will kill the type checker.
+    std::unordered_set<std::string> generic_functions;
 };
 
 struct typecheck_context
@@ -110,7 +117,7 @@ auto fetch_function_signature(
 {
     const auto& scope = ctx.scopes.top();
     if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
-        return it->second;
+        return it->second->sig;
     }
 
     if (anzu::is_builtin(function_name)) {
@@ -234,22 +241,98 @@ auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
     }
 }
 
-auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
+// Returns true if any of the parameters to the function are incomplete. If none of the
+// paraneters are incomplete but the return type is, an error is raised.
+auto is_function_generic(const node_function_def_stmt& node) -> bool
 {
-    ctx.scopes.top().functions[node.name] = node.sig; // Make name available in outer scope
+    const auto& args = node.sig.args;
+    const auto is_generic = std::any_of(begin(args), end(args), [](const auto& arg) {
+        return !is_type_complete(arg.type);
+    });
+    if (!is_generic && !is_type_complete(node.sig.return_type)) {
+        type_error(
+            node.token,
+            "function '{}' has incomplete return type '{}' but no incomplete parameter",
+            node.name, to_string(node.sig.return_type)
+        );
+    }
+    return is_generic;
+}
 
+auto typecheck_function_body_with_signature(
+    typecheck_context& ctx,
+    const node_function_def_stmt& node,
+    const function_signature& sig
+)
+    -> void
+{
     ctx.scopes.emplace();
-    for (const auto& arg : node.sig.args) {
+    for (const auto& arg : sig.args) {
         verify_real_type(ctx, node.token, arg.type);
         ctx.scopes.top().variables[arg.name] = arg.type;
     }
-    verify_real_type(ctx, node.token, node.sig.return_type);
-    ctx.scopes.top().variables[return_key()] = node.sig.return_type; // Expose the return type for children
-    ctx.scopes.top().functions[node.name] = node.sig;             // Make available for recursion
+    verify_real_type(ctx, node.token, sig.return_type);
+    ctx.scopes.top().variables[return_key()] = sig.return_type; // Expose the return type for children
+    ctx.scopes.top().functions[node.name] = &node;             // Make available for recursion
     typecheck_node(ctx, *node.body);
     ctx.scopes.pop();
 
     check_function_ends_with_return(node);
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
+{
+    ctx.scopes.top().functions[node.name] = &node; // Make name available in outer scope
+
+    // If this is a generic function, we cannot perform type checking on it here.
+    // Instead, store the name, and type check it at the function call site when the
+    // types are known. TODO: Optimise this to avoid redundant type checks.
+    if (is_function_generic(node)) {
+        ctx.scopes.top().generic_functions.insert(node.name);
+        return;
+    }
+
+    typecheck_function_body_with_signature(ctx, node, node.sig);
+}
+
+// Given a function with incomplete types, check that the args match its signature, and use the
+// matches to fill in the return type. Return the new signature.
+auto typecheck_signature(
+    typecheck_context& ctx,
+    const node_function_def_stmt& node,
+    const std::vector<node_expr_ptr>& args
+)
+    -> function_signature
+{
+    auto ret_sig = function_signature{};
+    auto matches = std::unordered_map<int, type>{};
+
+    auto ait = args.begin();
+    auto sit = node.sig.args.begin();
+    for (; ait != args.end(); ++ait, ++sit) {
+        const auto actual_type = type_of_expr(ctx, **ait);
+        const auto pattern_type = sit->type;
+        const auto arg_match = match(actual_type, pattern_type);
+        if (!arg_match.has_value()) {
+            type_error(node.token, "'{}' does not match '{}'", actual_type, pattern_type);
+        }
+        for (const auto& [key, type] : arg_match.value()) {
+            if (auto it = matches.find(key); it != matches.end()) {
+                if (it->second != type) {
+                    type_error(node.token, "bad function call (WIP, make error better)");
+                }
+            }
+            else {
+                matches.emplace(key, type);
+            }
+        }
+        auto arg = function_signature::arg{};
+        arg.name = sit->name;
+        arg.type = actual_type;
+        ret_sig.args.push_back(arg);
+    }
+
+    return ret_sig;
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
@@ -261,6 +344,14 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
             "function '{}' expected {} args, got {}",
             node.function_name, sig.args.size(), node.args.size()
         );
+    }
+
+    // For generic functions, we need to additionally typecheck the function body
+    if (ctx.scopes.top().generic_functions.contains(node.function_name)) {
+        const auto* function_def = ctx.scopes.top().functions[node.function_name];
+        const auto signature = typecheck_signature(ctx, *function_def, node.args);
+        typecheck_function_body_with_signature(ctx, *function_def, signature);
+        return;
     }
 
     for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
