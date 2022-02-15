@@ -1,9 +1,12 @@
 
-fn foo(x: list<[0]>) -> [0]
+
+
+fn front(x: list<int>) -> int
 {
-    return 5
+    return list_at(x, 0)
 }
 
-x = foo([1, 2, 3])
-println(typeof(x))
+x = front([1, 2, 3])
+type_x = typeof(x)
+println(type_x)
 println(x)

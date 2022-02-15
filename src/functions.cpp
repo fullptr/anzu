@@ -124,7 +124,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .sig = {
             .args = {
                 { .name = "list_obj", .type = make_list_generic() },
-                { .name = "value",    .type = make_any()  }
+                { .name = "value",    .type = make_generic(0)  }
             },
             .return_type = make_null()
         }
@@ -186,7 +186,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_to_int,
         .sig = {
             .args = {
-                { .name = "obj", .type = make_any() }
+                { .name = "obj", .type = make_generic(0) }
             },
             .return_type = make_int()
         }
@@ -196,7 +196,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_to_bool,
         .sig = {
             .args = {
-                { .name = "obj", .type = make_any() }
+                { .name = "obj", .type = make_generic(0) }
             },
             .return_type = make_bool()
         }
@@ -206,7 +206,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_to_str,
         .sig = {
             .args = {
-                { .name = "obj", .type = make_any() }
+                { .name = "obj", .type = make_generic(0) }
             },
             .return_type = make_str()
         }
@@ -216,7 +216,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_print,
         .sig = {
             .args = {
-                { .name = "obj", .type = make_any() }
+                { .name = "obj", .type = make_generic(0) }
             },
             .return_type = make_null()
         }
@@ -226,7 +226,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_println,
         .sig = {
             .args = {
-                { .name = "obj", .type = make_any() }
+                { .name = "obj", .type = make_generic(0) }
             },
             .return_type = make_null()
         }
@@ -244,7 +244,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_typeof,
         .sig = {
             .args = {
-                { .name = "obj", .type = make_any() }
+                { .name = "obj", .type = make_generic(0) }
             },
             .return_type = make_str()
         }

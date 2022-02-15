@@ -129,7 +129,9 @@ auto fetch_function_signature(
 
 auto typecheck_signature(
     typecheck_context& ctx,
-    const node_function_def_stmt& node,
+    const token& tok,
+    const std::string& function_name,
+    const function_signature& sig,
     const std::vector<node_expr_ptr>& args
 )
     -> function_signature;
@@ -152,18 +154,37 @@ auto type_of_expr(typecheck_context& ctx, const node_expr& expr) -> type
             return top.variables.at(node.name);
         },
         [&](const node_function_call_expr& node) {
-            const auto& func_def = fetch_function_signature(
-                ctx, node.token, node.function_name
-            );
-
-            if (ctx.scopes.top().generic_functions.contains(node.function_name)) {
-                const auto* function_def = ctx.scopes.top().functions.at(node.function_name);
-                const auto signature = typecheck_signature(ctx, *function_def, node.args);
-                typecheck_function_body_with_signature(ctx, *function_def, signature);
-                anzu::print("rt={}\n", to_string(signature.return_type));
+            if (is_builtin(node.function_name)) {
+                // TODO: Need to handle generic builtins
+                const auto sig = fetch_builtin(node.function_name);
+                const auto signature = typecheck_signature(
+                    ctx,
+                    node.token,
+                    node.function_name,
+                    sig.sig,
+                    node.args
+                );
                 return signature.return_type;
             }
-            return func_def.return_type;
+            else {
+                const auto& func_def = fetch_function_signature(
+                    ctx, node.token, node.function_name
+                );
+                if (ctx.scopes.top().generic_functions.contains(node.function_name)) {
+                    const auto* function_def = ctx.scopes.top().functions.at(node.function_name);
+                    const auto signature = typecheck_signature(
+                        ctx,
+                        node.token,
+                        node.function_name,
+                        function_def->sig,
+                        node.args
+                    );
+                    typecheck_function_body_with_signature(ctx, *function_def, signature);
+                    return signature.return_type;
+                }
+                return func_def.return_type;
+            }
+            
         },
         [&](const node_bin_op_expr& node) {
             return type_of_bin_op(
@@ -186,6 +207,52 @@ auto type_of_expr(typecheck_context& ctx, const node_expr& expr) -> type
         }
     }, expr);
 };
+
+// Given a function with incomplete types, check that the args match its signature, and use the
+// matches to fill in the return type. Return the new signature.
+auto typecheck_signature(
+    typecheck_context& ctx,
+    const token& tok,
+    const std::string& function_name,
+    const function_signature& sig,
+    const std::vector<node_expr_ptr>& args
+)
+    -> function_signature
+{
+    auto ret_sig = function_signature{};
+    auto matches = std::unordered_map<int, type>{};
+
+    auto ait = args.begin();
+    auto sit = sig.args.begin();
+    for (; ait != args.end(); ++ait, ++sit) {
+        const auto actual_type = type_of_expr(ctx, **ait);
+        const auto pattern_type = sit->type;
+        const auto arg_match = match(actual_type, pattern_type);
+        if (!arg_match.has_value()) {
+            type_error(tok, "'{}' does not match '{}'", actual_type, pattern_type);
+        }
+        for (const auto& [key, type] : arg_match.value()) {
+            if (auto it = matches.find(key); it != matches.end()) {
+                if (it->second != type) {
+                    type_error(tok, "bad function call (WIP, make error better)");
+                }
+            }
+            else {
+                matches.emplace(key, type);
+            }
+        }
+        auto arg = function_signature::arg{};
+        arg.name = sit->name;
+        arg.type = actual_type;
+        ret_sig.args.push_back(arg);
+    }
+
+    ret_sig.return_type = fill_type(sig.return_type, matches);
+    if (!is_type_complete(ret_sig.return_type)) {
+        type_error(tok, "could not deduce return type for '{}'", function_name);
+    }
+    return ret_sig;
+}
 
 void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const type& expected)
 {
@@ -317,50 +384,6 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
     typecheck_function_body_with_signature(ctx, node, node.sig);
 }
 
-// Given a function with incomplete types, check that the args match its signature, and use the
-// matches to fill in the return type. Return the new signature.
-auto typecheck_signature(
-    typecheck_context& ctx,
-    const node_function_def_stmt& node,
-    const std::vector<node_expr_ptr>& args
-)
-    -> function_signature
-{
-    auto ret_sig = function_signature{};
-    auto matches = std::unordered_map<int, type>{};
-
-    auto ait = args.begin();
-    auto sit = node.sig.args.begin();
-    for (; ait != args.end(); ++ait, ++sit) {
-        const auto actual_type = type_of_expr(ctx, **ait);
-        const auto pattern_type = sit->type;
-        const auto arg_match = match(actual_type, pattern_type);
-        if (!arg_match.has_value()) {
-            type_error(node.token, "'{}' does not match '{}'", actual_type, pattern_type);
-        }
-        for (const auto& [key, type] : arg_match.value()) {
-            if (auto it = matches.find(key); it != matches.end()) {
-                if (it->second != type) {
-                    type_error(node.token, "bad function call (WIP, make error better)");
-                }
-            }
-            else {
-                matches.emplace(key, type);
-            }
-        }
-        auto arg = function_signature::arg{};
-        arg.name = sit->name;
-        arg.type = actual_type;
-        ret_sig.args.push_back(arg);
-    }
-
-    ret_sig.return_type = fill_type(node.sig.return_type, matches);
-    if (!is_type_complete(ret_sig.return_type)) {
-        type_error(node.token, "could not deduce return type for '{}'", node.name);
-    }
-    return ret_sig;
-}
-
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
 {
     const auto sig = fetch_function_signature(ctx, node.token, node.function_name);
@@ -375,7 +398,13 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
     // For generic functions, we need to additionally typecheck the function body
     if (ctx.scopes.top().generic_functions.contains(node.function_name)) {
         const auto* function_def = ctx.scopes.top().functions[node.function_name];
-        const auto signature = typecheck_signature(ctx, *function_def, node.args);
+        const auto signature = typecheck_signature(
+            ctx,
+            node.token,
+            node.function_name,
+            function_def->sig,
+            node.args
+        );
         typecheck_function_body_with_signature(ctx, *function_def, signature);
         return;
     }
@@ -383,7 +412,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
     for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
         const auto& expected = sig.args.at(idx).type;
         const auto& actual = type_of_expr(ctx, *node.args[idx]);
-        if (expected != make_any() && actual != make_any() && expected != actual) {
+        if (!match(actual, expected)) {
             type_error(
                 node.token,
                 "invalid function call, arg {} expects type {}, got {}\n",
