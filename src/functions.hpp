@@ -18,6 +18,7 @@ struct function_signature
     std::vector<arg> args;
     anzu::type       return_type = make_generic(0);
 };
+auto to_string(const function_signature& sig) -> std::string;
 
 class object;
 using builtin_function = object(*)(std::span<const object>);

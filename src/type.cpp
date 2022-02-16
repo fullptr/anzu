@@ -140,7 +140,7 @@ auto match(const type& concrete, const type& pattern) -> std::optional<std::unor
 {
     // Pre-condition, concrete must be a complete type (non-generic and no generic subtypes)
     if (!is_type_complete(concrete)) {
-        anzu::print("cannot match an incomplete type\n");
+        anzu::print("cannot match the incomplete type '{}'\n", to_string(concrete));
         std::exit(1);
     }
 

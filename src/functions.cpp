@@ -115,6 +115,18 @@ auto builtin_range(std::span<const object> args) -> object
 
 }
 
+auto to_string(const function_signature& sig) -> std::string
+{
+    return std::format(
+        "({}) -> {}",
+        format_comma_separated(
+            sig.args,
+            [](const auto& arg) { return to_string(arg.type); }
+        ),
+        to_string(sig.return_type)
+    );
+}
+
 auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
 {
     auto builtins = std::unordered_map<std::string, builtin>{};

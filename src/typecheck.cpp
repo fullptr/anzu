@@ -36,6 +36,9 @@ struct typecheck_context
     anzu::type_store types;
 };
 
+auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
+auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type;
+
 auto get_token(const node_stmt& node) -> token
 {
     return std::visit([](const auto& n) { return n.token; }, node);
@@ -123,105 +126,60 @@ auto fetch_function_signature(
     type_error(tok, "could not find function '{}'", function_name);
 }
 
-auto typecheck_signature(
-    typecheck_context& ctx,
-    const token& tok,
-    const std::string& function_name,
-    const function_signature& sig,
-    const std::vector<node_expr_ptr>& args
-)
-    -> function_signature;
-
-auto typecheck_function_body_with_signature(
-    typecheck_context& ctx,
-    const node_function_def_stmt& node,
-    const function_signature& sig
-)
-    -> void;
-
-auto type_of_expr(typecheck_context& ctx, const node_expr& expr) -> type
+auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
 {
-    return std::visit(overloaded {
-        [&](const node_literal_expr& node) {
-            return type_of(node.value);
-        },
-        [&](const node_variable_expr& node) {
-            const auto& top = ctx.scopes.top();
-            return top.variables.at(node.name);
-        },
-        [&](const node_function_call_expr& node) {
-            if (is_builtin(node.function_name)) {
-                // TODO: Need to handle generic builtins
-                const auto sig = fetch_builtin(node.function_name);
-                const auto signature = typecheck_signature(
-                    ctx,
-                    node.token,
-                    node.function_name,
-                    sig.sig,
-                    node.args
-                );
-                return signature.return_type;
-            }
-            else {
-                const auto& func_def = fetch_function_signature(
-                    ctx, node.token, node.function_name
-                );
-                if (ctx.scopes.top().generic_functions.contains(node.function_name)) {
-                    const auto* function_def = ctx.scopes.top().functions.at(node.function_name);
-                    const auto signature = typecheck_signature(
-                        ctx,
-                        node.token,
-                        node.function_name,
-                        function_def->sig,
-                        node.args
-                    );
-                    typecheck_function_body_with_signature(ctx, *function_def, signature);
-                    return signature.return_type;
-                }
-                return func_def.return_type;
-            }
-            
-        },
-        [&](const node_bin_op_expr& node) {
-            return type_of_bin_op(
-                type_of_expr(ctx, *node.lhs), type_of_expr(ctx, *node.rhs), node.token
-            );
-        },
-        [&](const node_list_expr& node) {
-            // For now, empty lists are lists of ints. When we can explicitly state the type when
-            // declaring a value, this is a compile time error.
-            if (node.elements.empty()) {
-                return make_list_of(make_int());
-            }
-            const auto subtype = type_of_expr(ctx, *node.elements.front());
-            for (const auto& subexpr : node.elements | std::views::drop(1)) {
-                if (type_of_expr(ctx, *subexpr) != subtype) {
-                    type_error(node.token, "list elements must all be the same type\n");
-                }
-            }
-            return make_list_of(subtype);
+    // Functions returning null don't need a return statement.
+    if (node.sig.return_type == make_null()) {
+        return;
+    }
+
+    const auto bad_function = [&]() {
+        type_error(node.token, "function '{}' does not end in a return statement\n", node.name);
+    };
+
+    const auto& body = *node.body;
+    if (std::holds_alternative<node_return_stmt>(body)) {
+        return;
+    }
+
+    if (std::holds_alternative<node_sequence_stmt>(body)) {
+        const auto& seq = std::get<node_sequence_stmt>(body).sequence;
+        if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
+            bad_function();
         }
-    }, expr);
-};
+    }
+    else {
+        bad_function();
+    }
+}
 
 // Given a function with incomplete types, check that the args match its signature, and use the
 // matches to fill in the return type. Return the new signature.
-auto typecheck_signature(
+auto get_typechecked_signature(
     typecheck_context& ctx,
     const token& tok,
     const std::string& function_name,
-    const function_signature& sig,
     const std::vector<node_expr_ptr>& args
 )
     -> function_signature
 {
+    const auto sig = fetch_function_signature(ctx, tok, function_name);
+
+    if (sig.args.size() != args.size()) {
+        type_error(
+            tok,
+            "function '{}' expected {} args, got {}",
+            function_name, sig.args.size(), args.size()
+        );
+    }
+
     auto ret_sig = function_signature{};
     auto matches = std::unordered_map<int, type>{};
 
     auto ait = args.begin();
     auto sit = sig.args.begin();
     for (; ait != args.end(); ++ait, ++sit) {
-        const auto actual_type = type_of_expr(ctx, **ait);
+        const auto actual_type = typecheck_expr(ctx, **ait);
         const auto pattern_type = sit->type;
         const auto arg_match = match(actual_type, pattern_type);
         if (!arg_match.has_value()) {
@@ -250,15 +208,89 @@ auto typecheck_signature(
     return ret_sig;
 }
 
+auto typecheck_function_body_with_signature(
+    typecheck_context& ctx,
+    const node_function_def_stmt& node,
+    const function_signature& sig
+)
+    -> void
+{
+    ctx.scopes.emplace();
+    for (const auto& arg : sig.args) {
+        verify_real_type(ctx, node.token, arg.type);
+        ctx.scopes.top().variables[arg.name] = arg.type;
+    }
+    verify_real_type(ctx, node.token, sig.return_type);
+    ctx.scopes.top().variables[return_key()] = sig.return_type; // Expose the return type for children
+    ctx.scopes.top().functions[node.name] = &node;             // Make available for recursion
+    typecheck_node(ctx, *node.body);
+    ctx.scopes.pop();
+
+    check_function_ends_with_return(node);
+}
+
+auto typecheck_function_call(
+    typecheck_context& ctx,
+    const token& tok,
+    const std::string& function_name,
+    const std::vector<node_expr_ptr>& args
+)
+    -> type
+{
+    const auto signature = get_typechecked_signature(
+        ctx, tok, function_name, args
+    );
+
+    if (ctx.scopes.top().generic_functions.contains(function_name)) {
+        const auto* function_def = ctx.scopes.top().functions.at(function_name);
+        typecheck_function_body_with_signature(ctx, *function_def, signature);
+    }
+
+    return signature.return_type;
+}
+
+auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
+{
+    return std::visit(overloaded {
+        [&](const node_literal_expr& node) {
+            return type_of(node.value);
+        },
+        [&](const node_variable_expr& node) {
+            const auto& top = ctx.scopes.top();
+            return top.variables.at(node.name);
+        },
+        [&](const node_function_call_expr& node) {
+            return typecheck_function_call(ctx, node.token, node.function_name, node.args);
+        },
+        [&](const node_bin_op_expr& node) {
+            return type_of_bin_op(
+                typecheck_expr(ctx, *node.lhs), typecheck_expr(ctx, *node.rhs), node.token
+            );
+        },
+        [&](const node_list_expr& node) {
+            // For now, empty lists are lists of ints. When we can explicitly state the type when
+            // declaring a value, this is a compile time error.
+            if (node.elements.empty()) {
+                return make_list_of(make_int());
+            }
+            const auto subtype = typecheck_expr(ctx, *node.elements.front());
+            for (const auto& subexpr : node.elements | std::views::drop(1)) {
+                if (typecheck_expr(ctx, *subexpr) != subtype) {
+                    type_error(node.token, "list elements must all be the same type\n");
+                }
+            }
+            return make_list_of(subtype);
+        }
+    }, expr);
+};
+
 void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const type& expected)
 {
-    const auto actual = type_of_expr(ctx, expr);
+    const auto actual = typecheck_expr(ctx, expr);
     if (!match(actual, expected)) {
         type_error(get_token(expr), "expected '{}', got '{}'", expected, actual);
     }
 }
-
-auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
 
 auto typecheck_node(typecheck_context& ctx, const node_sequence_stmt& node) -> void
 {
@@ -281,7 +313,7 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
-    const auto container_type = type_of_expr(ctx, *node.container);
+    const auto container_type = typecheck_expr(ctx, *node.container);
     const auto expected_type = make_list_generic();
     auto matches = match(container_type, expected_type);
     if (!matches.has_value()) {
@@ -301,34 +333,7 @@ auto typecheck_node(typecheck_context& ctx, const node_continue_stmt&) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) -> void
 {
-    ctx.scopes.top().variables[node.name] = type_of_expr(ctx, *node.expr);
-}
-
-auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
-{
-    // Functions returning null don't need a return statement.
-    if (node.sig.return_type == make_null()) {
-        return;
-    }
-
-    const auto bad_function = [&]() {
-        type_error(node.token, "function '{}' does not end in a return statement\n", node.name);
-    };
-
-    const auto& body = *node.body;
-    if (std::holds_alternative<node_return_stmt>(body)) {
-        return;
-    }
-
-    if (std::holds_alternative<node_sequence_stmt>(body)) {
-        const auto& seq = std::get<node_sequence_stmt>(body).sequence;
-        if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
-            bad_function();
-        }
-    }
-    else {
-        bad_function();
-    }
+    ctx.scopes.top().variables[node.name] = typecheck_expr(ctx, *node.expr);
 }
 
 // Returns true if any of the parameters to the function are incomplete. If none of the
@@ -349,27 +354,6 @@ auto is_function_generic(const node_function_def_stmt& node) -> bool
     return is_generic;
 }
 
-auto typecheck_function_body_with_signature(
-    typecheck_context& ctx,
-    const node_function_def_stmt& node,
-    const function_signature& sig
-)
-    -> void
-{
-    ctx.scopes.emplace();
-    for (const auto& arg : sig.args) {
-        verify_real_type(ctx, node.token, arg.type);
-        ctx.scopes.top().variables[arg.name] = arg.type;
-    }
-    verify_real_type(ctx, node.token, sig.return_type);
-    ctx.scopes.top().variables[return_key()] = sig.return_type; // Expose the return type for children
-    ctx.scopes.top().functions[node.name] = &node;             // Make available for recursion
-    typecheck_node(ctx, *node.body);
-    ctx.scopes.pop();
-
-    check_function_ends_with_return(node);
-}
-
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
 {
     ctx.scopes.top().functions[node.name] = &node; // Make name available in outer scope
@@ -387,40 +371,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
 
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
 {
-    const auto sig = fetch_function_signature(ctx, node.token, node.function_name);
-    if (sig.args.size() != node.args.size()) {
-        type_error(
-            node.token,
-            "function '{}' expected {} args, got {}",
-            node.function_name, sig.args.size(), node.args.size()
-        );
-    }
-
-    // For generic functions, we need to additionally typecheck the function body
-    if (ctx.scopes.top().generic_functions.contains(node.function_name)) {
-        const auto* function_def = ctx.scopes.top().functions[node.function_name];
-        const auto signature = typecheck_signature(
-            ctx,
-            node.token,
-            node.function_name,
-            function_def->sig,
-            node.args
-        );
-        typecheck_function_body_with_signature(ctx, *function_def, signature);
-        return;
-    }
-
-    for (std::size_t idx = 0; idx != sig.args.size(); ++idx) {
-        const auto& expected = sig.args.at(idx).type;
-        const auto& actual = type_of_expr(ctx, *node.args[idx]);
-        if (!match(actual, expected)) {
-            type_error(
-                node.token,
-                "invalid function call, arg {} expects type {}, got {}\n",
-                idx, expected, actual
-            );
-        }
-    }
+    typecheck_function_call(ctx, node.token, node.function_name, node.args);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)

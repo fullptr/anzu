@@ -1,12 +1,9 @@
 
 
 
-fn front(x: list<int>) -> int
+fn front(x: list<int>) -> null
 {
-    return list_at(x, 0)
+    print("in front")
 }
 
-x = front([1, 2, 3])
-type_x = typeof(x)
-println(type_x)
-println(x)
+front([1, 2, 3])
