@@ -68,7 +68,7 @@ struct signature
     struct arg
     {
         std::string name;
-        anzu::type  type = make_generic(0);
+        anzu::type  type;
     };
 
     std::vector<arg> args;
