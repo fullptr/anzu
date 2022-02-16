@@ -59,32 +59,32 @@ auto hash(const type_generic& type) -> std::size_t
     return std::hash<int>{}(type.id);
 }
 
-auto make_int()  -> type
+auto int_type()  -> type
 {
     return {type_simple{ .name = std::string{tk_int}  }};
 }
 
-auto make_bool() -> type
+auto bool_type() -> type
 {
     return {type_simple{ .name = std::string{tk_bool} }};
 }
 
-auto make_str()  -> type
+auto str_type()  -> type
 {
     return {type_simple{ .name = std::string{tk_str}  }};
 }
 
-auto make_null() -> type
+auto null_type() -> type
 {
     return {type_simple{ .name = std::string{tk_null} }};
 }
 
-auto make_generic(int id) -> type
+auto generic_type(int id) -> type
 {
     return {type_generic{ .id = id }};
 }
 
-auto make_list_of(const type& t) -> type
+auto concrete_list_type(const type& t) -> type
 {
     return {type_compound{
         .name = std::string{tk_list},
@@ -92,11 +92,11 @@ auto make_list_of(const type& t) -> type
     }};
 }
 
-auto make_list_generic() -> type
+auto generic_list_type() -> type
 {
     return {type_compound{
         .name = std::string{tk_list},
-        .subtypes = { make_generic(0) }
+        .subtypes = { generic_type(0) }
     }};
 }
 
@@ -208,7 +208,7 @@ auto replace(type& ret, const match_result& matches) -> void
     }, ret);
 }
 
-auto fill_type(const type& incomplete, const std::unordered_map<int, type>& matches) -> type
+auto bind_generics(const type& incomplete, const std::unordered_map<int, type>& matches) -> type
 {
     auto ret_type = incomplete;
     replace(ret_type, matches);
@@ -228,12 +228,12 @@ auto to_string(const signature& sig) -> std::string
 }
 type_store::type_store()
 {
-    d_types.emplace(make_int());
-    d_types.emplace(make_bool());
-    d_types.emplace(make_str());
-    d_types.emplace(make_null());
+    d_types.emplace(int_type());
+    d_types.emplace(bool_type());
+    d_types.emplace(str_type());
+    d_types.emplace(null_type());
 
-    d_generics.emplace(make_list_generic());
+    d_generics.emplace(generic_list_type());
 }
 
 auto type_store::is_registered_type(const type& t) const -> bool

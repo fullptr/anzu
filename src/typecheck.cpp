@@ -71,36 +71,36 @@ auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> 
         invalid_expr();
     }
 
-    if (match(lhs, make_list_generic()).has_value()) {// No support for having these in binary ops.
+    if (match(lhs, generic_list_type()).has_value()) {// No support for having these in binary ops.
         invalid_expr();
     }
 
-    if (lhs == make_null()) { // No support for having these in binary ops.
+    if (lhs == null_type()) { // No support for having these in binary ops.
         invalid_expr();
     }
 
-    if (lhs == make_str()) {
+    if (lhs == str_type()) {
         // Allowed: string concatenation and equality check
         if (op == tk_add) {
-            return make_str();
+            return str_type();
         }
         if (op == tk_eq || op == tk_ne) {
-            return make_bool();
+            return bool_type();
         }
         invalid_expr();
     }
 
-    if (lhs == make_bool()) {
+    if (lhs == bool_type()) {
         if (op == tk_or || op == tk_and || op == tk_eq || op == tk_ne) {
-            return make_bool();
+            return bool_type();
         }
         invalid_expr();
     }
 
     if (is_comparison(op)) {
-        return make_bool();
+        return bool_type();
     }
-    return make_int();
+    return int_type();
 }
 
 // Returns true if any of the parameters to the function are incomplete. If none of the
@@ -143,7 +143,7 @@ auto fetch_function_signature(
 auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
 {
     // Functions returning null don't need a return statement.
-    if (node.sig.return_type == make_null()) {
+    if (node.sig.return_type == null_type()) {
         return;
     }
 
@@ -215,7 +215,7 @@ auto get_typechecked_signature(
         ret_sig.args.push_back(arg);
     }
 
-    ret_sig.return_type = fill_type(sig.return_type, matches);
+    ret_sig.return_type = bind_generics(sig.return_type, matches);
     if (!is_type_complete(ret_sig.return_type)) {
         type_error(tok, "could not deduce return type for '{}'", function_name);
     }
@@ -292,7 +292,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
             // For now, empty lists are lists of ints. When we can explicitly state the type when
             // declaring a value, this is a compile time error.
             if (node.elements.empty()) {
-                return make_list_of(make_int());
+                return concrete_list_type(int_type());
             }
             const auto subtype = typecheck_expr(ctx, *node.elements.front());
             for (const auto& subexpr : node.elements | std::views::drop(1)) {
@@ -300,7 +300,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
                     type_error(node.token, "list elements must all be the same type\n");
                 }
             }
-            return make_list_of(subtype);
+            return concrete_list_type(subtype);
         }
     }, expr);
 };
@@ -322,13 +322,13 @@ auto typecheck_node(typecheck_context& ctx, const node_sequence_stmt& node) -> v
 
 auto typecheck_node(typecheck_context& ctx, const node_while_stmt& node) -> void
 {
-    verify_expression_type(ctx, *node.condition, make_bool());
+    verify_expression_type(ctx, *node.condition, bool_type());
     typecheck_node(ctx, *node.body);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 {
-    verify_expression_type(ctx, *node.condition, make_bool());
+    verify_expression_type(ctx, *node.condition, bool_type());
     typecheck_node(ctx, *node.body);
     if (node.else_body) {
         typecheck_node(ctx, *node.else_body);
@@ -338,7 +338,7 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
     const auto container_type = typecheck_expr(ctx, *node.container);
-    const auto expected_type = make_list_generic();
+    const auto expected_type = generic_list_type();
     auto matches = match(container_type, expected_type);
     if (!matches.has_value()) {
         type_error(get_token(*node.container), "expected '{}', got '{}'", expected_type, container_type);
@@ -400,18 +400,18 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 auto type_of(const anzu::object& object) -> type
 {
     if (object.is<int>()) {
-        return make_int();
+        return int_type();
     }
     if (object.is<bool>()) {
-        return make_bool();
+        return bool_type();
     }
     if (object.is<std::string>()) {
-        return make_str();
+        return str_type();
     }
     if (object.is<object_list>()) {
         const auto& list = object.as<object_list>();
         if (list->empty()) {
-            return make_list_of(make_int());
+            return concrete_list_type(int_type());
         }
         const auto subtype = type_of(list->front());
         for (const auto& subelem : *list | std::views::drop(1)) {
@@ -420,14 +420,14 @@ auto type_of(const anzu::object& object) -> type
                 std::exit(1);
             }
         }
-        return make_list_of(subtype);
+        return concrete_list_type(subtype);
     }
     if (object.is<object_null>()) {
-        return make_null();
+        return null_type();
     }
     anzu::print("WHOOPS! Unknown type\n");
     std::exit(1);
-    return make_null();
+    return null_type();
 }
 
 auto typecheck_ast(const node_stmt_ptr& ast) -> void

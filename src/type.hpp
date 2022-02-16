@@ -44,24 +44,23 @@ auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
 
-auto make_int()  -> type;
-auto make_bool() -> type;
-auto make_str()  -> type;
-auto make_null() -> type;
-auto make_generic(int id) -> type;
+auto int_type()  -> type;
+auto bool_type() -> type;
+auto str_type()  -> type;
+auto null_type() -> type;
+auto generic_type(int id) -> type;
 
-auto make_list_of(const type& t) -> type;
-auto make_list_generic() -> type;
+auto concrete_list_type(const type& t) -> type;
+auto generic_list_type() -> type;
 
 auto is_type_complete(const type& type) -> bool;
 
 using match_result = std::unordered_map<int, type>;
-
 auto match(const type& concrete, const type& pattern) -> std::optional<match_result>;
 
 // Given an incomplete type and a map of types, replace the generics in the incomplete type
 // with those from the map.
-auto fill_type(const type& incomplete, const match_result& matches) -> type;
+auto bind_generics(const type& incomplete, const match_result& matches) -> type;
 
 struct signature
 {
