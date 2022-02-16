@@ -16,24 +16,26 @@ struct type;
 struct type_simple
 {
     std::string name;
+
+    auto operator==(const type_simple&) const -> bool = default;
 };
 
 struct type_compound
 {
     std::string       name;
     std::vector<type> subtypes;
+
+    auto operator==(const type_compound&) const -> bool = default;
 };
 
 struct type_generic
 {
     int id;
+
+    auto operator==(const type_generic&) const -> bool = default;
 };
 
 struct type : public std::variant<type_simple, type_compound, type_generic> {};
-
-auto operator==(const type_simple& lhs, const type_simple& rhs) -> bool;
-auto operator==(const type_compound& lhs, const type_compound& rhs) -> bool;
-auto operator==(const type_generic& lhs, const type_generic& rhs) -> bool;
 
 auto to_string(const type& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;

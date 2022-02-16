@@ -11,21 +11,6 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 }
 
-auto operator==(const type_simple& lhs, const type_simple& rhs) -> bool
-{
-    return lhs.name == rhs.name;
-}
-
-auto operator==(const type_compound& lhs, const type_compound& rhs) -> bool
-{
-    return std::tie(lhs.name, lhs.subtypes) == std::tie(rhs.name, rhs.subtypes);
-}
-
-auto operator==(const type_generic& lhs, const type_generic& rhs) -> bool
-{
-    return lhs.id == rhs.id;
-}
-
 auto to_string(const type& type) -> std::string
 {
     return std::visit([](const auto& t) { return to_string(t); }, type);
