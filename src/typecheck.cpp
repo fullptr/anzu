@@ -105,6 +105,24 @@ auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> 
     return make_int();
 }
 
+// Returns true if any of the parameters to the function are incomplete. If none of the
+// paraneters are incomplete but the return type is, an error is raised.
+auto is_function_generic(const node_function_def_stmt& node) -> bool
+{
+    const auto& args = node.sig.args;
+    const auto is_generic = std::any_of(begin(args), end(args), [](const auto& arg) {
+        return !is_type_complete(arg.type);
+    });
+    if (!is_generic && !is_type_complete(node.sig.return_type)) {
+        type_error(
+            node.token,
+            "function '{}' has incomplete return type '{}' but no incomplete parameter",
+            node.name, to_string(node.sig.return_type)
+        );
+    }
+    return is_generic;
+}
+
 auto fetch_function_signature(
     const typecheck_context& ctx,
     const token& tok,
@@ -343,24 +361,6 @@ auto typecheck_node(typecheck_context& ctx, const node_continue_stmt&) -> void
 auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) -> void
 {
     ctx.scopes.top().variables[node.name] = typecheck_expr(ctx, *node.expr);
-}
-
-// Returns true if any of the parameters to the function are incomplete. If none of the
-// paraneters are incomplete but the return type is, an error is raised.
-auto is_function_generic(const node_function_def_stmt& node) -> bool
-{
-    const auto& args = node.sig.args;
-    const auto is_generic = std::any_of(begin(args), end(args), [](const auto& arg) {
-        return !is_type_complete(arg.type);
-    });
-    if (!is_generic && !is_type_complete(node.sig.return_type)) {
-        type_error(
-            node.token,
-            "function '{}' has incomplete return type '{}' but no incomplete parameter",
-            node.name, to_string(node.sig.return_type)
-        );
-    }
-    return is_generic;
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void

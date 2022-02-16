@@ -1,17 +1,10 @@
 
 
 
-fn front(x: list<int>) -> null
+fn front(x: list<int>) -> int
 {
-    print("in)
+    return 5
 }
 
 x = front([1, 2, 3])
-type_x = typeof(x)
-println(type_x)
 println(x)
-
-for i in ["2", "3"]
-{
-    println(typeof(i))
-}
