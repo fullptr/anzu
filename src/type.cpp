@@ -221,6 +221,18 @@ auto fill_type(const type& incomplete, const std::unordered_map<int, type>& matc
     return ret_type;
 }
 
+auto to_string(const function_signature& sig) -> std::string
+{
+    return std::format(
+        "({}) -> {}",
+        format_comma_separated(
+            sig.args,
+            [](const auto& arg) { return to_string(arg.type); }
+        ),
+        to_string(sig.return_type)
+    );
+}
+
 type_store::type_store()
 {
     d_types.emplace(make_int());
