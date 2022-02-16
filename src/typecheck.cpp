@@ -71,7 +71,7 @@ auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> 
         invalid_expr();
     }
 
-    if (is_match(lhs, make_list_generic())) {// No support for having these in binary ops.
+    if (match(lhs, make_list_generic()).has_value()) {// No support for having these in binary ops.
         invalid_expr();
     }
 
@@ -195,7 +195,7 @@ auto get_typechecked_signature(
     for (; ait != args.end(); ++ait, ++sit) {
         const auto actual_type = typecheck_expr(ctx, **ait);
         const auto pattern_type = sit->type;
-        const auto arg_match = match_type(actual_type, pattern_type);
+        const auto arg_match = match(actual_type, pattern_type);
         if (!arg_match.has_value()) {
             type_error(tok, "'{}' does not match '{}'", actual_type, pattern_type);
         }
@@ -308,7 +308,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
 void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const type& expected)
 {
     const auto actual = typecheck_expr(ctx, expr);
-    if (!match_type(actual, expected)) {
+    if (!match(actual, expected)) {
         type_error(get_token(expr), "expected '{}', got '{}'", expected, actual);
     }
 }
@@ -339,7 +339,7 @@ auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
     const auto container_type = typecheck_expr(ctx, *node.container);
     const auto expected_type = make_list_generic();
-    auto matches = match_type(container_type, expected_type);
+    auto matches = match(container_type, expected_type);
     if (!matches.has_value()) {
         type_error(get_token(*node.container), "expected '{}', got '{}'", expected_type, container_type);
     }

@@ -57,8 +57,7 @@ auto is_type_complete(const type& type) -> bool;
 
 using match_result = std::unordered_map<int, type>;
 
-auto match_type(const type& concrete, const type& pattern) -> std::optional<match_result>;
-auto is_match(const type& concrete, const type& pattern) -> bool;
+auto match(const type& concrete, const type& pattern) -> std::optional<match_result>;
 
 // Given an incomplete type and a map of types, replace the generics in the incomplete type
 // with those from the map.

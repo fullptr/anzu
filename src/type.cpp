@@ -136,7 +136,7 @@ auto update(
     return true;
 }
 
-auto match_type(const type& concrete, const type& pattern) -> std::optional<match_result>
+auto match(const type& concrete, const type& pattern) -> std::optional<match_result>
 {
     // Pre-condition, concrete must be a complete type (non-generic and no generic subtypes)
     if (!is_type_complete(concrete)) {
@@ -180,7 +180,7 @@ auto match_type(const type& concrete, const type& pattern) -> std::optional<matc
     auto cit = c.subtypes.begin();
     auto pit = p.subtypes.begin();
     for (; cit != c.subtypes.end(); ++cit, ++pit) {
-        const auto submatch = match_type(*cit, *pit);
+        const auto submatch = match(*cit, *pit);
         if (!submatch.has_value()) {
             return std::nullopt;
         }
@@ -191,12 +191,6 @@ auto match_type(const type& concrete, const type& pattern) -> std::optional<matc
 
     return matches;
 }
-
-auto is_match(const type& concrete, const type& pattern) -> bool
-{
-    return match_type(concrete, pattern).has_value();
-}
-
 auto replace(type& ret, const match_result& matches) -> void
 {
     std::visit(overloaded {
@@ -253,7 +247,7 @@ auto type_store::is_registered_type(const type& t) const -> bool
     }
 
     return std::any_of(begin(d_generics), end(d_generics), [&](const auto& generic) {
-        return is_match(t, generic);
+        return match(t, generic).has_value();
     });
 }
 
