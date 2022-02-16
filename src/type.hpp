@@ -16,7 +16,6 @@ struct type;
 struct type_simple
 {
     std::string name;
-
     auto operator==(const type_simple&) const -> bool = default;
 };
 
@@ -24,14 +23,12 @@ struct type_compound
 {
     std::string       name;
     std::vector<type> subtypes;
-
     auto operator==(const type_compound&) const -> bool = default;
 };
 
 struct type_generic
 {
     int id;
-
     auto operator==(const type_generic&) const -> bool = default;
 };
 
@@ -71,16 +68,15 @@ struct signature
     {
         std::string name;
         anzu::type  type;
+        auto operator==(const arg&) const -> bool = default;
     };
 
     std::vector<arg> args;
     anzu::type       return_type;
+    auto operator==(const signature&) const -> bool = default;
 };
 
 auto to_string(const signature& sig) -> std::string;
-
-auto operator==(const signature::arg& lhs, const signature::arg& rhs) -> bool;
-auto operator==(const signature& lhs, const signature& rhs) -> bool;
 
 struct type_hash
 {
