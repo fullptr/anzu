@@ -72,7 +72,7 @@ struct signature
     };
 
     std::vector<arg> args;
-    anzu::type       return_type = make_generic(0);
+    anzu::type       return_type;
 };
 
 auto to_string(const signature& sig) -> std::string;
