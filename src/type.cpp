@@ -87,16 +87,14 @@ auto generic_type(int id) -> type
 auto concrete_list_type(const type& t) -> type
 {
     return {type_compound{
-        .name = std::string{tk_list},
-        .subtypes = { t }
+        .name = std::string{tk_list}, .subtypes = { t }
     }};
 }
 
 auto generic_list_type() -> type
 {
     return {type_compound{
-        .name = std::string{tk_list},
-        .subtypes = { generic_type(0) }
+        .name = std::string{tk_list}, .subtypes = { generic_type(0) }
     }};
 }
 
@@ -191,6 +189,7 @@ auto match(const type& concrete, const type& pattern) -> std::optional<match_res
 
     return matches;
 }
+
 auto replace(type& ret, const match_result& matches) -> void
 {
     std::visit(overloaded {

@@ -44,9 +44,9 @@ auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
 
-auto int_type()  -> type;
+auto int_type() -> type;
 auto bool_type() -> type;
-auto str_type()  -> type;
+auto str_type() -> type;
 auto null_type() -> type;
 auto generic_type(int id) -> type;
 
@@ -78,13 +78,9 @@ struct signature
 
 auto to_string(const signature& sig) -> std::string;
 
-struct type_hash
-{
-    std::size_t operator()(const type& t) const noexcept { return anzu::hash(t); }
-};
-
 class type_store
 {
+    using type_hash = decltype([](const type& t) { return anzu::hash(t); });
     std::unordered_set<type, type_hash> d_types;
     std::unordered_set<type, type_hash> d_generics;
 
