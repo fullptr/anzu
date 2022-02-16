@@ -265,9 +265,11 @@ auto typecheck_function_call(
     // it calls itself with different types, the body may not get type checked with
     // those types (that would only happen if the function was called with those types
     // in another location). Need to fix this somehow.
-    if (ctx.scopes.top().generic_functions.contains(function_name)) {
+    if (!is_builtin(function_name)) {
         const auto* function_def = ctx.scopes.top().functions.at(function_name);
-        typecheck_function_body_with_signature(ctx, *function_def, signature);
+        if (is_function_generic(*function_def)) {
+            typecheck_function_body_with_signature(ctx, *function_def, signature);
+        }
     }
 
     return signature.return_type;

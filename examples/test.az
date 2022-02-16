@@ -6,5 +6,5 @@ fn front(x: list<int>) -> int
     return 5
 }
 
-x = front([1, 2, 3])
-println(x)
+y = front([1, 2, 3])
+println(y)
