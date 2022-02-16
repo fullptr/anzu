@@ -78,7 +78,10 @@ auto parse_token(line_iterator& iter) -> std::string
     return return_value;
 };
 
-auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const std::int64_t lineno) -> void
+auto lex_line(
+    std::vector<anzu::token>& tokens, const std::string& line, const std::int64_t lineno
+)
+    -> void
 {
     const auto push_token = [&](const std::string& text, std::int64_t col, token_type type) {
         tokens.push_back({ .text=text, .line=lineno, .col=col, .type=type });

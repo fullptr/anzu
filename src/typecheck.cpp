@@ -1,6 +1,7 @@
 #include "typecheck.hpp"
 #include "vocabulary.hpp"
 #include "type.hpp"
+#include "utility/overloaded.hpp"
 
 #include <algorithm>
 #include <ranges>
@@ -15,8 +16,6 @@ auto return_key() -> std::string
     static const auto ret = std::string{tk_return};
     return ret;
 }
-
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 struct typecheck_scope
 {

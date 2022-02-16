@@ -1,15 +1,11 @@
 #include "ast.hpp"
 #include "utility/print.hpp"
+#include "utility/overloaded.hpp"
 
 #include <functional>
 #include <ranges>
 
 namespace anzu {
-namespace {
-
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-
-}
 
 auto print_node(const anzu::node_expr& root, int indent) -> void
 {
