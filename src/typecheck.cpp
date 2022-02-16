@@ -24,9 +24,7 @@ struct typecheck_scope
     std::unordered_map<std::string, type>                          variables;
     
     // These are functions with incomplete types in their signatures. We need to store
-    // these so that they can be type checked at the call sites. TODO: This will be
-    // insufficient; we need to avoid typechecking functions for the same types multiple
-    // times otherwise recursive calls will kill the type checker.
+    // these so that they can be type checked at the call sites.
     std::unordered_set<std::string> generic_functions;
 };
 
@@ -222,7 +220,8 @@ auto typecheck_function_body_with_signature(
     }
     verify_real_type(ctx, node.token, sig.return_type);
     ctx.scopes.top().variables[return_key()] = sig.return_type; // Expose the return type for children
-    ctx.scopes.top().functions[node.name] = &node;             // Make available for recursion
+    ctx.scopes.top().functions[node.name] = &node;              // Make available for recursion
+    
     typecheck_node(ctx, *node.body);
     ctx.scopes.pop();
 
@@ -241,6 +240,13 @@ auto typecheck_function_call(
         ctx, tok, function_name, args
     );
 
+    // If the function call is a recursive call, it won't drop in here since it is
+    // only added to the generic_functions in the outer scope. If we were to add it
+    // here the typechecker would go into an infinite descent. This is not a problem
+    // if a function calls itself with the same types. The only issue here if that if
+    // it calls itself with different types, the body may not get type checked with
+    // those types (that would only happen if the function was called with those types
+    // in another location). Need to fix this somehow.
     if (ctx.scopes.top().generic_functions.contains(function_name)) {
         const auto* function_def = ctx.scopes.top().functions.at(function_name);
         typecheck_function_body_with_signature(ctx, *function_def, signature);
@@ -309,6 +315,9 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 {
     verify_expression_type(ctx, *node.condition, make_bool());
     typecheck_node(ctx, *node.body);
+    if (node.else_body) {
+        typecheck_node(ctx, *node.else_body);
+    }
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
