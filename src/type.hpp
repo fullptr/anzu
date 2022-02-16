@@ -5,6 +5,8 @@
 #include <variant>
 #include <format>
 #include <vector>
+#include <optional>
+#include <unordered_set>
 #include <unordered_map>
 
 namespace anzu {
@@ -14,34 +16,23 @@ struct type;
 struct type_simple
 {
     std::string name;
-
+    auto operator==(const type_simple&) const -> bool = default;
 };
-inline auto operator==(const type_simple& lhs, const type_simple& rhs) -> bool
-{
-    return lhs.name == rhs.name;
-}
 
 struct type_compound
 {
     std::string       name;
     std::vector<type> subtypes;
-
+    auto operator==(const type_compound&) const -> bool = default;
 };
-inline auto operator==(const type_compound& lhs, const type_compound& rhs) -> bool {
-    return std::tie(lhs.name, lhs.subtypes) == std::tie(rhs.name, rhs.subtypes);
-}
 
 struct type_generic
 {
     int id;
-
+    auto operator==(const type_generic&) const -> bool = default;
 };
-inline auto operator==(const type_generic& lhs, const type_generic& rhs) -> bool
-{
-    return lhs.id == rhs.id;
-}
 
-struct type : std::variant<type_simple, type_compound, type_generic> {};
+struct type : public std::variant<type_simple, type_compound, type_generic> {};
 
 auto to_string(const type& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
@@ -53,41 +44,67 @@ auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
 
-inline auto make_int()  -> type { return {type_simple{ .name = std::string{tk_int}  }}; }
-inline auto make_bool() -> type { return {type_simple{ .name = std::string{tk_bool} }}; }
-inline auto make_str()  -> type { return {type_simple{ .name = std::string{tk_str}  }}; }
-inline auto make_list() -> type { return {type_simple{ .name = std::string{tk_list} }}; }
-inline auto make_null() -> type { return {type_simple{ .name = std::string{tk_null} }}; }
-inline auto make_any()  -> type { return {type_simple{ .name = std::string{tk_any}  }}; }
-inline auto make_generic(int id) -> type { return {type_generic{ .id = id }}; }
+auto int_type() -> type;
+auto bool_type() -> type;
+auto str_type() -> type;
+auto null_type() -> type;
+auto generic_type(int id) -> type;
 
-inline auto make_list_generic() -> type
+auto concrete_list_type(const type& t) -> type;
+auto generic_list_type() -> type;
+
+auto is_type_complete(const type& type) -> bool;
+
+using match_result = std::unordered_map<int, type>;
+auto match(const type& concrete, const type& pattern) -> std::optional<match_result>;
+
+// Given an incomplete type and a map of types, replace the generics in the incomplete type
+// with those from the map.
+auto bind_generics(const type& incomplete, const match_result& matches) -> type;
+
+struct signature
 {
-    return {type_compound{
-        .name = std::string{tk_list},
-        .subtypes = { make_generic(0) }
-    }};
-}
+    struct arg
+    {
+        std::string name;
+        anzu::type  type;
+        auto operator==(const arg&) const -> bool = default;
+    };
+
+    std::vector<arg> args;
+    anzu::type       return_type;
+    auto operator==(const signature&) const -> bool = default;
+};
+
+auto to_string(const signature& sig) -> std::string;
 
 class type_store
 {
-    // key = string representation of type
-    // value = type object
-    std::unordered_map<std::string, type> d_types;
+    using type_hash = decltype([](const type& t) { return anzu::hash(t); });
+    std::unordered_set<type, type_hash> d_types;
+    std::unordered_set<type, type_hash> d_generics;
 
 public:
     type_store();
 
-    auto is_registered_type(const type& t) -> bool;
-
-    // auto register(const type& t) -> void;
+    // Checks if the given type is registered or matches a registered generic.
+    auto is_registered_type(const type& t) const -> bool;
 };
 
 }
 
-template <> struct std::formatter<anzu::type> : std::formatter<std::string>
+template <>
+struct std::formatter<anzu::type> : std::formatter<std::string>
 {
     auto format(const anzu::type& type, auto& ctx) {
+        return std::formatter<std::string>::format(anzu::to_string(type), ctx);
+    }
+};
+
+template <>
+struct std::formatter<anzu::signature> : std::formatter<std::string>
+{
+    auto format(const anzu::signature& type, auto& ctx) {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
     }
 };

@@ -18,8 +18,8 @@ struct compiler_context
 {
     struct function_def
     {
-        function_signature sig;
-        std::intptr_t      ptr;
+        signature     sig;
+        std::intptr_t ptr;
     };
 
     anzu::program program;
