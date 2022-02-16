@@ -260,9 +260,9 @@ auto typecheck_function_call(
         const auto* function_def = ctx.scopes.top().functions.at(function_name);
         if (is_function_generic(*function_def)) {
             auto& checked_sigs = ctx.checked_sigs[function_def];
-            if (std::find(begin(checked_sigs), end(checked_sigs), signature) != checked_sigs.end()) {
-                typecheck_function_body_with_signature(ctx, *function_def, signature);
+            if (std::find(begin(checked_sigs), end(checked_sigs), signature) == end(checked_sigs)) {
                 checked_sigs.push_back(signature);
+                typecheck_function_body_with_signature(ctx, *function_def, signature);
             }
         }
     }
