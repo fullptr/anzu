@@ -22,16 +22,14 @@ struct typecheck_scope
 {
     std::unordered_map<std::string, const node_function_def_stmt*> functions;
     std::unordered_map<std::string, type>                          variables;
-    
-    // These are functions with incomplete types in their signatures. We need to store
-    // these so that they can be type checked at the call sites.
-    std::unordered_set<std::string> generic_functions;
 };
 
 struct typecheck_context
 {
     std::stack<typecheck_scope> scopes;
     anzu::type_store types;
+
+    std::unordered_map<const node_function_def_stmt*, std::vector<function_signature>> checked_sigs;
 };
 
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
@@ -258,17 +256,14 @@ auto typecheck_function_call(
         ctx, tok, function_name, args
     );
 
-    // If the function call is a recursive call, it won't drop in here since it is
-    // only added to the generic_functions in the outer scope. If we were to add it
-    // here the typechecker would go into an infinite descent. This is not a problem
-    // if a function calls itself with the same types. The only issue here if that if
-    // it calls itself with different types, the body may not get type checked with
-    // those types (that would only happen if the function was called with those types
-    // in another location). Need to fix this somehow.
     if (!is_builtin(function_name)) {
         const auto* function_def = ctx.scopes.top().functions.at(function_name);
         if (is_function_generic(*function_def)) {
-            typecheck_function_body_with_signature(ctx, *function_def, signature);
+            auto& checked_sigs = ctx.checked_sigs[function_def];
+            if (std::find(begin(checked_sigs), end(checked_sigs), signature) != checked_sigs.end()) {
+                typecheck_function_body_with_signature(ctx, *function_def, signature);
+                checked_sigs.push_back(signature);
+            }
         }
     }
 
@@ -370,14 +365,14 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
     ctx.scopes.top().functions[node.name] = &node; // Make name available in outer scope
 
     // If this is a generic function, we cannot perform type checking on it here.
-    // Instead, store the name, and type check it at the function call site when the
-    // types are known. TODO: Optimise this to avoid redundant type checks.
+    // Instead, store the name, and type check it at the function call sites.
     if (is_function_generic(node)) {
-        ctx.scopes.top().generic_functions.insert(node.name);
-        return;
+        ctx.checked_sigs[&node] = {};
+    }
+    else {
+        typecheck_function_body_with_signature(ctx, node, node.sig);
     }
 
-    typecheck_function_body_with_signature(ctx, node, node.sig);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
