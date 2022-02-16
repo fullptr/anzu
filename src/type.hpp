@@ -55,12 +55,14 @@ auto make_list_generic() -> type;
 
 auto is_type_complete(const type& type) -> bool;
 
-auto match(const type& concrete, const type& pattern) -> std::optional<std::unordered_map<int, type>>;
+using match_result = std::unordered_map<int, type>;
+
+auto match_type(const type& concrete, const type& pattern) -> std::optional<match_result>;
 auto is_match(const type& concrete, const type& pattern) -> bool;
 
 // Given an incomplete type and a map of types, replace the generics in the incomplete type
 // with those from the map.
-auto fill_type(const type& incomplete, const std::unordered_map<int, type>& matches) -> type;
+auto fill_type(const type& incomplete, const match_result& matches) -> type;
 
 struct signature
 {

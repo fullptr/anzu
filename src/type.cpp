@@ -136,7 +136,7 @@ auto update(
     return true;
 }
 
-auto match(const type& concrete, const type& pattern) -> std::optional<std::unordered_map<int, type>>
+auto match_type(const type& concrete, const type& pattern) -> std::optional<match_result>
 {
     // Pre-condition, concrete must be a complete type (non-generic and no generic subtypes)
     if (!is_type_complete(concrete)) {
@@ -145,17 +145,17 @@ auto match(const type& concrete, const type& pattern) -> std::optional<std::unor
     }
 
     // Check 1: Trivial case - pattern is generic, matches entire concrete type
-    if (std::holds_alternative<type_generic>(pattern)) {
-        auto match_result = std::unordered_map<int, type>{};
-        match_result.emplace(std::get<type_generic>(pattern).id, concrete);
-        return match_result;
+    if (const auto inner = std::get_if<type_generic>(&pattern)) {
+        return match_result{
+            { inner->id, concrete }
+        };
     }
 
     // At this point, neither 'concrete' nor 'pattern' are generic
 
     // Check 2: Trivial case - equality implies match
     if (concrete == pattern) {
-        return std::unordered_map<int, type>{};
+        return match_result{};
     }
 
     // If either are simple, there there is no match because:
@@ -172,7 +172,7 @@ auto match(const type& concrete, const type& pattern) -> std::optional<std::unor
         return std::nullopt;
     }
 
-    auto matches = std::unordered_map<int, type>{};
+    auto matches = match_result{};
 
     // Loop through the subtypes and do pairwise matches. Any successful matches should be
     // lifted into our match map. If an index is already in our map with a different type,
@@ -180,7 +180,7 @@ auto match(const type& concrete, const type& pattern) -> std::optional<std::unor
     auto cit = c.subtypes.begin();
     auto pit = p.subtypes.begin();
     for (; cit != c.subtypes.end(); ++cit, ++pit) {
-        const auto submatch = match(*cit, *pit);
+        const auto submatch = match_type(*cit, *pit);
         if (!submatch.has_value()) {
             return std::nullopt;
         }
@@ -194,10 +194,10 @@ auto match(const type& concrete, const type& pattern) -> std::optional<std::unor
 
 auto is_match(const type& concrete, const type& pattern) -> bool
 {
-    return match(concrete, pattern).has_value();
+    return match_type(concrete, pattern).has_value();
 }
 
-auto replace(type& ret, const std::unordered_map<int, type>& matches) -> void
+auto replace(type& ret, const match_result& matches) -> void
 {
     std::visit(overloaded {
         [&](type_simple&) {},
