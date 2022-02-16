@@ -115,7 +115,7 @@ struct node_assignment_stmt
 struct node_function_def_stmt
 {
     std::string        name;
-    function_signature sig;
+    signature sig;
     node_stmt_ptr      body;
 
     anzu::token token;

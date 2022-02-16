@@ -85,14 +85,14 @@ struct op_function_call
 {
     std::string        name;
     std::intptr_t      ptr;
-    function_signature sig;
+    signature sig;
 };
 
 struct op_builtin_call
 {
     std::string        name;
     builtin_function   ptr;
-    function_signature sig;
+    signature sig;
 };
 
 struct op_add
@@ -150,7 +150,7 @@ struct op_and
 struct op_function
 {
     std::string        name;
-    function_signature sig;
+    signature sig;
     std::intptr_t      jump;
 };
 

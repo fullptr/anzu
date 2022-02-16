@@ -18,7 +18,7 @@ struct compiler_context
 {
     struct function_def
     {
-        function_signature sig;
+        signature sig;
         std::intptr_t      ptr;
     };
 

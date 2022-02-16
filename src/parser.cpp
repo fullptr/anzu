@@ -171,7 +171,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&] {
-        auto arg = function_signature::arg{};
+        auto arg = signature::arg{};
         arg.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
         arg.type = parse_type(tokens);

@@ -13,7 +13,7 @@ using builtin_function = object(*)(std::span<const object>);
 struct builtin
 {
     builtin_function   ptr;
-    function_signature sig;
+    signature sig;
 };
 
 auto is_builtin(const std::string& name) -> bool;

@@ -29,7 +29,7 @@ struct typecheck_context
     std::stack<typecheck_scope> scopes;
     anzu::type_store types;
 
-    std::unordered_map<const node_function_def_stmt*, std::vector<function_signature>> checked_sigs;
+    std::unordered_map<const node_function_def_stmt*, std::vector<signature>> checked_sigs;
 };
 
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
@@ -126,7 +126,7 @@ auto fetch_function_signature(
     const token& tok,
     const std::string& function_name
 )
-    -> function_signature
+    -> signature
 {
     const auto& scope = ctx.scopes.top();
     if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
@@ -175,7 +175,7 @@ auto get_typechecked_signature(
     const std::string& function_name,
     const std::vector<node_expr_ptr>& args
 )
-    -> function_signature
+    -> signature
 {
     const auto sig = fetch_function_signature(ctx, tok, function_name);
 
@@ -187,7 +187,7 @@ auto get_typechecked_signature(
         );
     }
 
-    auto ret_sig = function_signature{};
+    auto ret_sig = signature{};
     auto matches = std::unordered_map<int, type>{};
 
     auto ait = args.begin();
@@ -209,7 +209,7 @@ auto get_typechecked_signature(
                 matches.emplace(key, type);
             }
         }
-        auto arg = function_signature::arg{};
+        auto arg = signature::arg{};
         arg.name = sit->name;
         arg.type = actual_type;
         ret_sig.args.push_back(arg);
@@ -225,7 +225,7 @@ auto get_typechecked_signature(
 auto typecheck_function_body_with_signature(
     typecheck_context& ctx,
     const node_function_def_stmt& node,
-    const function_signature& sig
+    const signature& sig
 )
     -> void
 {

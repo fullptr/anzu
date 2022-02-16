@@ -11,6 +11,21 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 }
 
+auto operator==(const type_simple& lhs, const type_simple& rhs) -> bool
+{
+    return lhs.name == rhs.name;
+}
+
+auto operator==(const type_compound& lhs, const type_compound& rhs) -> bool
+{
+    return std::tie(lhs.name, lhs.subtypes) == std::tie(rhs.name, rhs.subtypes);
+}
+
+auto operator==(const type_generic& lhs, const type_generic& rhs) -> bool
+{
+    return lhs.id == rhs.id;
+}
+
 auto to_string(const type& type) -> std::string
 {
     return std::visit([](const auto& t) { return to_string(t); }, type);
@@ -221,7 +236,7 @@ auto fill_type(const type& incomplete, const std::unordered_map<int, type>& matc
     return ret_type;
 }
 
-auto to_string(const function_signature& sig) -> std::string
+auto to_string(const signature& sig) -> std::string
 {
     return std::format(
         "({}) -> {}",
@@ -231,6 +246,22 @@ auto to_string(const function_signature& sig) -> std::string
         ),
         to_string(sig.return_type)
     );
+}
+
+auto operator==(
+    const signature::arg& lhs, const signature::arg& rhs
+)
+    -> bool
+{
+    return std::tie(lhs.name, lhs.type) == std::tie(rhs.name, rhs.type);
+}
+
+auto operator==(
+    const signature& lhs, const signature& rhs
+)
+    -> bool
+{
+    return std::tie(lhs.args, lhs.return_type) == std::tie(rhs.args, rhs.return_type);
 }
 
 type_store::type_store()

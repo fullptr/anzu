@@ -16,34 +16,24 @@ struct type;
 struct type_simple
 {
     std::string name;
-
 };
-inline auto operator==(const type_simple& lhs, const type_simple& rhs) -> bool
-{
-    return lhs.name == rhs.name;
-}
 
 struct type_compound
 {
     std::string       name;
     std::vector<type> subtypes;
-
 };
-inline auto operator==(const type_compound& lhs, const type_compound& rhs) -> bool {
-    return std::tie(lhs.name, lhs.subtypes) == std::tie(rhs.name, rhs.subtypes);
-}
 
 struct type_generic
 {
     int id;
-
 };
-inline auto operator==(const type_generic& lhs, const type_generic& rhs) -> bool
-{
-    return lhs.id == rhs.id;
-}
 
 struct type : public std::variant<type_simple, type_compound, type_generic> {};
+
+auto operator==(const type_simple& lhs, const type_simple& rhs) -> bool;
+auto operator==(const type_compound& lhs, const type_compound& rhs) -> bool;
+auto operator==(const type_generic& lhs, const type_generic& rhs) -> bool;
 
 auto to_string(const type& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
@@ -73,7 +63,7 @@ auto is_match(const type& concrete, const type& pattern) -> bool;
 // with those from the map.
 auto fill_type(const type& incomplete, const std::unordered_map<int, type>& matches) -> type;
 
-struct function_signature
+struct signature
 {
     struct arg
     {
@@ -84,17 +74,11 @@ struct function_signature
     std::vector<arg> args;
     anzu::type       return_type = make_generic(0);
 };
-auto to_string(const function_signature& sig) -> std::string;
 
-inline auto operator==(const function_signature::arg& lhs, const function_signature::arg& rhs) -> bool
-{
-    return std::tie(lhs.name, lhs.type) == std::tie(rhs.name, rhs.type);
-}
+auto to_string(const signature& sig) -> std::string;
 
-inline auto operator==(const function_signature& lhs, const function_signature& rhs) -> bool
-{
-    return std::tie(lhs.args, lhs.return_type) == std::tie(rhs.args, rhs.return_type);
-}
+auto operator==(const signature::arg& lhs, const signature::arg& rhs) -> bool;
+auto operator==(const signature& lhs, const signature& rhs) -> bool;
 
 struct type_hash
 {
@@ -111,15 +95,22 @@ public:
 
     // Checks if the given type is registered or matches a registered generic.
     auto is_registered_type(const type& t) const -> bool;
-
-    // auto register(const type& t) -> void;
 };
 
 }
 
-template <> struct std::formatter<anzu::type> : std::formatter<std::string>
+template <>
+struct std::formatter<anzu::type> : std::formatter<std::string>
 {
     auto format(const anzu::type& type, auto& ctx) {
+        return std::formatter<std::string>::format(anzu::to_string(type), ctx);
+    }
+};
+
+template <>
+struct std::formatter<anzu::signature> : std::formatter<std::string>
+{
+    auto format(const anzu::signature& type, auto& ctx) {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
     }
 };
