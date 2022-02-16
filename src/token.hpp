@@ -18,10 +18,10 @@ enum class token_type
 
 struct token
 {
-    std::string text;
-    int         line;
-    int         col;
-    token_type  type;
+    std::string  text;
+    std::int64_t line;
+    std::int64_t col;
+    token_type   type;
 };
 
 auto to_string(token_type type) -> std::string;

@@ -27,14 +27,17 @@ auto move_to_next(line_iterator& iter) -> bool
 }
 
 template <typename... Args>
-[[noreturn]] void lexer_error(int lineno, int col, std::string_view msg, Args&&... args)
+[[noreturn]] auto lexer_error(
+    std::int64_t lineno, std::int64_t col, std::string_view msg, Args&&... args
+)
+    -> void
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
     anzu::print("[ERROR] ({}:{}) {}\n", lineno, col, formatted_msg);
     std::exit(1);
 }
 
-auto parse_string_literal(int lineno, line_iterator& iter) -> std::string
+auto parse_string_literal(std::int64_t lineno, line_iterator& iter) -> std::string
 {
     const auto col = iter.position();
     std::string return_value;
@@ -75,15 +78,15 @@ auto parse_token(line_iterator& iter) -> std::string
     return return_value;
 };
 
-auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const int lineno) -> void
+auto lex_line(std::vector<anzu::token>& tokens, const std::string& line, const std::int64_t lineno) -> void
 {
-    const auto push_token = [&](const std::string& text, int col, token_type type) {
+    const auto push_token = [&](const std::string& text, std::int64_t col, token_type type) {
         tokens.push_back({ .text=text, .line=lineno, .col=col, .type=type });
     };
 
     auto iter = line_iterator{line};
     while (move_to_next(iter)) {
-        const int col = iter.position();
+        const auto col = iter.position();
 
         if (iter.consume_maybe('"')) {
             const auto literal = parse_string_literal(lineno, iter);
@@ -125,7 +128,7 @@ auto lex(const std::string& file) -> std::vector<anzu::token>
     std::vector<anzu::token> tokens;
     std::ifstream file_stream{file};
     std::string line;
-    int lineno = 1;
+    std::int64_t lineno = 1;
     while (std::getline(file_stream, line)) {
         lex_line(tokens, line, lineno);
         ++lineno;
