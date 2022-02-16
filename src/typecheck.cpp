@@ -97,10 +97,15 @@ auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> 
         invalid_expr();
     }
 
-    if (is_comparison(op)) {
-        return bool_type();
+    if (lhs == int_type()) {
+        if (is_comparison(op)) {
+            return bool_type();
+        }
+        return int_type();
     }
-    return int_type();
+    
+    invalid_expr();
+    return int_type(); // Unreachable
 }
 
 // Returns true if any of the parameters to the function are incomplete. If none of the
