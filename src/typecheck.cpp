@@ -103,7 +103,7 @@ auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> 
         }
         return int_type();
     }
-    
+
     invalid_expr();
     return int_type(); // Unreachable
 }
@@ -127,9 +127,7 @@ auto is_function_generic(const node_function_def_stmt& node) -> bool
 }
 
 auto fetch_function_signature(
-    const typecheck_context& ctx,
-    const token& tok,
-    const std::string& function_name
+    const typecheck_context& ctx, const token& tok, const std::string& function_name
 )
     -> signature
 {
@@ -172,8 +170,9 @@ auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
     }
 }
 
-// Given a function with incomplete types, check that the args match its signature, and use the
-// matches to fill in the return type. Return the new signature.
+// Given a function, fetch its signature and verify that it can be invoked with the given
+// args. If any of the parameters are generic, their types are matched and used to deduce
+// the return type (if generic). Returns the signature with any generic types bound.
 auto get_typechecked_signature(
     typecheck_context& ctx,
     const token& tok,
