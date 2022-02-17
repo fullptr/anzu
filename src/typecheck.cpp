@@ -28,7 +28,7 @@ struct typecheck_context
     std::vector<typecheck_scope> scopes;
     anzu::type_store types;
 
-    std::unordered_map<const node_function_def_stmt*, std::vector<signature>> checked_sigs;
+    std::unordered_map<const node_function_def_stmt*, std::unordered_set<signature>> checked_sigs;
 };
 
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
@@ -278,8 +278,8 @@ auto typecheck_function_call(
         const auto* function_def = fetch_function(ctx, tok, function_name);
         if (is_function_generic(*function_def)) {
             auto& checked_sigs = ctx.checked_sigs[function_def];
-            if (std::find(begin(checked_sigs), end(checked_sigs), signature) == end(checked_sigs)) {
-                checked_sigs.push_back(signature);
+            if (checked_sigs.contains(signature)) {
+                checked_sigs.insert(signature);
                 typecheck_function_body_with_signature(ctx, *function_def, signature);
             }
         }

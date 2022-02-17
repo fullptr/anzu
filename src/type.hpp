@@ -108,3 +108,16 @@ struct std::formatter<anzu::signature> : std::formatter<std::string>
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
     }
 };
+
+template <>
+struct std::hash<anzu::signature>
+{
+    auto operator()(const anzu::signature& sig) const -> std::size_t
+    {
+        auto ret = anzu::hash(sig.return_type);
+        for (const auto& arg : sig.args) {
+            ret ^= anzu::hash(arg.type);
+        }
+        return ret;
+    }
+};
