@@ -103,6 +103,9 @@ auto evaluate_const_expressions(node_stmt& tree) -> void
         },
         [](node_break_stmt&) {},
         [](node_continue_stmt&) {},
+        [](node_declaration_stmt& stmt) {
+            evaluate_const_expressions(*stmt.expr);
+        },
         [](node_assignment_stmt& stmt) {
             evaluate_const_expressions(*stmt.expr);
         },

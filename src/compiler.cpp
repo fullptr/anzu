@@ -259,6 +259,12 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_continue{});
 }
 
+void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
+{
+    compile_node(*node.expr, ctx);
+    ctx.program.emplace_back(anzu::op_store{ .name=node.name });
+}
+
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
