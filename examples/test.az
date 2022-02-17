@@ -1,16 +1,5 @@
-fn get_num() -> int
-{
-    return 1
-}
+a := 1
+b := 2
 
-fn foo() -> null
-{
-    fn get_num() -> int
-    {
-        return 2
-    }
-}
-
-x = get_num()
-println(x)  # Whoops! Prints 2, should be 1, need to add nesting of fn defs to compiler
-            # See the type checker for a similar system.
+println(a)
+println(b)

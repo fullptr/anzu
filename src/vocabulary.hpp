@@ -29,7 +29,7 @@ constexpr auto tk_list      = sv{"list"};
 // Symbols
 constexpr auto tk_add       = sv{"+"};
 constexpr auto tk_and       = sv{"&&"};
-constexpr auto tk_assign    = sv{"="};
+constexpr auto tk_assign    = sv{":="};
 constexpr auto tk_colon     = sv{":"};
 constexpr auto tk_comma     = sv{","};
 constexpr auto tk_div       = sv{"/"};

@@ -1,20 +1,20 @@
 # tests all language features, here is a comment
 
 # declaring variables from literals
-a = 1               # ints
-b = true            # bools
-c = "hello world\n" # string literal
-d = [1, 2, 3]       # list
+a := 1               # ints
+b := true            # bools
+c := "hello world\n" # string literal
+d := [1, 2, 3]       # list
 
 # variables from variables
-e = a
+e := a
 
 # while-statements
-idx = 0
+idx := 0
 while idx < 10 {
     print(idx)
     print(", ")
-    idx = idx + 1
+    idx := idx + 1
 }
 println("")
 
@@ -68,8 +68,8 @@ if to_bool(adder(1, 2, 3) == 6) {
 }
 
 # printing null and showing functions with no return value return null
-x = null
-y = println(x)
+x := null
+y := println(x)
 println(y)
 
 # Nested functions
@@ -97,7 +97,7 @@ for x in [1, 2, 3] {
     }
 }
 
-new_list = [[1, 2, 3, 4]]
+new_list := [[1, 2, 3, 4]]
 for l in new_list {
     list_push(l, 5)
 }
