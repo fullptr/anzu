@@ -116,3 +116,26 @@ fn add3(x: int, y: int, z: int) -> int
 }
 
 println(add3(1, 2, 3))
+
+# Nested Function Lookup
+# We define a function, then define a function with the same name within a different
+# function. This should not overwrite the original function in the top scope
+fn get_num() -> int
+{
+    return 1
+}
+
+fn foo() -> null
+{
+    fn get_num() -> int
+    {
+        return 2
+    }
+}
+
+println(
+    "We should get 1 when calling get_num since the version returning 2 is not in this scope"
+)
+print("get_num() == ")
+print(get_num())
+print("\n")
