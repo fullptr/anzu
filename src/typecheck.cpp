@@ -25,10 +25,10 @@ struct typecheck_scope
 
 struct typecheck_context
 {
-    std::stack<typecheck_scope> scopes;
+    std::vector<typecheck_scope> scopes;
     anzu::type_store types;
 
-    std::unordered_map<const node_function_def_stmt*, std::vector<signature>> checked_sigs;
+    std::unordered_map<const node_function_def_stmt*, std::unordered_set<signature>> checked_sigs;
 };
 
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
@@ -125,14 +125,29 @@ auto is_function_generic(const node_function_def_stmt& node) -> bool
     return is_generic;
 }
 
+auto fetch_function_def(
+    const typecheck_context& ctx, const token& tok, const std::string& function_name
+)
+    -> const node_function_def_stmt*
+{
+    for (const auto& scope : ctx.scopes | std::views::reverse) {
+        if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
+            return it->second;
+        }
+    }
+
+    type_error(tok, "could not find function '{}'", function_name);
+}
+
 auto fetch_function_signature(
     const typecheck_context& ctx, const token& tok, const std::string& function_name
 )
     -> signature
 {
-    const auto& scope = ctx.scopes.top();
-    if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
-        return it->second->sig;
+    for (const auto& scope : ctx.scopes | std::views::reverse) {
+        if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
+            return it->second->sig;
+        }
     }
 
     if (anzu::is_builtin(function_name)) {
@@ -232,17 +247,17 @@ auto typecheck_function_body_with_signature(
 )
     -> void
 {
-    ctx.scopes.emplace();
+    ctx.scopes.emplace_back();
     for (const auto& arg : sig.args) {
         verify_real_type(ctx, node.token, arg.type);
-        ctx.scopes.top().variables[arg.name] = arg.type;
+        ctx.scopes.back().variables[arg.name] = arg.type;
     }
     verify_real_type(ctx, node.token, sig.return_type);
-    ctx.scopes.top().variables[return_key()] = sig.return_type; // Expose the return type for children
-    ctx.scopes.top().functions[node.name] = &node;              // Make available for recursion
+    ctx.scopes.back().variables[return_key()] = sig.return_type; // Expose the return type for children
+    ctx.scopes.back().functions[node.name] = &node;              // Make available for recursion
     
     typecheck_node(ctx, *node.body);
-    ctx.scopes.pop();
+    ctx.scopes.pop_back();
 
     check_function_ends_with_return(node);
 }
@@ -260,11 +275,11 @@ auto typecheck_function_call(
     );
 
     if (!is_builtin(function_name)) {
-        const auto* function_def = ctx.scopes.top().functions.at(function_name);
+        const auto* function_def = fetch_function_def(ctx, tok, function_name);
         if (is_function_generic(*function_def)) {
             auto& checked_sigs = ctx.checked_sigs[function_def];
-            if (std::find(begin(checked_sigs), end(checked_sigs), signature) == end(checked_sigs)) {
-                checked_sigs.push_back(signature);
+            if (checked_sigs.contains(signature)) {
+                checked_sigs.insert(signature);
                 typecheck_function_body_with_signature(ctx, *function_def, signature);
             }
         }
@@ -280,7 +295,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
             return type_of(node.value);
         },
         [&](const node_variable_expr& node) {
-            const auto& top = ctx.scopes.top();
+            const auto& top = ctx.scopes.back();
             return top.variables.at(node.name);
         },
         [&](const node_function_call_expr& node) {
@@ -346,7 +361,7 @@ auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
     if (!matches.has_value()) {
         type_error(get_token(*node.container), "expected '{}', got '{}'", expected_type, container_type);
     }
-    ctx.scopes.top().variables[node.var] = matches->at(0);
+    ctx.scopes.back().variables[node.var] = matches->at(0);
     typecheck_node(ctx, *node.body);
 }
 
@@ -360,12 +375,12 @@ auto typecheck_node(typecheck_context& ctx, const node_continue_stmt&) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) -> void
 {
-    ctx.scopes.top().variables[node.name] = typecheck_expr(ctx, *node.expr);
+    ctx.scopes.back().variables[node.name] = typecheck_expr(ctx, *node.expr);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
 {
-    ctx.scopes.top().functions[node.name] = &node; // Make name available in outer scope
+    ctx.scopes.back().functions[node.name] = &node; // Make name available in outer scope
 
     // If this is a generic function, we cannot perform type checking on it here.
     // Instead, store the name, and type check it at the function call sites.
@@ -385,7 +400,7 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
 
 auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)
 {
-    const auto& return_type = ctx.scopes.top().variables.at(return_key());
+    const auto& return_type = ctx.scopes.back().variables.at(return_key());
     verify_expression_type(ctx, *node.return_value, return_type);
 }
 
@@ -436,7 +451,7 @@ auto type_of(const anzu::object& object) -> type
 auto typecheck_ast(const node_stmt_ptr& ast) -> void
 {
     auto ctx = typecheck_context{};
-    ctx.scopes.emplace(); // Global scope
+    ctx.scopes.emplace_back(); // Global scope
     typecheck_node(ctx, *ast);
 }
 

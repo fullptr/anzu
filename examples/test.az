@@ -1,10 +1,12 @@
-
-
-
 fn front(x: list<int>) -> int
 {
-    return 5
+    return list_at(x, 0)
 }
 
-y = front([1, 2, 3])
-println(y)
+fn print_front(x: list<int>) -> null
+{
+    println(front(x))    
+}
+
+x = [1, 2, 3]
+print_front(x)
