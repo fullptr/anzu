@@ -1,12 +1,16 @@
-fn front(x: list<int>) -> int
+fn get_num() -> int
 {
-    return list_at(x, 0)
+    return 1
 }
 
-fn print_front(x: list<int>) -> null
+fn foo() -> null
 {
-    println(front(x))    
+    fn get_num() -> int
+    {
+        return 2
+    }
 }
 
-x = [1, 2, 3]
-print_front(x)
+x = get_num()
+println(x)  # Whoops! Prints 2, should be 1, need to add nesting of fn defs to compiler
+            # See the type checker for a similar system.

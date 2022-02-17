@@ -8,6 +8,7 @@
 #include <string_view>
 #include <optional>
 #include <tuple>
+#include <vector>
 #include <unordered_map>
 
 namespace anzu {
@@ -23,8 +24,21 @@ struct compiler_context
     };
 
     anzu::program program;
-    std::unordered_map<std::string, function_def> functions;
+    std::vector<std::unordered_map<std::string, function_def>> functions;
 };
+
+auto find_function(
+    const compiler_context& ctx, const std::string& function
+)
+    -> const compiler_context::function_def*
+{
+    for (const auto& scope : ctx.functions | std::views::reverse) {
+        if (const auto it = scope.find(function); it != scope.end()) {
+            return &it->second;
+        }
+    }
+    return nullptr;
+}
 
 namespace {
 
@@ -67,12 +81,11 @@ void compile_function_call(
         compile_node(*arg, ctx);
     }
 
-    if (const auto it = ctx.functions.find(function); it != ctx.functions.end()) {
-        const auto& function_def = it->second;
+    if (const auto function_def = find_function(ctx, function)) {
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
-            .ptr=function_def.ptr + 1, // Jump into the function
-            .sig=function_def.sig
+            .ptr=function_def->ptr + 1, // Jump into the function
+            .sig=function_def->sig
         });
     }
     else {
@@ -256,9 +269,11 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
     const auto start_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_function{ .name=node.name, .sig=node.sig });
-    ctx.functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
+    ctx.functions.back()[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
+    ctx.functions.emplace_back(); // New scope for nested functions
     compile_node(*node.body, ctx);
+    ctx.functions.pop_back();
 
     const auto end_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_function_end{});
@@ -298,6 +313,7 @@ auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
 auto compile(const std::unique_ptr<node_stmt>& root) -> anzu::program
 {
     anzu::compiler_context ctx;
+    ctx.functions.emplace_back(); // Global scope
     compile_node(*root, ctx);
     return ctx.program;
 }
