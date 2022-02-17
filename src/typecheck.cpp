@@ -125,14 +125,29 @@ auto is_function_generic(const node_function_def_stmt& node) -> bool
     return is_generic;
 }
 
+auto fetch_function(
+    const typecheck_context& ctx, const token& tok, const std::string& function_name
+)
+    -> const node_function_def_stmt*
+{
+    for (const auto& scope : ctx.scopes | std::views::reverse) {
+        if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
+            return it->second;
+        }
+    }
+
+    type_error(tok, "could not find function '{}'", function_name);
+}
+
 auto fetch_function_signature(
     const typecheck_context& ctx, const token& tok, const std::string& function_name
 )
     -> signature
 {
-    const auto& scope = ctx.scopes.back();
-    if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
-        return it->second->sig;
+    for (const auto& scope : ctx.scopes | std::views::reverse) {
+        if (auto it = scope.functions.find(function_name); it != scope.functions.end()) {
+            return it->second->sig;
+        }
     }
 
     if (anzu::is_builtin(function_name)) {
@@ -260,7 +275,7 @@ auto typecheck_function_call(
     );
 
     if (!is_builtin(function_name)) {
-        const auto* function_def = ctx.scopes.back().functions.at(function_name);
+        const auto* function_def = fetch_function(ctx, tok, function_name);
         if (is_function_generic(*function_def)) {
             auto& checked_sigs = ctx.checked_sigs[function_def];
             if (std::find(begin(checked_sigs), end(checked_sigs), signature) == end(checked_sigs)) {

@@ -103,3 +103,16 @@ for l in new_list {
 }
 println("new_list should have 5 elements:")
 println(new_list)
+
+# Allowing functions from other functions
+fn add2(x: int, y: int) -> int
+{
+    return x + y
+}
+
+fn add3(x: int, y: int, z: int) -> int
+{
+    return add2(x, add2(y, z))
+}
+
+println(add3(1, 2, 3))

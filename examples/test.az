@@ -1,6 +1,3 @@
-
-
-
 fn front(x: list<int>) -> int
 {
     return list_at(x, 0)
