@@ -254,8 +254,7 @@ auto typecheck_function_body_with_signature(
     }
     verify_real_type(ctx, node.token, sig.return_type);
     ctx.scopes.back().variables[return_key()] = sig.return_type; // Expose the return type for children
-    ctx.scopes.back().functions[node.name] = &node;              // Make available for recursion
-    
+ 
     typecheck_node(ctx, *node.body);
     ctx.scopes.pop_back();
 

@@ -271,7 +271,7 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_function{ .name=node.name, .sig=node.sig });
     ctx.functions.back()[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
-    ctx.functions.emplace_back();
+    ctx.functions.emplace_back(); // New scope for nested functions
     compile_node(*node.body, ctx);
     ctx.functions.pop_back();
 
