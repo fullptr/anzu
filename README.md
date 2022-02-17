@@ -89,6 +89,7 @@ Common Modules
 Utility Modules (in src/utility)
 -- print.hpp       : Wrapper for std::format, similar to {fmt}
 -- peekstream.hpp  : A data structure used in the lexer
+-- overloaded.hpp  : A helper class to make std::visit simpler
 ```
 
 # Upcoming Features
