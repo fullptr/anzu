@@ -1,15 +1,11 @@
 #include "type.hpp"
 #include "utility/print.hpp"
+#include "utility/overloaded.hpp"
 
 #include <algorithm>
 #include <cassert>
 
 namespace anzu {
-namespace {
-
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-
-}
 
 auto to_string(const type& type) -> std::string
 {

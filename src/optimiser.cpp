@@ -1,12 +1,11 @@
 #include "optimiser.hpp"
 #include "object.hpp"
+#include "utility/overloaded.hpp"
 
 #include <optional>
 
 namespace anzu {
 namespace {
-
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 auto evaluate_bin_op(
     const anzu::object& lhs, const anzu::object& rhs, std::string_view op

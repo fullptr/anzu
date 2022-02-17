@@ -1,14 +1,10 @@
 #include "runtime.hpp"
 #include "utility/print.hpp"
+#include "utility/overloaded.hpp"
 
 #include <utility>
 
 namespace anzu {
-namespace {
-
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-
-}
 
 auto memory::insert(const std::string& name, const anzu::object& value) -> anzu::object&
 {

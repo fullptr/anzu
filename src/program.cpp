@@ -1,12 +1,11 @@
 #include "program.hpp"
 #include "object.hpp"
+#include "utility/overloaded.hpp"
 
 #include <string>
 
 namespace anzu {
 namespace {
-
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 constexpr auto FORMAT2 = std::string_view{"{:<30} {}"};
 constexpr auto FORMAT3 = std::string_view{"{:<30} {:<20} {}"};

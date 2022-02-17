@@ -1,5 +1,6 @@
 #include "object.hpp"
 #include "utility/print.hpp"
+#include "utility/overloaded.hpp"
 
 #include <algorithm>
 #include <ranges>
@@ -7,8 +8,6 @@
 
 namespace anzu {
 namespace {
-
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 auto type_error(const anzu::object& lhs, const anzu::object& rhs, std::string_view op) -> void
 {
@@ -32,6 +31,12 @@ auto type_error_conversion(std::string_view src_type, std::string_view dst_type)
 {
     anzu::print("type error: cannot convert {} to {}\n", src_type, dst_type);
     std::exit(1);
+}
+
+auto list_repr(const anzu::object_list& list) -> std::string
+{
+    const auto to_repr = [](const auto& o) { return o.to_repr(); };
+    return std::format("[{}]", anzu::format_comma_separated(*list, to_repr));
 }
 
 }
@@ -90,21 +95,7 @@ auto object::to_str() const -> std::string
         [](int v) { return std::to_string(v); },
         [](bool v) { return std::string{v ? "true" : "false"}; },
         [](const std::string& v) { return v; },
-        [](const object_list& v) {
-            switch (v->size()) {
-                break; case 0:
-                    return std::string{"[]"};
-                break; case 1:
-                    return std::format("[{}]", v->at(0));
-                break; default:
-                    std::string ret = std::format("[{}", v->at(0));
-                    for (const auto& obj : *v | std::views::drop(1)) {
-                        ret += std::format(", {}", obj.to_repr());
-                    }
-                    ret += "]";
-                    return ret;
-            }
-        },
+        [](const object_list& v) { return list_repr(v); },
         [](std::monostate) { return std::string{"null"}; }
     }, d_value);
 }
@@ -115,21 +106,7 @@ auto object::to_repr() const -> std::string
         [](int val) { return std::to_string(val); },
         [](bool val) { return std::string{val ? "true" : "false"}; },
         [](const std::string& v) { return std::format("'{}'", v); },
-        [](const object_list& v) {
-            switch (v->size()) {
-                break; case 0:
-                    return std::string{"[]"};
-                break; case 1:
-                    return std::format("[{}]", v->at(0));
-                break; default:
-                    std::string ret = std::format("[{}", v->at(0));
-                    for (const auto& obj : *v | std::views::drop(1)) {
-                        ret += std::format(", {}", obj.to_repr());
-                    }
-                    ret += "]";
-                    return ret;
-            }
-        },
+        [](const object_list& v) { return list_repr(v); },
         [](std::monostate) { return std::string{"null"}; }
     }, d_value);
 }
@@ -181,29 +158,28 @@ object operator*(const object& lhs, const object& rhs)
 
 object operator/(const object& lhs, const object& rhs)
 {
-    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
-        if constexpr (std::is_same_v<A, int> && std::is_same_v<B, int>) {
+    return std::visit(overloaded {
+        [](int a, int b) {
             if (b != 0) {
                 return a / b;
             }
             anzu::division_by_zero_error();
             return 0;
-        } else {
+        },
+        [](const auto& a, const auto& b) {
             anzu::type_error(a, b, "/");
             return 0;
         }
     }, lhs.d_value, rhs.d_value);
 }
 
-template <typename A, typename B>
-concept moddable = requires(A a, B b) { { a % b }; };
-
 object operator%(const object& lhs, const object& rhs)
 {
-    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
-        if constexpr (moddable<A, B>) {
+    return std::visit(overloaded {
+        [](int a, int b) {
             return a % b;
-        } else {
+        },
+        [](const auto& a, const auto& b) {
             anzu::type_error(a, b, "%");
             return 0;
         }

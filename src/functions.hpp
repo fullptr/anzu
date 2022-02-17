@@ -12,8 +12,8 @@ using builtin_function = object(*)(std::span<const object>);
 
 struct builtin
 {
-    builtin_function   ptr;
-    signature sig;
+    builtin_function ptr;
+    signature        sig;
 };
 
 auto is_builtin(const std::string& name) -> bool;
