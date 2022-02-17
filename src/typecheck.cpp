@@ -125,7 +125,7 @@ auto is_function_generic(const node_function_def_stmt& node) -> bool
     return is_generic;
 }
 
-auto fetch_function(
+auto fetch_function_def(
     const typecheck_context& ctx, const token& tok, const std::string& function_name
 )
     -> const node_function_def_stmt*
@@ -275,7 +275,7 @@ auto typecheck_function_call(
     );
 
     if (!is_builtin(function_name)) {
-        const auto* function_def = fetch_function(ctx, tok, function_name);
+        const auto* function_def = fetch_function_def(ctx, tok, function_name);
         if (is_function_generic(*function_def)) {
             auto& checked_sigs = ctx.checked_sigs[function_def];
             if (checked_sigs.contains(signature)) {
