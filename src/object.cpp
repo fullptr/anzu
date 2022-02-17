@@ -118,10 +118,10 @@ object operator+(const object& lhs, const object& rhs)
 {
     return std::visit([]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
         if constexpr (std::is_same_v<A, B> && addable<A>) {
-            return a + b;
+            return object{a + b};
         } else {
-            anzu::type_error(a, b, "+");
-            return 0;
+            anzu::type_error(object{a}, object{b}, "+");
+            return object{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
@@ -133,10 +133,10 @@ object operator-(const object& lhs, const object& rhs)
 {
     return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
         if constexpr (std::is_same_v<A, B> && subtractible<A>) {
-            return a - b;
+            return object{a - b};
         } else {
-            anzu::type_error(a, b, "-");
-            return 0;
+            anzu::type_error(object{a}, object{b}, "-");
+            return object{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
@@ -148,10 +148,10 @@ object operator*(const object& lhs, const object& rhs)
 {
     return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
         if constexpr (std::is_same_v<A, B> && multipliable<A>) {
-            return a * b;
+            return object{a * b};
         } else {
-            anzu::type_error(a, b, "*");
-            return 0;
+            anzu::type_error(object{a}, object{b}, "*");
+            return object{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
@@ -161,14 +161,14 @@ object operator/(const object& lhs, const object& rhs)
     return std::visit(overloaded {
         [](int a, int b) {
             if (b != 0) {
-                return a / b;
+                return object{a / b};
             }
             anzu::division_by_zero_error();
-            return 0;
+            return object{0};
         },
         [](const auto& a, const auto& b) {
-            anzu::type_error(a, b, "/");
-            return 0;
+            anzu::type_error(object{a}, object{b}, "/");
+            return object{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
@@ -177,11 +177,11 @@ object operator%(const object& lhs, const object& rhs)
 {
     return std::visit(overloaded {
         [](int a, int b) {
-            return a % b;
+            return object{a % b};
         },
         [](const auto& a, const auto& b) {
-            anzu::type_error(a, b, "%");
-            return 0;
+            anzu::type_error(object{a}, object{b}, "%");
+            return object{0};
         }
     }, lhs.d_value, rhs.d_value);
 }

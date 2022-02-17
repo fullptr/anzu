@@ -25,16 +25,16 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 auto parse_literal(tokenstream& tokens) -> anzu::object
 {
     if (tokens.curr().type == token_type::number) {
-        return { anzu::to_int(tokens.consume().text) };
+        return object{ anzu::to_int(tokens.consume().text) };
     }
     if (tokens.curr().type == token_type::string) {
-        return { tokens.consume().text };
+        return object{ tokens.consume().text };
     }
     if (tokens.consume_maybe(tk_true)) {
-        return { true };
+        return object{ true };
     }
     if (tokens.consume_maybe(tk_false)) {
-        return { false };
+        return object{ false };
     }
     if (tokens.consume_maybe(tk_null)) {
         return anzu::null_object();

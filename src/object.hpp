@@ -10,6 +10,7 @@
 namespace anzu {
 
 class object;
+using object_str  = std::string;
 using object_list = std::shared_ptr<std::vector<object>>;
 using object_null = std::monostate;
 
@@ -18,7 +19,7 @@ class object
     using value_type = std::variant<
         int,
         bool,
-        std::string,
+        object_str,
         object_list,
         object_null
     >;
@@ -27,7 +28,7 @@ class object
 
 public:
     template <typename Obj>
-    object(const Obj& obj) : d_value{obj} {}
+    explicit object(const Obj& obj) : d_value{obj} {}
     
     object() : d_value{0} {}
 
@@ -78,7 +79,7 @@ public:
     friend void swap(object& lhs, object& rhs);
 };
 
-inline auto null_object() -> anzu::object { return { std::monostate{} }; }
+inline auto null_object() -> anzu::object { return object{object_null{}}; }
 
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;

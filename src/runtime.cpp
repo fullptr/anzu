@@ -193,49 +193,49 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_eq& op) {
             auto b = ctx.pop_value();
             auto a = ctx.pop_value();
-            ctx.push_value(a == b);
+            ctx.push_value(object{a == b});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_ne& op) {
             auto b = ctx.pop_value();
             auto a = ctx.pop_value();
-            ctx.push_value(a != b);
+            ctx.push_value(object{a != b});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_lt& op) {
             auto b = ctx.pop_value();
             auto a = ctx.pop_value();
-            ctx.push_value(a < b);
+            ctx.push_value(object{a < b});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_le& op) {
             auto b = ctx.pop_value();
             auto a = ctx.pop_value();
-            ctx.push_value(a <= b);
+            ctx.push_value(object{a <= b});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_gt& op) {
             auto b = ctx.pop_value();
             auto a = ctx.pop_value();
-            ctx.push_value(a > b);
+            ctx.push_value(object{a > b});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_ge& op) {
             auto b = ctx.pop_value();
             auto a = ctx.pop_value();
-            ctx.push_value(a >= b);
+            ctx.push_value(object{a >= b});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_or& op) {
             auto b = ctx.pop_value();
             auto a = ctx.pop_value();
-            ctx.push_value(a || b);
+            ctx.push_value(object{a || b});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_and& op) {
             auto b = ctx.pop_value();
             auto a = ctx.pop_value();
-            ctx.push_value(a && b);
+            ctx.push_value(object{a && b});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_build_list& op) {
@@ -243,7 +243,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             for (std::size_t i = 0; i != op.size; ++i) {
                 list->push_back(ctx.pop_value());
             }
-            ctx.push_value(list);
+            ctx.push_value(object{list});
             ctx.peek_frame().ptr += 1;
         },
         [&](const op_debug& op) {

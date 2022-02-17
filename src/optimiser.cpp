@@ -12,19 +12,19 @@ auto evaluate_bin_op(
 )
     -> anzu::object
 {
-    if      (op == "+")  { return lhs + rhs; }
-    else if (op == "-")  { return lhs - rhs; }
-    else if (op == "*")  { return lhs * rhs; }
-    else if (op == "/")  { return lhs / rhs; }
-    else if (op == "%")  { return lhs % rhs; }
-    else if (op == "<")  { return lhs < rhs; }
-    else if (op == "<=") { return lhs <= rhs; }
-    else if (op == ">")  { return lhs > rhs; }
-    else if (op == ">=") { return lhs >= rhs; }
-    else if (op == "==") { return lhs == rhs; }
-    else if (op == "!=") { return lhs != rhs; }
-    else if (op == "||") { return lhs || rhs; }
-    else if (op == "&&") { return lhs && rhs; }
+    if      (op == "+")  { return object{lhs + rhs}; }
+    else if (op == "-")  { return object{lhs - rhs}; }
+    else if (op == "*")  { return object{lhs * rhs}; }
+    else if (op == "/")  { return object{lhs / rhs}; }
+    else if (op == "%")  { return object{lhs % rhs}; }
+    else if (op == "<")  { return object{lhs < rhs}; }
+    else if (op == "<=") { return object{lhs <= rhs}; }
+    else if (op == ">")  { return object{lhs > rhs}; }
+    else if (op == ">=") { return object{lhs >= rhs}; }
+    else if (op == "==") { return object{lhs == rhs}; }
+    else if (op == "!=") { return object{lhs != rhs}; }
+    else if (op == "||") { return object{lhs || rhs}; }
+    else if (op == "&&") { return object{lhs && rhs}; }
     else {
         anzu::print("syntax error: unknown binary operator: '{}'\n", op);
         std::exit(1);
@@ -64,7 +64,7 @@ auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::
                 }
                 values->push_back(*val);
             }
-            expr.emplace<anzu::node_literal_expr>(values);
+            expr.emplace<anzu::node_literal_expr>(object{values});
             return anzu::object{values};
         }
     }, expr);

@@ -139,3 +139,10 @@ println(
 print("get_num() == ")
 print(get_num())
 print("\n")
+
+fn print_one_to_ten() -> null
+{
+    for i in range(10) {
+        println(i)
+    }
+}

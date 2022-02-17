@@ -256,6 +256,9 @@ auto typecheck_function_body_with_signature(
     ctx.scopes.back().variables[return_key()] = sig.return_type; // Expose the return type for children
  
     typecheck_node(ctx, *node.body);
+
+    anzu::print("Number of variables used in function '{}': {}\n",
+                node.name, ctx.scopes.back().variables.size());
     ctx.scopes.pop_back();
 
     check_function_ends_with_return(node);
@@ -269,9 +272,7 @@ auto typecheck_function_call(
 )
     -> type
 {
-    const auto signature = get_typechecked_signature(
-        ctx, tok, function_name, args
-    );
+    const auto signature = get_typechecked_signature(ctx, tok, function_name, args);
 
     if (!is_builtin(function_name)) {
         const auto* function_def = fetch_function_def(ctx, tok, function_name);
