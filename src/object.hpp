@@ -65,18 +65,18 @@ public:
 
     auto to_repr() const -> std::string;
 
-    friend object operator+(const object& lhs, const object& rhs);
-    friend object operator-(const object& lhs, const object& rhs);
-    friend object operator*(const object& lhs, const object& rhs);
-    friend object operator/(const object& lhs, const object& rhs);
-    friend object operator%(const object& lhs, const object& rhs);
+    friend auto operator+(const object& lhs, const object& rhs) -> object;
+    friend auto operator-(const object& lhs, const object& rhs) -> object;
+    friend auto operator*(const object& lhs, const object& rhs) -> object;
+    friend auto operator/(const object& lhs, const object& rhs) -> object;
+    friend auto operator%(const object& lhs, const object& rhs) -> object;
     
-    friend std::strong_ordering operator<=>(const object& lhs, const object& rhs) = default;
+    friend auto operator||(const object& lhs, const object& rhs) -> bool;
+    friend auto operator&&(const object& lhs, const object& rhs) -> bool;
 
-    friend bool operator||(const object& lhs, const object& rhs);
-    friend bool operator&&(const object& lhs, const object& rhs);
+    friend auto operator<=>(const object& lhs, const object& rhs) -> std::strong_ordering = default;
 
-    friend void swap(object& lhs, object& rhs);
+    friend auto swap(object& lhs, object& rhs) -> void;
 };
 
 inline auto null_object() -> anzu::object { return object{object_null{}}; }
