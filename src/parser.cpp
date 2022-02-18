@@ -25,16 +25,16 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 auto parse_literal(tokenstream& tokens) -> anzu::object
 {
     if (tokens.curr().type == token_type::number) {
-        return { anzu::to_int(tokens.consume().text) };
+        return object{ anzu::to_int(tokens.consume().text) };
     }
     if (tokens.curr().type == token_type::string) {
-        return { tokens.consume().text };
+        return object{ tokens.consume().text };
     }
     if (tokens.consume_maybe(tk_true)) {
-        return { true };
+        return object{ true };
     }
     if (tokens.consume_maybe(tk_false)) {
-        return { false };
+        return object{ false };
     }
     if (tokens.consume_maybe(tk_null)) {
         return anzu::null_object();
@@ -238,6 +238,17 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_declaration_stmt>();
+
+    stmt.name = parse_name(tokens);
+    stmt.token = tokens.consume_only(tk_declare);
+    stmt.expr = parse_expression(tokens);
+    return node;
+}
+
 auto parse_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
@@ -294,7 +305,10 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek(tk_continue)) {
         return std::make_unique<node_stmt>(node_continue_stmt{ tokens.consume() });
     }
-    if (tokens.peek_next(tk_assign)) { // <name> '='
+    if (tokens.peek_next(tk_declare)) { // <name> ':=' <expr>
+        return parse_declaration_stmt(tokens);
+    }
+    if (tokens.peek_next(tk_assign)) { // <name> '=' <expr>
         return parse_assignment_stmt(tokens);
     }
     if (tokens.peek_next(tk_lparen)) { // <name> '('

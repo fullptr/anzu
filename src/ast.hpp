@@ -104,6 +104,14 @@ struct node_continue_stmt
     anzu::token token;
 };
 
+struct node_declaration_stmt
+{
+    std::string   name;
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
 struct node_assignment_stmt
 {
     std::string   name;
@@ -148,6 +156,7 @@ struct node_stmt : std::variant<
     node_for_stmt,
     node_break_stmt,
     node_continue_stmt,
+    node_declaration_stmt,
     node_assignment_stmt,
     node_function_def_stmt,
     node_function_call_stmt,

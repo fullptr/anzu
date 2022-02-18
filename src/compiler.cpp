@@ -210,7 +210,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     });
 
     // Push the counter to the stack
-    ctx.program.emplace_back(anzu::op_push_const{ .value=0 });
+    ctx.program.emplace_back(anzu::op_push_const{ .value=object{0} });
 
     // Stack: list, size, counter(0)
 
@@ -236,7 +236,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     compile_node(*node.body, ctx);
 
     // Increment the index
-    ctx.program.emplace_back(anzu::op_push_const{ .value=1 });
+    ctx.program.emplace_back(anzu::op_push_const{ .value=object{1} });
     ctx.program.emplace_back(anzu::op_add{});
 
     const auto end_pos = std::ssize(ctx.program);
@@ -257,6 +257,12 @@ void compile_node(const node_break_stmt&, compiler_context& ctx)
 void compile_node(const node_continue_stmt&, compiler_context& ctx)
 {
     ctx.program.emplace_back(anzu::op_continue{});
+}
+
+void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
+{
+    compile_node(*node.expr, ctx);
+    ctx.program.emplace_back(anzu::op_store{ .name=node.name });
 }
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)

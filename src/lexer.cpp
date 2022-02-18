@@ -117,6 +117,9 @@ auto lex_line(
                     lexer_error(lineno, col, "invalid name '{}' - names cannot start with a digit", token);
                 }
             }
+            else {
+                lexer_error(lineno, col, "could not parse symbol '{}'\n", iter.curr());
+            }
         }
 
     }

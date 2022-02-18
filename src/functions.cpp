@@ -30,7 +30,7 @@ auto builtin_list_pop(std::span<const object> args) -> object
 auto builtin_list_size(std::span<const object> args) -> object
 {
     const auto& list = args[0].as<object_list>();
-    return static_cast<int>(list->size());
+    return object{static_cast<int>(list->size())};
 }
 
 auto builtin_list_at(std::span<const object> args) -> object
@@ -43,29 +43,29 @@ auto builtin_list_at(std::span<const object> args) -> object
 auto builtin_str_size(std::span<const object> args) -> object
 {
     const auto& str = args[0].as<std::string>();
-    return static_cast<int>(str.size());
+    return object{static_cast<int>(str.size())};
 }
 
 auto builtin_str_at(std::span<const object> args) -> object
 {
     const auto& str = args[0].as<std::string>();
     const auto& idx = args[1].as<int>();
-    return std::string{str.at(idx)};
+    return object{object_str{str.at(idx)}};
 }
 
 auto builtin_to_int(std::span<const object> args) -> object
 {
-    return args[0].to_int();
+    return object{args[0].to_int()};
 }
 
 auto builtin_to_bool(std::span<const object> args) -> object
 {
-    return args[0].to_bool();
+    return object{args[0].to_bool()};
 }
 
 auto builtin_to_str(std::span<const object> args) -> object
 {
-    return args[0].to_str();
+    return object{args[0].to_str()};
 }
 
 auto builtin_print(std::span<const object> args) -> object
@@ -94,13 +94,13 @@ auto builtin_input(std::span<const object> args) -> object
 {
     std::string in;
     std::cin >> in;
-    return in;
+    return object{in};
 }
 
 auto builtin_typeof(std::span<const object> args) -> object
 {
     const auto& obj = args[0];
-    return to_string(type_of(obj));
+    return object{to_string(type_of(obj))};
 }
 
 auto builtin_range(std::span<const object> args) -> object
@@ -108,9 +108,9 @@ auto builtin_range(std::span<const object> args) -> object
     const auto& max = args[0].as<int>();
     auto list = std::make_shared<std::vector<object>>();
     for (int i = 0; i != max; ++i) {
-        list->push_back(i);
+        list->push_back(object{i});
     }
-    return list;
+    return object{list};
 }
 
 }

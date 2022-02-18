@@ -256,6 +256,9 @@ auto typecheck_function_body_with_signature(
     ctx.scopes.back().variables[return_key()] = sig.return_type; // Expose the return type for children
  
     typecheck_node(ctx, *node.body);
+
+    anzu::print("Number of variables used in function '{}': {}\n",
+                node.name, ctx.scopes.back().variables.size());
     ctx.scopes.pop_back();
 
     check_function_ends_with_return(node);
@@ -269,9 +272,7 @@ auto typecheck_function_call(
 )
     -> type
 {
-    const auto signature = get_typechecked_signature(
-        ctx, tok, function_name, args
-    );
+    const auto signature = get_typechecked_signature(ctx, tok, function_name, args);
 
     if (!is_builtin(function_name)) {
         const auto* function_def = fetch_function_def(ctx, tok, function_name);
@@ -372,9 +373,27 @@ auto typecheck_node(typecheck_context& ctx, const node_continue_stmt&) -> void
 {
 }
 
+auto typecheck_node(typecheck_context& ctx, const node_declaration_stmt& node) -> void
+{
+    if (ctx.scopes.back().variables.contains(node.name)) {
+        type_error(node.token, "cannot declare variable '{}', name already in use", node.name);
+    }
+    ctx.scopes.back().variables[node.name] = typecheck_expr(ctx, *node.expr);
+}
+
 auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) -> void
 {
-    ctx.scopes.back().variables[node.name] = typecheck_expr(ctx, *node.expr);
+    auto it = ctx.scopes.back().variables.find(node.name);
+    if (it == ctx.scopes.back().variables.end()) {
+        type_error(node.token, "cannot assign to '{}', name not declared", node.name);
+    }
+
+    const auto expr_type = typecheck_expr(ctx, *node.expr);
+    if (expr_type != it->second) {
+        type_error(node.token, "cannot assign to '{}', incorrect type", node.name);
+    }
+
+    ctx.scopes.back().variables[node.name] = expr_type;
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void

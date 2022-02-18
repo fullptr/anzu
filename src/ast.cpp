@@ -84,6 +84,12 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         [&](const node_continue_stmt& node) {
             anzu::print("{}Continue\n", spaces);
         },
+        [&](const node_declaration_stmt& node) {
+            anzu::print("{}Declaration:\n", spaces);
+            anzu::print("{}- Name: {}\n", spaces, node.name);
+            anzu::print("{}- Value:\n", spaces);
+            print_node(*node.expr, indent + 1);
+        },
         [&](const node_assignment_stmt& node) {
             anzu::print("{}Assignment:\n", spaces);
             anzu::print("{}- Name: {}\n", spaces, node.name);
