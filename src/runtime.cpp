@@ -7,7 +7,7 @@
 namespace anzu {
 
 template <typename T>
-T pop_back(std::vector<T>& vec)
+auto pop_back(std::vector<T>& vec) -> T
 {
     const auto back = vec.back();
     vec.pop_back();
@@ -15,20 +15,31 @@ T pop_back(std::vector<T>& vec)
 }
 
 template <typename T>
-T& push_back(std::vector<T>& vec, const T& val)
+auto push_back(std::vector<T>& vec, const T& val) -> T&
 {
     vec.push_back(val);
     return vec.back();   
 }
 
-auto runtime_context::peek_frame(std::size_t index) -> frame&
+auto program_advance(runtime_context& ctx) -> void
 {
-    return frames[frames.size() - index - 1];
+    ctx.frames.back().program_ptr += 1;
 }
 
-auto runtime_context::peek_value(std::size_t index) -> object&
+auto program_jump_to(runtime_context& ctx, std::intptr_t idx) -> void
 {
-    return stack[stack.size() - index - 1];
+    ctx.frames.back().program_ptr = idx;
+}
+
+// Cleans up the variables used in the current frame and removes the frame
+// pointers to return back to the previous scope.
+auto pop_frame(runtime_context& ctx) -> void
+{
+    const auto num_to_pop = ctx.memory.size() - ctx.frames.back().base_ptr;
+    for (std::size_t i = 0; i != num_to_pop; ++i) {
+        ctx.memory.pop_back();
+    }
+    ctx.frames.pop_back();
 }
 
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
@@ -36,30 +47,29 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
     std::visit(overloaded {
         [&](const op_load_literal& op) {
             push_back(ctx.stack, op.value);
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_load_local& op) {
-            auto& frame = ctx.peek_frame();
-            const auto idx = frame.base_ptr + op.offset;
+            const auto idx = ctx.frames.back().base_ptr + op.offset;
             push_back(ctx.stack, ctx.memory[idx]);
-            frame.program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_load_global& op) {
-            auto& frame = ctx.peek_frame();
             const auto idx = op.position;
             push_back(ctx.stack, ctx.memory[idx]);
-            frame.program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_pop& op) {
             pop_back(ctx.stack);
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_copy_index& op) {
-            push_back(ctx.stack, ctx.peek_value(op.index));
-            ctx.peek_frame().program_ptr += 1;
+            const auto it = ctx.stack.rbegin() + op.index;
+            push_back(ctx.stack, *it);
+            program_advance(ctx);
         },
         [&](const op_save_local& op) {
-            auto& frame = ctx.peek_frame();
+            auto& frame = ctx.frames.back();
             const auto idx = frame.base_ptr + op.offset;
             if (idx >= ctx.memory.size()) {
                 ctx.memory.resize(idx + 1);
@@ -68,7 +78,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             frame.program_ptr += 1;
         },
         [&](const op_save_global& op) {
-            auto& frame = ctx.peek_frame();
+            auto& frame = ctx.frames.back();
             const auto idx = op.position;
             if (idx >= ctx.memory.size()) {
                 ctx.memory.resize(idx + 1);
@@ -77,59 +87,51 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             frame.program_ptr += 1;
         },
         [&](const op_if& op) {
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_if_end& op) {
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_else& op) {
-            ctx.peek_frame().program_ptr = op.jump;
+            program_jump_to(ctx, op.jump);
         },
         [&](const op_while& op) {
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_while_end& op) {
-            ctx.peek_frame().program_ptr = op.jump;
+            program_jump_to(ctx, op.jump);
         },
         [&](const op_for& op) {
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_for_end& op) {
-            ctx.peek_frame().program_ptr = op.jump;
+            program_jump_to(ctx, op.jump);
         },
         [&](const op_break& op) {
-            ctx.peek_frame().program_ptr = op.jump;
+            program_jump_to(ctx, op.jump);
         },
         [&](const op_continue& op) {
-            ctx.peek_frame().program_ptr = op.jump;
+            program_jump_to(ctx, op.jump);
         },
         [&](const op_jump_if_false& op) {
             if (pop_back(ctx.stack).to_bool()) {
-                ctx.peek_frame().program_ptr += 1;
+                program_advance(ctx);
             } else {
-                ctx.peek_frame().program_ptr = op.jump;
+                program_jump_to(ctx, op.jump);
             }
         },
         [&](const op_function& op) {
-            ctx.peek_frame().program_ptr = op.jump;
+            program_jump_to(ctx, op.jump);
         },
         [&](const op_function_end& op) {
-            const auto num_to_pop = ctx.memory.size() - ctx.peek_frame().base_ptr;
-            for (std::size_t i = 0; i != num_to_pop; ++i) {
-                ctx.memory.pop_back();
-            }
-            push_back(ctx.stack, null_object());
-            ctx.frames.pop_back();
+            ctx.stack.push_back(null_object());
+            pop_frame(ctx);
         },
         [&](const op_return& op) {
-            const auto num_to_pop = ctx.memory.size() - ctx.peek_frame().base_ptr;
-            for (std::size_t i = 0; i != num_to_pop; ++i) {
-                ctx.memory.pop_back();
-            }
-            ctx.frames.pop_back();
+            pop_frame(ctx);
         },
         [&](const op_function_call& op) {
-            ctx.peek_frame().program_ptr += 1; // Position after function call
+            program_advance(ctx); // Position after function call
 
             ctx.frames.emplace_back();
             auto& frame = ctx.frames.back();
@@ -140,91 +142,91 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             const auto argc = op.sig.args.size();
             auto args = std::vector<anzu::object>{};
             args.resize(argc);
-            for (std::size_t i = 0; i != argc; ++i) {
-                args[argc - 1 - i] = pop_back(ctx.stack);
+            for (auto& arg : args | std::views::reverse) {
+                arg = pop_back(ctx.stack);
             }
 
             // Call the builtin function with the given args and push the return value
             push_back(ctx.stack, op.ptr(args));
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_add& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, a + b);
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_sub& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, a - b);
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_mul& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, a * b);
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_div& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, a / b);
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_mod& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, a % b);
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_eq& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, object{a == b});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_ne& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, object{a != b});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_lt& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, object{a < b});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_le& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, object{a <= b});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_gt& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, object{a > b});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_ge& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, object{a >= b});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_or& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, object{a || b});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_and& op) {
             auto b = pop_back(ctx.stack);
             auto a = pop_back(ctx.stack);
             push_back(ctx.stack, object{a && b});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_build_list& op) {
             auto list = std::make_shared<std::vector<anzu::object>>();
@@ -232,10 +234,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 list->push_back(pop_back(ctx.stack));
             }
             push_back(ctx.stack, object{list});
-            ctx.peek_frame().program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_debug& op) {
-            auto& frame = ctx.peek_frame();
+            auto& frame = ctx.frames.back();
             frame.program_ptr += 1;
         }
     }, op_code);
@@ -247,8 +249,8 @@ auto run_program(const anzu::program& program) -> void
     ctx.memory.reserve(1000);
     ctx.frames.emplace_back();
 
-    while (ctx.peek_frame().program_ptr < std::ssize(program)) {
-        apply_op(ctx, program[ctx.peek_frame().program_ptr]);
+    while (ctx.frames.back().program_ptr < std::ssize(program)) {
+        apply_op(ctx, program[ctx.frames.back().program_ptr]);
     }
 }
 
@@ -258,10 +260,10 @@ auto run_program_debug(const anzu::program& program) -> void
     ctx.memory.reserve(1000);
     ctx.frames.emplace_back();
 
-    while (ctx.peek_frame().program_ptr < std::ssize(program)) {
-        const auto& op = program[ctx.peek_frame().program_ptr];
-        anzu::print("{:>4} - {}\n", ctx.peek_frame().program_ptr, anzu::to_string(op));
-        apply_op(ctx, program[ctx.peek_frame().program_ptr]);
+    while (ctx.frames.back().program_ptr < std::ssize(program)) {
+        const auto& op = program[ctx.frames.back().program_ptr];
+        anzu::print("{:>4} - {}\n", ctx.frames.back().program_ptr, anzu::to_string(op));
+        apply_op(ctx, program[ctx.frames.back().program_ptr]);
     }
 }
 

@@ -14,9 +14,6 @@ struct frame
 
 struct runtime_context
 {
-    auto peek_frame(std::size_t index = 0) -> frame&;
-    auto peek_value(std::size_t index = 0) -> object&;
-
     std::vector<frame>        frames;
     std::vector<anzu::object> stack;
     std::vector<anzu::object> memory;
