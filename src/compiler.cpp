@@ -33,20 +33,53 @@ struct compiler_context
     std::vector<compiler_scope> scopes;
 };
 
-auto save_variable(compiler_context& ctx, const std::string& name) -> void
+// Registers the given name in the current scope
+auto declare_variable_name(compiler_context& ctx, const std::string& name) -> void
 {
     auto& vars = ctx.scopes.back().variables;
-    vars.emplace(name, vars.size()); // Will not overwrite if already there (good)
+    vars.emplace(name, vars.size());
+}
+
+auto save_variable(compiler_context& ctx, const std::string& name) -> void
+{
+    declare_variable_name(ctx, name);
     if (ctx.scopes.size() == 1) { // Global scope
         ctx.program.emplace_back(anzu::op_save_global{
-            .name=name, .position=vars[name]
+            .name=name, .position=ctx.scopes.back().variables.at(name)
         });
     }
     else {
         ctx.program.emplace_back(anzu::op_save_local{
-            .name=name, .offset=vars[name]
+            .name=name, .offset=ctx.scopes.back().variables.at(name)
         });
     }
+}
+
+auto load_variable(compiler_context& ctx, const std::string& name) -> void
+{
+    const auto& locals = ctx.scopes.back().variables;
+    if (auto it = locals.find(name); it != locals.end()) {
+        ctx.program.emplace_back(anzu::op_load_local{
+            .name=name, .offset=it->second
+        });
+        return;
+    }
+
+    const auto& globals = ctx.scopes.front().variables;
+    if (auto it = globals.find(name); it != globals.end()) {
+        ctx.program.emplace_back(anzu::op_load_global{
+            .name=name, .position=it->second
+        });
+        return;
+    }
+}
+
+auto call_builtin(compiler_context& ctx, const std::string& function_name) -> void
+{
+    const auto& func = anzu::fetch_builtin(function_name);
+    ctx.program.emplace_back(anzu::op_builtin_call{
+        .name=function_name, .ptr=func.ptr, .sig=func.sig
+    });
 }
 
 auto find_function(
@@ -127,21 +160,7 @@ void compile_node(const node_literal_expr& node, compiler_context& ctx)
 
 void compile_node(const node_variable_expr& node, compiler_context& ctx)
 {
-    const auto& locals = ctx.scopes.back().variables;
-    if (auto it = locals.find(node.name); it != locals.end()) {
-        ctx.program.emplace_back(anzu::op_load_local{
-            .name=node.name, .offset=it->second
-        });
-        return;
-    }
-
-    const auto& globals = ctx.scopes.front().variables;
-    if (auto it = globals.find(node.name); it != globals.end()) {
-        ctx.program.emplace_back(anzu::op_load_global{
-            .name=node.name, .position=it->second
-        });
-        return;
-    }
+    load_variable(ctx, node.name);
 }
 
 void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
@@ -236,53 +255,45 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
-    compile_node(*node.container, ctx);
+    const auto container_name = std::string{"_Container"};
+    const auto index_name = std::string{"_Index"};
 
-    // Push the container size to the stack
-    ctx.program.emplace_back(anzu::op_copy_index{0});
-    const auto& list_size = anzu::fetch_builtin("list_size");
-    ctx.program.emplace_back(anzu::op_builtin_call{
-        .name="list_size", .ptr=list_size.ptr, .sig=list_size.sig
-    });
+    // Push the container to the stack
+    compile_node(*node.container, ctx);
+    save_variable(ctx, container_name);
 
     // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_load_literal{ .value=object{0} });
+    save_variable(ctx, index_name);
 
-    // Stack: list, size, counter(0)
+    const auto begin_pos = std::ssize(ctx.program);
+    ctx.program.emplace_back(anzu::op_while{});
 
-    const auto for_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_for{});
-
-    ctx.program.emplace_back(anzu::op_copy_index{1}); // Push size to stack
-    ctx.program.emplace_back(anzu::op_copy_index{1}); // Push index to stack
-    ctx.program.emplace_back(anzu::op_ne{});   // Eval size != index
-
+    load_variable(ctx, index_name);
+    load_variable(ctx, container_name);
+    call_builtin(ctx, "list_size");
+    ctx.program.emplace_back(anzu::op_ne{});
+    
     const auto do_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_jump_if_false{});   // If size == index, jump to end
 
-    // Stack: list, size, index(0)
-    ctx.program.emplace_back(anzu::op_copy_index{2}); // Push container
-    ctx.program.emplace_back(anzu::op_copy_index{1}); // Push index
-    const auto& list_at = anzu::fetch_builtin("list_at");
-    ctx.program.emplace_back(anzu::op_builtin_call{
-        .name="list_at", .ptr=list_at.ptr, .sig=list_at.sig
-    });
-
+    load_variable(ctx, container_name);
+    load_variable(ctx, index_name);
+    call_builtin(ctx, "list_at");
     save_variable(ctx, node.var);
+
     compile_node(*node.body, ctx);
 
     // Increment the index
+    load_variable(ctx, index_name);
     ctx.program.emplace_back(anzu::op_load_literal{ .value=object{1} });
     ctx.program.emplace_back(anzu::op_add{});
+    save_variable(ctx, index_name);
 
     const auto end_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_for_end{ .jump=for_pos }); // Jump back to start
+    ctx.program.emplace_back(anzu::op_while_end{ .jump=begin_pos });
 
-    ctx.program.emplace_back(anzu::op_pop{}); // Pop index
-    ctx.program.emplace_back(anzu::op_pop{}); // Pop size
-    ctx.program.emplace_back(anzu::op_pop{}); // Pop container
-
-    link_up_jumps(ctx, for_pos, do_pos, end_pos);
+    link_up_jumps(ctx, begin_pos, do_pos, end_pos);
 }
 
 void compile_node(const node_break_stmt&, compiler_context& ctx)
@@ -314,10 +325,8 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
     ctx.scopes.back().functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
     ctx.scopes.emplace_back();
-    // Register the args under the names in the function scope
-    auto& vars = ctx.scopes.back().variables;
     for (const auto& arg : node.sig.args) {
-        vars.emplace(arg.name, vars.size());
+        declare_variable_name(ctx, arg.name);
     }
     compile_node(*node.body, ctx);
     ctx.scopes.pop_back();

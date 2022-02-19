@@ -1,9 +1,15 @@
 
-x := true
 
-fn add(x: int, y: int) -> int
+for y in [1, 2, 3, 4]
 {
-    return x + y
+    println(y)
 }
 
-add(1, 2)
+#_Container := [1, 2, 3, 4]
+#_Index := 0
+#while _Index < list_size(_Container)
+#{
+#    y := list_at(_Container, _Index)
+#    println(y)
+#    _Index = _Index + 1
+#}
