@@ -31,6 +31,11 @@ auto program_jump_to(runtime_context& ctx, std::intptr_t idx) -> void
     ctx.frames.back().program_ptr = idx;
 }
 
+auto program_ptr(const runtime_context& ctx) -> std::intptr_t
+{
+    return ctx.frames.back().program_ptr;
+}
+
 // Cleans up the variables used in the current frame and removes the frame
 // pointers to return back to the previous scope.
 auto pop_frame(runtime_context& ctx) -> void
@@ -75,7 +80,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 ctx.memory.resize(idx + 1);
             }
             ctx.memory[idx] = pop_back(ctx.stack);
-            frame.program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_save_global& op) {
             auto& frame = ctx.frames.back();
@@ -84,7 +89,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 ctx.memory.resize(idx + 1);
             }
             ctx.memory[idx] = pop_back(ctx.stack);
-            frame.program_ptr += 1;
+            program_advance(ctx);
         },
         [&](const op_if& op) {
             program_advance(ctx);
@@ -136,7 +141,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.frames.emplace_back();
             auto& frame = ctx.frames.back();
             frame.base_ptr = ctx.memory.size();
-            frame.program_ptr = op.ptr; // Jump into the function
+            program_jump_to(ctx, op.ptr); // Jump into the function
         },
         [&](const op_builtin_call& op) {
             const auto argc = op.sig.args.size();
@@ -237,8 +242,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx);
         },
         [&](const op_debug& op) {
-            auto& frame = ctx.frames.back();
-            frame.program_ptr += 1;
+            program_advance(ctx);
         }
     }, op_code);
 }
@@ -249,8 +253,8 @@ auto run_program(const anzu::program& program) -> void
     ctx.memory.reserve(1000);
     ctx.frames.emplace_back();
 
-    while (ctx.frames.back().program_ptr < std::ssize(program)) {
-        apply_op(ctx, program[ctx.frames.back().program_ptr]);
+    while (program_ptr(ctx) < std::ssize(program)) {
+        apply_op(ctx, program[program_ptr(ctx)]);
     }
 }
 
@@ -260,10 +264,10 @@ auto run_program_debug(const anzu::program& program) -> void
     ctx.memory.reserve(1000);
     ctx.frames.emplace_back();
 
-    while (ctx.frames.back().program_ptr < std::ssize(program)) {
-        const auto& op = program[ctx.frames.back().program_ptr];
-        anzu::print("{:>4} - {}\n", ctx.frames.back().program_ptr, anzu::to_string(op));
-        apply_op(ctx, program[ctx.frames.back().program_ptr]);
+    while (program_ptr(ctx) < std::ssize(program)) {
+        const auto& op = program[program_ptr(ctx)];
+        anzu::print("{:>4} - {}\n", program_ptr(ctx), anzu::to_string(op));
+        apply_op(ctx, program[program_ptr(ctx)]);
     }
 }
 
