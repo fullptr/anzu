@@ -14,12 +14,12 @@ struct frame
 
 struct runtime_context
 {
-    std::vector<frame>        frames;
-    std::vector<anzu::object> stack;
-    std::vector<anzu::object> memory;
+    std::vector<frame>  frames;
+    std::vector<object> stack;
+    std::vector<object> memory;
 };
 
-auto run_program(const anzu::program& program) -> void;
-auto run_program_debug(const anzu::program& program) -> void;
+auto run_program(const program& prog) -> void;
+auto run_program_debug(const program& prog) -> void;
 
 }

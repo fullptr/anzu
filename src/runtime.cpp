@@ -1,7 +1,9 @@
 #include "runtime.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
+#include "utility/scope_timer.hpp"
 
+#include <chrono>
 #include <utility>
 
 namespace anzu {
@@ -249,10 +251,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 
 auto run_program(const anzu::program& program) -> void
 {
-    runtime_context ctx;
-    ctx.memory.reserve(1000);
-    ctx.frames.emplace_back();
+    const auto timer = scope_timer{};
 
+    runtime_context ctx;
+    ctx.frames.emplace_back();
     while (program_ptr(ctx) < std::ssize(program)) {
         apply_op(ctx, program[program_ptr(ctx)]);
     }
@@ -260,10 +262,10 @@ auto run_program(const anzu::program& program) -> void
 
 auto run_program_debug(const anzu::program& program) -> void
 {
-    anzu::runtime_context ctx;
-    ctx.memory.reserve(1000);
-    ctx.frames.emplace_back();
+    const auto timer = scope_timer{};
 
+    runtime_context ctx;
+    ctx.frames.emplace_back();
     while (program_ptr(ctx) < std::ssize(program)) {
         const auto& op = program[program_ptr(ctx)];
         anzu::print("{:>4} - {}\n", program_ptr(ctx), anzu::to_string(op));
