@@ -1,15 +1,10 @@
 
+a := 5
 
-a := 1
-b := 2
-
-println(a)
-println(b)
-
-for c in [1, 2, 3, 4, 5]
+fn access_global() -> int
 {
-    println(c)
+    println(a)
+    return a
 }
 
-a = 2
-d := 10
+access_global()

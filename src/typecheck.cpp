@@ -256,9 +256,6 @@ auto typecheck_function_body_with_signature(
     ctx.scopes.back().variables[return_key()] = sig.return_type; // Expose the return type for children
  
     typecheck_node(ctx, *node.body);
-
-    anzu::print("Number of variables used in function '{}': {}\n",
-                node.name, ctx.scopes.back().variables.size());
     ctx.scopes.pop_back();
 
     check_function_ends_with_return(node);
@@ -295,8 +292,15 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
             return type_of(node.value);
         },
         [&](const node_variable_expr& node) {
-            const auto& top = ctx.scopes.back();
-            return top.variables.at(node.name);
+            const auto& locals = ctx.scopes.back().variables;
+            if (auto it = locals.find(node.name); it != locals.end()) {
+                return it->second;
+            }
+            const auto& globals = ctx.scopes.front().variables;
+            if (auto it = globals.find(node.name); it != globals.end()) {
+                return it->second;
+            }
+            type_error(node.token, "could not find variable '{}'\n", node.name);
         },
         [&](const node_function_call_expr& node) {
             return typecheck_function_call(ctx, node.token, node.function_name, node.args);

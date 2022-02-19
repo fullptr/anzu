@@ -136,7 +136,7 @@ void compile_node(const node_variable_expr& node, compiler_context& ctx)
     }
 
     const auto& globals = ctx.scopes.front().variables;
-    if (auto it = globals.find(node.name); it != locals.end()) {
+    if (auto it = globals.find(node.name); it != globals.end()) {
         ctx.program.emplace_back(anzu::op_load_global{
             .name=node.name, .position=it->second
         });
