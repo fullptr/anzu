@@ -33,6 +33,22 @@ struct compiler_context
     std::vector<compiler_scope> scopes;
 };
 
+auto save_variable(compiler_context& ctx, const std::string& name) -> void
+{
+    auto& vars = ctx.scopes.back().variables;
+    vars.emplace(name, vars.size()); // Will not overwrite if already there (good)
+    if (ctx.scopes.size() == 1) { // Global scope
+        ctx.program.emplace_back(anzu::op_save_global{
+            .name=name, .position=vars[name]
+        });
+    }
+    else {
+        ctx.program.emplace_back(anzu::op_save_local{
+            .name=name, .offset=vars[name]
+        });
+    }
+}
+
 auto find_function(
     const compiler_context& ctx, const std::string& function
 )
@@ -111,7 +127,21 @@ void compile_node(const node_literal_expr& node, compiler_context& ctx)
 
 void compile_node(const node_variable_expr& node, compiler_context& ctx)
 {
-    ctx.program.emplace_back(anzu::op_load_local{ .name=node.name });
+    const auto& locals = ctx.scopes.back().variables;
+    if (auto it = locals.find(node.name); it != locals.end()) {
+        ctx.program.emplace_back(anzu::op_load_local{
+            .name=node.name, .offset=it->second
+        });
+        return;
+    }
+
+    const auto& globals = ctx.scopes.front().variables;
+    if (auto it = globals.find(node.name); it != locals.end()) {
+        ctx.program.emplace_back(anzu::op_load_global{
+            .name=node.name, .position=it->second
+        });
+        return;
+    }
 }
 
 void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
@@ -238,11 +268,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
         .name="list_at", .ptr=list_at.ptr, .sig=list_at.sig
     });
 
-    auto& vars = ctx.scopes.back().variables;
-    vars.emplace(node.var, vars.size());
-    anzu::print("Storing {} at offset {}\n", node.var, vars.at(node.var));
-    ctx.program.emplace_back(anzu::op_save_local{ .name=node.var }); // Store in var
-
+    save_variable(ctx, node.var);
     compile_node(*node.body, ctx);
 
     // Increment the index
@@ -272,16 +298,13 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    auto& vars = ctx.scopes.back().variables;
-    vars.emplace(node.name, vars.size());
-    anzu::print("Storing {} at offset {}\n", node.name, vars.at(node.name));
-    ctx.program.emplace_back(anzu::op_save_local{ .name=node.name });
+    save_variable(ctx, node.name);
 }
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    ctx.program.emplace_back(anzu::op_save_local{ .name=node.name });
+    save_variable(ctx, node.name);
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
@@ -292,10 +315,7 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 
     ctx.scopes.emplace_back();
     for (const auto& arg : node.sig.args | std::views::reverse) {
-        auto& vars = ctx.scopes.back().variables;
-        vars.emplace(arg.name, vars.size());
-        anzu::print("Storing {} at offset {}\n", arg.name, vars.at(arg.name));
-        ctx.program.emplace_back(anzu::op_save_local{ .name = arg.name });
+        save_variable(ctx, arg.name);
     }
     compile_node(*node.body, ctx);
     ctx.scopes.pop_back();

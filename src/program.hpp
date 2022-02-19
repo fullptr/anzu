@@ -18,11 +18,13 @@ struct op_load_literal
 struct op_load_local
 {
     std::string name;
+    std::size_t offset;
 };
 
 struct op_load_global
 {
     std::string name;
+    std::size_t position;
 };
 
 struct op_pop
@@ -38,11 +40,13 @@ struct op_copy_index
 struct op_save_local
 {
     std::string name;
+    std::size_t offset;
 };
 
 struct op_save_global
 {
     std::string name;
+    std::size_t position;
 };
 
 
