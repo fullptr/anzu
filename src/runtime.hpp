@@ -24,6 +24,7 @@ struct frame
 {
     anzu::memory  memory;
     std::intptr_t ptr = 0;
+    std::intptr_t base_ptr = 0;
 };
 
 class runtime_context
@@ -40,6 +41,8 @@ public:
     auto pop_value() -> object;
     auto peek_value(std::size_t index = 0) -> object&;
     auto size() const -> std::size_t;
+
+    std::vector<anzu::object> values;
 };
 
 auto run_program(const anzu::program& program) -> void;

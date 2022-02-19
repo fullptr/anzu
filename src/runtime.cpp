@@ -73,12 +73,14 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         },
         [&](const op_load_local& op) {
             auto& frame = ctx.peek_frame();
-            ctx.push_value(frame.memory.get(op.name));
+            const auto idx = frame.base_ptr + op.offset;
+            ctx.push_value(ctx.values[idx]);
             frame.ptr += 1;
         },
         [&](const op_load_global& op) {
             auto& frame = ctx.peek_frame();
-            ctx.push_value(frame.memory.get(op.name));
+            const auto idx = op.position;
+            ctx.push_value(ctx.values[idx]);
             frame.ptr += 1;
         },
         [&](const op_pop& op) {
@@ -91,12 +93,20 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         },
         [&](const op_save_local& op) {
             auto& frame = ctx.peek_frame();
-            frame.memory.insert(op.name, ctx.pop_value());
+            const auto idx = frame.base_ptr + op.offset;
+            if (idx >= ctx.values.size()) {
+                ctx.values.resize(idx + 1);
+            }
+            ctx.values[idx] = ctx.pop_value();
             frame.ptr += 1;
         },
         [&](const op_save_global& op) {
             auto& frame = ctx.peek_frame();
-            frame.memory.insert(op.name, ctx.pop_value());
+            const auto idx = op.position;
+            if (idx >= ctx.values.size()) {
+                ctx.values.resize(idx + 1);
+            }
+            ctx.values[idx] = ctx.pop_value();
             frame.ptr += 1;
         },
         [&](const op_if& op) {
@@ -137,16 +147,25 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.peek_frame().ptr = op.jump;
         },
         [&](const op_function_end& op) {
+            const auto num_to_pop = ctx.values.size() - ctx.peek_frame().base_ptr;
+            for (std::size_t i = 0; i != num_to_pop; ++i) {
+                ctx.values.pop_back();
+            }
             ctx.push_value(anzu::null_object());
             ctx.pop_frame();
         },
         [&](const op_return& op) {
+            const auto num_to_pop = ctx.values.size() - ctx.peek_frame().base_ptr;
+            for (std::size_t i = 0; i != num_to_pop; ++i) {
+                ctx.values.pop_back();
+            }
             ctx.pop_frame();
         },
         [&](const op_function_call& op) {
             ctx.peek_frame().ptr += 1; // Position after function call
 
-            auto& frame = ctx.push_frame(); 
+            auto& frame = ctx.push_frame();
+            frame.base_ptr = ctx.values.size();
             frame.ptr = op.ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {
@@ -269,6 +288,7 @@ auto run_program(const anzu::program& program) -> void
 auto run_program_debug(const anzu::program& program) -> void
 {
     anzu::runtime_context ctx;
+    ctx.values.reserve(1000);
     ctx.push_frame();
 
     while (ctx.peek_frame().ptr < std::ssize(program)) {
