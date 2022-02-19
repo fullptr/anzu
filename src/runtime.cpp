@@ -14,10 +14,6 @@ auto memory::insert(const std::string& name, const anzu::object& value) -> anzu:
 
 auto memory::get(const std::string& name) -> anzu::object&
 {
-    if (!d_values.contains(name)) {
-        anzu::print("Error: Unknown value '{}'", name);
-        std::exit(1);
-    }
     return d_values.at(name);
 }
 

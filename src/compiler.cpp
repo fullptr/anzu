@@ -293,8 +293,8 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
     ctx.scopes.emplace_back();
     for (const auto& arg : node.sig.args | std::views::reverse) {
         auto& vars = ctx.scopes.back().variables;
-        vars.emplace(node.name, vars.size());
-        anzu::print("Storing {} at offset {}\n", node.name, vars.at(node.name));
+        vars.emplace(arg.name, vars.size());
+        anzu::print("Storing {} at offset {}\n", arg.name, vars.at(arg.name));
         ctx.program.emplace_back(anzu::op_store{ .name = arg.name });
     }
     compile_node(*node.body, ctx);
