@@ -42,8 +42,7 @@ auto program_ptr(const runtime_context& ctx) -> std::intptr_t
 // pointers to return back to the previous scope.
 auto pop_frame(runtime_context& ctx) -> void
 {
-    const auto num_to_pop = ctx.memory.size() - ctx.frames.back().base_ptr;
-    for (std::size_t i = 0; i != num_to_pop; ++i) {
+    while (std::ssize(ctx.memory) > ctx.frames.back().base_ptr) {
         ctx.memory.pop_back();
     }
     ctx.frames.pop_back();
@@ -78,19 +77,21 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_save_local& op) {
             auto& frame = ctx.frames.back();
             const auto idx = frame.base_ptr + op.offset;
-            if (idx >= ctx.memory.size()) {
-                ctx.memory.resize(idx + 1);
+            if (idx == std::ssize(ctx.memory)) {
+                ctx.memory.push_back(pop_back(ctx.stack));    
+            } else {
+                ctx.memory[idx] = pop_back(ctx.stack);
             }
-            ctx.memory[idx] = pop_back(ctx.stack);
             program_advance(ctx);
         },
         [&](const op_save_global& op) {
             auto& frame = ctx.frames.back();
             const auto idx = op.position;
-            if (idx >= ctx.memory.size()) {
-                ctx.memory.resize(idx + 1);
+            if (idx == std::ssize(ctx.memory)) {
+                ctx.memory.push_back(pop_back(ctx.stack));  
+            } else {
+                ctx.memory[idx] = pop_back(ctx.stack);
             }
-            ctx.memory[idx] = pop_back(ctx.stack);
             program_advance(ctx);
         },
         [&](const op_if& op) {
