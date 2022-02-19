@@ -237,9 +237,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
             push_back(ctx.memory, object{list});
             program_advance(ctx);
-        },
-        [&](const op_debug& op) {
-            program_advance(ctx);
         }
     }, op_code);
 }
@@ -268,8 +265,7 @@ auto run_program_debug(const anzu::program& program) -> void
         anzu::print(
             "Memory: {}\n", 
             anzu::format_comma_separated(
-                ctx.memory,
-                [](const auto& o) { return o.to_repr(); }
+                ctx.memory, [](const auto& o) { return o.to_repr(); }
             )
         );
     }

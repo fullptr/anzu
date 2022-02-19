@@ -119,8 +119,7 @@ auto evaluate_const_expressions(node_stmt& tree) -> void
         },
         [](node_return_stmt& stmt) {
             evaluate_const_expressions(*stmt.return_value);
-        },
-        [](node_debug_stmt& stmt) {}
+        }
     }, tree);
 }
 

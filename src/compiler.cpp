@@ -349,11 +349,6 @@ void compile_node(const node_return_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_return{});
 }
 
-void compile_node(const node_debug_stmt& node, compiler_context& ctx)
-{
-    ctx.program.emplace_back(anzu::op_debug{});
-}
-
 auto compile_node(const node_expr& root, compiler_context& ctx) -> void
 {
     std::visit([&](const auto& node) { compile_node(node, ctx); }, root);

@@ -426,10 +426,6 @@ auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)
     verify_expression_type(ctx, *node.return_value, return_type);
 }
 
-auto typecheck_node(typecheck_context& ctx, const node_debug_stmt& node)
-{
-}
-
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 {
     std::visit([&](const auto& n) { typecheck_node(ctx, n); }, node);

@@ -18,7 +18,6 @@ constexpr auto tk_true      = sv{"true"};
 constexpr auto tk_while     = sv{"while"};
 constexpr auto tk_function  = sv{"fn"};
 constexpr auto tk_return    = sv{"return"};
-constexpr auto tk_debug     = sv{"__debug__"};
 
 // Builtin Types
 constexpr auto tk_int       = sv{"int"};

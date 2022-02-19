@@ -173,11 +173,6 @@ struct op_build_list
     std::size_t size;
 };
 
-struct op_debug
-{
-
-};
-
 struct op : std::variant<
     op_load_literal,
     op_load_local,
@@ -212,9 +207,7 @@ struct op : std::variant<
     op_return,
     op_function_call,
     op_builtin_call,
-    op_build_list,
-
-    op_debug
+    op_build_list
 >
 {};
 
