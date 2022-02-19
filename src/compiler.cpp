@@ -210,7 +210,7 @@ void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
 void compile_node(const node_while_stmt& node, compiler_context& ctx)
 {
     const auto while_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_while{});
+    ctx.program.emplace_back(anzu::op_loop_begin{});
 
     compile_node(*node.condition, ctx);
     
@@ -220,7 +220,7 @@ void compile_node(const node_while_stmt& node, compiler_context& ctx)
     compile_node(*node.body, ctx);
 
     const auto end_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_while_end{ .jump=while_pos }); // Jump back to start
+    ctx.program.emplace_back(anzu::op_loop_end{ .jump=while_pos }); // Jump back to start
 
     link_up_jumps(ctx, while_pos, do_pos, end_pos);
 }
@@ -267,7 +267,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     save_variable(ctx, index_name);
 
     const auto begin_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_while{});
+    ctx.program.emplace_back(anzu::op_loop_begin{});
 
     load_variable(ctx, index_name);
     load_variable(ctx, container_name);
@@ -291,7 +291,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     save_variable(ctx, index_name);
 
     const auto end_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_while_end{ .jump=begin_pos });
+    ctx.program.emplace_back(anzu::op_loop_end{ .jump=begin_pos });
 
     link_up_jumps(ctx, begin_pos, do_pos, end_pos);
 }

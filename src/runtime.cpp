@@ -104,16 +104,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_else& op) {
             program_jump_to(ctx, op.jump);
         },
-        [&](const op_while& op) {
+        [&](const op_loop_begin& op) {
             program_advance(ctx);
         },
-        [&](const op_while_end& op) {
-            program_jump_to(ctx, op.jump);
-        },
-        [&](const op_for& op) {
-            program_advance(ctx);
-        },
-        [&](const op_for_end& op) {
+        [&](const op_loop_end& op) {
             program_jump_to(ctx, op.jump);
         },
         [&](const op_break& op) {

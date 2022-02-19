@@ -4,12 +4,3 @@ for y in [1, 2, 3, 4]
 {
     println(y)
 }
-
-#_Container := [1, 2, 3, 4]
-#_Index := 0
-#while _Index < list_size(_Container)
-#{
-#    y := list_at(_Container, _Index)
-#    println(y)
-#    _Index = _Index + 1
-#}

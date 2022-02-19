@@ -63,20 +63,11 @@ struct op_else
     std::intptr_t jump = -1;
 };
 
-struct op_while
+struct op_loop_begin
 {
 };
 
-struct op_while_end
-{
-    std::intptr_t jump = -1;
-};
-
-struct op_for
-{
-};
-
-struct op_for_end
+struct op_loop_end
 {
     std::intptr_t jump = -1;
 };
@@ -198,10 +189,8 @@ struct op : std::variant<
     op_if,
     op_if_end,
     op_else,
-    op_while,
-    op_while_end,
-    op_for,
-    op_for_end,
+    op_loop_begin,
+    op_loop_end,
     op_break,
     op_continue,
     op_jump_if_false,
