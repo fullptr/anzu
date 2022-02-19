@@ -237,6 +237,10 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name="list_at", .ptr=list_at.ptr, .sig=list_at.sig
     });
+
+    auto& vars = ctx.scopes.back().variables;
+    vars.emplace(node.var, vars.size());
+    anzu::print("Storing {} at offset {}\n", node.var, vars.at(node.var));
     ctx.program.emplace_back(anzu::op_store{ .name=node.var }); // Store in var
 
     compile_node(*node.body, ctx);
@@ -268,6 +272,9 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
+    auto& vars = ctx.scopes.back().variables;
+    vars.emplace(node.name, vars.size());
+    anzu::print("Storing {} at offset {}\n", node.name, vars.at(node.name));
     ctx.program.emplace_back(anzu::op_store{ .name=node.name });
 }
 
@@ -284,6 +291,12 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
     ctx.scopes.back().functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
     ctx.scopes.emplace_back();
+    for (const auto& arg : node.sig.args | std::views::reverse) {
+        auto& vars = ctx.scopes.back().variables;
+        vars.emplace(node.name, vars.size());
+        anzu::print("Storing {} at offset {}\n", node.name, vars.at(node.name));
+        ctx.program.emplace_back(anzu::op_store{ .name = arg.name });
+    }
     compile_node(*node.body, ctx);
     ctx.scopes.pop_back();
 

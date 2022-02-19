@@ -1,5 +1,15 @@
+
+
 a := 1
 b := 2
 
 println(a)
 println(b)
+
+for c in [1, 2, 3, 4, 5]
+{
+    println(c)
+}
+
+a = 2
+d := 10
