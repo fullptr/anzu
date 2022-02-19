@@ -14,14 +14,8 @@ struct frame
 
 struct runtime_context
 {
-    auto push_frame() -> frame&;
-    auto pop_frame() -> void;
     auto peek_frame(std::size_t index = 0) -> frame&;
-
-    auto push_value(const object& val) -> object&;
-    auto pop_value() -> object;
     auto peek_value(std::size_t index = 0) -> object&;
-    auto size() const -> std::size_t;
 
     std::vector<frame>        frames;
     std::vector<anzu::object> stack;
