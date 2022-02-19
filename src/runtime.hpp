@@ -3,26 +3,14 @@
 #include "program.hpp"
 
 #include <stack>
-#include <unordered_map>
 #include <string>
 #include <variant>
 #include <ranges>
 
 namespace anzu {
 
-class memory
-{
-    std::unordered_map<std::string, anzu::object> d_values;
-
-public:
-    auto insert(const std::string& name, const anzu::object& value) -> anzu::object&;
-    auto get(const std::string& name) -> anzu::object&;
-    auto print() const -> void;
-};
-
 struct frame
 {
-    anzu::memory  memory;
     std::intptr_t ptr = 0;
     std::intptr_t base_ptr = 0;
 };

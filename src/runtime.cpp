@@ -6,25 +6,6 @@
 
 namespace anzu {
 
-auto memory::insert(const std::string& name, const anzu::object& value) -> anzu::object&
-{
-    auto [iter, success] = d_values.insert_or_assign(name, value);
-    return iter->second;
-}
-
-auto memory::get(const std::string& name) -> anzu::object&
-{
-    return d_values.at(name);
-}
-
-auto memory::print() const -> void
-{
-    anzu::print("Values:\n");
-    for (const auto& [key, val] : d_values) {
-        anzu::print(" - {} -> {}\n", key, val.to_repr());
-    }
-}
-
 auto runtime_context::push_frame() -> frame&
 {
     d_frames.push_back({});
@@ -268,8 +249,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         },
         [&](const op_debug& op) {
             auto& frame = ctx.peek_frame();
-            anzu::print("frame memory:\n");
-            frame.memory.print();
             frame.ptr += 1;
         }
     }, op_code);
