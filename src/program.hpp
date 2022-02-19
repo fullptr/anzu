@@ -10,12 +10,12 @@
 
 namespace anzu {
 
-struct op_push_const
+struct op_load_literal
 {
     anzu::object value;
 };
 
-struct op_push_var
+struct op_load_variable
 {
     std::string name;
 };
@@ -30,7 +30,7 @@ struct op_copy_index
     int index;
 };
 
-struct op_store
+struct op_save_variable
 {
     std::string name;
 };
@@ -173,11 +173,11 @@ struct op_debug
 };
 
 struct op : std::variant<
-    op_push_const,
-    op_push_var,
+    op_load_literal,
+    op_load_variable,
     op_pop,
     op_copy_index,
-    op_store,
+    op_save_variable,
     op_if,
     op_if_end,
     op_else,

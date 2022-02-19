@@ -67,11 +67,11 @@ auto runtime_context::size() const -> std::size_t
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
-        [&](const op_push_const& op) {
+        [&](const op_load_literal& op) {
             ctx.push_value(op.value);
             ctx.peek_frame().ptr += 1;
         },
-        [&](const op_push_var& op) {
+        [&](const op_load_variable& op) {
             auto& frame = ctx.peek_frame();
             ctx.push_value(frame.memory.get(op.name));
             frame.ptr += 1;
@@ -84,7 +84,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.push_value(ctx.peek_value(op.index));
             ctx.peek_frame().ptr += 1;
         },
-        [&](const op_store& op) {
+        [&](const op_save_variable& op) {
             auto& frame = ctx.peek_frame();
             frame.memory.insert(op.name, ctx.pop_value());
             frame.ptr += 1;

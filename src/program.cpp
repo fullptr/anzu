@@ -15,11 +15,11 @@ constexpr auto FORMAT3 = std::string_view{"{:<30} {:<20} {}"};
 auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
-        [&](const op_push_const& op) {
-            return std::format("OP_PUSH_CONST({})", op.value.to_repr());
+        [&](const op_load_literal& op) {
+            return std::format("OP_LOAD_LITERAL({})", op.value.to_repr());
         },
-        [&](const op_push_var& op) {
-            return std::format("OP_PUSH_VAR({})", op.name);
+        [&](const op_load_variable& op) {
+            return std::format("OP_LOAD_VARIABLE({})", op.name);
         },
         [&](const op_pop& op) {
             return std::string{"OP_POP"};
@@ -27,8 +27,8 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_copy_index& op) {
             return std::format("OP_COPY_INDEX({})", op.index);
         },
-        [&](const op_store& op) {
-            return std::format("OP_STORE({})", op.name);
+        [&](const op_save_variable& op) {
+            return std::format("OP_SAVE_VARIABLE({})", op.name);
         },
         [&](const op_if& op) {
             return std::string{"OP_IF"};
