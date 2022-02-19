@@ -18,8 +18,11 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_load_literal& op) {
             return std::format("OP_LOAD_LITERAL({})", op.value.to_repr());
         },
-        [&](const op_load_variable& op) {
-            return std::format("OP_LOAD_VARIABLE({})", op.name);
+        [&](const op_load_local& op) {
+            return std::format("OP_LOAD_LOCAL({})", op.name);
+        },
+        [&](const op_load_global& op) {
+            return std::format("OP_LOAD_GLOBAL({})", op.name);
         },
         [&](const op_pop& op) {
             return std::string{"OP_POP"};
@@ -27,8 +30,11 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_copy_index& op) {
             return std::format("OP_COPY_INDEX({})", op.index);
         },
-        [&](const op_save_variable& op) {
-            return std::format("OP_SAVE_VARIABLE({})", op.name);
+        [&](const op_save_local& op) {
+            return std::format("OP_SAVE_LOCAL({})", op.name);
+        },
+        [&](const op_save_global& op) {
+            return std::format("OP_SAVE_GLOBAL({})", op.name);
         },
         [&](const op_if& op) {
             return std::string{"OP_IF"};

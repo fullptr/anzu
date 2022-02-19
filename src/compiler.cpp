@@ -111,7 +111,7 @@ void compile_node(const node_literal_expr& node, compiler_context& ctx)
 
 void compile_node(const node_variable_expr& node, compiler_context& ctx)
 {
-    ctx.program.emplace_back(anzu::op_load_variable{ .name=node.name });
+    ctx.program.emplace_back(anzu::op_load_local{ .name=node.name });
 }
 
 void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
@@ -241,7 +241,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     auto& vars = ctx.scopes.back().variables;
     vars.emplace(node.var, vars.size());
     anzu::print("Storing {} at offset {}\n", node.var, vars.at(node.var));
-    ctx.program.emplace_back(anzu::op_save_variable{ .name=node.var }); // Store in var
+    ctx.program.emplace_back(anzu::op_save_local{ .name=node.var }); // Store in var
 
     compile_node(*node.body, ctx);
 
@@ -275,13 +275,13 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
     auto& vars = ctx.scopes.back().variables;
     vars.emplace(node.name, vars.size());
     anzu::print("Storing {} at offset {}\n", node.name, vars.at(node.name));
-    ctx.program.emplace_back(anzu::op_save_variable{ .name=node.name });
+    ctx.program.emplace_back(anzu::op_save_local{ .name=node.name });
 }
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    ctx.program.emplace_back(anzu::op_save_variable{ .name=node.name });
+    ctx.program.emplace_back(anzu::op_save_local{ .name=node.name });
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
@@ -295,7 +295,7 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
         auto& vars = ctx.scopes.back().variables;
         vars.emplace(arg.name, vars.size());
         anzu::print("Storing {} at offset {}\n", arg.name, vars.at(arg.name));
-        ctx.program.emplace_back(anzu::op_save_variable{ .name = arg.name });
+        ctx.program.emplace_back(anzu::op_save_local{ .name = arg.name });
     }
     compile_node(*node.body, ctx);
     ctx.scopes.pop_back();
