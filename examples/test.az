@@ -1,10 +1,9 @@
 
-a := 5
+x := true
 
-fn access_global() -> int
+fn add(x: int, y: int) -> int
 {
-    println(a)
-    return a
+    return x + y
 }
 
-access_global()
+add(1, 2)

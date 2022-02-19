@@ -314,8 +314,10 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
     ctx.scopes.back().functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
     ctx.scopes.emplace_back();
-    for (const auto& arg : node.sig.args | std::views::reverse) {
-        save_variable(ctx, arg.name);
+    // Register the args under the names in the function scope
+    auto& vars = ctx.scopes.back().variables;
+    for (const auto& arg : node.sig.args) {
+        vars.emplace(arg.name, vars.size());
     }
     compile_node(*node.body, ctx);
     ctx.scopes.pop_back();
