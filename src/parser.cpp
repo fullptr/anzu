@@ -317,9 +317,6 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(tokens);
     }
-    if (tokens.peek(tk_debug)) {
-        return std::make_unique<node_stmt>(node_debug_stmt{ tokens.consume() });
-    }
     parser_error(tokens.curr(), "unknown statement '{}'", tokens.curr().text);
 }
 

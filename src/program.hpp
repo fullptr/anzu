@@ -10,30 +10,27 @@
 
 namespace anzu {
 
-struct op_push_const
+struct op_load_literal
 {
     anzu::object value;
 };
 
-struct op_push_var
+struct op_load_variable
 {
     std::string name;
+    std::size_t offset;
 };
 
 struct op_pop
 {
 };
 
-// 0 == OP_DUP, 1 == OP_OVER, ...
-struct op_copy_index
-{
-    int index;
-};
-
-struct op_store
+struct op_save_variable
 {
     std::string name;
+    std::size_t offset;
 };
+
 
 struct op_if
 {
@@ -48,20 +45,11 @@ struct op_else
     std::intptr_t jump = -1;
 };
 
-struct op_while
+struct op_loop_begin
 {
 };
 
-struct op_while_end
-{
-    std::intptr_t jump = -1;
-};
-
-struct op_for
-{
-};
-
-struct op_for_end
+struct op_loop_end
 {
     std::intptr_t jump = -1;
 };
@@ -167,24 +155,16 @@ struct op_build_list
     std::size_t size;
 };
 
-struct op_debug
-{
-
-};
-
 struct op : std::variant<
-    op_push_const,
-    op_push_var,
+    op_load_literal,
+    op_load_variable,
     op_pop,
-    op_copy_index,
-    op_store,
+    op_save_variable,
     op_if,
     op_if_end,
     op_else,
-    op_while,
-    op_while_end,
-    op_for,
-    op_for_end,
+    op_loop_begin,
+    op_loop_end,
     op_break,
     op_continue,
     op_jump_if_false,
@@ -206,9 +186,7 @@ struct op : std::variant<
     op_return,
     op_function_call,
     op_builtin_call,
-    op_build_list,
-
-    op_debug
+    op_build_list
 >
 {};
 

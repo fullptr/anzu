@@ -61,7 +61,7 @@ fn adder(a: int, b: int, c: int) -> int
 }
 
 print("Does adder(1, 2, 3) == 6? ")
-if to_bool(adder(1, 2, 3) == 6) {
+if adder(1, 2, 3) == 6 {
     println("yes")
 } else {
     println("no")

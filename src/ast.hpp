@@ -144,11 +144,6 @@ struct node_return_stmt
     anzu::token token;
 };
 
-struct node_debug_stmt
-{
-    anzu::token token;
-};
-
 struct node_stmt : std::variant<
     node_sequence_stmt,
     node_while_stmt,
@@ -160,8 +155,7 @@ struct node_stmt : std::variant<
     node_assignment_stmt,
     node_function_def_stmt,
     node_function_call_stmt,
-    node_return_stmt,
-    node_debug_stmt>
+    node_return_stmt>
 {
 };
 

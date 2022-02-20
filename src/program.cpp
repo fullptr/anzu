@@ -15,20 +15,17 @@ constexpr auto FORMAT3 = std::string_view{"{:<30} {:<20} {}"};
 auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
-        [&](const op_push_const& op) {
-            return std::format("OP_PUSH_CONST({})", op.value.to_repr());
+        [&](const op_load_literal& op) {
+            return std::format("OP_LOAD_LITERAL({})", op.value.to_repr());
         },
-        [&](const op_push_var& op) {
-            return std::format("OP_PUSH_VAR({})", op.name);
+        [&](const op_load_variable& op) {
+            return std::format("OP_LOAD_VARIABLE({})", op.name);
         },
         [&](const op_pop& op) {
             return std::string{"OP_POP"};
         },
-        [&](const op_copy_index& op) {
-            return std::format("OP_COPY_INDEX({})", op.index);
-        },
-        [&](const op_store& op) {
-            return std::format("OP_STORE({})", op.name);
+        [&](const op_save_variable& op) {
+            return std::format("OP_SAVE_VARIABLE({})", op.name);
         },
         [&](const op_if& op) {
             return std::string{"OP_IF"};
@@ -40,19 +37,12 @@ auto to_string(const op& op_code) -> std::string
             const auto jump_str = std::format("JUMP -> {}", op.jump);
             return std::format(FORMAT2, "OP_ELSE", jump_str);
         },
-        [&](const op_while& op) {
-            return std::string{"OP_WHILE"};
+        [&](const op_loop_begin& op) {
+            return std::string{"OP_LOOP_BEGIN"};
         },
-        [&](const op_while_end& op) {
+        [&](const op_loop_end& op) {
             const auto jump_str = std::format("JUMP -> {}", op.jump);
-            return std::format(FORMAT2, "OP_END_WHILE", jump_str);
-        },
-        [&](const op_for& op) {
-            return std::string{"OP_FOR"};
-        },
-        [&](const op_for_end& op) {
-            const auto jump_str = std::format("JUMP -> {}", op.jump);
-            return std::format(FORMAT2, "OP_END_FOR", jump_str);
+            return std::format(FORMAT2, "OP_LOOP_END", jump_str);
         },
         [&](const op_break& op) {
             const auto jump_str = std::format("JUMP -> {}", op.jump);
@@ -126,9 +116,6 @@ auto to_string(const op& op_code) -> std::string
         },
         [&](const op_build_list& op) {
             return std::format("OP_BUILD_LIST({})", op.size);
-        },
-        [&](const op_debug& op) {
-            return std::string{"OP_DEBUG"};
         }
     }, op_code);
 }

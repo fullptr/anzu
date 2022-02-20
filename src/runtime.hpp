@@ -2,47 +2,23 @@
 #include "object.hpp"
 #include "program.hpp"
 
-#include <stack>
-#include <unordered_map>
-#include <string>
-#include <variant>
-#include <ranges>
+#include <vector>
 
 namespace anzu {
 
-class memory
-{
-    std::unordered_map<std::string, anzu::object> d_values;
-
-public:
-    auto insert(const std::string& name, const anzu::object& value) -> anzu::object&;
-    auto get(const std::string& name) -> anzu::object&;
-    auto print() const -> void;
-};
-
 struct frame
 {
-    anzu::memory  memory;
-    std::intptr_t ptr = 0;
+    std::intptr_t program_ptr = 0;
+    std::intptr_t base_ptr = 0;
 };
 
-class runtime_context
+struct runtime_context
 {
-    std::vector<frame>        d_frames;
-    std::vector<anzu::object> d_values;
-
-public:
-    auto push_frame() -> frame&;
-    auto pop_frame() -> void;
-    auto peek_frame(std::size_t index = 0) -> frame&;
-
-    auto push_value(const object& val) -> object&;
-    auto pop_value() -> object;
-    auto peek_value(std::size_t index = 0) -> object&;
-    auto size() const -> std::size_t;
+    std::vector<frame>  frames;
+    std::vector<object> memory;
 };
 
-auto run_program(const anzu::program& program) -> void;
-auto run_program_debug(const anzu::program& program) -> void;
+auto run_program(const program& prog) -> void;
+auto run_program_debug(const program& prog) -> void;
 
 }
