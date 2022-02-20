@@ -292,13 +292,10 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
             return type_of(node.value);
         },
         [&](const node_variable_expr& node) {
-            const auto& locals = ctx.scopes.back().variables;
-            if (auto it = locals.find(node.name); it != locals.end()) {
-                return it->second;
-            }
-            const auto& globals = ctx.scopes.front().variables;
-            if (auto it = globals.find(node.name); it != globals.end()) {
-                return it->second;
+            for (const auto& scope : ctx.scopes | std::views::reverse) {
+                if (auto it = scope.variables.find(node.name); it != scope.variables.end()) {
+                    return it->second;
+                }
             }
             type_error(node.token, "could not find variable '{}'\n", node.name);
         },
