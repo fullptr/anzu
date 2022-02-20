@@ -284,9 +284,6 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    if (tokens.peek(tk_function)) {
-        return parse_function_def_stmt(tokens);
-    }
     if (tokens.peek(tk_return)) {
         return parse_return_stmt(tokens);
     }
@@ -320,6 +317,14 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     parser_error(tokens.curr(), "unknown statement '{}'", tokens.curr().text);
 }
 
+auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
+{
+    if (tokens.peek(tk_function)) {
+        return parse_function_def_stmt(tokens);
+    }
+    return parse_statement(tokens);
+}
+
 }
 
 auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr
@@ -329,7 +334,7 @@ auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr
     auto root = std::make_unique<anzu::node_stmt>();
     auto& seq = root->emplace<anzu::node_sequence_stmt>();
     while (stream.valid()) {
-        seq.sequence.push_back(parse_statement(stream));
+        seq.sequence.push_back(parse_top_level_statement(stream));
     }
     return root;
 }

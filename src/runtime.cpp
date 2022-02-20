@@ -73,7 +73,12 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory.push_back(op.value);
             program_advance(ctx);
         },
-        [&](const op_load_variable& op) {
+        [&](const op_load_global& op) {
+            const auto idx = op.position;
+            ctx.memory.push_back(ctx.memory[idx]);
+            program_advance(ctx);
+        },
+        [&](const op_load_local& op) {
             const auto idx = base_ptr(ctx) + op.offset;
             ctx.memory.push_back(ctx.memory[idx]);
             program_advance(ctx);
@@ -82,7 +87,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory.pop_back();
             program_advance(ctx);
         },
-        [&](const op_save_variable& op) {
+        [&](const op_save_global& op) {
+            save_top_at(ctx, op.position);
+            program_advance(ctx);
+        },
+        [&](const op_save_local& op) {
             save_top_at(ctx, base_ptr(ctx) + op.offset);
             program_advance(ctx);
         },

@@ -1,12 +1,12 @@
 
 
-for y in [1, 2, 3, 4]
-{
-    println(y)
-}
-println(y)
+x := 5
 
-for y in ["1", "2", "3", "4"]
+fn foo() -> null
 {
-    println(y)
+    x := 6
+    println(x)
 }
+
+foo()
+println(x)
