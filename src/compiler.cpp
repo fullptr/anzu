@@ -43,34 +43,20 @@ auto declare_variable_name(compiler_context& ctx, const std::string& name) -> vo
 auto save_variable(compiler_context& ctx, const std::string& name) -> void
 {
     declare_variable_name(ctx, name);
-    if (ctx.scopes.size() == 1) { // Global scope
-        ctx.program.emplace_back(anzu::op_save_global{
-            .name=name, .position=ctx.scopes.back().variables.at(name)
-        });
-    }
-    else {
-        ctx.program.emplace_back(anzu::op_save_local{
-            .name=name, .offset=ctx.scopes.back().variables.at(name)
-        });
-    }
+    ctx.program.emplace_back(anzu::op_save_variable{
+        .name=name, .offset=ctx.scopes.back().variables.at(name)
+    });
 }
 
 auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
-    const auto& locals = ctx.scopes.back().variables;
-    if (auto it = locals.find(name); it != locals.end()) {
-        ctx.program.emplace_back(anzu::op_load_local{
-            .name=name, .offset=it->second
-        });
-        return;
-    }
-
-    const auto& globals = ctx.scopes.front().variables;
-    if (auto it = globals.find(name); it != globals.end()) {
-        ctx.program.emplace_back(anzu::op_load_global{
-            .name=name, .position=it->second
-        });
-        return;
+    for (const auto& scope : ctx.scopes | std::views::reverse) {
+        if (auto it = scope.variables.find(name); it != scope.variables.end()) {
+            ctx.program.emplace_back(anzu::op_load_variable{
+                .name=name, .offset=it->second
+            });
+            return;
+        }
     }
 }
 

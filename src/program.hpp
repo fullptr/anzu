@@ -15,16 +15,10 @@ struct op_load_literal
     anzu::object value;
 };
 
-struct op_load_local
+struct op_load_variable
 {
     std::string name;
     std::size_t offset;
-};
-
-struct op_load_global
-{
-    std::string name;
-    std::size_t position;
 };
 
 struct op_pop
@@ -37,16 +31,10 @@ struct op_copy_index
     int index;
 };
 
-struct op_save_local
+struct op_save_variable
 {
     std::string name;
     std::size_t offset;
-};
-
-struct op_save_global
-{
-    std::string name;
-    std::size_t position;
 };
 
 
@@ -175,12 +163,10 @@ struct op_build_list
 
 struct op : std::variant<
     op_load_literal,
-    op_load_local,
-    op_load_global,
+    op_load_variable,
     op_pop,
     op_copy_index,
-    op_save_local,
-    op_save_global,
+    op_save_variable,
     op_if,
     op_if_end,
     op_else,

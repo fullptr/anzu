@@ -8,19 +8,21 @@
 
 namespace anzu {
 
+template <typename ...Args>
+auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
+{
+    if (!condition) {
+        anzu::print(msg, std::forward<Args>(args)...);
+        std::exit(1);
+    }
+}
+
 template <typename T>
 auto pop_back(std::vector<T>& vec) -> T
 {
     const auto back = vec.back();
     vec.pop_back();
     return back;   
-}
-
-template <typename T>
-auto push_back(std::vector<T>& vec, const T& val) -> T&
-{
-    vec.push_back(val);
-    return vec.back();   
 }
 
 auto program_advance(runtime_context& ctx) -> void
@@ -38,13 +40,19 @@ auto program_ptr(const runtime_context& ctx) -> std::intptr_t
     return ctx.frames.back().program_ptr;
 }
 
+auto base_ptr(const runtime_context& ctx) -> std::intptr_t
+{
+    return ctx.frames.back().base_ptr;
+}
+
 auto save_top_at(runtime_context& ctx, std::size_t idx) -> void
 {
-    if (idx == ctx.memory.size()) {
-        ctx.memory.push_back(pop_back(ctx.memory));    
-    } else if (idx < ctx.memory.size() - 1) {
-        ctx.memory[idx] = pop_back(ctx.memory);
+    runtime_assert(idx < ctx.memory.size(), "tried to access invalid memory address {}", idx);
+    if (idx == ctx.memory.size() - 1) {
+        return;
     }
+    ctx.memory[idx] = ctx.memory.back();
+    ctx.memory.pop_back();
 }
 
 // Cleans up the variables used in the current frame and removes the frame
@@ -52,7 +60,7 @@ auto save_top_at(runtime_context& ctx, std::size_t idx) -> void
 // the return value.
 auto pop_frame(runtime_context& ctx) -> void
 {
-    while (std::ssize(ctx.memory) > ctx.frames.back().base_ptr + 1) {
+    while (std::ssize(ctx.memory) > base_ptr(ctx) + 1) {
         ctx.memory.pop_back();
     }
     ctx.frames.pop_back();
@@ -62,36 +70,25 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
         [&](const op_load_literal& op) {
-            push_back(ctx.memory, op.value);
+            ctx.memory.push_back(op.value);
             program_advance(ctx);
         },
-        [&](const op_load_local& op) {
-            const auto idx = ctx.frames.back().base_ptr + op.offset;
-            push_back(ctx.memory, ctx.memory[idx]);
-            program_advance(ctx);
-        },
-        [&](const op_load_global& op) {
-            const auto idx = op.position;
-            push_back(ctx.memory, ctx.memory[idx]);
+        [&](const op_load_variable& op) {
+            const auto idx = base_ptr(ctx) + op.offset;
+            ctx.memory.push_back(ctx.memory[idx]);
             program_advance(ctx);
         },
         [&](const op_pop& op) {
-            pop_back(ctx.memory);
+            ctx.memory.pop_back();
             program_advance(ctx);
         },
         [&](const op_copy_index& op) {
             const auto it = ctx.memory.rbegin() + op.index;
-            push_back(ctx.memory, *it);
+            ctx.memory.push_back(*it);
             program_advance(ctx);
         },
-        [&](const op_save_local& op) {
-            auto& frame = ctx.frames.back();
-            save_top_at(ctx, frame.base_ptr + op.offset);
-            program_advance(ctx);
-        },
-        [&](const op_save_global& op) {
-            auto& frame = ctx.frames.back();
-            save_top_at(ctx, op.position);
+        [&](const op_save_variable& op) {
+            save_top_at(ctx, base_ptr(ctx) + op.offset);
             program_advance(ctx);
         },
         [&](const op_if& op) {
@@ -136,20 +133,16 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx); // Position after function call
 
             ctx.frames.emplace_back();
-            auto& frame = ctx.frames.back();
-            frame.base_ptr = ctx.memory.size() - op.sig.args.size();
+            ctx.frames.back().base_ptr = ctx.memory.size() - op.sig.args.size();
             program_jump_to(ctx, op.ptr); // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            const auto argc = op.sig.args.size();
-            auto args = std::vector<anzu::object>{};
-            args.resize(argc);
+            auto args = std::vector<anzu::object>(op.sig.args.size());
             for (auto& arg : args | std::views::reverse) {
                 arg = pop_back(ctx.memory);
             }
 
-            // Call the builtin function with the given args and push the return value
-            push_back(ctx.memory, op.ptr(args));
+            ctx.memory.push_back(op.ptr(args));
             program_advance(ctx);
         },
         [&](const op_add& op) {
@@ -235,7 +228,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             for (std::size_t i = 0; i != op.size; ++i) {
                 list->push_back(pop_back(ctx.memory));
             }
-            push_back(ctx.memory, object{list});
+            ctx.memory.push_back(object{list});
             program_advance(ctx);
         }
     }, op_code);
