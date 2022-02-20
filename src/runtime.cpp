@@ -82,11 +82,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory.pop_back();
             program_advance(ctx);
         },
-        [&](const op_copy_index& op) {
-            const auto it = ctx.memory.rbegin() + op.index;
-            ctx.memory.push_back(*it);
-            program_advance(ctx);
-        },
         [&](const op_save_variable& op) {
             save_top_at(ctx, base_ptr(ctx) + op.offset);
             program_advance(ctx);

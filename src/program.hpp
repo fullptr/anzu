@@ -25,12 +25,6 @@ struct op_pop
 {
 };
 
-// 0 == OP_DUP, 1 == OP_OVER, ...
-struct op_copy_index
-{
-    int index;
-};
-
 struct op_save_variable
 {
     std::string name;
@@ -165,7 +159,6 @@ struct op : std::variant<
     op_load_literal,
     op_load_variable,
     op_pop,
-    op_copy_index,
     op_save_variable,
     op_if,
     op_if_end,

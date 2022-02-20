@@ -4,3 +4,9 @@ for y in [1, 2, 3, 4]
 {
     println(y)
 }
+println(y)
+
+for y in ["1", "2", "3", "4"]
+{
+    println(y)
+}

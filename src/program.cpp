@@ -24,9 +24,6 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_pop& op) {
             return std::string{"OP_POP"};
         },
-        [&](const op_copy_index& op) {
-            return std::format("OP_COPY_INDEX({})", op.index);
-        },
         [&](const op_save_variable& op) {
             return std::format("OP_SAVE_VARIABLE({})", op.name);
         },
