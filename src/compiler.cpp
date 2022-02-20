@@ -30,32 +30,55 @@ struct compiler_frame
 struct compiler_context
 {
     anzu::program program;
-    std::vector<compiler_frame> frames;
+
+    struct function_def
+    {
+        signature     sig;
+        std::intptr_t ptr;
+    };
+
+    std::unordered_map<std::string, function_def> functions;
+
+    using var_locations = std::unordered_map<std::string, std::size_t>;
+
+    var_locations globals;
+    std::optional<var_locations> locals;
 };
 
 // Registers the given name in the current scope
 auto declare_variable_name(compiler_context& ctx, const std::string& name) -> void
 {
-    auto& vars = ctx.frames.back().variables;
+    auto& vars = ctx.locals.has_value() ? ctx.locals.value() : ctx.globals;
     vars.emplace(name, vars.size());
 }
 
 auto save_variable(compiler_context& ctx, const std::string& name) -> void
 {
     declare_variable_name(ctx, name);
-    ctx.program.emplace_back(anzu::op_save_variable{
-        .name=name, .offset=ctx.frames.back().variables.at(name)
-    });
+    if (ctx.locals) {
+        ctx.program.emplace_back(anzu::op_save_local{
+            .name=name, .offset=ctx.locals->at(name)
+        });
+    } else {
+        ctx.program.emplace_back(anzu::op_save_global{
+            .name=name, .position=ctx.globals.at(name)
+        });
+    }
 }
 
 auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
-    for (const auto& scope : ctx.frames | std::views::reverse) {
-        if (auto it = scope.variables.find(name); it != scope.variables.end()) {
-            ctx.program.emplace_back(anzu::op_load_variable{
+    if (ctx.locals) {
+        if (auto it = ctx.locals->find(name); it != ctx.locals->end()) {
+            ctx.program.emplace_back(anzu::op_load_local{
                 .name=name, .offset=it->second
             });
-            return;
+        }
+    } else {
+        if (auto it = ctx.globals.find(name); it != ctx.globals.end()) {
+            ctx.program.emplace_back(anzu::op_load_global{
+                .name=name, .position=it->second
+            });
         }
     }
 }
@@ -68,15 +91,11 @@ auto call_builtin(compiler_context& ctx, const std::string& function_name) -> vo
     });
 }
 
-auto find_function(
-    const compiler_context& ctx, const std::string& function
-)
-    -> const compiler_frame::function_def*
+auto find_function(const compiler_context& ctx, const std::string& function)
+    -> const compiler_context::function_def*
 {
-    for (const auto& scope : ctx.frames | std::views::reverse) {
-        if (const auto it = scope.functions.find(function); it != scope.functions.end()) {
-            return &it->second;
-        }
+    if (const auto it = ctx.functions.find(function); it != ctx.functions.end()) {
+        return &it->second;
     }
     return nullptr;
 }
@@ -308,14 +327,14 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
     const auto start_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_function{ .name=node.name, .sig=node.sig });
-    ctx.frames.back().functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
+    ctx.functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
-    ctx.frames.emplace_back();
+    ctx.locals.emplace();
     for (const auto& arg : node.sig.args) {
         declare_variable_name(ctx, arg.name);
     }
     compile_node(*node.body, ctx);
-    ctx.frames.pop_back();
+    ctx.locals.reset();
 
     const auto end_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_function_end{});
@@ -350,7 +369,6 @@ auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
 auto compile(const std::unique_ptr<node_stmt>& root) -> anzu::program
 {
     anzu::compiler_context ctx;
-    ctx.frames.emplace_back(); // Global scope
     compile_node(*root, ctx);
     return ctx.program;
 }
