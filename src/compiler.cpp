@@ -13,7 +13,7 @@
 
 namespace anzu {
 
-struct compiler_scope
+struct compiler_frame
 {
     struct function_def
     {
@@ -30,13 +30,13 @@ struct compiler_scope
 struct compiler_context
 {
     anzu::program program;
-    std::vector<compiler_scope> scopes;
+    std::vector<compiler_frame> frames;
 };
 
 // Registers the given name in the current scope
 auto declare_variable_name(compiler_context& ctx, const std::string& name) -> void
 {
-    auto& vars = ctx.scopes.back().variables;
+    auto& vars = ctx.frames.back().variables;
     vars.emplace(name, vars.size());
 }
 
@@ -44,13 +44,13 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
 {
     declare_variable_name(ctx, name);
     ctx.program.emplace_back(anzu::op_save_variable{
-        .name=name, .offset=ctx.scopes.back().variables.at(name)
+        .name=name, .offset=ctx.frames.back().variables.at(name)
     });
 }
 
 auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
-    for (const auto& scope : ctx.scopes | std::views::reverse) {
+    for (const auto& scope : ctx.frames | std::views::reverse) {
         if (auto it = scope.variables.find(name); it != scope.variables.end()) {
             ctx.program.emplace_back(anzu::op_load_variable{
                 .name=name, .offset=it->second
@@ -71,9 +71,9 @@ auto call_builtin(compiler_context& ctx, const std::string& function_name) -> vo
 auto find_function(
     const compiler_context& ctx, const std::string& function
 )
-    -> const compiler_scope::function_def*
+    -> const compiler_frame::function_def*
 {
-    for (const auto& scope : ctx.scopes | std::views::reverse) {
+    for (const auto& scope : ctx.frames | std::views::reverse) {
         if (const auto it = scope.functions.find(function); it != scope.functions.end()) {
             return &it->second;
         }
@@ -308,14 +308,14 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
     const auto start_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_function{ .name=node.name, .sig=node.sig });
-    ctx.scopes.back().functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
+    ctx.frames.back().functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
 
-    ctx.scopes.emplace_back();
+    ctx.frames.emplace_back();
     for (const auto& arg : node.sig.args) {
         declare_variable_name(ctx, arg.name);
     }
     compile_node(*node.body, ctx);
-    ctx.scopes.pop_back();
+    ctx.frames.pop_back();
 
     const auto end_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_function_end{});
@@ -350,7 +350,7 @@ auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
 auto compile(const std::unique_ptr<node_stmt>& root) -> anzu::program
 {
     anzu::compiler_context ctx;
-    ctx.scopes.emplace_back(); // Global scope
+    ctx.frames.emplace_back(); // Global scope
     compile_node(*root, ctx);
     return ctx.program;
 }
