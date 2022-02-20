@@ -54,16 +54,22 @@ auto declare_variable_name(compiler_context& ctx, const std::string& name) -> vo
 
 auto save_variable(compiler_context& ctx, const std::string& name) -> void
 {
-    declare_variable_name(ctx, name);
-    if (ctx.locals) {
+    if (ctx.locals && ctx.locals->contains(name)) {
         ctx.program.emplace_back(anzu::op_save_local{
             .name=name, .offset=ctx.locals->at(name)
         });
-    } else {
+        return;
+    }
+    
+    if (ctx.globals.contains(name)) {
         ctx.program.emplace_back(anzu::op_save_global{
             .name=name, .position=ctx.globals.at(name)
         });
+        return;
     }
+
+    anzu::print("BAD! Could not assign to variable\n");
+    std::exit(1);
 }
 
 auto load_variable(compiler_context& ctx, const std::string& name) -> void
@@ -73,13 +79,13 @@ auto load_variable(compiler_context& ctx, const std::string& name) -> void
             ctx.program.emplace_back(anzu::op_load_local{
                 .name=name, .offset=it->second
             });
+            return;
         }
-    } else {
-        if (auto it = ctx.globals.find(name); it != ctx.globals.end()) {
-            ctx.program.emplace_back(anzu::op_load_global{
-                .name=name, .position=it->second
-            });
-        }
+    }
+    if (auto it = ctx.globals.find(name); it != ctx.globals.end()) {
+        ctx.program.emplace_back(anzu::op_load_global{
+            .name=name, .position=it->second
+        });
     }
 }
 
@@ -265,11 +271,15 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Push the container to the stack
     compile_node(*node.container, ctx);
+    declare_variable_name(ctx, container_name);
     save_variable(ctx, container_name);
 
     // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_load_literal{ .value=object{0} });
+    declare_variable_name(ctx, index_name);
     save_variable(ctx, index_name);
+
+    declare_variable_name(ctx, node.var);
 
     const auto begin_pos = std::ssize(ctx.program);
     ctx.program.emplace_back(anzu::op_loop_begin{});
@@ -314,6 +324,7 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
+    declare_variable_name(ctx, node.name);
     save_variable(ctx, node.name);
 }
 

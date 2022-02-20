@@ -1,13 +1,12 @@
 
 
-
+x := 5
 
 fn foo() -> null
 {
-    fn bar() -> int
-    {
-        return 1
-    }
+    x := 6
+    println(x)
 }
 
 foo()
+println(x)
