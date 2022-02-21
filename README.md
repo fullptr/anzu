@@ -100,7 +100,7 @@ Utility Modules (in src/utility)
 * Replace `int` with `int32`, `int64` as well as promotion/narrowing builtins.
 * Add `float32` and `float64`, with promotion/narrowing builtins (and to/from ints).
 * Add `uint32` and `uint64`, similar to the above.
-* Custom types.
+* Custom types via `class` keyword.
 * Removal of objects and types from the runtime, should run on arrays of bytes.
 * Native compilation.
 * References (like C++, no pointers).
