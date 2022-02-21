@@ -90,7 +90,21 @@ Utility Modules (in src/utility)
 -- print.hpp       : Wrapper for std::format, similar to {fmt}
 -- peekstream.hpp  : A data structure used in the lexer
 -- overloaded.hpp  : A helper class to make std::visit simpler
+-- score_timer.hpp : An RAII class for timing a block of code
 ```
 
 # Upcoming Features
-* Remove the binary operation op codes and replace by function pointers to implementations. Now that we have static type checking, the correct functions can be found at compile time and there will be no need to go through the implementations on the object class, which is good because currently if something slips through the type checker, a type error can still arise at runtime, which is weird. We should tighten up the typechecker and put the binary operation functions pointers directly in the bytecode.
+* Const keyword.
+* Member functions so we can write `my_list.size()` rather than `list_size(my_list)`.
+* Function overloading based on the call signature.
+* Replace `int` with `int32`, `int64` as well as promotion/narrowing builtins.
+* Add `float32` and `float64`, with promotion/narrowing builtins (and to/from ints).
+* Add `uint32` and `uint64`, similar to the above.
+* Custom types.
+* Removal of objects and types from the runtime, should run on arrays of bytes.
+* Native compilation.
+* References (like C++, no pointers).
+* Less restriction on return statements in functions.
+* Typed function pointers.
+* Variants and a basic match statement.
+* Replacing the binary operation op codes with calls to builtin functions.
