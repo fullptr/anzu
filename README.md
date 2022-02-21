@@ -17,8 +17,11 @@ print(4 + 5)
 ```
 
 ## Features so far
-* Supports `ints`, `bools`, `floats`, `null` and `string-literals`.
-* Assignment to variable names in the expected way: `x = 5`.
+* Supports `ints`, `bools`, `null` and `string-literals`.
+* Variables:
+    * Declare like `x := 5`.
+    * Assign a new value like `x = 6`.
+    * This syntax makes updating a variable in an outer scope vs a variable in the local scope unambiguous.
 * `if` statements (with optional `else` and `elif` too).
 
     ```
@@ -44,14 +47,15 @@ print(4 + 5)
         ...
     }
     ```
-* `function` statements (with optional `return`):
+* `fn` function statements (with optional `return`):
 
     ```
-    function <name>([<arg>: <type>]*) -> <return_type> {
+    fn <name>([<arg>: <type>]*) -> <return_type> {
         ...
     }
     ```
 * All the common arithmetic, comparison and logical operators. More will be implemented.
+* Builtin functions.
 
 ## The Pipeline
 The way this langauage is processed and ran is similar to other langages. The lexer, parser, compiler and runtime modules are completely separate, and act as a pipeline by each one outputting a representation that the next one can understand. Below is a diagram showing how everything fits together.
@@ -90,7 +94,25 @@ Utility Modules (in src/utility)
 -- print.hpp       : Wrapper for std::format, similar to {fmt}
 -- peekstream.hpp  : A data structure used in the lexer
 -- overloaded.hpp  : A helper class to make std::visit simpler
+-- score_timer.hpp : An RAII class for timing a block of code
 ```
 
 # Upcoming Features
-* Remove the binary operation op codes and replace by function pointers to implementations. Now that we have static type checking, the correct functions can be found at compile time and there will be no need to go through the implementations on the object class, which is good because currently if something slips through the type checker, a type error can still arise at runtime, which is weird. We should tighten up the typechecker and put the binary operation functions pointers directly in the bytecode.
+* Explicit typing in declarations.
+* Const keyword.
+* Scopes.
+* Member functions so we can write `my_list.size()` rather than `list_size(my_list)`.
+* Function overloading based on the call signature.
+* Replace `int` with `int32`, `int64` as well as promotion/narrowing builtins.
+* Add `float32` and `float64`, with promotion/narrowing builtins (and to/from ints).
+* Add `uint32` and `uint64`, similar to the above.
+* Custom types via `class` keyword.
+* Removal of objects and types from the runtime, should run on arrays of bytes.
+* Native compilation.
+* References (like C++, no pointers).
+* Less restriction on return statements in functions.
+* Typed function pointers.
+* Variants and a basic match statement.
+* Replacing the binary operation op codes with calls to builtin functions.
+* Filesystem support.
+* A better C++ API for implementing custom functions in C++.
