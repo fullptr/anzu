@@ -1,12 +1,26 @@
 
 
-x := 5
-
-fn foo() -> null
+fn foo(x: int, y: int) -> int
 {
-    x := 6
-    println(x)
+    return 5
 }
 
-foo()
-println(x)
+a := foo(1, 2)
+println(a)
+
+fn not(x: bool) -> bool
+{
+    if x return false
+    return true
+}
+
+fn assert(cond: bool) -> null
+{
+    if not(cond) {
+        println("you are bad at maths")
+    }
+}
+
+assert(2 + 2 == 5)
+
+
