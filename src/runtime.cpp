@@ -56,10 +56,10 @@ auto save_top_at(runtime_context& ctx, std::size_t idx) -> void
 }
 
 // Cleans up the variables used in the current frame and removes the frame
-// pointers to return back to the previous scope. Leaves one extra since that is
-// the return value.
+// pointers to return back to the previous scope.
 auto pop_frame(runtime_context& ctx) -> void
 {
+    ctx.memory[base_ptr(ctx)] = ctx.memory.back(); // Move return value
     while (std::ssize(ctx.memory) > base_ptr(ctx) + 1) {
         ctx.memory.pop_back();
     }
