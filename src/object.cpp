@@ -71,7 +71,7 @@ auto object::to_int() const -> int
             type_error_conversion("list", "int");
             return 0;
         },
-        [](object_null) {
+        [](block_null) {
             type_error_conversion("null", "int");
             return 0;
         }
@@ -85,7 +85,7 @@ auto object::to_bool() const -> bool
         [](block_bool v) { return v; },
         [](const block_str& v) { return v.size() > 0; },
         [](const block_list& v) { return v->size() > 0; },
-        [](object_null) { return false; }
+        [](block_null) { return false; }
     }, d_value);
 }
 
@@ -96,7 +96,7 @@ auto object::to_str() const -> std::string
         [](block_bool v) { return std::string{v ? "true" : "false"}; },
         [](const block_str& v) { return v; },
         [](const block_list& v) { return list_repr(v); },
-        [](object_null) { return std::string{"null"}; }
+        [](block_null) { return std::string{"null"}; }
     }, d_value);
 }
 
@@ -107,7 +107,7 @@ auto object::to_repr() const -> std::string
         [](block_bool val) { return std::string{val ? "true" : "false"}; },
         [](const block_str& v) { return std::format("'{}'", v); },
         [](const block_list& v) { return list_repr(v); },
-        [](object_null) { return std::string{"null"}; }
+        [](block_null) { return std::string{"null"}; }
     }, d_value);
 }
 

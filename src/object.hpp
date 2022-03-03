@@ -10,23 +10,25 @@
 namespace anzu {
 
 class object;
-using block_int   = int;
-using block_bool  = bool;
-using block_str   = std::string;
-using block_list  = std::shared_ptr<std::vector<object>>;
-using object_null = std::monostate;
+using block_int  = int;
+using block_bool = bool;
+using block_str  = std::string;
+using block_list = std::shared_ptr<std::vector<object>>;
+using block_null = std::monostate;
 
 class object
 {
-    using value_type = std::variant<
+public:
+    using block_type = std::variant<
         block_int,
         block_bool,
         block_str,
         block_list,
-        object_null
+        block_null
     >;
 
-    value_type d_value;
+private:
+    block_type d_value;
 
 public:
     template <typename Obj>
@@ -38,6 +40,8 @@ public:
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
+
+    auto as_variant() const -> const block_type& { return d_value; }
 
     template <typename T>
     auto is() const -> bool
@@ -81,7 +85,7 @@ public:
     friend auto swap(object& lhs, object& rhs) -> void;
 };
 
-inline auto null_object() -> anzu::object { return object{object_null{}}; }
+inline auto null_object() -> anzu::object { return object{block_null{}}; }
 
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;
