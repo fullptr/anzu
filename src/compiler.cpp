@@ -173,7 +173,11 @@ void compile_function_call(
 
 void compile_node(const node_literal_expr& node, compiler_context& ctx)
 {
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value });
+    if (node.value.data.size() != 1) {
+        anzu::print("Objects with block-size != 1 not currently supported\n");
+        std::exit(1);
+    }
+    ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value.data.front() });
 }
 
 void compile_node(const node_variable_expr& node, compiler_context& ctx)

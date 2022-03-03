@@ -11,6 +11,13 @@
 namespace anzu {
 
 class block;
+
+struct object_def
+{
+    std::vector<block> data;
+    anzu::type         type;
+};
+
 using block_int  = int;
 using block_bool = bool;
 using block_str  = std::string;
@@ -86,19 +93,6 @@ public:
     friend auto swap(block& lhs, block& rhs) -> void;
 };
 
-struct object_view
-{
-    std::span<block> data;
-    anzu::type       type;
-};
-
-struct object_def
-{
-    std::vector<block> data;
-    anzu::type         type;
-};
-
-auto to_string(const object_view& object) -> std::string;
 auto to_string(const object_def& object) -> std::string;
 
 inline auto null_object() -> object_def

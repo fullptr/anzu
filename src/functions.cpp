@@ -16,7 +16,7 @@ auto builtin_list_push(std::span<const block> args) -> block
     auto& list = args[0].as<block_list>();
     auto& obj = args[1];
     list->push_back(obj);
-    return null_object();
+    return block{block_null{}};
 }
 
 auto builtin_list_pop(std::span<const block> args) -> block
@@ -76,7 +76,7 @@ auto builtin_print(std::span<const block> args) -> block
     } else {
         anzu::print("{}", obj);
     }
-    return null_object();
+    return block{block_null{}};
 }
 
 auto builtin_println(std::span<const block> args) -> block
@@ -87,7 +87,7 @@ auto builtin_println(std::span<const block> args) -> block
     } else {
         anzu::print("{}\n", obj);
     }
-    return null_object();
+    return block{block_null{}};
 }
 
 auto builtin_input(std::span<const block> args) -> block
@@ -95,12 +95,6 @@ auto builtin_input(std::span<const block> args) -> block
     std::string in;
     std::cin >> in;
     return block{in};
-}
-
-auto builtin_typeof(std::span<const block> args) -> block
-{
-    const auto& obj = args[0];
-    return block{to_string(type_of(obj))};
 }
 
 auto builtin_range(std::span<const block> args) -> block
@@ -236,16 +230,6 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_input,
         .sig = {
             .args = {},
-            .return_type = str_type()
-        }
-    });
-
-    builtins.emplace("typeof", builtin{
-        .ptr = builtin_typeof,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = generic_type(0) }
-            },
             .return_type = str_type()
         }
     });

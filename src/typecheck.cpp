@@ -287,7 +287,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
 {
     return std::visit(overloaded {
         [&](const node_literal_expr& node) {
-            return type_of(node.value);
+            return node.value.type;
         },
         [&](const node_variable_expr& node) {
             if (ctx.locals) {
@@ -439,29 +439,6 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
     std::visit([&](const auto& n) { typecheck_node(ctx, n); }, node);
 }
 
-}
-
-auto type_of(const anzu::block& object) -> type
-{
-    return std::visit(overloaded {
-        [](block_int) { return int_type(); },
-        [](block_bool) { return bool_type(); },
-        [](const block_str&) { return str_type(); },
-        [](const block_list& list) {
-            if (list->empty()) {
-                return concrete_list_type(int_type());
-            }
-            const auto subtype = type_of(list->front());
-            for (const auto& subelem : *list | std::views::drop(1)) {
-                if (type_of(subelem) != subtype) {
-                    anzu::print("WHOOPS! Not a homogeneous list (temporary)\n");
-                    std::exit(1);
-                }
-            }
-            return concrete_list_type(subtype);
-        },
-        [](block_null) { return null_type(); }
-    }, object.as_variant());
 }
 
 auto typecheck_ast(const node_stmt_ptr& ast) -> void
