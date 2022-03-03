@@ -22,19 +22,19 @@ template <typename... Args>
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
-auto parse_literal(tokenstream& tokens) -> anzu::object
+auto parse_literal(tokenstream& tokens) -> anzu::block
 {
     if (tokens.curr().type == token_type::number) {
-        return object{ anzu::to_int(tokens.consume().text) };
+        return block{ anzu::to_int(tokens.consume().text) };
     }
     if (tokens.curr().type == token_type::string) {
-        return object{ tokens.consume().text };
+        return block{ tokens.consume().text };
     }
     if (tokens.consume_maybe(tk_true)) {
-        return object{ true };
+        return block{ true };
     }
     if (tokens.consume_maybe(tk_false)) {
-        return object{ false };
+        return block{ false };
     }
     if (tokens.consume_maybe(tk_null)) {
         return anzu::null_object();

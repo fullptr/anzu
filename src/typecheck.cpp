@@ -441,7 +441,7 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 
 }
 
-auto type_of(const anzu::object& object) -> type
+auto type_of(const anzu::block& object) -> type
 {
     return std::visit(overloaded {
         [](block_int) { return int_type(); },

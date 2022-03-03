@@ -9,14 +9,14 @@
 
 namespace anzu {
 
-class object;
+class block;
 using block_int  = int;
 using block_bool = bool;
 using block_str  = std::string;
-using block_list = std::shared_ptr<std::vector<object>>;
+using block_list = std::shared_ptr<std::vector<block>>;
 using block_null = std::monostate;
 
-class object
+class block
 {
 public:
     using block_type = std::variant<
@@ -32,9 +32,9 @@ private:
 
 public:
     template <typename Obj>
-    explicit object(const Obj& obj) : d_value{obj} {}
+    explicit block(const Obj& obj) : d_value{obj} {}
     
-    object() : d_value{0} {}
+    block() : d_value{0} {}
 
     // Casts, for certain types, converts the object to the requested type.
     auto to_int() const -> int;
@@ -71,21 +71,21 @@ public:
 
     auto to_repr() const -> std::string;
 
-    friend auto operator+(const object& lhs, const object& rhs) -> object;
-    friend auto operator-(const object& lhs, const object& rhs) -> object;
-    friend auto operator*(const object& lhs, const object& rhs) -> object;
-    friend auto operator/(const object& lhs, const object& rhs) -> object;
-    friend auto operator%(const object& lhs, const object& rhs) -> object;
+    friend auto operator+(const block& lhs, const block& rhs) -> block;
+    friend auto operator-(const block& lhs, const block& rhs) -> block;
+    friend auto operator*(const block& lhs, const block& rhs) -> block;
+    friend auto operator/(const block& lhs, const block& rhs) -> block;
+    friend auto operator%(const block& lhs, const block& rhs) -> block;
     
-    friend auto operator||(const object& lhs, const object& rhs) -> bool;
-    friend auto operator&&(const object& lhs, const object& rhs) -> bool;
+    friend auto operator||(const block& lhs, const block& rhs) -> bool;
+    friend auto operator&&(const block& lhs, const block& rhs) -> bool;
 
-    friend auto operator<=>(const object& lhs, const object& rhs) -> std::strong_ordering = default;
+    friend auto operator<=>(const block& lhs, const block& rhs) -> std::strong_ordering = default;
 
-    friend auto swap(object& lhs, object& rhs) -> void;
+    friend auto swap(block& lhs, block& rhs) -> void;
 };
 
-inline auto null_object() -> anzu::object { return object{block_null{}}; }
+inline auto null_object() -> anzu::block { return block{block_null{}}; }
 
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;
@@ -94,7 +94,7 @@ auto format_special_chars(const std::string& str) -> std::string;
 
 }
 
-template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
+template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
     char fmt = 's';
 
     constexpr auto parse(std::format_parse_context& ctx) -> decltype(ctx.begin()) {
@@ -104,8 +104,8 @@ template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
         return it;
     }
 
-    auto format(const anzu::object& obj, auto& ctx) {
-        const auto str = fmt == 's' ? obj.to_str() : obj.to_repr();
+    auto format(const anzu::block& blk, auto& ctx) {
+        const auto str = fmt == 's' ? blk.to_str() : blk.to_repr();
         return std::formatter<std::string>::format(std::format("{}", str), ctx);
     }
 };

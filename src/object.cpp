@@ -9,7 +9,7 @@
 namespace anzu {
 namespace {
 
-auto type_error(const anzu::object& lhs, const anzu::object& rhs, std::string_view op) -> void
+auto type_error(const anzu::block& lhs, const anzu::block& rhs, std::string_view op) -> void
 {
     anzu::print("type error: cannot evaluate {} {} {}\n", lhs.to_repr(), op, rhs.to_repr());
     std::exit(1);
@@ -61,7 +61,7 @@ auto format_special_chars(const std::string& str) -> std::string
     return ret;
 }
 
-auto object::to_int() const -> int
+auto block::to_int() const -> int
 {
     return std::visit(overloaded {
         [](block_int v) { return v; },
@@ -78,7 +78,7 @@ auto object::to_int() const -> int
     }, d_value);
 }
 
-auto object::to_bool() const -> bool
+auto block::to_bool() const -> bool
 {
     return std::visit(overloaded {
         [](block_int v) { return v != 0; },
@@ -89,7 +89,7 @@ auto object::to_bool() const -> bool
     }, d_value);
 }
 
-auto object::to_str() const -> std::string
+auto block::to_str() const -> std::string
 {
     return std::visit(overloaded {
         [](block_int v) { return std::to_string(v); },
@@ -100,7 +100,7 @@ auto object::to_str() const -> std::string
     }, d_value);
 }
 
-auto object::to_repr() const -> std::string
+auto block::to_repr() const -> std::string
 {
     return std::visit(overloaded {
         [](block_int val) { return std::to_string(val); },
@@ -114,14 +114,14 @@ auto object::to_repr() const -> std::string
 template <typename T>
 concept addable = requires(T a, T b) { { a + b }; };
 
-object operator+(const object& lhs, const object& rhs)
+block operator+(const block& lhs, const block& rhs)
 {
-    return std::visit([]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
+    return std::visit([]<typename A, typename B>(const A& a, const B& b) -> anzu::block {
         if constexpr (std::is_same_v<A, B> && addable<A>) {
-            return object{a + b};
+            return block{a + b};
         } else {
-            anzu::type_error(object{a}, object{b}, "+");
-            return object{0};
+            anzu::type_error(block{a}, block{b}, "+");
+            return block{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
@@ -129,14 +129,14 @@ object operator+(const object& lhs, const object& rhs)
 template <typename T>
 concept subtractible = requires(T a, T b) { { a - b }; };
 
-object operator-(const object& lhs, const object& rhs)
+block operator-(const block& lhs, const block& rhs)
 {
-    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
+    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::block {
         if constexpr (std::is_same_v<A, B> && subtractible<A>) {
-            return object{a - b};
+            return block{a - b};
         } else {
-            anzu::type_error(object{a}, object{b}, "-");
-            return object{0};
+            anzu::type_error(block{a}, block{b}, "-");
+            return block{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
@@ -144,59 +144,59 @@ object operator-(const object& lhs, const object& rhs)
 template <typename T>
 concept multipliable = requires(T a, T b) { { a * b }; };
 
-object operator*(const object& lhs, const object& rhs)
+block operator*(const block& lhs, const block& rhs)
 {
-    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::object {
+    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::block {
         if constexpr (std::is_same_v<A, B> && multipliable<A>) {
-            return object{a * b};
+            return block{a * b};
         } else {
-            anzu::type_error(object{a}, object{b}, "*");
-            return object{0};
+            anzu::type_error(block{a}, block{b}, "*");
+            return block{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
 
-object operator/(const object& lhs, const object& rhs)
+block operator/(const block& lhs, const block& rhs)
 {
     return std::visit(overloaded {
         [](int a, int b) {
             if (b != 0) {
-                return object{a / b};
+                return block{a / b};
             }
             anzu::division_by_zero_error();
-            return object{0};
+            return block{0};
         },
         [](const auto& a, const auto& b) {
-            anzu::type_error(object{a}, object{b}, "/");
-            return object{0};
+            anzu::type_error(block{a}, block{b}, "/");
+            return block{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
 
-object operator%(const object& lhs, const object& rhs)
+block operator%(const block& lhs, const block& rhs)
 {
     return std::visit(overloaded {
         [](int a, int b) {
-            return object{a % b};
+            return block{a % b};
         },
         [](const auto& a, const auto& b) {
-            anzu::type_error(object{a}, object{b}, "%");
-            return object{0};
+            anzu::type_error(block{a}, block{b}, "%");
+            return block{0};
         }
     }, lhs.d_value, rhs.d_value);
 }
 
-bool operator||(const object& lhs, const object& rhs)
+bool operator||(const block& lhs, const block& rhs)
 {
     return lhs.to_bool() || rhs.to_bool();
 }
 
-bool operator&&(const object& lhs, const object& rhs)
+bool operator&&(const block& lhs, const block& rhs)
 {
     return lhs.to_bool() && rhs.to_bool();
 }
 
-void swap(object& lhs, object& rhs)
+void swap(block& lhs, block& rhs)
 {
     swap(lhs.d_value, rhs.d_value);
 }

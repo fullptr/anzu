@@ -11,7 +11,7 @@
 namespace anzu {
 namespace {
 
-auto builtin_list_push(std::span<const object> args) -> object
+auto builtin_list_push(std::span<const block> args) -> block
 {
     auto& list = args[0].as<block_list>();
     auto& obj = args[1];
@@ -19,7 +19,7 @@ auto builtin_list_push(std::span<const object> args) -> object
     return null_object();
 }
 
-auto builtin_list_pop(std::span<const object> args) -> object
+auto builtin_list_pop(std::span<const block> args) -> block
 {
     auto& list = args[0].as<block_list>();
     auto ret = list->back();
@@ -27,48 +27,48 @@ auto builtin_list_pop(std::span<const object> args) -> object
     return ret;
 }
 
-auto builtin_list_size(std::span<const object> args) -> object
+auto builtin_list_size(std::span<const block> args) -> block
 {
     const auto& list = args[0].as<block_list>();
-    return object{static_cast<int>(list->size())};
+    return block{static_cast<int>(list->size())};
 }
 
-auto builtin_list_at(std::span<const object> args) -> object
+auto builtin_list_at(std::span<const block> args) -> block
 {
     const auto& list = args[0].as<block_list>();
     const auto& idx = args[1].as<int>();
     return list->at(idx);
 }
 
-auto builtin_str_size(std::span<const object> args) -> object
+auto builtin_str_size(std::span<const block> args) -> block
 {
     const auto& str = args[0].as<std::string>();
-    return object{static_cast<int>(str.size())};
+    return block{static_cast<int>(str.size())};
 }
 
-auto builtin_str_at(std::span<const object> args) -> object
+auto builtin_str_at(std::span<const block> args) -> block
 {
     const auto& str = args[0].as<std::string>();
     const auto& idx = args[1].as<int>();
-    return object{block_str{str.at(idx)}};
+    return block{block_str{str.at(idx)}};
 }
 
-auto builtin_to_int(std::span<const object> args) -> object
+auto builtin_to_int(std::span<const block> args) -> block
 {
-    return object{args[0].to_int()};
+    return block{args[0].to_int()};
 }
 
-auto builtin_to_bool(std::span<const object> args) -> object
+auto builtin_to_bool(std::span<const block> args) -> block
 {
-    return object{args[0].to_bool()};
+    return block{args[0].to_bool()};
 }
 
-auto builtin_to_str(std::span<const object> args) -> object
+auto builtin_to_str(std::span<const block> args) -> block
 {
-    return object{args[0].to_str()};
+    return block{args[0].to_str()};
 }
 
-auto builtin_print(std::span<const object> args) -> object
+auto builtin_print(std::span<const block> args) -> block
 {
     const auto& obj = args[0];
     if (obj.is<std::string>()) {
@@ -79,7 +79,7 @@ auto builtin_print(std::span<const object> args) -> object
     return null_object();
 }
 
-auto builtin_println(std::span<const object> args) -> object
+auto builtin_println(std::span<const block> args) -> block
 {
     const auto& obj = args[0];
     if (obj.is<std::string>()) {
@@ -90,27 +90,27 @@ auto builtin_println(std::span<const object> args) -> object
     return null_object();
 }
 
-auto builtin_input(std::span<const object> args) -> object
+auto builtin_input(std::span<const block> args) -> block
 {
     std::string in;
     std::cin >> in;
-    return object{in};
+    return block{in};
 }
 
-auto builtin_typeof(std::span<const object> args) -> object
+auto builtin_typeof(std::span<const block> args) -> block
 {
     const auto& obj = args[0];
-    return object{to_string(type_of(obj))};
+    return block{to_string(type_of(obj))};
 }
 
-auto builtin_range(std::span<const object> args) -> object
+auto builtin_range(std::span<const block> args) -> block
 {
     const auto& max = args[0].as<int>();
-    auto list = std::make_shared<std::vector<object>>();
+    auto list = std::make_shared<std::vector<block>>();
     for (int i = 0; i != max; ++i) {
-        list->push_back(object{i});
+        list->push_back(block{i});
     }
-    return object{list};
+    return block{list};
 }
 
 }

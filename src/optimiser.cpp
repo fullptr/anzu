@@ -8,32 +8,32 @@ namespace anzu {
 namespace {
 
 auto evaluate_bin_op(
-    const anzu::object& lhs, const anzu::object& rhs, std::string_view op
+    const anzu::block& lhs, const anzu::block& rhs, std::string_view op
 )
-    -> anzu::object
+    -> anzu::block
 {
-    if      (op == "+")  { return object{lhs + rhs}; }
-    else if (op == "-")  { return object{lhs - rhs}; }
-    else if (op == "*")  { return object{lhs * rhs}; }
-    else if (op == "/")  { return object{lhs / rhs}; }
-    else if (op == "%")  { return object{lhs % rhs}; }
-    else if (op == "<")  { return object{lhs < rhs}; }
-    else if (op == "<=") { return object{lhs <= rhs}; }
-    else if (op == ">")  { return object{lhs > rhs}; }
-    else if (op == ">=") { return object{lhs >= rhs}; }
-    else if (op == "==") { return object{lhs == rhs}; }
-    else if (op == "!=") { return object{lhs != rhs}; }
-    else if (op == "||") { return object{lhs || rhs}; }
-    else if (op == "&&") { return object{lhs && rhs}; }
+    if      (op == "+")  { return block{lhs + rhs}; }
+    else if (op == "-")  { return block{lhs - rhs}; }
+    else if (op == "*")  { return block{lhs * rhs}; }
+    else if (op == "/")  { return block{lhs / rhs}; }
+    else if (op == "%")  { return block{lhs % rhs}; }
+    else if (op == "<")  { return block{lhs < rhs}; }
+    else if (op == "<=") { return block{lhs <= rhs}; }
+    else if (op == ">")  { return block{lhs > rhs}; }
+    else if (op == ">=") { return block{lhs >= rhs}; }
+    else if (op == "==") { return block{lhs == rhs}; }
+    else if (op == "!=") { return block{lhs != rhs}; }
+    else if (op == "||") { return block{lhs || rhs}; }
+    else if (op == "&&") { return block{lhs && rhs}; }
     else {
         anzu::print("syntax error: unknown binary operator: '{}'\n", op);
         std::exit(1);
     }
 }
 
-auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::object>
+auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::block>
 {
-    using return_type = std::optional<anzu::object>;
+    using return_type = std::optional<anzu::block>;
     return std::visit(overloaded {
         [](const node_literal_expr& node) -> return_type {
             return node.value;
@@ -55,7 +55,7 @@ auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::
             return std::nullopt;
         },
         [&](const node_list_expr& node) -> return_type {
-            auto values = std::make_shared<std::vector<anzu::object>>();
+            auto values = std::make_shared<std::vector<anzu::block>>();
             values->reserve(node.elements.size());
             for (const auto& element : node.elements) {
                 auto val = evaluate_const_expressions_recurse(*element);
@@ -64,8 +64,8 @@ auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::
                 }
                 values->push_back(*val);
             }
-            expr.emplace<anzu::node_literal_expr>(object{values});
-            return anzu::object{values};
+            expr.emplace<anzu::node_literal_expr>(block{values});
+            return anzu::block{values};
         }
     }, expr);
 }

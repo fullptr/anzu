@@ -275,7 +275,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     save_variable(ctx, container_name);
 
     // Push the counter to the stack
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=object{0} });
+    ctx.program.emplace_back(anzu::op_load_literal{ .value=block{0} });
     declare_variable_name(ctx, index_name);
     save_variable(ctx, index_name);
 
@@ -301,7 +301,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Increment the index
     load_variable(ctx, index_name);
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=object{1} });
+    ctx.program.emplace_back(anzu::op_load_literal{ .value=block{1} });
     ctx.program.emplace_back(anzu::op_add{});
     save_variable(ctx, index_name);
 
