@@ -70,7 +70,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
         [&](const op_load_literal& op) {
-            ctx.memory.push_back(op.value);
+            for (const auto& block : op.value.data) {
+                ctx.memory.push_back(block);
+            }
             program_advance(ctx);
         },
         [&](const op_load_global& op) {

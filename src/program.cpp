@@ -16,7 +16,7 @@ auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
         [&](const op_load_literal& op) {
-            return std::format("OP_LOAD_LITERAL({})", op.value.to_repr());
+            return std::format("OP_LOAD_LITERAL({})", to_string(op.value));
         },
         [&](const op_load_global& op) {
             return std::format("OP_LOAD_GLOBAL({}: {})", op.name, op.position);
