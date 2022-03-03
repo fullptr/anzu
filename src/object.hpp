@@ -5,6 +5,7 @@
 #include <variant>
 #include <vector>
 
+#include "type.hpp"
 #include "utility/print.hpp"
 
 namespace anzu {
@@ -83,6 +84,18 @@ public:
     friend auto operator<=>(const block& lhs, const block& rhs) -> std::strong_ordering = default;
 
     friend auto swap(block& lhs, block& rhs) -> void;
+};
+
+struct object_view
+{
+    std::span<block> data;
+    anzu::type       type;
+};
+
+struct object_def
+{
+    std::vector<block> data;
+    anzu::type         type;
 };
 
 inline auto null_object() -> anzu::block { return block{block_null{}}; }

@@ -48,7 +48,7 @@ struct compiler_context
 template <typename T>
 auto append_op(compiler_context& ctx, T&& op) -> std::intptr_t
 {
-    ctx.program.emplace_back(op);
+    ctx.program.emplace_back(std::forward<T>(op));
     return std::ssize(ctx.program) - 1;
 }
 
