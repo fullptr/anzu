@@ -22,22 +22,32 @@ template <typename... Args>
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
-auto parse_literal(tokenstream& tokens) -> anzu::block
+auto parse_literal(tokenstream& tokens) -> object_def
 {
     if (tokens.curr().type == token_type::number) {
-        return block{ anzu::to_int(tokens.consume().text) };
+        return object_def{
+            .data = { block{to_int(tokens.consume().text)} }, .type = int_type()
+        };
     }
     if (tokens.curr().type == token_type::string) {
-        return block{ tokens.consume().text };
+        return object_def{
+            .data = { block{tokens.consume().text} }, .type = str_type()
+        };
     }
     if (tokens.consume_maybe(tk_true)) {
-        return block{ true };
+        return object_def{
+            .data = { block{true} }, .type = bool_type()
+        };
     }
     if (tokens.consume_maybe(tk_false)) {
-        return block{ false };
+        return object_def{
+            .data = { block{false} }, .type = bool_type()
+        };
     }
     if (tokens.consume_maybe(tk_null)) {
-        return anzu::null_object();
+        return object_def{
+            .data = { block{block_null()} }, .type = null_type()
+        };
     }
     parser_error(tokens.curr(), "failed to parse literal");
 };

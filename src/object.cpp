@@ -41,6 +41,16 @@ auto list_repr(const block_list& list) -> std::string
 
 }
 
+auto to_string(const object_view& object) -> std::string
+{
+    return "TODO";
+}
+
+auto to_string(const object_def& object) -> std::string
+{
+    return "TODO";
+}
+
 auto format_special_chars(const std::string& str) -> std::string
 {
     std::string ret;

@@ -127,7 +127,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_jump_to(ctx, op.jump);
         },
         [&](const op_function_end& op) {
-            ctx.memory.push_back(null_object());
+            const auto null_return = null_object();
+            for (const auto& block : null_return.data) {
+                ctx.memory.push_back(block);
+            }
             pop_frame(ctx);
         },
         [&](const op_return& op) {

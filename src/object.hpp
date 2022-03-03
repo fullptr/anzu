@@ -98,7 +98,13 @@ struct object_def
     anzu::type         type;
 };
 
-inline auto null_object() -> anzu::block { return block{block_null{}}; }
+auto to_string(const object_view& object) -> std::string;
+auto to_string(const object_def& object) -> std::string;
+
+inline auto null_object() -> object_def
+{
+    return { .data = { block{block_null()} }, .type = null_type() };
+}
 
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;

@@ -31,7 +31,7 @@ auto evaluate_bin_op(
     }
 }
 
-auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::block>
+auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<object_def>
 {
     using return_type = std::optional<anzu::block>;
     return std::visit(overloaded {

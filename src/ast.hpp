@@ -14,7 +14,7 @@ using node_expr_ptr = std::unique_ptr<node_expr>;
 
 struct node_literal_expr
 {
-    anzu::block value;
+    anzu::object_def value;
 
     anzu::token token;
 };
