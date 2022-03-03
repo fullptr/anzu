@@ -10,17 +10,19 @@
 namespace anzu {
 
 class object;
-using object_str  = std::string;
-using object_list = std::shared_ptr<std::vector<object>>;
+using block_int   = int;
+using block_bool  = bool;
+using block_str   = std::string;
+using block_list  = std::shared_ptr<std::vector<object>>;
 using object_null = std::monostate;
 
 class object
 {
     using value_type = std::variant<
-        int,
-        bool,
-        object_str,
-        object_list,
+        block_int,
+        block_bool,
+        block_str,
+        block_list,
         object_null
     >;
 

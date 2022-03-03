@@ -443,17 +443,17 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 
 auto type_of(const anzu::object& object) -> type
 {
-    if (object.is<int>()) {
+    if (object.is<block_int>()) {
         return int_type();
     }
-    if (object.is<bool>()) {
+    if (object.is<block_bool>()) {
         return bool_type();
     }
-    if (object.is<std::string>()) {
+    if (object.is<block_str>()) {
         return str_type();
     }
-    if (object.is<object_list>()) {
-        const auto& list = object.as<object_list>();
+    if (object.is<block_list>()) {
+        const auto& list = object.as<block_list>();
         if (list->empty()) {
             return concrete_list_type(int_type());
         }

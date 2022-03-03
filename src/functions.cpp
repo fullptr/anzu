@@ -13,7 +13,7 @@ namespace {
 
 auto builtin_list_push(std::span<const object> args) -> object
 {
-    auto& list = args[0].as<object_list>();
+    auto& list = args[0].as<block_list>();
     auto& obj = args[1];
     list->push_back(obj);
     return null_object();
@@ -21,7 +21,7 @@ auto builtin_list_push(std::span<const object> args) -> object
 
 auto builtin_list_pop(std::span<const object> args) -> object
 {
-    auto& list = args[0].as<object_list>();
+    auto& list = args[0].as<block_list>();
     auto ret = list->back();
     list->pop_back();
     return ret;
@@ -29,13 +29,13 @@ auto builtin_list_pop(std::span<const object> args) -> object
 
 auto builtin_list_size(std::span<const object> args) -> object
 {
-    const auto& list = args[0].as<object_list>();
+    const auto& list = args[0].as<block_list>();
     return object{static_cast<int>(list->size())};
 }
 
 auto builtin_list_at(std::span<const object> args) -> object
 {
-    const auto& list = args[0].as<object_list>();
+    const auto& list = args[0].as<block_list>();
     const auto& idx = args[1].as<int>();
     return list->at(idx);
 }
@@ -50,7 +50,7 @@ auto builtin_str_at(std::span<const object> args) -> object
 {
     const auto& str = args[0].as<std::string>();
     const auto& idx = args[1].as<int>();
-    return object{object_str{str.at(idx)}};
+    return object{block_str{str.at(idx)}};
 }
 
 auto builtin_to_int(std::span<const object> args) -> object
