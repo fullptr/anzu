@@ -4,6 +4,7 @@
 #include "parser.hpp"
 #include "functions.hpp"
 #include "utility/print.hpp"
+#include "utility/overloaded.hpp"
 
 #include <string_view>
 #include <optional>
@@ -43,6 +44,8 @@ struct compiler_context
 
     var_locations globals;
     std::optional<var_locations> locals;
+
+    expr_types expr_types;
 };
 
 template <typename T>
@@ -127,16 +130,19 @@ auto link_up_jumps(
     -> void
 {
     // Jump past the end if false
-    std::get<anzu::op_jump_if_false>(ctx.program[loop_do]).jump = loop_end + 1;
+    std::get<op_jump_if_false>(ctx.program[loop_do]).jump = loop_end + 1;
         
     // Only set unset jumps, there may be other already set from nested loops
     for (std::intptr_t idx = loop_do + 1; idx != loop_end; ++idx) {
-        if (auto op = std::get_if<anzu::op_break>(&ctx.program[idx]); op && op->jump == -1) {
-            op->jump = loop_end + 1;
-        }
-        else if (auto op = std::get_if<anzu::op_continue>(&ctx.program[idx]); op && op->jump == -1) {
-            op->jump = loop_begin;
-        }
+        std::visit(overloaded{
+            [&](op_break& op) {
+                if (op.jump == -1) { op.jump = loop_end + 1; }
+            },
+            [&](op_continue& op) {
+                if (op.jump == -1) { op.jump = loop_begin; }
+            },
+            [](auto&&) {}
+        }, ctx.program[idx]);
     }
 }
 
@@ -177,7 +183,7 @@ void compile_node(const node_literal_expr& node, compiler_context& ctx)
         anzu::print("Objects with block-size != 1 not currently supported\n");
         std::exit(1);
     }
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value.data.front() });
+    ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value });
 }
 
 void compile_node(const node_variable_expr& node, compiler_context& ctx)
@@ -272,7 +278,9 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     save_variable(ctx, container_name);
 
     // Push the counter to the stack
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=block{0} });
+    ctx.program.emplace_back(anzu::op_load_literal{
+        .value=make_int_object(0)
+    });
     declare_variable_name(ctx, index_name);
     save_variable(ctx, index_name);
 
@@ -296,7 +304,9 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Increment the index
     load_variable(ctx, index_name);
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=block{1} });
+    ctx.program.emplace_back(anzu::op_load_literal{
+        .value=make_int_object(1)
+    });
     ctx.program.emplace_back(anzu::op_add{});
     save_variable(ctx, index_name);
 
@@ -369,9 +379,10 @@ auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
 
 }
 
-auto compile(const std::unique_ptr<node_stmt>& root) -> anzu::program
+auto compile(const node_stmt_ptr& root, const expr_types& types) -> anzu::program
 {
     anzu::compiler_context ctx;
+    ctx.expr_types = types;
     compile_node(*root, ctx);
     return ctx.program;
 }

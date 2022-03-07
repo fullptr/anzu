@@ -17,6 +17,7 @@ auto return_key() -> std::string
     return ret;
 }
 
+// TODO: Clean this up
 struct typecheck_context
 {
     std::unordered_map<std::string, const node_function_def_stmt*> functions;
@@ -26,9 +27,11 @@ struct typecheck_context
     var_types globals;
     std::optional<var_types> locals;
 
-    anzu::type_store types;
+    anzu::type_store registered_types;
 
     std::unordered_map<const node_function_def_stmt*, std::unordered_set<signature>> checked_sigs;
+
+    expr_types node_types;
 };
 
 auto current_vars(typecheck_context& ctx) -> typecheck_context::var_types&
@@ -59,7 +62,7 @@ template <typename... Args>
 
 auto verify_real_type(typecheck_context& ctx, const token& tok, const type& t) -> void
 {
-    if (!ctx.types.is_registered_type(t)) {
+    if (!ctx.registered_types.is_registered_type(t)) {
         type_error(tok, "'{}' is not a recognised type", t);
     }
 }
@@ -285,7 +288,7 @@ auto typecheck_function_call(
 
 auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
 {
-    return std::visit(overloaded {
+    const auto expr_type = std::visit(overloaded {
         [&](const node_literal_expr& node) {
             return node.value.type;
         },
@@ -323,6 +326,9 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
             return concrete_list_type(subtype);
         }
     }, expr);
+
+    ctx.node_types.emplace(&expr, expr_type);
+    return expr_type;
 };
 
 void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const type& expected)
@@ -441,10 +447,11 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 
 }
 
-auto typecheck_ast(const node_stmt_ptr& ast) -> void
+auto typecheck_ast(const node_stmt_ptr& ast) -> expr_types
 {
     auto ctx = typecheck_context{};
     typecheck_node(ctx, *ast);
+    return ctx.node_types;
 }
 
 }

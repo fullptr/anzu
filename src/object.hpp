@@ -105,6 +105,11 @@ auto to_int(std::string_view token) -> int;
 
 auto format_special_chars(const std::string& str) -> std::string;
 
+inline auto make_int_object(int val) -> object_def
+{
+    return object_def{ .data = { block{val} }, .type = int_type() };
+}
+
 }
 
 template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
