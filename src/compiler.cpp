@@ -193,6 +193,8 @@ void compile_node(const node_variable_expr& node, compiler_context& ctx)
 
 void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
 {
+    const auto lhs_type = ctx.expr_types[node.lhs.get()];
+    const auto rhs_type = ctx.expr_types[node.rhs.get()];
     compile_node(*node.lhs, ctx);
     compile_node(*node.rhs, ctx);
     const auto op = node.token.text;

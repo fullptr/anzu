@@ -81,6 +81,9 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_builtin_call& op) {
             return std::format("OP_BUILTIN_CALL({})", op.name);
         },
+        [&](const op_builtin_bin_op& op) {
+            return std::format("OP_BUILTIN_BIN_OP({} {} {})", op.lhs, op.op, op.rhs);
+        },
         [&](const op_add& op) {
             return std::string{"OP_ADD"};
         },

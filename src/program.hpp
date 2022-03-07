@@ -92,7 +92,20 @@ struct op_builtin_call
 {
     std::string      name;
     builtin_function ptr;
-    signature        sig;
+    signature        sig; // TODO: Remove from op
+};
+
+// Will replace all of the other binary operator op codes. Switching to this way since the
+// types are known at compile time, and will also allow for custom operators for class types.
+struct op_builtin_bin_op
+{
+    // Debug info, can we do this better?
+    std::string      lhs;
+    std::string      rhs;
+    std::string      op;
+
+    builtin_function ptr;
+    signature        sig; // TODO: Remove from op
 };
 
 struct op_add
