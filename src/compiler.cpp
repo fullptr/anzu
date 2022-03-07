@@ -198,6 +198,28 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     compile_node(*node.lhs, ctx);
     compile_node(*node.rhs, ctx);
     const auto op = node.token.text;
+
+    if (lhs_type == int_type() && op == "+" && rhs_type == int_type()) {
+        ctx.program.emplace_back(op_builtin_bin_op{
+            .lhs = to_string(lhs_type),
+            .rhs = to_string(rhs_type),
+            .op = op,
+            .ptr = +[](std::span<const block> blocks) {
+                const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                return block{lhs_val + rhs_val};
+            },
+            .sig = signature{
+                .args = {
+                    { .name = "lhs", .type = lhs_type },
+                    { .name = "rhs", .type = rhs_type }
+                },
+                .return_type = int_type() // TODO: fetch type of this node
+            }
+        });
+        return;
+    }
+
     if      (op == "+")  { ctx.program.emplace_back(anzu::op_add{}); }
     else if (op == "-")  { ctx.program.emplace_back(anzu::op_sub{}); }
     else if (op == "*")  { ctx.program.emplace_back(anzu::op_mul{}); }

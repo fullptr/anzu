@@ -195,6 +195,7 @@ struct op : std::variant<
     op_break,
     op_continue,
     op_jump_if_false,
+    op_builtin_bin_op,
     op_add,
     op_sub,
     op_mul,
