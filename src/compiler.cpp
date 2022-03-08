@@ -191,6 +191,8 @@ void compile_node(const node_variable_expr& node, compiler_context& ctx)
     load_variable(ctx, node.name);
 }
 
+// This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
+// generic and combine the logic.
 void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
 {
     const auto lhs_type = ctx.expr_types[node.lhs.get()];
@@ -199,45 +201,295 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     compile_node(*node.rhs, ctx);
     const auto op = node.token.text;
 
-    // An example of how we can remove the original bin op codes. We will want to move
-    // to this when we have custom types with operators.
-    if (lhs_type == int_type() && op == "+" && rhs_type == int_type()) {
-        ctx.program.emplace_back(op_builtin_bin_op{
-            .lhs = to_string(lhs_type),
-            .rhs = to_string(rhs_type),
-            .op = op,
-            .ptr = +[](std::span<const block> blocks) {
-                const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                return block{lhs_val + rhs_val};
-            },
-            .sig = signature{
-                .args = {
-                    { .name = "lhs", .type = lhs_type },
-                    { .name = "rhs", .type = rhs_type }
-                },
-                .return_type = int_type() // TODO: fetch type of this node
-            }
-        });
-        return;
+    const auto invalid_expr = [&]() {
+        anzu::print("could not evaluate '{} {} {}'", lhs_type, op, rhs_type);
+        std::exit(1);
+    };
+
+    if (lhs_type != rhs_type) {
+        invalid_expr();
     }
 
-    if      (op == "+")  { ctx.program.emplace_back(anzu::op_add{}); }
-    else if (op == "-")  { ctx.program.emplace_back(anzu::op_sub{}); }
-    else if (op == "*")  { ctx.program.emplace_back(anzu::op_mul{}); }
-    else if (op == "/")  { ctx.program.emplace_back(anzu::op_div{}); }
-    else if (op == "%")  { ctx.program.emplace_back(anzu::op_mod{}); }
-    else if (op == "<")  { ctx.program.emplace_back(anzu::op_lt{}); }
-    else if (op == "<=") { ctx.program.emplace_back(anzu::op_le{}); }
-    else if (op == ">")  { ctx.program.emplace_back(anzu::op_gt{}); }
-    else if (op == ">=") { ctx.program.emplace_back(anzu::op_ge{}); }
-    else if (op == "==") { ctx.program.emplace_back(anzu::op_eq{}); }
-    else if (op == "!=") { ctx.program.emplace_back(anzu::op_ne{}); }
-    else if (op == "||") { ctx.program.emplace_back(anzu::op_or{}); }
-    else if (op == "&&") { ctx.program.emplace_back(anzu::op_and{}); }
+    const auto& type = lhs_type; // == rhs_type too
+
+    if (match(type, generic_list_type()).has_value()) {// No support for having these in binary ops.
+        invalid_expr();
+    }
+
+
+
+    // An example of how we can remove the original bin op codes. We will want to move
+    // to this when we have custom types with operators.
+    if (type == int_type()) {
+        const auto int_arith_sig = signature{
+            .args = { { "lhs", type }, { "rhs", type } },
+            .return_type = int_type()
+        };
+
+        const auto int_compare_sig = signature{
+            .args = { { "lhs", type }, { "rhs", type } },
+            .return_type = bool_type()
+        };
+
+        if (op == "+") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val + rhs_val};
+                },
+                .sig = int_arith_sig
+            });
+        }
+        else if (op == "-") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val - rhs_val};
+                },
+                .sig = int_arith_sig
+            });
+        }
+        else if (op == "*") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val * rhs_val};
+                },
+                .sig = int_arith_sig
+            });
+        }
+        else if (op == "/") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    if (rhs_val == 0) {
+                        anzu::print("Division by zero error\n");
+                        std::exit(1);
+                    }
+                    return block{lhs_val / rhs_val};
+                },
+                .sig = int_arith_sig
+            });
+        }
+        else if (op == "%") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val & rhs_val};
+                },
+                .sig = int_arith_sig
+            });
+        }
+        else if (op == "<") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val < rhs_val};
+                },
+                .sig = int_compare_sig
+            });
+        }
+        else if (op == "<=") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val <= rhs_val};
+                },
+                .sig = int_compare_sig
+            });
+        }
+        else if (op == ">") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val > rhs_val};
+                },
+                .sig = int_compare_sig
+            });
+        }
+        else if (op == ">=") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val >= rhs_val};
+                },
+                .sig = int_compare_sig
+            });
+        }
+        else if (op == "==") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val == rhs_val};
+                },
+                .sig = int_compare_sig
+            });
+        }
+        else if (op == "!=") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                    return block{lhs_val != rhs_val};
+                },
+                .sig = int_compare_sig
+            });
+        }
+    }
+    else if (type == bool_type()) {
+        const auto bool_sig = signature{
+            .args = { { "lhs", type }, { "rhs", type } },
+            .return_type = bool_type()
+        };
+
+        if (op == "==") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_bool>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_bool>(blocks[1].as_variant());
+                    return block{lhs_val == rhs_val};
+                },
+                .sig = bool_sig
+            });
+        }
+        else if (op == "!=") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_bool>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_bool>(blocks[1].as_variant());
+                    return block{lhs_val != rhs_val};
+                },
+                .sig = bool_sig
+            });
+        }
+        else if (op == "&&") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_bool>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_bool>(blocks[1].as_variant());
+                    return block{lhs_val && rhs_val};
+                },
+                .sig = bool_sig
+            });
+        }
+        else if (op == "||") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_bool>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_bool>(blocks[1].as_variant());
+                    return block{lhs_val || rhs_val};
+                },
+                .sig = bool_sig
+            });
+        }
+    }
+    else if (type == str_type()) {
+        if (op == "+") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_str>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_str>(blocks[1].as_variant());
+                    return block{lhs_val + rhs_val};
+                },
+                .sig = signature{
+                    .args = { { "lhs", type }, { "rhs", type } },
+                    .return_type = str_type()
+                }
+            });
+        }
+        else if (op == "==") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_str>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_str>(blocks[1].as_variant());
+                    return block{lhs_val == rhs_val};
+                },
+                .sig = signature{
+                    .args = { { "lhs", type }, { "rhs", type } },
+                    .return_type = bool_type()
+                }
+            });
+        }
+        else if (op == "!=") {
+            ctx.program.emplace_back(op_builtin_bin_op{
+                .lhs = to_string(type),
+                .rhs = to_string(type),
+                .op = op,
+                .ptr = +[](std::span<const block> blocks) {
+                    const auto& lhs_val = std::get<block_str>(blocks[0].as_variant());
+                    const auto& rhs_val = std::get<block_str>(blocks[1].as_variant());
+                    return block{lhs_val != rhs_val};
+                },
+                .sig = signature{
+                    .args = { { "lhs", type }, { "rhs", type } },
+                    .return_type = bool_type()
+                }
+            });
+        }
+    }
     else {
-        anzu::print("syntax error: unknown binary operator: '{}'\n", op);
-        std::exit(1);
+        invalid_expr();
     }
 }
 
@@ -251,7 +503,7 @@ void compile_node(const node_list_expr& node, compiler_context& ctx)
     for (const auto& element : node.elements | std::views::reverse) {
         compile_node(*element, ctx);
     }
-    ctx.program.emplace_back(anzu::op_build_list{ .size = node.elements.size() });
+    ctx.program.emplace_back(op_build_list{ .size = node.elements.size() });
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
@@ -278,18 +530,15 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
     const auto jump_pos = append_op(ctx, op_jump_if_false{});
     compile_node(*node.body, ctx);
 
-    auto else_pos = std::intptr_t{-1};
     if (node.else_body) {
-        else_pos = append_op(ctx, op_else{});
+        const auto else_pos = append_op(ctx, op_else{});
         compile_node(*node.else_body, ctx);
-    }
-
-    ctx.program.emplace_back(anzu::op_if_end{});
-    if (else_pos == -1) {
-        std::get<anzu::op_jump_if_false>(ctx.program[jump_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
+        ctx.program.emplace_back(anzu::op_if_end{});
+        std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
+        std::get<op_else>(ctx.program[else_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
     } else {
-        std::get<anzu::op_jump_if_false>(ctx.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
-        std::get<anzu::op_else>(ctx.program[else_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
+        ctx.program.emplace_back(anzu::op_if_end{});
+        std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
     }
 }
 
