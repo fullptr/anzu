@@ -4,6 +4,7 @@
 #include "parser.hpp"
 #include "functions.hpp"
 #include "utility/print.hpp"
+#include "utility/overloaded.hpp"
 
 #include <string_view>
 #include <optional>
@@ -43,7 +44,16 @@ struct compiler_context
 
     var_locations globals;
     std::optional<var_locations> locals;
+
+    expr_types expr_types;
 };
+
+template <typename T>
+auto append_op(compiler_context& ctx, T&& op) -> std::intptr_t
+{
+    ctx.program.emplace_back(std::forward<T>(op));
+    return std::ssize(ctx.program) - 1;
+}
 
 // Registers the given name in the current scope
 auto declare_variable_name(compiler_context& ctx, const std::string& name) -> void
@@ -120,16 +130,19 @@ auto link_up_jumps(
     -> void
 {
     // Jump past the end if false
-    std::get<anzu::op_jump_if_false>(ctx.program[loop_do]).jump = loop_end + 1;
+    std::get<op_jump_if_false>(ctx.program[loop_do]).jump = loop_end + 1;
         
     // Only set unset jumps, there may be other already set from nested loops
     for (std::intptr_t idx = loop_do + 1; idx != loop_end; ++idx) {
-        if (auto op = std::get_if<anzu::op_break>(&ctx.program[idx]); op && op->jump == -1) {
-            op->jump = loop_end + 1;
-        }
-        else if (auto op = std::get_if<anzu::op_continue>(&ctx.program[idx]); op && op->jump == -1) {
-            op->jump = loop_begin;
-        }
+        std::visit(overloaded{
+            [&](op_break& op) {
+                if (op.jump == -1) { op.jump = loop_end + 1; }
+            },
+            [&](op_continue& op) {
+                if (op.jump == -1) { op.jump = loop_begin; }
+            },
+            [](auto&&) {}
+        }, ctx.program[idx]);
     }
 }
 
@@ -166,6 +179,10 @@ void compile_function_call(
 
 void compile_node(const node_literal_expr& node, compiler_context& ctx)
 {
+    if (node.value.data.size() != 1) {
+        anzu::print("Objects with block-size != 1 not currently supported\n");
+        std::exit(1);
+    }
     ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value });
 }
 
@@ -176,9 +193,35 @@ void compile_node(const node_variable_expr& node, compiler_context& ctx)
 
 void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
 {
+    const auto lhs_type = ctx.expr_types[node.lhs.get()];
+    const auto rhs_type = ctx.expr_types[node.rhs.get()];
     compile_node(*node.lhs, ctx);
     compile_node(*node.rhs, ctx);
     const auto op = node.token.text;
+
+    // An example of how we can remove the original bin op codes. We will want to move
+    // to this when we have custom types with operators.
+    if (lhs_type == int_type() && op == "+" && rhs_type == int_type()) {
+        ctx.program.emplace_back(op_builtin_bin_op{
+            .lhs = to_string(lhs_type),
+            .rhs = to_string(rhs_type),
+            .op = op,
+            .ptr = +[](std::span<const block> blocks) {
+                const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
+                const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                return block{lhs_val + rhs_val};
+            },
+            .sig = signature{
+                .args = {
+                    { .name = "lhs", .type = lhs_type },
+                    { .name = "rhs", .type = rhs_type }
+                },
+                .return_type = int_type() // TODO: fetch type of this node
+            }
+        });
+        return;
+    }
+
     if      (op == "+")  { ctx.program.emplace_back(anzu::op_add{}); }
     else if (op == "-")  { ctx.program.emplace_back(anzu::op_sub{}); }
     else if (op == "*")  { ctx.program.emplace_back(anzu::op_mul{}); }
@@ -220,46 +263,32 @@ void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_while_stmt& node, compiler_context& ctx)
 {
-    const auto while_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_loop_begin{});
-
+    const auto begin_pos = append_op(ctx, op_loop_begin{});
     compile_node(*node.condition, ctx);
-    
-    const auto do_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_jump_if_false{});
-
+    const auto jump_pos = append_op(ctx, op_jump_if_false{});
     compile_node(*node.body, ctx);
-
-    const auto end_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_loop_end{ .jump=while_pos }); // Jump back to start
-
-    link_up_jumps(ctx, while_pos, do_pos, end_pos);
+    const auto end_pos = append_op(ctx, op_loop_end{ .jump=begin_pos });
+    link_up_jumps(ctx, begin_pos, jump_pos, end_pos);
 }
 
 void compile_node(const node_if_stmt& node, compiler_context& ctx)
 {
-    const auto if_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_if{});
-
+    const auto if_pos = append_op(ctx, op_if{});
     compile_node(*node.condition, ctx);
-    
-    const auto do_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_jump_if_false{});
-
+    const auto jump_pos = append_op(ctx, op_jump_if_false{});
     compile_node(*node.body, ctx);
 
     auto else_pos = std::intptr_t{-1};
     if (node.else_body) {
-        else_pos = std::ssize(ctx.program);
-        ctx.program.emplace_back(anzu::op_else{});
+        else_pos = append_op(ctx, op_else{});
         compile_node(*node.else_body, ctx);
     }
 
     ctx.program.emplace_back(anzu::op_if_end{});
     if (else_pos == -1) {
-        std::get<anzu::op_jump_if_false>(ctx.program[do_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
+        std::get<anzu::op_jump_if_false>(ctx.program[jump_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
     } else {
-        std::get<anzu::op_jump_if_false>(ctx.program[do_pos]).jump = else_pos + 1; // Jump into the else block if false
+        std::get<anzu::op_jump_if_false>(ctx.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
         std::get<anzu::op_else>(ctx.program[else_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
     }
 }
@@ -275,22 +304,22 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     save_variable(ctx, container_name);
 
     // Push the counter to the stack
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=object{0} });
+    ctx.program.emplace_back(anzu::op_load_literal{
+        .value=make_int_object(0)
+    });
     declare_variable_name(ctx, index_name);
     save_variable(ctx, index_name);
 
     declare_variable_name(ctx, node.var);
 
-    const auto begin_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_loop_begin{});
+    const auto begin_pos = append_op(ctx, op_loop_begin{});
 
     load_variable(ctx, index_name);
     load_variable(ctx, container_name);
     call_builtin(ctx, "list_size");
     ctx.program.emplace_back(anzu::op_ne{});
     
-    const auto do_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_jump_if_false{});   // If size == index, jump to end
+    const auto jump_pos = append_op(ctx, op_jump_if_false{}); // If size == index, jump to end
 
     load_variable(ctx, container_name);
     load_variable(ctx, index_name);
@@ -301,14 +330,15 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Increment the index
     load_variable(ctx, index_name);
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=object{1} });
+    ctx.program.emplace_back(anzu::op_load_literal{
+        .value=make_int_object(1)
+    });
     ctx.program.emplace_back(anzu::op_add{});
     save_variable(ctx, index_name);
 
-    const auto end_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_loop_end{ .jump=begin_pos });
+    const auto end_pos = append_op(ctx, op_loop_end{ .jump=begin_pos });
 
-    link_up_jumps(ctx, begin_pos, do_pos, end_pos);
+    link_up_jumps(ctx, begin_pos, jump_pos, end_pos);
 }
 
 void compile_node(const node_break_stmt&, compiler_context& ctx)
@@ -336,9 +366,8 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
-    const auto start_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_function{ .name=node.name, .sig=node.sig });
-    ctx.functions[node.name] = { .sig=node.sig ,.ptr=start_pos };
+    const auto begin_pos = append_op(ctx, op_function{ .name=node.name, .sig=node.sig });
+    ctx.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     ctx.locals.emplace();
     for (const auto& arg : node.sig.args) {
@@ -347,10 +376,9 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
     compile_node(*node.body, ctx);
     ctx.locals.reset();
 
-    const auto end_pos = std::ssize(ctx.program);
-    ctx.program.emplace_back(anzu::op_function_end{});
+    const auto end_pos = append_op(ctx, op_function_end{});
 
-    std::get<anzu::op_function>(ctx.program[start_pos]).jump = end_pos + 1;
+    std::get<anzu::op_function>(ctx.program[begin_pos]).jump = end_pos + 1;
 }
 
 void compile_node(const node_function_call_stmt& node, compiler_context& ctx)
@@ -377,9 +405,10 @@ auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
 
 }
 
-auto compile(const std::unique_ptr<node_stmt>& root) -> anzu::program
+auto compile(const node_stmt_ptr& root, const expr_types& types) -> anzu::program
 {
     anzu::compiler_context ctx;
+    ctx.expr_types = types;
     compile_node(*root, ctx);
     return ctx.program;
 }

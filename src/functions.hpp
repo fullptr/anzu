@@ -7,8 +7,8 @@
 
 namespace anzu {
 
-class object;
-using builtin_function = object(*)(std::span<const object>);
+class block;
+using builtin_function = block(*)(std::span<const block>);
 
 struct builtin
 {

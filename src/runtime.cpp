@@ -70,7 +70,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
         [&](const op_load_literal& op) {
-            ctx.memory.push_back(op.value);
+            for (const auto& block : op.value.data) {
+                ctx.memory.push_back(block);
+            }
             program_advance(ctx);
         },
         [&](const op_load_global& op) {
@@ -127,7 +129,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_jump_to(ctx, op.jump);
         },
         [&](const op_function_end& op) {
-            ctx.memory.push_back(null_object());
+            const auto null_return = null_object();
+            for (const auto& block : null_return.data) {
+                ctx.memory.push_back(block);
+            }
             pop_frame(ctx);
         },
         [&](const op_return& op) {
@@ -141,7 +146,16 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_jump_to(ctx, op.ptr); // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            auto args = std::vector<anzu::object>(op.sig.args.size());
+            auto args = std::vector<anzu::block>(op.sig.args.size());
+            for (auto& arg : args | std::views::reverse) {
+                arg = pop_back(ctx.memory);
+            }
+
+            ctx.memory.push_back(op.ptr(args));
+            program_advance(ctx);
+        },
+        [&](const op_builtin_bin_op& op) {
+            auto args = std::vector<anzu::block>(op.sig.args.size());
             for (auto& arg : args | std::views::reverse) {
                 arg = pop_back(ctx.memory);
             }
@@ -182,57 +196,57 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_eq& op) {
             auto b = pop_back(ctx.memory);
             auto& a = ctx.memory.back();
-            a = object{a == b};
+            a = block{a == b};
             program_advance(ctx);
         },
         [&](const op_ne& op) {
             auto b = pop_back(ctx.memory);
             auto& a = ctx.memory.back();
-            a = object{a != b};
+            a = block{a != b};
             program_advance(ctx);
         },
         [&](const op_lt& op) {
             auto b = pop_back(ctx.memory);
             auto& a = ctx.memory.back();
-            a = object{a < b};
+            a = block{a < b};
             program_advance(ctx);
         },
         [&](const op_le& op) {
             auto b = pop_back(ctx.memory);
             auto& a = ctx.memory.back();
-            a = object{a <= b};
+            a = block{a <= b};
             program_advance(ctx);
         },
         [&](const op_gt& op) {
             auto b = pop_back(ctx.memory);
             auto& a = ctx.memory.back();
-            a = object{a > b};
+            a = block{a > b};
             program_advance(ctx);
         },
         [&](const op_ge& op) {
             auto b = pop_back(ctx.memory);
             auto& a = ctx.memory.back();
-            a = object{a >= b};
+            a = block{a >= b};
             program_advance(ctx);
         },
         [&](const op_or& op) {
             auto b = pop_back(ctx.memory);
             auto& a = ctx.memory.back();
-            a = object{a || b};
+            a = block{a || b};
             program_advance(ctx);
         },
         [&](const op_and& op) {
             auto b = pop_back(ctx.memory);
             auto& a = ctx.memory.back();
-            a = object{a && b};
+            a = block{a && b};
             program_advance(ctx);
         },
         [&](const op_build_list& op) {
-            auto list = std::make_shared<std::vector<anzu::object>>();
+            auto list = std::make_shared<std::vector<anzu::block>>();
             for (std::size_t i = 0; i != op.size; ++i) {
                 list->push_back(pop_back(ctx.memory));
             }
-            ctx.memory.push_back(object{list});
+            ctx.memory.push_back(block{list});
             program_advance(ctx);
         }
     }, op_code);

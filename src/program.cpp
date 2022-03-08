@@ -16,7 +16,7 @@ auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
         [&](const op_load_literal& op) {
-            return std::format("OP_LOAD_LITERAL({})", op.value.to_repr());
+            return std::format("OP_LOAD_LITERAL({})", to_string(op.value));
         },
         [&](const op_load_global& op) {
             return std::format("OP_LOAD_GLOBAL({}: {})", op.name, op.position);
@@ -80,6 +80,9 @@ auto to_string(const op& op_code) -> std::string
         },
         [&](const op_builtin_call& op) {
             return std::format("OP_BUILTIN_CALL({})", op.name);
+        },
+        [&](const op_builtin_bin_op& op) {
+            return std::format("OP_BUILTIN_BIN_OP({} {} {})", op.lhs, op.op, op.rhs);
         },
         [&](const op_add& op) {
             return std::string{"OP_ADD"};

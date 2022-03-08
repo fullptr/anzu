@@ -58,7 +58,7 @@ int main(int argc, char** argv)
     }
 
     anzu::print("-> Type Checking\n");
-    anzu::typecheck_ast(ast);
+    const auto expr_types = anzu::typecheck_ast(ast);
     if (mode == "check") {
         print_node(*ast);
         return 0;
@@ -70,7 +70,7 @@ int main(int argc, char** argv)
     }
 
     anzu::print("-> Compiling\n");
-    const auto program = anzu::compile(ast);
+    const auto program = anzu::compile(ast, expr_types);
     if (mode == "com") {
         anzu::print_program(program);
         return 0;

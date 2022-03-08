@@ -111,6 +111,16 @@ auto is_type_complete(const type& t) -> bool
     }, t);
 }
 
+auto is_type_fundamental(const type& type) -> bool
+{
+    return type == int_type() ||
+           type == bool_type() ||
+           type == str_type() ||
+           type == generic_list_type() ||
+           match(type, generic_list_type()).has_value() ||
+           type == null_type();
+}
+
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a
 // different value, stop and return false.
 auto update(
@@ -134,8 +144,7 @@ auto match(const type& concrete, const type& pattern) -> std::optional<match_res
 {
     // Pre-condition, concrete must be a complete type (non-generic and no generic subtypes)
     if (!is_type_complete(concrete)) {
-        anzu::print("cannot match the incomplete type '{}'\n", to_string(concrete));
-        std::exit(1);
+        return std::nullopt;
     }
 
     // Check 1: Trivial case - pattern is generic, matches entire concrete type

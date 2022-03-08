@@ -54,6 +54,7 @@ auto concrete_list_type(const type& t) -> type;
 auto generic_list_type() -> type;
 
 auto is_type_complete(const type& type) -> bool;
+auto it_type_fundamental(const type& type) -> bool;
 
 using match_result = std::unordered_map<int, type>;
 auto match(const type& concrete, const type& pattern) -> std::optional<match_result>;

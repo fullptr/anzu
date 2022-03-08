@@ -5,37 +5,51 @@
 #include <variant>
 #include <vector>
 
+#include "type.hpp"
 #include "utility/print.hpp"
 
 namespace anzu {
 
-class object;
-using object_str  = std::string;
-using object_list = std::shared_ptr<std::vector<object>>;
-using object_null = std::monostate;
+class block;
 
-class object
+struct object_def
 {
-    using value_type = std::variant<
-        int,
-        bool,
-        object_str,
-        object_list,
-        object_null
+    std::vector<block> data;
+    anzu::type         type;
+};
+
+using block_int  = int;
+using block_bool = bool;
+using block_str  = std::string;
+using block_list = std::shared_ptr<std::vector<block>>;
+using block_null = std::monostate;
+
+class block
+{
+public:
+    using block_type = std::variant<
+        block_int,
+        block_bool,
+        block_str,
+        block_list,
+        block_null
     >;
 
-    value_type d_value;
+private:
+    block_type d_value;
 
 public:
     template <typename Obj>
-    explicit object(const Obj& obj) : d_value{obj} {}
+    explicit block(const Obj& obj) : d_value{obj} {}
     
-    object() : d_value{0} {}
+    block() : d_value{0} {}
 
     // Casts, for certain types, converts the object to the requested type.
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
+
+    auto as_variant() const -> const block_type& { return d_value; }
 
     template <typename T>
     auto is() const -> bool
@@ -65,30 +79,40 @@ public:
 
     auto to_repr() const -> std::string;
 
-    friend auto operator+(const object& lhs, const object& rhs) -> object;
-    friend auto operator-(const object& lhs, const object& rhs) -> object;
-    friend auto operator*(const object& lhs, const object& rhs) -> object;
-    friend auto operator/(const object& lhs, const object& rhs) -> object;
-    friend auto operator%(const object& lhs, const object& rhs) -> object;
+    friend auto operator+(const block& lhs, const block& rhs) -> block;
+    friend auto operator-(const block& lhs, const block& rhs) -> block;
+    friend auto operator*(const block& lhs, const block& rhs) -> block;
+    friend auto operator/(const block& lhs, const block& rhs) -> block;
+    friend auto operator%(const block& lhs, const block& rhs) -> block;
     
-    friend auto operator||(const object& lhs, const object& rhs) -> bool;
-    friend auto operator&&(const object& lhs, const object& rhs) -> bool;
+    friend auto operator||(const block& lhs, const block& rhs) -> bool;
+    friend auto operator&&(const block& lhs, const block& rhs) -> bool;
 
-    friend auto operator<=>(const object& lhs, const object& rhs) -> std::strong_ordering = default;
+    friend auto operator<=>(const block& lhs, const block& rhs) -> std::strong_ordering = default;
 
-    friend auto swap(object& lhs, object& rhs) -> void;
+    friend auto swap(block& lhs, block& rhs) -> void;
 };
 
-inline auto null_object() -> anzu::object { return object{object_null{}}; }
+auto to_string(const object_def& object) -> std::string;
+
+inline auto null_object() -> object_def
+{
+    return { .data = { block{block_null()} }, .type = null_type() };
+}
 
 auto is_int(std::string_view token) -> bool;
 auto to_int(std::string_view token) -> int;
 
 auto format_special_chars(const std::string& str) -> std::string;
 
+inline auto make_int_object(int val) -> object_def
+{
+    return object_def{ .data = { block{val} }, .type = int_type() };
 }
 
-template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
+}
+
+template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
     char fmt = 's';
 
     constexpr auto parse(std::format_parse_context& ctx) -> decltype(ctx.begin()) {
@@ -98,8 +122,8 @@ template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
         return it;
     }
 
-    auto format(const anzu::object& obj, auto& ctx) {
-        const auto str = fmt == 's' ? obj.to_str() : obj.to_repr();
+    auto format(const anzu::block& blk, auto& ctx) {
+        const auto str = fmt == 's' ? blk.to_str() : blk.to_repr();
         return std::formatter<std::string>::format(std::format("{}", str), ctx);
     }
 };

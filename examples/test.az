@@ -1,26 +1,4 @@
 
 
-fn foo(x: int, y: int) -> int
-{
-    return 5
-}
-
-a := foo(1, 2)
-println(a)
-
-fn not(x: bool) -> bool
-{
-    if x return false
-    return true
-}
-
-fn assert(cond: bool) -> null
-{
-    if not(cond) {
-        println("you are bad at maths")
-    }
-}
-
-assert(2 + 2 == 5)
-
-
+x := 4 + 5
+println(x)

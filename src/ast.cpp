@@ -12,7 +12,7 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
     const auto spaces = std::string(4 * indent, ' ');
     std::visit(overloaded {
         [&](const node_literal_expr& node) {
-            anzu::print("{}Literal: {}\n", spaces, node.value.to_repr());
+            anzu::print("{}Literal: {}\n", spaces, to_string(node.value));
         },
         [&](const node_variable_expr& node) {
             anzu::print("{}Variable: {}\n", spaces, node.name);

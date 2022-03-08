@@ -15,7 +15,7 @@ struct frame
 struct runtime_context
 {
     std::vector<frame>  frames;
-    std::vector<object> memory;
+    std::vector<block> memory;
 };
 
 auto run_program(const program& prog) -> void;

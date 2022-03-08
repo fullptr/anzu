@@ -8,32 +8,83 @@ namespace anzu {
 namespace {
 
 auto evaluate_bin_op(
-    const anzu::object& lhs, const anzu::object& rhs, std::string_view op
+    const object_def& lhs, const object_def& rhs, std::string_view op
 )
-    -> anzu::object
+    -> object_def
 {
-    if      (op == "+")  { return object{lhs + rhs}; }
-    else if (op == "-")  { return object{lhs - rhs}; }
-    else if (op == "*")  { return object{lhs * rhs}; }
-    else if (op == "/")  { return object{lhs / rhs}; }
-    else if (op == "%")  { return object{lhs % rhs}; }
-    else if (op == "<")  { return object{lhs < rhs}; }
-    else if (op == "<=") { return object{lhs <= rhs}; }
-    else if (op == ">")  { return object{lhs > rhs}; }
-    else if (op == ">=") { return object{lhs >= rhs}; }
-    else if (op == "==") { return object{lhs == rhs}; }
-    else if (op == "!=") { return object{lhs != rhs}; }
-    else if (op == "||") { return object{lhs || rhs}; }
-    else if (op == "&&") { return object{lhs && rhs}; }
+    if (lhs.data.size() != 1 || rhs.data.size() != 1) {
+        anzu::print("optimising operations of objects with block size != 1 not currently supported\n");
+        std::exit(1);
+    }
+
+    const auto& lhsv = lhs.data.front();
+    const auto& rhsv = rhs.data.front();
+
+    auto result = object_def{};
+
+    if (op == "+")       {
+        result.data = { block{lhsv +  rhsv} };
+        result.type = lhs.type;
+    }
+    else if (op == "-")  {
+        result.data = { block{lhsv -  rhsv} };
+        result.type = lhs.type;
+    }
+    else if (op == "*")  {
+        result.data = { block{lhsv *  rhsv} };
+        result.type = lhs.type;
+    }
+    else if (op == "/")  {
+        result.data = { block{lhsv /  rhsv} };
+        result.type = lhs.type;
+    }
+    else if (op == "%")  {
+        result.data = { block{lhsv %  rhsv} };
+        result.type = lhs.type;
+    }
+    else if (op == "<")  {
+        result.data = { block{lhsv <  rhsv} };
+        result.type = bool_type();
+    }
+    else if (op == "<=") {
+        result.data = { block{lhsv <= rhsv} };
+        result.type = bool_type();
+    }
+    else if (op == ">")  {
+        result.data = { block{lhsv >  rhsv} };
+        result.type = bool_type();
+    }
+    else if (op == ">=") {
+        result.data = { block{lhsv >= rhsv} }; 
+        result.type = bool_type();
+    }
+    else if (op == "==") {
+        result.data = { block{lhsv == rhsv} };
+        result.type = bool_type();
+    }
+    else if (op == "!=") {
+        result.data = { block{lhsv != rhsv} };
+        result.type = bool_type();
+    }
+    else if (op == "||") {
+        result.data = { block{lhsv || rhsv} };
+        result.type = bool_type();
+    }
+    else if (op == "&&") {
+        result.data = { block{lhsv && rhsv} };
+        result.type = bool_type();
+    }
     else {
         anzu::print("syntax error: unknown binary operator: '{}'\n", op);
         std::exit(1);
     }
+
+    return result;
 }
 
-auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::object>
+auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<object_def>
 {
-    using return_type = std::optional<anzu::object>;
+    using return_type = std::optional<object_def>;
     return std::visit(overloaded {
         [](const node_literal_expr& node) -> return_type {
             return node.value;
@@ -55,17 +106,7 @@ auto evaluate_const_expressions_recurse(node_expr& expr) -> std::optional<anzu::
             return std::nullopt;
         },
         [&](const node_list_expr& node) -> return_type {
-            auto values = std::make_shared<std::vector<anzu::object>>();
-            values->reserve(node.elements.size());
-            for (const auto& element : node.elements) {
-                auto val = evaluate_const_expressions_recurse(*element);
-                if (!val) {
-                    return std::nullopt;  // Non-literal value in this list.
-                }
-                values->push_back(*val);
-            }
-            expr.emplace<anzu::node_literal_expr>(object{values});
-            return anzu::object{values};
+            return std::nullopt; // Cannot do this for now, since lists store blocks, not objects
         }
     }, expr);
 }
