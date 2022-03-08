@@ -199,6 +199,8 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     compile_node(*node.rhs, ctx);
     const auto op = node.token.text;
 
+    // An example of how we can remove the original bin op codes. We will want to move
+    // to this when we have custom types with operators.
     if (lhs_type == int_type() && op == "+" && rhs_type == int_type()) {
         ctx.program.emplace_back(op_builtin_bin_op{
             .lhs = to_string(lhs_type),
