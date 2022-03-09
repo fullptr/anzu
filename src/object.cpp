@@ -31,7 +31,7 @@ auto to_string(const block& blk) -> std::string
         [](const block_str& v) { return std::format("'{}'", v); },
         [](const block_list& v) { return list_repr(v); },
         [](block_null) { return std::string{"null"}; }
-    }, blk.as_variant());
+    }, blk);
 }
 
 auto to_string(const object_def& object) -> std::string

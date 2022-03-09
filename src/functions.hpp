@@ -7,7 +7,7 @@
 
 namespace anzu {
 
-class block;
+struct block;
 using builtin_function = block(*)(std::span<const block>);
 
 // A more dangerous function pointer type that had access to the entire memory

@@ -10,7 +10,7 @@
 
 namespace anzu {
 
-class block;
+struct block;
 
 struct object_def
 {
@@ -27,28 +27,15 @@ using block_null = std::monostate;
 auto to_string(const block& blk) -> std::string;
 auto to_string(const object_def& object) -> std::string;
 
-class block
+struct block : std::variant<
+    block_int,
+    block_bool,
+    block_str,
+    block_list,
+    block_null
+>
 {
-public:
-    using block_type = std::variant<
-        block_int,
-        block_bool,
-        block_str,
-        block_list,
-        block_null
-    >;
-
-private:
-    block_type d_value;
-
-public:
-    template <typename Obj>
-    explicit block(const Obj& obj) : d_value{obj} {}
-    
-    block() : d_value{0} {}
-
-    auto as_variant() const -> const block_type& { return d_value; }
-    auto as_variant() -> block_type& { return d_value; }
+    using variant::variant;
 };
 
 inline auto null_object() -> object_def

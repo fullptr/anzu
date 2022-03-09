@@ -14,7 +14,7 @@ namespace {
 
 auto builtin_list_push(std::span<const block> args) -> block
 {
-    auto& list = std::get<block_list>(args[0].as_variant());
+    auto& list = std::get<block_list>(args[0]);
     auto& obj = args[1];
     list->push_back(obj);
     return block{block_null{}};
@@ -22,7 +22,7 @@ auto builtin_list_push(std::span<const block> args) -> block
 
 auto builtin_list_pop(std::span<const block> args) -> block
 {
-    auto& list = std::get<block_list>(args[0].as_variant());
+    auto& list = std::get<block_list>(args[0]);
     auto ret = list->back();
     list->pop_back();
     return ret;
@@ -30,27 +30,27 @@ auto builtin_list_pop(std::span<const block> args) -> block
 
 auto builtin_list_size(std::span<const block> args) -> block
 {
-    const auto& list = std::get<block_list>(args[0].as_variant());
+    const auto& list = std::get<block_list>(args[0]);
     return block{static_cast<int>(list->size())};
 }
 
 auto builtin_list_at(std::span<const block> args) -> block
 {
-    const auto& list = std::get<block_list>(args[0].as_variant());
-    const auto& idx = std::get<block_int>(args[1].as_variant());
+    const auto& list = std::get<block_list>(args[0]);
+    const auto& idx = std::get<block_int>(args[1]);
     return list->at(idx);
 }
 
 auto builtin_str_size(std::span<const block> args) -> block
 {
-    const auto& str = std::get<block_str>(args[0].as_variant());
+    const auto& str = std::get<block_str>(args[0]);
     return block{static_cast<int>(str.size())};
 }
 
 auto builtin_str_at(std::span<const block> args) -> block
 {
-    const auto& str = std::get<block_str>(args[0].as_variant());
-    const auto& idx = std::get<block_int>(args[1].as_variant());
+    const auto& str = std::get<block_str>(args[0]);
+    const auto& idx = std::get<block_int>(args[1]);
     return block{block_str{str.at(idx)}};
 }
 
@@ -64,7 +64,7 @@ auto builtin_print(std::span<const block> args) -> block
         [&](const auto&) {
             anzu::print("{}", to_string(obj));
         }
-    }, obj.as_variant());
+    }, obj);
     return block{block_null{}};
 }
 
@@ -78,7 +78,7 @@ auto builtin_println(std::span<const block> args) -> block
         [&](const auto&) {
             anzu::print("{}\n", to_string(obj));
         }
-    }, obj.as_variant());
+    }, obj);
     return block{block_null{}};
 }
 
@@ -91,7 +91,7 @@ auto builtin_input(std::span<const block> args) -> block
 
 auto builtin_range(std::span<const block> args) -> block
 {
-    const auto& max = std::get<block_int>(args[0].as_variant());
+    const auto& max = std::get<block_int>(args[0]);
     auto list = std::make_shared<std::vector<block>>();
     for (int i = 0; i != max; ++i) {
         list->push_back(block{i});

@@ -119,7 +119,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_jump_to(ctx, op.jump);
         },
         [&](const op_jump_if_false& op) {
-            if (std::get<block_bool>(ctx.memory.back().as_variant())) {
+            if (std::get<block_bool>(ctx.memory.back())) {
                 program_advance(ctx);
             } else {
                 program_jump_to(ctx, op.jump);
