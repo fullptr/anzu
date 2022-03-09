@@ -100,12 +100,12 @@ struct op_builtin_call
 struct op_builtin_bin_op
 {
     // Debug info, can we do this better?
-    std::string      lhs;
-    std::string      rhs;
-    std::string      op;
+    std::string    lhs;
+    std::string    rhs;
+    std::string    op;
 
-    builtin_function ptr;
-    signature        sig; // TODO: Remove from op
+    builtin_mem_op ptr;
+    signature      sig; // TODO: Remove from op
 };
 
 struct op_add

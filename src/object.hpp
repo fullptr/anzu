@@ -50,6 +50,7 @@ public:
     auto to_str() const -> std::string;
 
     auto as_variant() const -> const block_type& { return d_value; }
+    auto as_variant() -> block_type& { return d_value; }
 
     template <typename T>
     auto is() const -> bool

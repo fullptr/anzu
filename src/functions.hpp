@@ -10,6 +10,10 @@ namespace anzu {
 class block;
 using builtin_function = block(*)(std::span<const block>);
 
+// A more dangerous function pointer type that had access to the entire memory
+// vector, and should only be allowed for internal implementations of builtin types.
+using builtin_mem_op = void(*)(std::vector<block>& memory);
+
 struct builtin
 {
     builtin_function ptr;

@@ -155,12 +155,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx);
         },
         [&](const op_builtin_bin_op& op) {
-            auto args = std::vector<anzu::block>(op.sig.args.size());
-            for (auto& arg : args | std::views::reverse) {
-                arg = pop_back(ctx.memory);
-            }
-
-            ctx.memory.push_back(op.ptr(args));
+            op.ptr(ctx.memory);
             program_advance(ctx);
         },
         [&](const op_add& op) {

@@ -49,6 +49,20 @@ struct compiler_context
 };
 
 template <typename T>
+auto back(std::vector<T>& elements) -> T&
+{
+    return elements.back();
+}
+
+template <typename T>
+auto penult(std::vector<T>& elements) -> T&
+{
+    auto it = elements.end();
+    std::advance(it, -2);
+    return *it;
+}
+
+template <typename T>
 auto append_op(compiler_context& ctx, T&& op) -> std::intptr_t
 {
     ctx.program.emplace_back(std::forward<T>(op));
@@ -236,10 +250,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val + rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
+                    lhs_val = lhs_val + rhs_val;
+                    mem.pop_back();
                 },
                 .sig = int_arith_sig
             });
@@ -249,10 +264,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val - rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
+                    lhs_val = lhs_val - rhs_val;
+                    mem.pop_back();
                 },
                 .sig = int_arith_sig
             });
@@ -262,10 +278,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val * rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
+                    lhs_val = lhs_val * rhs_val;
+                    mem.pop_back();
                 },
                 .sig = int_arith_sig
             });
@@ -275,14 +292,15 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
                     if (rhs_val == 0) {
                         anzu::print("Division by zero error\n");
                         std::exit(1);
                     }
-                    return block{lhs_val / rhs_val};
+                    lhs_val = lhs_val / rhs_val;
+                    mem.pop_back();
                 },
                 .sig = int_arith_sig
             });
@@ -292,10 +310,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val & rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
+                    lhs_val = lhs_val % rhs_val;
+                    mem.pop_back();
                 },
                 .sig = int_arith_sig
             });
@@ -305,10 +324,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val < rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs = penult(mem).as_variant();
+                    auto& lhs_val = std::get<block_int>(lhs);
+                    lhs = block::block_type{block_bool{lhs_val < rhs_val}};
+                    mem.pop_back();
                 },
                 .sig = int_compare_sig
             });
@@ -318,10 +339,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val <= rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs = penult(mem).as_variant();
+                    auto& lhs_val = std::get<block_int>(lhs);
+                    lhs = block::block_type{block_bool{lhs_val <= rhs_val}};
+                    mem.pop_back();
                 },
                 .sig = int_compare_sig
             });
@@ -331,10 +354,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val > rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs = penult(mem).as_variant();
+                    auto& lhs_val = std::get<block_int>(lhs);
+                    lhs = block::block_type{block_bool{lhs_val > rhs_val}};
+                    mem.pop_back();
                 },
                 .sig = int_compare_sig
             });
@@ -344,10 +369,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val >= rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs = penult(mem).as_variant();
+                    auto& lhs_val = std::get<block_int>(lhs);
+                    lhs = block::block_type{block_bool{lhs_val >= rhs_val}};
+                    mem.pop_back();
                 },
                 .sig = int_compare_sig
             });
@@ -357,10 +384,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val == rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs = penult(mem).as_variant();
+                    auto& lhs_val = std::get<block_int>(lhs);
+                    lhs = block::block_type{block_bool{lhs_val == rhs_val}};
+                    mem.pop_back();
                 },
                 .sig = int_compare_sig
             });
@@ -370,10 +399,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_int>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_int>(blocks[1].as_variant());
-                    return block{lhs_val != rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+                    auto& lhs = penult(mem).as_variant();
+                    auto& lhs_val = std::get<block_int>(lhs);
+                    lhs = block::block_type{block_bool{lhs_val != rhs_val}};
+                    mem.pop_back();
                 },
                 .sig = int_compare_sig
             });
@@ -390,10 +421,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_bool>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_bool>(blocks[1].as_variant());
-                    return block{lhs_val == rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_bool>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_bool>(penult(mem).as_variant());
+                    lhs_val = lhs_val == rhs_val;
+                    mem.pop_back();
                 },
                 .sig = bool_sig
             });
@@ -403,10 +435,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_bool>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_bool>(blocks[1].as_variant());
-                    return block{lhs_val != rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_bool>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_bool>(penult(mem).as_variant());
+                    lhs_val = lhs_val != rhs_val;
+                    mem.pop_back();
                 },
                 .sig = bool_sig
             });
@@ -416,10 +449,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_bool>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_bool>(blocks[1].as_variant());
-                    return block{lhs_val && rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_bool>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_bool>(penult(mem).as_variant());
+                    lhs_val = lhs_val && rhs_val;
+                    mem.pop_back();
                 },
                 .sig = bool_sig
             });
@@ -429,10 +463,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_bool>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_bool>(blocks[1].as_variant());
-                    return block{lhs_val || rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_bool>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_bool>(penult(mem).as_variant());
+                    lhs_val = lhs_val || rhs_val;
+                    mem.pop_back();
                 },
                 .sig = bool_sig
             });
@@ -444,10 +479,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_str>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_str>(blocks[1].as_variant());
-                    return block{lhs_val + rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_str>(back(mem).as_variant());
+                    auto& lhs_val = std::get<block_str>(penult(mem).as_variant());
+                    lhs_val = lhs_val + rhs_val;
+                    mem.pop_back();
                 },
                 .sig = signature{
                     .args = { { "lhs", type }, { "rhs", type } },
@@ -460,10 +496,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_str>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_str>(blocks[1].as_variant());
-                    return block{lhs_val == rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_str>(back(mem).as_variant());
+                    auto& lhs = penult(mem).as_variant();
+                    auto& lhs_val = std::get<block_str>(lhs);
+                    lhs = block::block_type{block_bool{lhs_val == rhs_val}};
+                    mem.pop_back();
                 },
                 .sig = signature{
                     .args = { { "lhs", type }, { "rhs", type } },
@@ -476,10 +514,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                 .lhs = to_string(type),
                 .rhs = to_string(type),
                 .op = op,
-                .ptr = +[](std::span<const block> blocks) {
-                    const auto& lhs_val = std::get<block_str>(blocks[0].as_variant());
-                    const auto& rhs_val = std::get<block_str>(blocks[1].as_variant());
-                    return block{lhs_val != rhs_val};
+                .ptr = +[](std::vector<block>& mem) {
+                    const auto& rhs_val = std::get<block_str>(back(mem).as_variant());
+                    auto& lhs = penult(mem).as_variant();
+                    auto& lhs_val = std::get<block_str>(lhs);
+                    lhs = block::block_type{block_bool{lhs_val != rhs_val}};
+                    mem.pop_back();
                 },
                 .sig = signature{
                     .args = { { "lhs", type }, { "rhs", type } },
