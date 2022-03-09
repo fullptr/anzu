@@ -115,3 +115,6 @@ Utility Modules (in src/utility)
 * Replacing the binary operation op codes with calls to builtin functions.
 * Filesystem support.
 * A better C++ API for implementing custom functions in C++.
+
+# Known Bugs
+* Generic types don't place nicely with the compiler, need to employ similar techniques that type check generic functions. Function scopes will also need to store the generic types of the inputs so they can be matched against the concrete types it is called with.

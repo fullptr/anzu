@@ -216,7 +216,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     const auto op = node.token.text;
 
     const auto invalid_expr = [&]() {
-        anzu::print("could not evaluate '{} {} {}'", lhs_type, op, rhs_type);
+        anzu::print("[{}:{}] could not evaluate '{} {} {}'", node.token.line, node.token.col, lhs_type, op, rhs_type);
         std::exit(1);
     };
 
