@@ -48,8 +48,10 @@ public:
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
+    auto to_repr() const -> std::string;
 
     auto as_variant() const -> const block_type& { return d_value; }
+    auto as_variant() -> block_type& { return d_value; }
 
     template <typename T>
     auto is() const -> bool
@@ -77,22 +79,9 @@ public:
         return std::get<T>(d_value);
     }
 
-    auto to_repr() const -> std::string;
-
-    friend auto operator+(const block& lhs, const block& rhs) -> block;
-    friend auto operator-(const block& lhs, const block& rhs) -> block;
-    friend auto operator*(const block& lhs, const block& rhs) -> block;
-    friend auto operator/(const block& lhs, const block& rhs) -> block;
-    friend auto operator%(const block& lhs, const block& rhs) -> block;
-    
-    friend auto operator||(const block& lhs, const block& rhs) -> bool;
-    friend auto operator&&(const block& lhs, const block& rhs) -> bool;
-
-    friend auto operator<=>(const block& lhs, const block& rhs) -> std::strong_ordering = default;
-
-    friend auto swap(block& lhs, block& rhs) -> void;
 };
 
+auto to_string(const block& blk) -> std::string;
 auto to_string(const object_def& object) -> std::string;
 
 inline auto null_object() -> object_def

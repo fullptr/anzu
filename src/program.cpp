@@ -81,47 +81,8 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_builtin_call& op) {
             return std::format("OP_BUILTIN_CALL({})", op.name);
         },
-        [&](const op_builtin_bin_op& op) {
-            return std::format("OP_BUILTIN_BIN_OP({} {} {})", op.lhs, op.op, op.rhs);
-        },
-        [&](const op_add& op) {
-            return std::string{"OP_ADD"};
-        },
-        [&](const op_sub& op) {
-            return std::string{"OP_SUB"};
-        },
-        [&](const op_mul& op) {
-            return std::string{"OP_MUL"};
-        },
-        [&](const op_div& op) {
-            return std::string{"OP_DIV"};
-        },
-        [&](const op_mod& op) {
-            return std::string{"OP_MOD"};
-        },
-        [&](const op_eq& op) {
-            return std::string{"OP_EQ"};
-        },
-        [&](const op_ne& op) {
-            return std::string{"OP_NE"};
-        },
-        [&](const op_lt& op) {
-            return std::string{"OP_LT"};
-        },
-        [&](const op_le& op) {
-            return std::string{"OP_LE"};
-        },
-        [&](const op_gt& op) {
-            return std::string{"OP_GT"};
-        },
-        [&](const op_ge& op) {
-            return std::string{"OP_GE"};
-        },
-        [&](const op_or& op) {
-            return std::string{"OP_OR"};
-        },
-        [&](const op_and& op) {
-            return std::string{"OP_AND"};
+        [&](const op_builtin_mem_op& op) {
+            return std::format("OP_BUILTIN_MEM_OP({})", op.name);
         },
         [&](const op_build_list& op) {
             return std::format("OP_BUILD_LIST({})", op.size);

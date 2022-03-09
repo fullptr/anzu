@@ -41,9 +41,24 @@ auto list_repr(const block_list& list) -> std::string
 
 }
 
+auto to_string(const block& blk) -> std::string
+{
+    return std::visit(overloaded {
+        [](block_int val) { return std::to_string(val); },
+        [](block_bool val) { return std::string{val ? "true" : "false"}; },
+        [](const block_str& v) { return std::format("'{}'", v); },
+        [](const block_list& v) { return list_repr(v); },
+        [](block_null) { return std::string{"null"}; }
+    }, blk.as_variant());
+}
+
 auto to_string(const object_def& object) -> std::string
 {
-    return "TODO";
+    return std::format(
+        "{}({})",
+        to_string(object.type),
+        format_comma_separated(object.data, [](const auto& b) { return to_string(b); })
+    );
 }
 
 auto format_special_chars(const std::string& str) -> std::string
@@ -114,96 +129,6 @@ auto block::to_repr() const -> std::string
         [](const block_list& v) { return list_repr(v); },
         [](block_null) { return std::string{"null"}; }
     }, d_value);
-}
-
-template <typename T>
-concept addable = requires(T a, T b) { { a + b }; };
-
-block operator+(const block& lhs, const block& rhs)
-{
-    return std::visit([]<typename A, typename B>(const A& a, const B& b) -> anzu::block {
-        if constexpr (std::is_same_v<A, B> && addable<A>) {
-            return block{a + b};
-        } else {
-            anzu::type_error(block{a}, block{b}, "+");
-            return block{0};
-        }
-    }, lhs.d_value, rhs.d_value);
-}
-
-template <typename T>
-concept subtractible = requires(T a, T b) { { a - b }; };
-
-block operator-(const block& lhs, const block& rhs)
-{
-    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::block {
-        if constexpr (std::is_same_v<A, B> && subtractible<A>) {
-            return block{a - b};
-        } else {
-            anzu::type_error(block{a}, block{b}, "-");
-            return block{0};
-        }
-    }, lhs.d_value, rhs.d_value);
-}
-
-template <typename T>
-concept multipliable = requires(T a, T b) { { a * b }; };
-
-block operator*(const block& lhs, const block& rhs)
-{
-    return std::visit([&]<typename A, typename B>(const A& a, const B& b) -> anzu::block {
-        if constexpr (std::is_same_v<A, B> && multipliable<A>) {
-            return block{a * b};
-        } else {
-            anzu::type_error(block{a}, block{b}, "*");
-            return block{0};
-        }
-    }, lhs.d_value, rhs.d_value);
-}
-
-block operator/(const block& lhs, const block& rhs)
-{
-    return std::visit(overloaded {
-        [](int a, int b) {
-            if (b != 0) {
-                return block{a / b};
-            }
-            anzu::division_by_zero_error();
-            return block{0};
-        },
-        [](const auto& a, const auto& b) {
-            anzu::type_error(block{a}, block{b}, "/");
-            return block{0};
-        }
-    }, lhs.d_value, rhs.d_value);
-}
-
-block operator%(const block& lhs, const block& rhs)
-{
-    return std::visit(overloaded {
-        [](int a, int b) {
-            return block{a % b};
-        },
-        [](const auto& a, const auto& b) {
-            anzu::type_error(block{a}, block{b}, "%");
-            return block{0};
-        }
-    }, lhs.d_value, rhs.d_value);
-}
-
-bool operator||(const block& lhs, const block& rhs)
-{
-    return lhs.to_bool() || rhs.to_bool();
-}
-
-bool operator&&(const block& lhs, const block& rhs)
-{
-    return lhs.to_bool() && rhs.to_bool();
-}
-
-void swap(block& lhs, block& rhs)
-{
-    swap(lhs.d_value, rhs.d_value);
 }
 
 auto is_int(std::string_view token) -> bool

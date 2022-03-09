@@ -95,69 +95,10 @@ struct op_builtin_call
     signature        sig; // TODO: Remove from op
 };
 
-// Will replace all of the other binary operator op codes. Switching to this way since the
-// types are known at compile time, and will also allow for custom operators for class types.
-struct op_builtin_bin_op
+struct op_builtin_mem_op
 {
-    // Debug info, can we do this better?
-    std::string      lhs;
-    std::string      rhs;
-    std::string      op;
-
-    builtin_function ptr;
-    signature        sig; // TODO: Remove from op
-};
-
-struct op_add
-{
-};
-
-struct op_sub
-{
-};
-
-struct op_mul
-{
-};
-
-struct op_div
-{
-};
-
-struct op_mod
-{
-};
-
-struct op_eq
-{
-};
-
-struct op_ne
-{
-};
-
-struct op_lt
-{
-};
-
-struct op_le
-{
-};
-
-struct op_gt
-{
-};
-
-struct op_ge
-{
-};
-
-struct op_or
-{
-};
-
-struct op_and
-{
+    std::string    name;
+    builtin_mem_op ptr;
 };
 
 struct op_function
@@ -195,20 +136,7 @@ struct op : std::variant<
     op_break,
     op_continue,
     op_jump_if_false,
-    op_builtin_bin_op,
-    op_add,
-    op_sub,
-    op_mul,
-    op_div,
-    op_mod,
-    op_eq,
-    op_ne,
-    op_lt,
-    op_le,
-    op_gt,
-    op_ge,
-    op_or,
-    op_and,
+    op_builtin_mem_op,
     op_function,
     op_function_end,
     op_return,
