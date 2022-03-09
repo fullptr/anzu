@@ -49,33 +49,6 @@ public:
 
     auto as_variant() const -> const block_type& { return d_value; }
     auto as_variant() -> block_type& { return d_value; }
-
-    template <typename T>
-    auto is() const -> bool
-    {
-        return std::holds_alternative<T>(d_value);
-    }
-    
-    template <typename T>
-    auto as() -> T&
-    {
-        if (!is<T>()) {
-            anzu::print("error: {} does not contain requested type\n", to_string(*this));
-            std::exit(1);
-        }
-        return std::get<T>(d_value);
-    }
-
-    template <typename T>
-    auto as() const -> const T&
-    {
-        if (!is<T>()) {
-            anzu::print("error: {} does not contain requested type\n", to_string(*this));
-            std::exit(1);
-        }
-        return std::get<T>(d_value);
-    }
-
 };
 
 inline auto null_object() -> object_def
