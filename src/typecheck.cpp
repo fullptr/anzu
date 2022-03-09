@@ -11,6 +11,14 @@
 namespace anzu {
 namespace {
 
+template <typename... Args>
+[[noreturn]] void type_error(const token& tok, std::string_view msg, Args&&... args)
+{
+    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
+    anzu::print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
+    std::exit(1);
+}
+
 auto return_key() -> std::string
 {
     static const auto ret = std::string{tk_return};
@@ -39,6 +47,21 @@ auto current_vars(typecheck_context& ctx) -> typecheck_context::var_types&
     return ctx.locals ? *ctx.locals : ctx.globals;
 }
 
+auto declare_var(
+    typecheck_context& ctx, const token& tok, const std::string& name, const type& type
+)
+    -> void
+{
+    auto& vars = current_vars(ctx);
+    if (auto it = vars.find(name); it != vars.end()) {
+        if (it->second != type) {
+            type_error(tok, "cannot assign to '{}', incorrect type", name);
+        }
+    } else {
+        vars.emplace(name, type);
+    }
+}
+
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
 auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type;
 
@@ -50,14 +73,6 @@ auto get_token(const node_stmt& node) -> token
 auto get_token(const node_expr& node) -> token
 {
     return std::visit([](const auto& n) { return n.token; }, node);
-}
-
-template <typename... Args>
-[[noreturn]] void type_error(const token& tok, std::string_view msg, Args&&... args)
-{
-    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
-    std::exit(1);
 }
 
 auto verify_real_type(typecheck_context& ctx, const token& tok, const type& t) -> void
@@ -369,7 +384,7 @@ auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
     if (!matches.has_value()) {
         type_error(get_token(*node.container), "expected '{}', got '{}'", expected_type, container_type);
     }
-    current_vars(ctx).emplace(node.var, matches->at(0));
+    declare_var(ctx, node.token, node.var, matches->at(0));
     typecheck_node(ctx, *node.body);
 }
 

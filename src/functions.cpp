@@ -53,21 +53,6 @@ auto builtin_str_at(std::span<const block> args) -> block
     return block{block_str{str.at(idx)}};
 }
 
-auto builtin_to_int(std::span<const block> args) -> block
-{
-    return block{args[0].to_int()};
-}
-
-auto builtin_to_bool(std::span<const block> args) -> block
-{
-    return block{args[0].to_bool()};
-}
-
-auto builtin_to_str(std::span<const block> args) -> block
-{
-    return block{args[0].to_str()};
-}
-
 auto builtin_print(std::span<const block> args) -> block
 {
     const auto& obj = args[0];
@@ -171,36 +156,6 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
             .args = {
                 { .name = "string", .type = str_type() },
                 { .name = "index",    .type = int_type() }
-            },
-            .return_type = str_type()
-        }
-    });
-
-    builtins.emplace("to_int", builtin{
-        .ptr = builtin_to_int,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = generic_type(0) }
-            },
-            .return_type = int_type()
-        }
-    });
-
-    builtins.emplace("to_bool", builtin{
-        .ptr = builtin_to_bool,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = generic_type(0) }
-            },
-            .return_type = bool_type()
-        }
-    });
-
-    builtins.emplace("to_str", builtin{
-        .ptr = builtin_to_str,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = generic_type(0) }
             },
             .return_type = str_type()
         }

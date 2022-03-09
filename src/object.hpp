@@ -24,6 +24,9 @@ using block_str  = std::string;
 using block_list = std::shared_ptr<std::vector<block>>;
 using block_null = std::monostate;
 
+auto to_string(const block& blk) -> std::string;
+auto to_string(const object_def& object) -> std::string;
+
 class block
 {
 public:
@@ -44,12 +47,6 @@ public:
     
     block() : d_value{0} {}
 
-    // Casts, for certain types, converts the object to the requested type.
-    auto to_int() const -> int;
-    auto to_bool() const -> bool;
-    auto to_str() const -> std::string;
-    auto to_repr() const -> std::string;
-
     auto as_variant() const -> const block_type& { return d_value; }
     auto as_variant() -> block_type& { return d_value; }
 
@@ -63,7 +60,7 @@ public:
     auto as() -> T&
     {
         if (!is<T>()) {
-            anzu::print("error: {} does not contain requested type\n", to_repr());
+            anzu::print("error: {} does not contain requested type\n", to_string(*this));
             std::exit(1);
         }
         return std::get<T>(d_value);
@@ -73,16 +70,13 @@ public:
     auto as() const -> const T&
     {
         if (!is<T>()) {
-            anzu::print("error: {} does not contain requested type\n", to_repr());
+            anzu::print("error: {} does not contain requested type\n", to_string(*this));
             std::exit(1);
         }
         return std::get<T>(d_value);
     }
 
 };
-
-auto to_string(const block& blk) -> std::string;
-auto to_string(const object_def& object) -> std::string;
 
 inline auto null_object() -> object_def
 {
@@ -112,7 +106,6 @@ template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
     }
 
     auto format(const anzu::block& blk, auto& ctx) {
-        const auto str = fmt == 's' ? blk.to_str() : blk.to_repr();
-        return std::formatter<std::string>::format(std::format("{}", str), ctx);
+        return std::formatter<std::string>::format(std::format("{}", to_string(blk)), ctx);
     }
 };
