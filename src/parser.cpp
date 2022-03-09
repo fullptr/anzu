@@ -229,7 +229,7 @@ auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(tk_if);
     stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
-    if (tokens.consume_maybe(tk_else)) {
+    if (tokens.valid() && tokens.consume_maybe(tk_else)) {
         stmt.else_body = parse_statement(tokens);
     }
     return node;
