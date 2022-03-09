@@ -116,11 +116,6 @@ auto block::to_repr() const -> std::string
     }, d_value);
 }
 
-void swap(block& lhs, block& rhs)
-{
-    swap(lhs.d_value, rhs.d_value);
-}
-
 auto is_int(std::string_view token) -> bool
 {
     auto it = token.begin();

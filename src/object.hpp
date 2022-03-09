@@ -79,8 +79,6 @@ public:
     }
 
     auto to_repr() const -> std::string;
-
-    friend auto swap(block& lhs, block& rhs) -> void;
 };
 
 auto to_string(const object_def& object) -> std::string;
