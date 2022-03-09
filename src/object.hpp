@@ -48,6 +48,7 @@ public:
     auto to_int() const -> int;
     auto to_bool() const -> bool;
     auto to_str() const -> std::string;
+    auto to_repr() const -> std::string;
 
     auto as_variant() const -> const block_type& { return d_value; }
     auto as_variant() -> block_type& { return d_value; }
@@ -78,9 +79,9 @@ public:
         return std::get<T>(d_value);
     }
 
-    auto to_repr() const -> std::string;
 };
 
+auto to_string(const block& blk) -> std::string;
 auto to_string(const object_def& object) -> std::string;
 
 inline auto null_object() -> object_def

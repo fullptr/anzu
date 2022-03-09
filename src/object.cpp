@@ -41,9 +41,24 @@ auto list_repr(const block_list& list) -> std::string
 
 }
 
+auto to_string(const block& blk) -> std::string
+{
+    return std::visit(overloaded {
+        [](block_int val) { return std::to_string(val); },
+        [](block_bool val) { return std::string{val ? "true" : "false"}; },
+        [](const block_str& v) { return std::format("'{}'", v); },
+        [](const block_list& v) { return list_repr(v); },
+        [](block_null) { return std::string{"null"}; }
+    }, blk.as_variant());
+}
+
 auto to_string(const object_def& object) -> std::string
 {
-    return "TODO";
+    return std::format(
+        "{}({})",
+        to_string(object.type),
+        format_comma_separated(object.data, [](const auto& b) { return to_string(b); })
+    );
 }
 
 auto format_special_chars(const std::string& str) -> std::string
