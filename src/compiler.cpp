@@ -234,7 +234,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     // to this when we have custom types with operators.
     if (type == int_type()) {
         if (op == "+") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -245,7 +245,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "-") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -256,7 +256,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "*") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -267,7 +267,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "/") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -282,7 +282,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "%") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -293,7 +293,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "<") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -305,7 +305,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "<=") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -317,7 +317,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == ">") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -329,7 +329,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == ">=") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -341,7 +341,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "==") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -353,7 +353,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "!=") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
@@ -367,7 +367,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     }
     else if (type == bool_type()) {
         if (op == "==") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_bool>(back(mem).as_variant());
@@ -378,7 +378,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "!=") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_bool>(back(mem).as_variant());
@@ -389,7 +389,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "&&") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_bool>(back(mem).as_variant());
@@ -400,7 +400,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "||") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_bool>(back(mem).as_variant());
@@ -413,7 +413,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     }
     else if (type == str_type()) {
         if (op == "+") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_str>(back(mem).as_variant());
@@ -424,7 +424,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "==") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_str>(back(mem).as_variant());
@@ -436,7 +436,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
             });
         }
         else if (op == "!=") {
-            ctx.program.emplace_back(op_builtin_bin_op{
+            ctx.program.emplace_back(op_builtin_mem_op{
                 .name = std::format("{0} {1} {0}", to_string(type), op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_str>(back(mem).as_variant());
@@ -526,7 +526,18 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     load_variable(ctx, index_name);
     load_variable(ctx, container_name);
     call_builtin(ctx, "list_size");
-    ctx.program.emplace_back(anzu::op_ne{});
+
+    // OP_NE - TODO: Make this better
+    ctx.program.emplace_back(op_builtin_mem_op{
+        .name = "int != int",
+        .ptr = +[](std::vector<block>& mem) {
+            const auto& rhs_val = std::get<block_int>(back(mem).as_variant());
+            auto& lhs = penult(mem).as_variant();
+            auto& lhs_val = std::get<block_int>(lhs);
+            lhs = block::block_type{block_bool{lhs_val != rhs_val}};
+            mem.pop_back();
+        }
+    });
     
     const auto jump_pos = append_op(ctx, op_jump_if_false{}); // If size == index, jump to end
 
@@ -539,10 +550,12 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Increment the index
     load_variable(ctx, index_name);
-    ctx.program.emplace_back(anzu::op_load_literal{
-        .value=make_int_object(1)
+    ctx.program.emplace_back(op_builtin_mem_op{
+        .name = "increment",
+        .ptr = +[](std::vector<block>& mem) {
+            ++std::get<block_int>(back(mem).as_variant());
+        }
     });
-    ctx.program.emplace_back(anzu::op_add{});
     save_variable(ctx, index_name);
 
     const auto end_pos = append_op(ctx, op_loop_end{ .jump=begin_pos });

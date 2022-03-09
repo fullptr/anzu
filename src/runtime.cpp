@@ -154,86 +154,8 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory.push_back(op.ptr(args));
             program_advance(ctx);
         },
-        [&](const op_builtin_bin_op& op) {
+        [&](const op_builtin_mem_op& op) {
             op.ptr(ctx.memory);
-            program_advance(ctx);
-        },
-        [&](const op_add& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = a + b;
-            program_advance(ctx);
-        },
-        [&](const op_sub& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = a - b;
-            program_advance(ctx);
-        },
-        [&](const op_mul& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = a * b;
-            program_advance(ctx);
-        },
-        [&](const op_div& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = a / b;
-            program_advance(ctx);
-        },
-        [&](const op_mod& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = a % b;
-            program_advance(ctx);
-        },
-        [&](const op_eq& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = block{a == b};
-            program_advance(ctx);
-        },
-        [&](const op_ne& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = block{a != b};
-            program_advance(ctx);
-        },
-        [&](const op_lt& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = block{a < b};
-            program_advance(ctx);
-        },
-        [&](const op_le& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = block{a <= b};
-            program_advance(ctx);
-        },
-        [&](const op_gt& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = block{a > b};
-            program_advance(ctx);
-        },
-        [&](const op_ge& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = block{a >= b};
-            program_advance(ctx);
-        },
-        [&](const op_or& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = block{a || b};
-            program_advance(ctx);
-        },
-        [&](const op_and& op) {
-            auto b = pop_back(ctx.memory);
-            auto& a = ctx.memory.back();
-            a = block{a && b};
             program_advance(ctx);
         },
         [&](const op_build_list& op) {
