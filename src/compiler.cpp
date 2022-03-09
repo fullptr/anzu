@@ -235,16 +235,6 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     // An example of how we can remove the original bin op codes. We will want to move
     // to this when we have custom types with operators.
     if (type == int_type()) {
-        const auto int_arith_sig = signature{
-            .args = { { "lhs", type }, { "rhs", type } },
-            .return_type = int_type()
-        };
-
-        const auto int_compare_sig = signature{
-            .args = { { "lhs", type }, { "rhs", type } },
-            .return_type = bool_type()
-        };
-
         if (op == "+") {
             ctx.program.emplace_back(op_builtin_bin_op{
                 .lhs = to_string(type),
@@ -255,8 +245,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
                     lhs_val = lhs_val + rhs_val;
                     mem.pop_back();
-                },
-                .sig = int_arith_sig
+                }
             });
         }
         else if (op == "-") {
@@ -269,8 +258,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
                     lhs_val = lhs_val - rhs_val;
                     mem.pop_back();
-                },
-                .sig = int_arith_sig
+                }
             });
         }
         else if (op == "*") {
@@ -283,8 +271,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
                     lhs_val = lhs_val * rhs_val;
                     mem.pop_back();
-                },
-                .sig = int_arith_sig
+                }
             });
         }
         else if (op == "/") {
@@ -301,8 +288,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     }
                     lhs_val = lhs_val / rhs_val;
                     mem.pop_back();
-                },
-                .sig = int_arith_sig
+                }
             });
         }
         else if (op == "%") {
@@ -315,8 +301,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(penult(mem).as_variant());
                     lhs_val = lhs_val % rhs_val;
                     mem.pop_back();
-                },
-                .sig = int_arith_sig
+                }
             });
         }
         else if (op == "<") {
@@ -330,8 +315,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(lhs);
                     lhs = block::block_type{block_bool{lhs_val < rhs_val}};
                     mem.pop_back();
-                },
-                .sig = int_compare_sig
+                }
             });
         }
         else if (op == "<=") {
@@ -345,8 +329,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(lhs);
                     lhs = block::block_type{block_bool{lhs_val <= rhs_val}};
                     mem.pop_back();
-                },
-                .sig = int_compare_sig
+                }
             });
         }
         else if (op == ">") {
@@ -360,8 +343,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(lhs);
                     lhs = block::block_type{block_bool{lhs_val > rhs_val}};
                     mem.pop_back();
-                },
-                .sig = int_compare_sig
+                }
             });
         }
         else if (op == ">=") {
@@ -375,8 +357,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(lhs);
                     lhs = block::block_type{block_bool{lhs_val >= rhs_val}};
                     mem.pop_back();
-                },
-                .sig = int_compare_sig
+                }
             });
         }
         else if (op == "==") {
@@ -390,8 +371,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(lhs);
                     lhs = block::block_type{block_bool{lhs_val == rhs_val}};
                     mem.pop_back();
-                },
-                .sig = int_compare_sig
+                }
             });
         }
         else if (op == "!=") {
@@ -405,17 +385,11 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_int>(lhs);
                     lhs = block::block_type{block_bool{lhs_val != rhs_val}};
                     mem.pop_back();
-                },
-                .sig = int_compare_sig
+                }
             });
         }
     }
     else if (type == bool_type()) {
-        const auto bool_sig = signature{
-            .args = { { "lhs", type }, { "rhs", type } },
-            .return_type = bool_type()
-        };
-
         if (op == "==") {
             ctx.program.emplace_back(op_builtin_bin_op{
                 .lhs = to_string(type),
@@ -426,8 +400,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_bool>(penult(mem).as_variant());
                     lhs_val = lhs_val == rhs_val;
                     mem.pop_back();
-                },
-                .sig = bool_sig
+                }
             });
         }
         else if (op == "!=") {
@@ -440,8 +413,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_bool>(penult(mem).as_variant());
                     lhs_val = lhs_val != rhs_val;
                     mem.pop_back();
-                },
-                .sig = bool_sig
+                }
             });
         }
         else if (op == "&&") {
@@ -454,8 +426,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_bool>(penult(mem).as_variant());
                     lhs_val = lhs_val && rhs_val;
                     mem.pop_back();
-                },
-                .sig = bool_sig
+                }
             });
         }
         else if (op == "||") {
@@ -468,8 +439,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_bool>(penult(mem).as_variant());
                     lhs_val = lhs_val || rhs_val;
                     mem.pop_back();
-                },
-                .sig = bool_sig
+                }
             });
         }
     }
@@ -484,10 +454,6 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_str>(penult(mem).as_variant());
                     lhs_val = lhs_val + rhs_val;
                     mem.pop_back();
-                },
-                .sig = signature{
-                    .args = { { "lhs", type }, { "rhs", type } },
-                    .return_type = str_type()
                 }
             });
         }
@@ -502,10 +468,6 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_str>(lhs);
                     lhs = block::block_type{block_bool{lhs_val == rhs_val}};
                     mem.pop_back();
-                },
-                .sig = signature{
-                    .args = { { "lhs", type }, { "rhs", type } },
-                    .return_type = bool_type()
                 }
             });
         }
@@ -520,10 +482,6 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
                     auto& lhs_val = std::get<block_str>(lhs);
                     lhs = block::block_type{block_bool{lhs_val != rhs_val}};
                     mem.pop_back();
-                },
-                .sig = signature{
-                    .args = { { "lhs", type }, { "rhs", type } },
-                    .return_type = bool_type()
                 }
             });
         }

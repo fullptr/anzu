@@ -105,7 +105,6 @@ struct op_builtin_bin_op
     std::string    op;
 
     builtin_mem_op ptr;
-    signature      sig; // TODO: Remove from op
 };
 
 struct op_add
