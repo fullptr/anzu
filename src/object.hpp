@@ -80,17 +80,6 @@ public:
 
     auto to_repr() const -> std::string;
 
-    friend auto operator+(const block& lhs, const block& rhs) -> block;
-    friend auto operator-(const block& lhs, const block& rhs) -> block;
-    friend auto operator*(const block& lhs, const block& rhs) -> block;
-    friend auto operator/(const block& lhs, const block& rhs) -> block;
-    friend auto operator%(const block& lhs, const block& rhs) -> block;
-    
-    friend auto operator||(const block& lhs, const block& rhs) -> bool;
-    friend auto operator&&(const block& lhs, const block& rhs) -> bool;
-
-    friend auto operator<=>(const block& lhs, const block& rhs) -> std::strong_ordering = default;
-
     friend auto swap(block& lhs, block& rhs) -> void;
 };
 

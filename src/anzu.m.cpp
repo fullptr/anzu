@@ -1,7 +1,6 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "typecheck.hpp"
-#include "optimiser.hpp"
 #include "compiler.hpp"
 #include "runtime.hpp"
 #include "type.hpp"
@@ -20,8 +19,6 @@ void print_usage()
     anzu::print("    com   - runs the compiler and prints the bytecode\n");
     anzu::print("    debug - runs the program and prints each op code executed\n");
     anzu::print("    run   - runs the program\n");
-    anzu::print("flags:\n");
-    anzu::print("    -o    - optimises the AST before compiling\n");
 }
 
 int main(int argc, char** argv)
@@ -33,14 +30,6 @@ int main(int argc, char** argv)
 
     const auto file = std::string{argv[1]};
     const auto mode = std::string{argv[2]};
-
-    if (argc == 4) {
-        const auto flag = std::string{argv[3]};
-        if (flag != "-o") {
-            print_usage();
-            return 1;
-        }
-    }
 
     anzu::print("Loading file '{}'\n", file);
     anzu::print("-> Lexing\n");
@@ -62,11 +51,6 @@ int main(int argc, char** argv)
     if (mode == "check") {
         print_node(*ast);
         return 0;
-    }
-
-    if (argc == 4) {
-        anzu::print("-> Optimising\n");
-        anzu::optimise_ast(*ast);
     }
 
     anzu::print("-> Compiling\n");

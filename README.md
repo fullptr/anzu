@@ -72,7 +72,6 @@ Lexer    -- lexer.hpp     : Converts a .az file into a vector of tokens
    |
 Parser   -- parser.hpp    : Converts a vector of tokens into an AST
    |     -- typecheck.hpp : Type checks expressions and function defs/calls.
-   |     -- optimiser.hpp : Modifies an AST to produce a smaller, equivalent AST
    |
    |     -- ast.hpp       : Definitions of AST nodes and utility
    |

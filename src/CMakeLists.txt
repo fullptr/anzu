@@ -11,7 +11,6 @@ add_executable(
     parser.cpp
     ast.cpp
     typecheck.cpp
-    optimiser.cpp
     compiler.cpp
     program.cpp
     runtime.cpp
