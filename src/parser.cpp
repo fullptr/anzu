@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 #include <memory>
+#include <charconv>
 
 namespace anzu {
 namespace {
@@ -19,33 +20,44 @@ template <typename... Args>
     std::exit(1);
 }
 
+auto to_int(std::string_view token) -> int
+{
+    auto result = int{};
+    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
+    if (ec != std::errc{}) {
+        anzu::print("type error: cannot convert '{}' to int\n", token);
+        std::exit(1);
+    }
+    return result;
+}
+
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
-auto parse_literal(tokenstream& tokens) -> object_def
+auto parse_literal(tokenstream& tokens) -> object
 {
     if (tokens.curr().type == token_type::number) {
-        return object_def{
+        return object{
             .data = { block{to_int(tokens.consume().text)} }, .type = int_type()
         };
     }
     if (tokens.curr().type == token_type::string) {
-        return object_def{
+        return object{
             .data = { block{tokens.consume().text} }, .type = str_type()
         };
     }
     if (tokens.consume_maybe(tk_true)) {
-        return object_def{
+        return object{
             .data = { block{true} }, .type = bool_type()
         };
     }
     if (tokens.consume_maybe(tk_false)) {
-        return object_def{
+        return object{
             .data = { block{false} }, .type = bool_type()
         };
     }
     if (tokens.consume_maybe(tk_null)) {
-        return object_def{
+        return object{
             .data = { block{block_null()} }, .type = null_type()
         };
     }

@@ -34,7 +34,7 @@ auto to_string(const block& blk) -> std::string
     }, blk);
 }
 
-auto to_string(const object_def& object) -> std::string
+auto to_string(const object& object) -> std::string
 {
     return std::format(
         "{}({})",
@@ -61,24 +61,6 @@ auto format_special_chars(const std::string& str) -> std::string
         }
     }
     return ret;
-}
-
-auto is_int(std::string_view token) -> bool
-{
-    auto it = token.begin();
-    if (token.starts_with("-")) {
-        std::advance(it, 1);
-    }
-    return std::all_of(it, token.end(), [](char c) { return std::isdigit(c); });
-}
-
-auto to_int(std::string_view token) -> int
-{
-    if (!is_int(token)) {
-        anzu::print("type error: cannot convert '{}' to int\n", token);
-        std::exit(1);
-    }
-    return std::stoi(std::string{token});
 }
 
 }

@@ -12,7 +12,7 @@ namespace anzu {
 
 struct block;
 
-struct object_def
+struct object
 {
     std::vector<block> data;
     anzu::type         type;
@@ -25,7 +25,7 @@ using block_list = std::shared_ptr<std::vector<block>>;
 using block_null = std::monostate;
 
 auto to_string(const block& blk) -> std::string;
-auto to_string(const object_def& object) -> std::string;
+auto to_string(const object& object) -> std::string;
 
 struct block : std::variant<
     block_int,
@@ -38,19 +38,16 @@ struct block : std::variant<
     using variant::variant;
 };
 
-inline auto null_object() -> object_def
+inline auto null_object() -> object
 {
     return { .data = { block{block_null()} }, .type = null_type() };
 }
 
-auto is_int(std::string_view token) -> bool;
-auto to_int(std::string_view token) -> int;
-
 auto format_special_chars(const std::string& str) -> std::string;
 
-inline auto make_int_object(int val) -> object_def
+inline auto make_int_object(int val) -> object
 {
-    return object_def{ .data = { block{val} }, .type = int_type() };
+    return object{ .data = { block{val} }, .type = int_type() };
 }
 
 }
