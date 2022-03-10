@@ -235,7 +235,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     if (type == int_type()) {
         if (op == "+") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs_val = std::get<block_int>(penult(mem));
@@ -246,7 +246,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "-") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs_val = std::get<block_int>(penult(mem));
@@ -257,7 +257,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "*") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs_val = std::get<block_int>(penult(mem));
@@ -268,7 +268,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "/") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs_val = std::get<block_int>(penult(mem));
@@ -283,7 +283,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "%") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs_val = std::get<block_int>(penult(mem));
@@ -294,7 +294,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "<") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs = penult(mem);
@@ -306,7 +306,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "<=") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs = penult(mem);
@@ -318,7 +318,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == ">") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs = penult(mem);
@@ -330,7 +330,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == ">=") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs = penult(mem);
@@ -342,7 +342,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "==") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs = penult(mem);
@@ -354,7 +354,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "!=") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_int>(back(mem));
                     auto& lhs = penult(mem);
@@ -368,7 +368,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     else if (type == bool_type()) {
         if (op == "==") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_bool>(back(mem));
                     auto& lhs_val = std::get<block_bool>(penult(mem));
@@ -379,7 +379,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "!=") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_bool>(back(mem));
                     auto& lhs_val = std::get<block_bool>(penult(mem));
@@ -390,7 +390,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "&&") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_bool>(back(mem));
                     auto& lhs_val = std::get<block_bool>(penult(mem));
@@ -401,7 +401,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "||") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_bool>(back(mem));
                     auto& lhs_val = std::get<block_bool>(penult(mem));
@@ -414,7 +414,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     else if (type == str_type()) {
         if (op == "+") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_str>(back(mem));
                     auto& lhs_val = std::get<block_str>(penult(mem));
@@ -425,7 +425,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "==") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_str>(back(mem));
                     auto& lhs = penult(mem);
@@ -437,7 +437,7 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
         }
         else if (op == "!=") {
             ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", to_string(type), op),
+                .name = std::format("{0} {1} {0}", type, op),
                 .ptr = +[](std::vector<block>& mem) {
                     const auto& rhs_val = std::get<block_str>(back(mem));
                     auto& lhs = penult(mem);

@@ -142,7 +142,7 @@ auto is_function_generic(const node_function_def_stmt& node) -> bool
         type_error(
             node.token,
             "function '{}' has incomplete return type '{}' but no incomplete parameter",
-            node.name, to_string(node.sig.return_type)
+            node.name, node.sig.return_type
         );
     }
     return is_generic;

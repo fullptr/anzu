@@ -38,7 +38,7 @@ auto to_string(const object& object) -> std::string
 {
     return std::format(
         "{}({})",
-        to_string(object.type),
+        object.type,
         format_comma_separated(object.data, [](const auto& b) { return to_string(b); })
     );
 }

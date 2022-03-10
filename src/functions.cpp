@@ -62,7 +62,7 @@ auto builtin_print(std::span<const block> args) -> block
             anzu::print("{}", format_special_chars(blk));
         },
         [&](const auto&) {
-            anzu::print("{}", to_string(obj));
+            anzu::print("{}", obj);
         }
     }, obj);
     return block{block_null{}};
@@ -76,7 +76,7 @@ auto builtin_println(std::span<const block> args) -> block
             anzu::print("{}\n", format_special_chars(blk));
         },
         [&](const auto&) {
-            anzu::print("{}\n", to_string(obj));
+            anzu::print("{}\n", obj);
         }
     }, obj);
     return block{block_null{}};
