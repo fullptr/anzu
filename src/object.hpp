@@ -53,16 +53,7 @@ inline auto make_int_object(int val) -> object
 }
 
 template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
-    char fmt = 's';
-
-    constexpr auto parse(std::format_parse_context& ctx) -> decltype(ctx.begin()) {
-        auto it = ctx.begin(), end = ctx.end();
-        if (it != end && (*it == 's' || *it == 'r')) fmt = *it++;
-        if (it != end && *it != '}') throw format_error("invalid format");
-        return it;
-    }
-
     auto format(const anzu::block& blk, auto& ctx) {
-        return std::formatter<std::string>::format(std::format("{}", to_string(blk)), ctx);
+        return std::formatter<std::string>::format(to_string(blk), ctx);
     }
 };
