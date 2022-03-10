@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 #include <memory>
+#include <charconv>
 
 namespace anzu {
 namespace {
@@ -19,35 +20,36 @@ template <typename... Args>
     std::exit(1);
 }
 
+auto to_int(std::string_view token) -> int
+{
+    auto result = int{};
+    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
+    if (ec != std::errc{}) {
+        anzu::print("type error: cannot convert '{}' to int\n", token);
+        std::exit(1);
+    }
+    return result;
+}
+
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
-auto parse_literal(tokenstream& tokens) -> object_def
+auto parse_literal(tokenstream& tokens) -> object
 {
     if (tokens.curr().type == token_type::number) {
-        return object_def{
-            .data = { block{to_int(tokens.consume().text)} }, .type = int_type()
-        };
+        return make_int(to_int(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::string) {
-        return object_def{
-            .data = { block{tokens.consume().text} }, .type = str_type()
-        };
+        return make_str(tokens.consume().text);
     }
     if (tokens.consume_maybe(tk_true)) {
-        return object_def{
-            .data = { block{true} }, .type = bool_type()
-        };
+        return make_bool(true);
     }
     if (tokens.consume_maybe(tk_false)) {
-        return object_def{
-            .data = { block{false} }, .type = bool_type()
-        };
+        return make_bool(false);
     }
     if (tokens.consume_maybe(tk_null)) {
-        return object_def{
-            .data = { block{block_null()} }, .type = null_type()
-        };
+        return make_null();
     }
     parser_error(tokens.curr(), "failed to parse literal");
 };
@@ -204,7 +206,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     } else {
         stmt.return_value = std::make_unique<anzu::node_expr>();
         auto& ret_expr = stmt.return_value->emplace<anzu::node_literal_expr>();
-        ret_expr.value = anzu::null_object();
+        ret_expr.value = anzu::make_null();
         ret_expr.token = stmt.token;
     }
     return node;
@@ -229,7 +231,7 @@ auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(tk_if);
     stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
-    if (tokens.consume_maybe(tk_else)) {
+    if (tokens.valid() && tokens.consume_maybe(tk_else)) {
         stmt.else_body = parse_statement(tokens);
     }
     return node;

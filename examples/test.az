@@ -1,7 +1,5 @@
 
 
-x := 4 + 5
-y := ["a", "b", "c"]
-println(x)
-z := true || false
-println(y)
+if 1 == 1 {
+    println(5)
+}

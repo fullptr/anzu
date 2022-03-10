@@ -119,17 +119,18 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_jump_to(ctx, op.jump);
         },
         [&](const op_jump_if_false& op) {
-            if (pop_back(ctx.memory).to_bool()) {
+            if (std::get<block_bool>(ctx.memory.back())) {
                 program_advance(ctx);
             } else {
                 program_jump_to(ctx, op.jump);
             }
+            ctx.memory.pop_back();
         },
         [&](const op_function& op) {
             program_jump_to(ctx, op.jump);
         },
         [&](const op_function_end& op) {
-            const auto null_return = null_object();
+            const auto null_return = make_null();
             for (const auto& block : null_return.data) {
                 ctx.memory.push_back(block);
             }
@@ -190,12 +191,7 @@ auto run_program_debug(const anzu::program& program) -> void
         const auto& op = program[program_ptr(ctx)];
         anzu::print("{:>4} - {}\n", program_ptr(ctx), anzu::to_string(op));
         apply_op(ctx, program[program_ptr(ctx)]);
-        anzu::print(
-            "Memory: {}\n", 
-            anzu::format_comma_separated(
-                ctx.memory, [](const auto& o) { return o.to_repr(); }
-            )
-        );
+        anzu::print("Memory: {}\n", format_comma_separated(ctx.memory));
     }
 }
 

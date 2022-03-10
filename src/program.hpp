@@ -12,7 +12,7 @@ namespace anzu {
 
 struct op_load_literal
 {
-    object_def value;
+    object value;
 };
 
 struct op_load_global

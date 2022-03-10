@@ -3,6 +3,7 @@
 #include "runtime.hpp"
 #include "typecheck.hpp"
 #include "utility/print.hpp"
+#include "utility/overloaded.hpp"
 
 #include <unordered_map>
 #include <string>
@@ -13,7 +14,7 @@ namespace {
 
 auto builtin_list_push(std::span<const block> args) -> block
 {
-    auto& list = args[0].as<block_list>();
+    auto& list = std::get<block_list>(args[0]);
     auto& obj = args[1];
     list->push_back(obj);
     return block{block_null{}};
@@ -21,7 +22,7 @@ auto builtin_list_push(std::span<const block> args) -> block
 
 auto builtin_list_pop(std::span<const block> args) -> block
 {
-    auto& list = args[0].as<block_list>();
+    auto& list = std::get<block_list>(args[0]);
     auto ret = list->back();
     list->pop_back();
     return ret;
@@ -29,64 +30,55 @@ auto builtin_list_pop(std::span<const block> args) -> block
 
 auto builtin_list_size(std::span<const block> args) -> block
 {
-    const auto& list = args[0].as<block_list>();
+    const auto& list = std::get<block_list>(args[0]);
     return block{static_cast<int>(list->size())};
 }
 
 auto builtin_list_at(std::span<const block> args) -> block
 {
-    const auto& list = args[0].as<block_list>();
-    const auto& idx = args[1].as<int>();
+    const auto& list = std::get<block_list>(args[0]);
+    const auto& idx = std::get<block_int>(args[1]);
     return list->at(idx);
 }
 
 auto builtin_str_size(std::span<const block> args) -> block
 {
-    const auto& str = args[0].as<std::string>();
+    const auto& str = std::get<block_str>(args[0]);
     return block{static_cast<int>(str.size())};
 }
 
 auto builtin_str_at(std::span<const block> args) -> block
 {
-    const auto& str = args[0].as<std::string>();
-    const auto& idx = args[1].as<int>();
+    const auto& str = std::get<block_str>(args[0]);
+    const auto& idx = std::get<block_int>(args[1]);
     return block{block_str{str.at(idx)}};
-}
-
-auto builtin_to_int(std::span<const block> args) -> block
-{
-    return block{args[0].to_int()};
-}
-
-auto builtin_to_bool(std::span<const block> args) -> block
-{
-    return block{args[0].to_bool()};
-}
-
-auto builtin_to_str(std::span<const block> args) -> block
-{
-    return block{args[0].to_str()};
 }
 
 auto builtin_print(std::span<const block> args) -> block
 {
     const auto& obj = args[0];
-    if (obj.is<std::string>()) {
-        anzu::print("{}", anzu::format_special_chars(obj.as<std::string>()));
-    } else {
-        anzu::print("{}", obj);
-    }
+    std::visit(overloaded{
+        [&](const block_str& blk) {
+            anzu::print("{}", format_special_chars(blk));
+        },
+        [&](const auto&) {
+            anzu::print("{}", obj);
+        }
+    }, obj);
     return block{block_null{}};
 }
 
 auto builtin_println(std::span<const block> args) -> block
 {
     const auto& obj = args[0];
-    if (obj.is<std::string>()) {
-        anzu::print("{}\n", anzu::format_special_chars(obj.as<std::string>()));
-    } else {
-        anzu::print("{}\n", obj);
-    }
+    std::visit(overloaded{
+        [&](const block_str& blk) {
+            anzu::print("{}\n", format_special_chars(blk));
+        },
+        [&](const auto&) {
+            anzu::print("{}\n", obj);
+        }
+    }, obj);
     return block{block_null{}};
 }
 
@@ -99,7 +91,7 @@ auto builtin_input(std::span<const block> args) -> block
 
 auto builtin_range(std::span<const block> args) -> block
 {
-    const auto& max = args[0].as<int>();
+    const auto& max = std::get<block_int>(args[0]);
     auto list = std::make_shared<std::vector<block>>();
     for (int i = 0; i != max; ++i) {
         list->push_back(block{i});
@@ -171,36 +163,6 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
             .args = {
                 { .name = "string", .type = str_type() },
                 { .name = "index",    .type = int_type() }
-            },
-            .return_type = str_type()
-        }
-    });
-
-    builtins.emplace("to_int", builtin{
-        .ptr = builtin_to_int,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = generic_type(0) }
-            },
-            .return_type = int_type()
-        }
-    });
-
-    builtins.emplace("to_bool", builtin{
-        .ptr = builtin_to_bool,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = generic_type(0) }
-            },
-            .return_type = bool_type()
-        }
-    });
-
-    builtins.emplace("to_str", builtin{
-        .ptr = builtin_to_str,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = generic_type(0) }
             },
             .return_type = str_type()
         }

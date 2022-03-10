@@ -75,9 +75,9 @@ println(y)
 # For loops
 println("list test, 3 elements with a break after the second, should only see two")
 println("additionally, there is a while loop with its own break statement which should be fine")
-for x in [1, 2, 3] {
-    println(x)
-    if to_int(x) == 2 {
+for elem in [1, 2, 3] {
+    println(elem)
+    if elem == 2 {
         while true {
             break # To make sure that this break is not affected by the for
         }

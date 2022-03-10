@@ -15,6 +15,15 @@ namespace {
 
 using line_iterator = peekstream<std::string>;
 
+auto is_int(std::string_view token) -> bool
+{
+    auto it = token.begin();
+    if (token.starts_with("-")) {
+        std::advance(it, 1);
+    }
+    return std::all_of(it, token.end(), [](char c) { return std::isdigit(c); });
+}
+
 auto is_alphanumeric(const line_iterator& iter) -> bool
 {
     return iter.valid() && (std::isalnum(iter.curr()) || iter.curr() == '_');
