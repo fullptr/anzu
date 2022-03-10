@@ -152,3 +152,9 @@ auto to_string(const op& op_code) -> std::string;
 auto print_program(const anzu::program& program) -> void;
 
 }
+
+template <> struct std::formatter<anzu::op> : std::formatter<std::string> {
+    auto format(const anzu::op& op, auto& ctx) {
+        return std::formatter<std::string>::format(to_string(op), ctx);
+    }
+};

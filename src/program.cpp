@@ -16,7 +16,7 @@ auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
         [&](const op_load_literal& op) {
-            return std::format("OP_LOAD_LITERAL({})", to_string(op.value));
+            return std::format("OP_LOAD_LITERAL({})", op.value);
         },
         [&](const op_load_global& op) {
             return std::format("OP_LOAD_GLOBAL({}: {})", op.name, op.position);
@@ -94,7 +94,7 @@ auto print_program(const anzu::program& program) -> void
 {
     int lineno = 0;
     for (const auto& op : program) {
-        anzu::print("{:>4} - {}\n", lineno++, anzu::to_string(op));
+        anzu::print("{:>4} - {}\n", lineno++, op);
     }
 }
 

@@ -12,7 +12,7 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
     const auto spaces = std::string(4 * indent, ' ');
     std::visit(overloaded {
         [&](const node_literal_expr& node) {
-            anzu::print("{}Literal: {}\n", spaces, to_string(node.value));
+            anzu::print("{}Literal: {}\n", spaces, node.value);
         },
         [&](const node_variable_expr& node) {
             anzu::print("{}Variable: {}\n", spaces, node.name);
@@ -99,9 +99,9 @@ auto print_node(const anzu::node_stmt& root, int indent) -> void
         [&](const node_function_def_stmt& node) {
             anzu::print("{}Function: {} (", spaces, node.name);
             anzu::print_comma_separated(node.sig.args, [](const auto& arg) {
-                return std::format("{}: {}", arg.name, to_string(arg.type));
+                return std::format("{}: {}", arg.name, arg.type);
             });
-            anzu::print(") -> {}\n", to_string(node.sig.return_type));
+            anzu::print(") -> {}\n", node.sig.return_type);
             print_node(*node.body, indent + 1);
         },
         [&](const node_function_call_stmt& node) {

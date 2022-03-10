@@ -53,3 +53,9 @@ template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
         return std::formatter<std::string>::format(to_string(blk), ctx);
     }
 };
+
+template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
+    auto format(const anzu::object& obj, auto& ctx) {
+        return std::formatter<std::string>::format(to_string(obj), ctx);
+    }
+};

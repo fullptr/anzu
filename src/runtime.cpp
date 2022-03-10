@@ -189,7 +189,7 @@ auto run_program_debug(const anzu::program& program) -> void
     ctx.frames.emplace_back();
     while (program_ptr(ctx) < std::ssize(program)) {
         const auto& op = program[program_ptr(ctx)];
-        anzu::print("{:>4} - {}\n", program_ptr(ctx), anzu::to_string(op));
+        anzu::print("{:>4} - {}\n", program_ptr(ctx), op);
         apply_op(ctx, program[program_ptr(ctx)]);
         anzu::print("Memory: {}\n", format_comma_separated(ctx.memory));
     }
