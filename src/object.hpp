@@ -38,17 +38,17 @@ struct block : std::variant<
     using variant::variant;
 };
 
-inline auto null_object() -> object
+inline auto make_int(block_int val) -> object
 {
-    return { .data = { block{block_null()} }, .type = null_type() };
+    return { .data = { block_int{val} }, .type = int_type() };
+}
+
+inline auto make_null() -> object
+{
+    return { .data = { block_null{} }, .type = null_type() };
 }
 
 auto format_special_chars(const std::string& str) -> std::string;
-
-inline auto make_int_object(int val) -> object
-{
-    return object{ .data = { block{val} }, .type = int_type() };
-}
 
 }
 

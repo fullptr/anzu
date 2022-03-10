@@ -130,7 +130,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_jump_to(ctx, op.jump);
         },
         [&](const op_function_end& op) {
-            const auto null_return = null_object();
+            const auto null_return = make_null();
             for (const auto& block : null_return.data) {
                 ctx.memory.push_back(block);
             }

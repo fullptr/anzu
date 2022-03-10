@@ -216,7 +216,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     } else {
         stmt.return_value = std::make_unique<anzu::node_expr>();
         auto& ret_expr = stmt.return_value->emplace<anzu::node_literal_expr>();
-        ret_expr.value = anzu::null_object();
+        ret_expr.value = anzu::make_null();
         ret_expr.token = stmt.token;
     }
     return node;

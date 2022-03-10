@@ -514,7 +514,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_load_literal{
-        .value=make_int_object(0)
+        .value=make_int(0)
     });
     declare_variable_name(ctx, index_name);
     save_variable(ctx, index_name);
