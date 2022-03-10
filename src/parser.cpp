@@ -37,29 +37,19 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 auto parse_literal(tokenstream& tokens) -> object
 {
     if (tokens.curr().type == token_type::number) {
-        return object{
-            .data = { block{to_int(tokens.consume().text)} }, .type = int_type()
-        };
+        return make_int(to_int(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::string) {
-        return object{
-            .data = { block{tokens.consume().text} }, .type = str_type()
-        };
+        return make_str(tokens.consume().text);
     }
     if (tokens.consume_maybe(tk_true)) {
-        return object{
-            .data = { block{true} }, .type = bool_type()
-        };
+        return make_bool(true);
     }
     if (tokens.consume_maybe(tk_false)) {
-        return object{
-            .data = { block{false} }, .type = bool_type()
-        };
+        return make_bool(false);
     }
     if (tokens.consume_maybe(tk_null)) {
-        return object{
-            .data = { block{block_null()} }, .type = null_type()
-        };
+        return make_null();
     }
     parser_error(tokens.curr(), "failed to parse literal");
 };

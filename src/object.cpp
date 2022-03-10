@@ -38,6 +38,26 @@ auto to_string(const object& object) -> std::string
     return std::format("{}({})", object.type, format_comma_separated(object.data));
 }
 
+auto make_int(block_int val) -> object
+{
+    return { .data = { block_int{val} }, .type = int_type() };
+}
+
+auto make_bool(block_bool val) -> object
+{
+    return { .data = { block_bool{val} }, .type = bool_type() };
+}
+
+auto make_str(const block_str& val) -> object
+{
+    return { .data = { block_str{val} }, .type = str_type() };
+}
+
+auto make_null() -> object
+{
+    return { .data = { block_null{} }, .type = null_type() };
+}
+
 auto format_special_chars(const std::string& str) -> std::string
 {
     std::string ret;
