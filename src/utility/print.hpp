@@ -13,23 +13,29 @@ void print(std::string_view fmt, Args&&... args)
     std::cout << std::format(fmt, std::forward<Args>(args)...);
 }
 
-template <typename T, typename Func>
-auto format_comma_separated(const std::vector<T>& values, Func&& formatter) -> std::string
+template <typename T, typename Transform>
+auto format_comma_separated(const std::vector<T>& values, Transform&& transform) -> std::string
 {
     std::string ret;
     if (!values.empty()) {
-        ret += formatter(values.front());
+        ret += std::format("{}", transform(values.front()));
         for (const auto& value : values | std::views::drop(1)) {
-            ret += std::format(", {}", formatter(value));
+            ret += std::format(", {}", transform(value));
         }
     }
     return ret;
 }
 
-template <typename T, typename Func>
-auto print_comma_separated(const std::vector<T>& values, Func&& formatter) -> void
+template <typename T>
+auto format_comma_separated(const std::vector<T>& values) -> std::string
 {
-    std::cout << format_comma_separated(values, std::forward<Func>(formatter));
+    return format_comma_separated(values, [](auto&& x) { return std::format("{}", x); });
+}
+
+template <typename T, typename Transform>
+auto print_comma_separated(const std::vector<T>& values, Transform&& transform) -> void
+{
+    std::cout << format_comma_separated(values, std::forward<Transform>(transform));
 }
 
 }

@@ -17,8 +17,7 @@ auto format_error(const std::string& str) -> void
 
 auto list_repr(const block_list& list) -> std::string
 {
-    const auto to_repr = [](const auto& o) { return to_string(o); };
-    return std::format("[{}]", anzu::format_comma_separated(*list, to_repr));
+    return std::format("[{}]", format_comma_separated(*list));
 }
 
 }
@@ -36,11 +35,7 @@ auto to_string(const block& blk) -> std::string
 
 auto to_string(const object& object) -> std::string
 {
-    return std::format(
-        "{}({})",
-        object.type,
-        format_comma_separated(object.data, [](const auto& b) { return to_string(b); })
-    );
+    return std::format("{}({})", object.type, format_comma_separated(object.data));
 }
 
 auto format_special_chars(const std::string& str) -> std::string

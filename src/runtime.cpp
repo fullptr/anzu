@@ -191,12 +191,7 @@ auto run_program_debug(const anzu::program& program) -> void
         const auto& op = program[program_ptr(ctx)];
         anzu::print("{:>4} - {}\n", program_ptr(ctx), anzu::to_string(op));
         apply_op(ctx, program[program_ptr(ctx)]);
-        anzu::print(
-            "Memory: {}\n", 
-            anzu::format_comma_separated(
-                ctx.memory, [](const auto& o) { return to_string(o); }
-            )
-        );
+        anzu::print("Memory: {}\n", format_comma_separated(ctx.memory));
     }
 }
 

@@ -19,10 +19,7 @@ auto to_string(const type_simple& type) -> std::string
 
 auto to_string(const type_compound& type) -> std::string
 {
-    const auto subtypes = format_comma_separated(
-        type.subtypes,
-        [](const auto& t) { return to_string(t); }
-    );
+    const auto subtypes = format_comma_separated(type.subtypes);
     return std::format("{}<{}>", type.name, subtypes);
 }
 
@@ -221,15 +218,10 @@ auto bind_generics(const type& incomplete, const std::unordered_map<int, type>& 
 
 auto to_string(const signature& sig) -> std::string
 {
-    return std::format(
-        "({}) -> {}",
-        format_comma_separated(
-            sig.args,
-            [](const auto& arg) { return to_string(arg.type); }
-        ),
-        to_string(sig.return_type)
-    );
+    const auto proj = [](const auto& arg) { return arg.type; };
+    return std::format("({}) -> {}", format_comma_separated(sig.args, proj), sig.return_type);
 }
+
 type_store::type_store()
 {
     d_types.emplace(int_type());
