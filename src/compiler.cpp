@@ -46,6 +46,8 @@ struct compiler_context
     std::optional<var_locations> locals;
 
     expr_types expr_types;
+
+    type_store registered_types;
 };
 
 template <typename T>

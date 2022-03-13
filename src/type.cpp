@@ -233,6 +233,7 @@ type_store::type_store()
     d_types.emplace(bool_type());
     d_types.emplace(str_type());
     d_types.emplace(null_type());
+    d_types.emplace(vec2_type());
 
     d_generics.emplace(generic_list_type());
 }
