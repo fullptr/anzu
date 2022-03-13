@@ -77,6 +77,11 @@ auto generic_type(int id) -> type
     return {type_generic{ .id = id }};
 }
 
+auto vec2_type() -> type
+{
+    return {type_simple{ .name = "vec2" }};
+}
+
 auto concrete_list_type(const type& t) -> type
 {
     return {type_compound{

@@ -49,6 +49,7 @@ auto bool_type() -> type;
 auto str_type() -> type;
 auto null_type() -> type;
 auto generic_type(int id) -> type;
+auto vec2_type() -> type;
 
 auto concrete_list_type(const type& t) -> type;
 auto generic_list_type() -> type;

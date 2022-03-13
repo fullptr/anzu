@@ -43,6 +43,8 @@ auto make_bool(block_bool val) -> object;
 auto make_str(const block_str& val) -> object;
 auto make_null() -> object;
 
+auto make_vec2(block_int x, block_int y) -> object;
+
 // Should be elsewhere
 auto format_special_chars(const std::string& str) -> std::string;
 
