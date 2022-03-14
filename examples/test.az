@@ -5,3 +5,5 @@ fn vec2_test(x: vec2) -> null
 
 x := vec2(1, 2)
 y := 5
+
+println(x)

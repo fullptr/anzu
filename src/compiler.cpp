@@ -203,7 +203,7 @@ void compile_function_call(
     }
 }
 
-void compile_node(const node_literal_expr& node, compiler_context& ctx)
+void compile_node(const node_expr& expr, const node_literal_expr& node, compiler_context& ctx)
 {
     if (node.value.data.size() != 1) {
         anzu::print("Objects with block-size != 1 not currently supported\n");
@@ -212,14 +212,15 @@ void compile_node(const node_literal_expr& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value });
 }
 
-void compile_node(const node_variable_expr& node, compiler_context& ctx)
+void compile_node(const node_expr& expr, const node_variable_expr& node, compiler_context& ctx)
 {
-    load_variable(ctx, node.name, 1);
+    const auto size = type_block_size(ctx.expr_types[&expr]);
+    load_variable(ctx, node.name, size);
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
 // generic and combine the logic.
-void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
+void compile_node(const node_expr& expr, const node_bin_op_expr& node, compiler_context& ctx)
 {
     const auto lhs_type = ctx.expr_types[node.lhs.get()];
     const auto rhs_type = ctx.expr_types[node.rhs.get()];
@@ -465,12 +466,12 @@ void compile_node(const node_bin_op_expr& node, compiler_context& ctx)
     }
 }
 
-void compile_node(const node_function_call_expr& node, compiler_context& ctx)
+void compile_node(const node_expr& expr, const node_function_call_expr& node, compiler_context& ctx)
 {
     compile_function_call(node.function_name, node.args, ctx);
 }
 
-void compile_node(const node_list_expr& node, compiler_context& ctx)
+void compile_node(const node_expr& expr, const node_list_expr& node, compiler_context& ctx)
 {
     for (const auto& element : node.elements | std::views::reverse) {
         compile_node(*element, ctx);
@@ -630,9 +631,9 @@ void compile_node(const node_return_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_return{});
 }
 
-auto compile_node(const node_expr& root, compiler_context& ctx) -> void
+auto compile_node(const node_expr& expr, compiler_context& ctx) -> void
 {
-    std::visit([&](const auto& node) { compile_node(node, ctx); }, root);
+    std::visit([&](const auto& node) { compile_node(expr, node, ctx); }, expr);
 }
 
 auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
