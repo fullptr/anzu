@@ -78,18 +78,18 @@ auto declare_variable_name(compiler_context& ctx, const std::string& name) -> vo
     vars.emplace(name, vars.size());
 }
 
-auto save_variable(compiler_context& ctx, const std::string& name) -> void
+auto save_variable(compiler_context& ctx, const std::string& name, std::size_t size) -> void
 {
     if (ctx.locals && ctx.locals->contains(name)) {
         ctx.program.emplace_back(anzu::op_save_local{
-            .name=name, .offset=ctx.locals->at(name)
+            .name=name, .offset=ctx.locals->at(name), .size=size
         });
         return;
     }
     
     if (ctx.globals.contains(name)) {
         ctx.program.emplace_back(anzu::op_save_global{
-            .name=name, .position=ctx.globals.at(name)
+            .name=name, .position=ctx.globals.at(name), .size=size
         });
         return;
     }
@@ -509,17 +509,22 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     const auto container_name = std::string{"_Container"};
     const auto index_name = std::string{"_Index"};
 
+    // Already type checked to make sure this is a list.
+    const auto container_type = std::get<type_compound>(ctx.expr_types[node.container.get()]);
+    const auto contained_type = container_type.subtypes.front();
+    const auto contained_size = type_block_size(contained_type);
+
     // Push the container to the stack
     compile_node(*node.container, ctx);
     declare_variable_name(ctx, container_name);
-    save_variable(ctx, container_name);
+    save_variable(ctx, container_name, 1); // Currently only lists are allowed in for stmts
 
     // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_load_literal{
         .value=make_int(0)
     });
     declare_variable_name(ctx, index_name);
-    save_variable(ctx, index_name);
+    save_variable(ctx, index_name, 1);
 
     declare_variable_name(ctx, node.var);
 
@@ -546,7 +551,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     load_variable(ctx, container_name);
     load_variable(ctx, index_name);
     call_builtin(ctx, "list_at");
-    save_variable(ctx, node.var);
+    save_variable(ctx, node.var, 1);
 
     compile_node(*node.body, ctx);
 
@@ -558,7 +563,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
             ++std::get<block_int>(back(mem));
         }
     });
-    save_variable(ctx, index_name);
+    save_variable(ctx, index_name, 1);
 
     const auto end_pos = append_op(ctx, op_loop_end{ .jump=begin_pos });
 
@@ -579,13 +584,13 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
     declare_variable_name(ctx, node.name);
-    save_variable(ctx, node.name);
+    save_variable(ctx, node.name, 1);
 }
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    save_variable(ctx, node.name);
+    save_variable(ctx, node.name, 1);
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)

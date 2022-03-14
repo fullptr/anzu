@@ -10,6 +10,7 @@ struct frame
 {
     std::intptr_t program_ptr = 0;
     std::intptr_t base_ptr = 0;
+    std::size_t   return_size = 1;
 };
 
 struct runtime_context

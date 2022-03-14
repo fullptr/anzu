@@ -35,12 +35,14 @@ struct op_save_global
 {
     std::string name;
     std::size_t position;
+    std::size_t size;
 };
 
 struct op_save_local
 {
     std::string name;
     std::size_t offset;
+    std::size_t size;
 };
 
 

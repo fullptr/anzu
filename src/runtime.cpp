@@ -45,10 +45,10 @@ auto base_ptr(const runtime_context& ctx) -> std::intptr_t
     return ctx.frames.back().base_ptr;
 }
 
-auto save_top_at(runtime_context& ctx, std::size_t idx) -> void
+auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> void
 {
-    runtime_assert(idx < ctx.memory.size(), "tried to access invalid memory address {}", idx);
-    if (idx == ctx.memory.size() - 1) {
+    runtime_assert(idx + size <= ctx.memory.size(), "tried to access invalid memory address {}", idx);
+    if (idx == ctx.memory.size() - size) {
         return;
     }
     ctx.memory[idx] = ctx.memory.back();
@@ -59,8 +59,12 @@ auto save_top_at(runtime_context& ctx, std::size_t idx) -> void
 // pointers to return back to the previous scope.
 auto pop_frame(runtime_context& ctx) -> void
 {
-    ctx.memory[base_ptr(ctx)] = ctx.memory.back(); // Move return value
-    while (std::ssize(ctx.memory) > base_ptr(ctx) + 1) {
+    const auto return_size = ctx.frames.back().return_size;
+    
+    for (std::size_t i = 0; i != return_size; ++i) {
+        ctx.memory[base_ptr(ctx) + i] = ctx.memory[ctx.memory.size() - return_size + i];
+    }
+    while (std::ssize(ctx.memory) > base_ptr(ctx) + return_size) {
         ctx.memory.pop_back();
     }
     ctx.frames.pop_back();
@@ -90,11 +94,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx);
         },
         [&](const op_save_global& op) {
-            save_top_at(ctx, op.position);
+            save_top_at(ctx, op.position, op.size);
             program_advance(ctx);
         },
         [&](const op_save_local& op) {
-            save_top_at(ctx, base_ptr(ctx) + op.offset);
+            save_top_at(ctx, base_ptr(ctx) + op.offset, op.size);
             program_advance(ctx);
         },
         [&](const op_if& op) {
