@@ -589,14 +589,16 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    declare_variable_name(ctx, node.name, 1);
-    save_variable(ctx, node.name, 1);
+    const auto size = type_block_size(ctx.expr_types[node.expr.get()]);
+    declare_variable_name(ctx, node.name, size);
+    save_variable(ctx, node.name, size);
 }
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    save_variable(ctx, node.name, 1);
+    const auto size = type_block_size(ctx.expr_types[node.expr.get()]);
+    save_variable(ctx, node.name, size);
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
