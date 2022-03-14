@@ -76,11 +76,13 @@ auto append_op(compiler_context& ctx, T&& op) -> std::intptr_t
 }
 
 // Registers the given name in the current scope
-auto declare_variable_name(compiler_context& ctx, const std::string& name) -> void
+auto declare_variable_name(compiler_context& ctx, const std::string& name, std::size_t size) -> void
 {
     auto& vars = ctx.locals.has_value() ? ctx.locals.value() : ctx.globals;
-    vars.locs.emplace(name, vars.next);
-    ++vars.next;
+    const auto [iter, success] = vars.locs.emplace(name, vars.next);
+    if (success) { // If not successful, then the name already existed, so dont increase
+        vars.next += size;
+    }
 }
 
 auto save_variable(compiler_context& ctx, const std::string& name, std::size_t size) -> void
@@ -509,29 +511,25 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
     }
 }
 
+// TODO: This only works if the contained type has size 1, because lists are broken
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
     const auto container_name = std::string{"_Container"};
     const auto index_name = std::string{"_Index"};
 
-    // Already type checked to make sure this is a list.
-    const auto container_type = std::get<type_compound>(ctx.expr_types[node.container.get()]);
-    const auto contained_type = container_type.subtypes.front();
-    const auto contained_size = type_block_size(contained_type);
-
     // Push the container to the stack
     compile_node(*node.container, ctx);
-    declare_variable_name(ctx, container_name);
+    declare_variable_name(ctx, container_name, 1);
     save_variable(ctx, container_name, 1); // Currently only lists are allowed in for stmts
 
     // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_load_literal{
         .value=make_int(0)
     });
-    declare_variable_name(ctx, index_name);
+    declare_variable_name(ctx, index_name, 1);
     save_variable(ctx, index_name, 1);
 
-    declare_variable_name(ctx, node.var);
+    declare_variable_name(ctx, node.var, 1);
 
     const auto begin_pos = append_op(ctx, op_loop_begin{});
 
@@ -588,7 +586,7 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    declare_variable_name(ctx, node.name);
+    declare_variable_name(ctx, node.name, 1);
     save_variable(ctx, node.name, 1);
 }
 
@@ -605,7 +603,7 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 
     ctx.locals.emplace();
     for (const auto& arg : node.sig.args) {
-        declare_variable_name(ctx, arg.name);
+        declare_variable_name(ctx, arg.name, 1);
     }
     compile_node(*node.body, ctx);
     ctx.locals.reset();
