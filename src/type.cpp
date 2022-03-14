@@ -100,7 +100,10 @@ auto generic_type(int id) -> type
 
 auto vec2_type() -> type
 {
-    return {type_simple{ .name = "vec2" }};
+    return {type_class{
+        .name = "vec2",
+        .fields = { { .name="x", .type=int_type() }, { .name="y", .type=int_type() } }
+    }};
 }
 
 auto concrete_list_type(const type& t) -> type
