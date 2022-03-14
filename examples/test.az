@@ -1,5 +1,5 @@
 
-x := [1]
+fn vec2_test(v: vec2) -> null
+{}
 
-for y in x {}
-for t in x {}
+x := vec2(1, 2)
