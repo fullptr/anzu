@@ -73,10 +73,13 @@ auto vec2_type() -> type;
 auto concrete_list_type(const type& t) -> type;
 auto generic_list_type() -> type;
 
-auto is_type_complete(const type& type) -> bool;
+auto is_type_complete(const type& t) -> bool;
+
+// Returns the number of blocks that represent this type. Returns 0 if the type is not complete.
+auto type_block_size(const type& t) -> std::size_t;
 
 // Returns true if and only if the type is not a class type.
-auto it_type_fundamental(const type& type) -> bool;
+auto it_type_fundamental(const type& t) -> bool;
 
 using match_result = std::unordered_map<int, type>;
 auto match(const type& concrete, const type& pattern) -> std::optional<match_result>;

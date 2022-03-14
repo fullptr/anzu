@@ -78,6 +78,7 @@
         "unordered_set": "cpp",
         "*.rh": "cpp",
         "memory_resource": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "numeric": "cpp"
     }
 }

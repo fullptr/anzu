@@ -139,6 +139,26 @@ auto is_type_fundamental(const type& type) -> bool
     return !std::holds_alternative<type_class>(type);
 }
 
+auto type_block_size(const type& t) -> std::size_t
+{
+    if (!is_type_complete(t)) {
+        return 0;
+    }
+
+    return std::visit(overloaded{
+        [](const type_simple&) { return std::size_t{1}; },
+        [](const type_generic&) { return std::size_t{0}; }, // Never reached
+        [](const type_compound&) { return std::size_t{1}; },
+        [](const type_class& t) {
+            auto size = std::size_t{0};
+            for (const auto& field : t.fields) {
+                size += type_block_size(field.type);
+            }
+            return size;
+        }
+    }, t);
+}
+
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a
 // different value, stop and return false.
 auto update(
