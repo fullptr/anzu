@@ -60,7 +60,7 @@ auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> voi
 auto pop_frame(runtime_context& ctx) -> void
 {
     const auto return_size = ctx.frames.back().return_size;
-    
+
     for (std::size_t i = 0; i != return_size; ++i) {
         ctx.memory[base_ptr(ctx) + i] = ctx.memory[ctx.memory.size() - return_size + i];
     }
@@ -148,6 +148,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 
             ctx.frames.emplace_back();
             ctx.frames.back().base_ptr = ctx.memory.size() - op.sig.args.size();
+            ctx.frames.back().return_size = type_block_size(op.sig.return_type);
             program_jump_to(ctx, op.ptr); // Jump into the function
         },
         [&](const op_builtin_call& op) {

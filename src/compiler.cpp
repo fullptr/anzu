@@ -26,6 +26,12 @@ struct compiler_frame
     std::unordered_map<std::string, std::size_t>  variables;
 };
 
+struct var_locations
+{
+    std::unordered_map<std::string, std::size_t> locs;
+    std::size_t next = 0;
+};
+
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler_context
@@ -39,8 +45,6 @@ struct compiler_context
     };
 
     std::unordered_map<std::string, function_def> functions;
-
-    using var_locations = std::unordered_map<std::string, std::size_t>;
 
     var_locations globals;
     std::optional<var_locations> locals;
@@ -75,21 +79,22 @@ auto append_op(compiler_context& ctx, T&& op) -> std::intptr_t
 auto declare_variable_name(compiler_context& ctx, const std::string& name) -> void
 {
     auto& vars = ctx.locals.has_value() ? ctx.locals.value() : ctx.globals;
-    vars.emplace(name, vars.size());
+    vars.locs.emplace(name, vars.next);
+    ++vars.next;
 }
 
 auto save_variable(compiler_context& ctx, const std::string& name, std::size_t size) -> void
 {
-    if (ctx.locals && ctx.locals->contains(name)) {
+    if (ctx.locals && ctx.locals->locs.contains(name)) {
         ctx.program.emplace_back(anzu::op_save_local{
-            .name=name, .offset=ctx.locals->at(name), .size=size
+            .name=name, .offset=ctx.locals->locs.at(name), .size=size
         });
         return;
     }
     
-    if (ctx.globals.contains(name)) {
+    if (ctx.globals.locs.contains(name)) {
         ctx.program.emplace_back(anzu::op_save_global{
-            .name=name, .position=ctx.globals.at(name), .size=size
+            .name=name, .position=ctx.globals.locs.at(name), .size=size
         });
         return;
     }
@@ -101,14 +106,14 @@ auto save_variable(compiler_context& ctx, const std::string& name, std::size_t s
 auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
     if (ctx.locals) {
-        if (auto it = ctx.locals->find(name); it != ctx.locals->end()) {
+        if (auto it = ctx.locals->locs.find(name); it != ctx.locals->locs.end()) {
             ctx.program.emplace_back(anzu::op_load_local{
                 .name=name, .offset=it->second
             });
             return;
         }
     }
-    if (auto it = ctx.globals.find(name); it != ctx.globals.end()) {
+    if (auto it = ctx.globals.locs.find(name); it != ctx.globals.locs.end()) {
         ctx.program.emplace_back(anzu::op_load_global{
             .name=name, .position=it->second
         });
