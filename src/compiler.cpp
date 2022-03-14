@@ -105,19 +105,19 @@ auto save_variable(compiler_context& ctx, const std::string& name, std::size_t s
     std::exit(1);
 }
 
-auto load_variable(compiler_context& ctx, const std::string& name) -> void
+auto load_variable(compiler_context& ctx, const std::string& name, std::size_t size) -> void
 {
     if (ctx.locals) {
         if (auto it = ctx.locals->locs.find(name); it != ctx.locals->locs.end()) {
             ctx.program.emplace_back(anzu::op_load_local{
-                .name=name, .offset=it->second
+                .name=name, .offset=it->second, .size=size
             });
             return;
         }
     }
     if (auto it = ctx.globals.locs.find(name); it != ctx.globals.locs.end()) {
         ctx.program.emplace_back(anzu::op_load_global{
-            .name=name, .position=it->second
+            .name=name, .position=it->second, .size=size
         });
     }
 }
@@ -211,7 +211,7 @@ void compile_node(const node_literal_expr& node, compiler_context& ctx)
 
 void compile_node(const node_variable_expr& node, compiler_context& ctx)
 {
-    load_variable(ctx, node.name);
+    load_variable(ctx, node.name, 1);
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
@@ -533,8 +533,8 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     const auto begin_pos = append_op(ctx, op_loop_begin{});
 
-    load_variable(ctx, index_name);
-    load_variable(ctx, container_name);
+    load_variable(ctx, index_name, 1);
+    load_variable(ctx, container_name, 1);
     call_builtin(ctx, "list_size");
 
     // OP_NE - TODO: Make this better
@@ -551,15 +551,15 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     
     const auto jump_pos = append_op(ctx, op_jump_if_false{}); // If size == index, jump to end
 
-    load_variable(ctx, container_name);
-    load_variable(ctx, index_name);
+    load_variable(ctx, container_name, 1);
+    load_variable(ctx, index_name, 1);
     call_builtin(ctx, "list_at");
     save_variable(ctx, node.var, 1);
 
     compile_node(*node.body, ctx);
 
     // Increment the index
-    load_variable(ctx, index_name);
+    load_variable(ctx, index_name, 1);
     ctx.program.emplace_back(op_builtin_mem_op{
         .name = "increment",
         .ptr = +[](std::vector<block>& mem) {
