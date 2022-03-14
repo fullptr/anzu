@@ -8,6 +8,7 @@
 #include <optional>
 #include <unordered_set>
 #include <unordered_map>
+#include <utility>
 
 namespace anzu {
 
@@ -32,17 +33,35 @@ struct type_generic
     auto operator==(const type_generic&) const -> bool = default;
 };
 
-struct type : public std::variant<type_simple, type_compound, type_generic> {};
+struct type_class
+{
+    struct field;
+
+    std::string        name;
+    std::vector<field> fields;
+    auto operator==(const type_class&) const -> bool = default;
+};
+
+struct type : public std::variant<type_simple, type_compound, type_generic, type_class> {};
+
+struct type_class::field
+{
+    std::string name;
+    type        type;
+    auto operator==(const field&) const -> bool = default;
+};
 
 auto to_string(const type& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
 auto to_string(const type_compound& type) -> std::string;
 auto to_string(const type_generic& type) -> std::string;
+auto to_string(const type_class& type) -> std::string;
 
 auto hash(const type& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
+auto hash(const type_class& type) -> std::size_t;
 
 auto int_type() -> type;
 auto bool_type() -> type;
@@ -55,6 +74,8 @@ auto concrete_list_type(const type& t) -> type;
 auto generic_list_type() -> type;
 
 auto is_type_complete(const type& type) -> bool;
+
+// Returns true if and only if the type is not a class type.
 auto it_type_fundamental(const type& type) -> bool;
 
 using match_result = std::unordered_map<int, type>;
