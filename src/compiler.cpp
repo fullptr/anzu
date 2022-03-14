@@ -183,7 +183,10 @@ void compile_function_call(
         compile_node(*arg, ctx);
     }
 
-    if (const auto function_def = find_function(ctx, function)) {
+    if (function == "vec2") {
+        // Noop
+    }
+    else if (const auto function_def = find_function(ctx, function)) {
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
             .ptr=function_def->ptr + 1, // Jump into the function
