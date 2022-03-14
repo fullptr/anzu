@@ -1,5 +1,7 @@
 
-fn vec2_test(v: vec2) -> null
-{}
+fn vec2_test(x: int) -> int
+{
+    return x
+}
 
-x := vec2(1, 2)
+y := vec2_test(1)
