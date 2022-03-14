@@ -81,12 +81,16 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         },
         [&](const op_load_global& op) {
             const auto idx = op.position;
-            ctx.memory.push_back(ctx.memory[idx]);
+            for (std::size_t i = 0; i != op.size; ++i) {
+                ctx.memory.push_back(ctx.memory[idx + i]);
+            }
             program_advance(ctx);
         },
         [&](const op_load_local& op) {
             const auto idx = base_ptr(ctx) + op.offset;
-            ctx.memory.push_back(ctx.memory[idx]);
+            for (std::size_t i = 0; i != op.size; ++i) {
+                ctx.memory.push_back(ctx.memory[idx + i]);
+            }
             program_advance(ctx);
         },
         [&](const op_pop& op) {
