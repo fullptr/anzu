@@ -51,8 +51,12 @@ auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> voi
     if (idx == ctx.memory.size() - size) {
         return;
     }
-    ctx.memory[idx] = ctx.memory.back();
-    ctx.memory.pop_back();
+    for (std::size_t i = 0; i != size; ++i) {
+        ctx.memory[idx + i] = ctx.memory[ctx.memory.size() - size + i];
+    }
+    for (std::size_t i = 0; i != size; ++i) {
+        ctx.memory.pop_back();
+    }
 }
 
 // Cleans up the variables used in the current frame and removes the frame
@@ -67,7 +71,6 @@ auto pop_frame(runtime_context& ctx) -> void
     while (std::ssize(ctx.memory) > base_ptr(ctx) + (int)return_size) {
         ctx.memory.pop_back();
     }
-    ctx.frames.pop_back();
 }
 
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
