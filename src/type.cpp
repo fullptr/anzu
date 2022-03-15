@@ -7,13 +7,22 @@
 
 namespace anzu {
 
-auto to_string(const type& type) -> std::string
+auto to_string(const type_name& type) -> std::string
 {
     return std::visit([](const auto& t) { return to_string(t); }, type);
 }
 
 auto to_string(const type_simple& type) -> std::string
 {
+    if (type.fields.has_value()) {
+        return std::format(
+            "{}({})",
+            type.name,
+            format_comma_separated(type.fields.value(), [](const auto& field) {
+                return std::format("{}: {}", field.name, field.type);
+            })
+        );
+    }
     return type.name;
 }
 
@@ -28,25 +37,21 @@ auto to_string(const type_generic& type) -> std::string
     return std::format("[{}]", type.id);
 }
 
-auto to_string(const type_class& type) -> std::string
-{
-    return std::format(
-        "{}({})",
-        type.name,
-        format_comma_separated(type.fields, [](const auto& field) {
-            return std::format("{}: {}", field.name, field.type);
-        })
-    );
-}
-
-auto hash(const type& type) -> std::size_t
+auto hash(const type_name& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
 }
 
 auto hash(const type_simple& type) -> std::size_t
 {
-    return std::hash<std::string>{}(type.name);
+    const auto str_hash = std::hash<std::string>{};
+    auto hash_value = str_hash(type.name);
+    if (type.fields.has_value()) {
+        for (const auto& field : type.fields.value()) {
+            hash_value ^= str_hash(field.name) ^ hash(field.type);
+        }
+    }
+    return hash_value;
 }
 
 auto hash(const type_compound& type) -> std::size_t
@@ -58,69 +63,59 @@ auto hash(const type_compound& type) -> std::size_t
     return hash_value;
 }
 
-auto hash(const type_class& type) -> std::size_t
-{
-    const auto str_hash = std::hash<std::string>{};
-    auto hash_value = str_hash(type.name);
-    for (const auto& field : type.fields) {
-        hash_value ^= str_hash(field.name) ^ hash(field.type);
-    }
-    return hash_value;
-}
-
 auto hash(const type_generic& type) -> std::size_t
 {
     return std::hash<int>{}(type.id);
 }
 
-auto int_type()  -> type
+auto int_type()  -> type_name
 {
     return {type_simple{ .name = std::string{tk_int}  }};
 }
 
-auto bool_type() -> type
+auto bool_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_bool} }};
 }
 
-auto str_type()  -> type
+auto str_type()  -> type_name
 {
     return {type_simple{ .name = std::string{tk_str}  }};
 }
 
-auto null_type() -> type
+auto null_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_null} }};
 }
 
-auto generic_type(int id) -> type
+auto generic_type(int id) -> type_name
 {
     return {type_generic{ .id = id }};
 }
 
-auto vec2_type() -> type
+auto vec2_type() -> type_name
 {
-    return {type_class{
+    return {type_simple{
         .name = "vec2",
-        .fields = { { .name="x", .type=int_type() }, { .name="y", .type=int_type() } }
+        .fields = {{ { .name="x", .type=int_type() }, { .name="y", .type=int_type() } }}
     }};
 }
 
-auto concrete_list_type(const type& t) -> type
+auto concrete_list_type(const type_name& t) -> type_name
 {
     return {type_compound{
         .name = std::string{tk_list}, .subtypes = { t }
     }};
 }
 
-auto generic_list_type() -> type
+auto generic_list_type() -> type_name
 {
     return {type_compound{
         .name = std::string{tk_list}, .subtypes = { generic_type(0) }
     }};
 }
 
-auto is_type_complete(const type& t) -> bool
+auto is_type_complete(const type_name& t) -> bool
 {
     return std::visit(overloaded {
         [](const type_simple&) { return true; },
@@ -129,40 +124,46 @@ auto is_type_complete(const type& t) -> bool
             return std::all_of(begin(t.subtypes), end(t.subtypes), [](const auto& st) {
                 return is_type_complete(st);
             });
-        },
-        [](const type_class&) { return true; }
+        }
     }, t);
 }
 
-auto is_type_fundamental(const type& type) -> bool
+auto is_type_fundamental(const type_name& type) -> bool
 {
-    return !std::holds_alternative<type_class>(type);
+    return type == int_type()
+        || type == bool_type()
+        || type == str_type()
+        || type == null_type()
+        || match(type, generic_list_type());
 }
 
-auto type_block_size(const type& t) -> std::size_t
+auto type_block_size(const type_name& t) -> std::size_t
 {
-    if (!is_type_complete(t)) {
-        return 0;
-    }
-
     return std::visit(overloaded{
-        [](const type_simple&) { return std::size_t{1}; },
-        [](const type_generic&) { return std::size_t{0}; }, // Never reached
-        [](const type_compound&) { return std::size_t{1}; },
-        [](const type_class& t) {
-            auto size = std::size_t{0};
-            for (const auto& field : t.fields) {
-                size += type_block_size(field.type);
+        [](const type_simple& t) {
+            if (t.fields.has_value()) {
+                auto size = std::size_t{0};
+                for (const auto& field : t.fields.value()) {
+                    size += type_block_size(field.type);
+                }
+                return size;
             }
-            return size;
-        }
+            return std::size_t{1};
+        },
+
+        // Checking the size of this should be an error, but we are making it return 1
+        // as a hack to make for loops (with lists of elements of size 1) work. Instead, for
+        // loops should properly calculate the size of the contained elements, but that's
+        // more involved. Fixing lists will be its own thing.
+        [](const type_generic&) { return std::size_t{1}; },
+        [](const type_compound&) { return std::size_t{1}; }
     }, t);
 }
 
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a
 // different value, stop and return false.
 auto update(
-    std::unordered_map<int, type>& dst, const std::unordered_map<int, type>& src
+    std::unordered_map<int, type_name>& dst, const std::unordered_map<int, type_name>& src
 )
     -> bool
 {
@@ -178,7 +179,7 @@ auto update(
     return true;
 }
 
-auto match(const type& concrete, const type& pattern) -> std::optional<match_result>
+auto match(const type_name& concrete, const type_name& pattern) -> std::optional<match_result>
 {
     // Pre-condition, concrete must be a complete type (non-generic and no generic subtypes)
     if (!is_type_complete(concrete)) {
@@ -233,7 +234,7 @@ auto match(const type& concrete, const type& pattern) -> std::optional<match_res
     return matches;
 }
 
-auto replace(type& ret, const match_result& matches) -> void
+auto replace(type_name& ret, const match_result& matches) -> void
 {
     std::visit(overloaded {
         [&](type_simple&) {},
@@ -246,12 +247,11 @@ auto replace(type& ret, const match_result& matches) -> void
             for (auto& subtype : type.subtypes) {
                 replace(subtype, matches);
             }
-        },
-        [&](type_class&) {}
+        }
     }, ret);
 }
 
-auto bind_generics(const type& incomplete, const std::unordered_map<int, type>& matches) -> type
+auto bind_generics(const type_name& incomplete, const std::unordered_map<int, type_name>& matches) -> type_name
 {
     auto ret_type = incomplete;
     replace(ret_type, matches);
@@ -275,7 +275,7 @@ type_store::type_store()
     d_generics.emplace(generic_list_type());
 }
 
-auto type_store::is_registered_type(const type& t) const -> bool
+auto type_store::is_registered_type(const type_name& t) const -> bool
 {
     if (d_types.contains(t)) {
         return true;
@@ -288,6 +288,23 @@ auto type_store::is_registered_type(const type& t) const -> bool
     return std::any_of(begin(d_generics), end(d_generics), [&](const auto& generic) {
         return match(t, generic).has_value();
     });
+}
+
+auto type_store::find_by_name(const std::string& name) const -> const type_name*
+{
+    const auto get_type_name = [](const type_name& t) {
+        return std::visit(overloaded{
+            [](const type_simple& s) { return s.name; },
+            [](const auto&) { return std::string{""}; }
+        }, t);
+    };
+
+    for (const auto& type : d_types) {
+        if (get_type_name(type) == name) {
+            return &type;
+        }
+    }
+    return nullptr;
 }
 
 }

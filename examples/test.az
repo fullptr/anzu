@@ -1,14 +1,2 @@
 
-fn make_vec2(x: int, y: int) -> vec2
-{
-    t := vec2(x, y)
-    return t
-}
-
-make_vec2(1, 2)
-make_vec2(1, 2)
-make_vec2(1, 2)
-make_vec2(1, 2)
-make_vec2(1, 2)
-make_vec2(1, 2)
-make_vec2(1, 2)
+println(4 + 5)

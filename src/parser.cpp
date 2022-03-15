@@ -154,18 +154,18 @@ auto parse_name(tokenstream& tokens)
     return token.text;   
 }
 
-auto parse_type(tokenstream& tokens) -> type
+auto parse_type(tokenstream& tokens) -> type_name
 {
     if (tokens.consume_maybe(tk_lbracket)) {
         const auto id = tokens.consume_int();
         tokens.consume_only(tk_rbracket);
         return { type_generic{ .id = id } };
     }
-    const auto type_name = tokens.consume().text;
+    const auto type_name_text = tokens.consume().text;
     if (tokens.consume_maybe(tk_lt)) {
-        auto ret = type{};
+        auto ret = type_name{};
         auto& compound = ret.emplace<type_compound>();
-        compound.name = type_name;
+        compound.name = type_name_text;
         tokens.consume_comma_separated_list(tk_gt, [&] {
             compound.subtypes.push_back(parse_type(tokens));
         });
@@ -173,11 +173,11 @@ auto parse_type(tokenstream& tokens) -> type
     }
 
     // Temporary to get vec2 working, generalise later.
-    if (type_name == "vec2") {
+    if (type_name_text == "vec2") {
         return vec2_type();
     }
     
-    return { type_simple{ .name = type_name } };
+    return { type_simple{ .name = type_name_text } };
 }
 
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
