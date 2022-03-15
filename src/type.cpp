@@ -139,10 +139,6 @@ auto is_type_fundamental(const type& type) -> bool
 
 auto type_block_size(const type& t) -> std::size_t
 {
-    if (!is_type_complete(t)) {
-        return 0;
-    }
-
     return std::visit(overloaded{
         [](const type_simple& t) {
             if (t.fields.has_value()) {
@@ -154,7 +150,12 @@ auto type_block_size(const type& t) -> std::size_t
             }
             return std::size_t{1};
         },
-        [](const type_generic&) { return std::size_t{0}; }, // Never reached
+
+        // Checking the size of this should be an error, but we are making it return 1
+        // as a hack to make for loops (with lists of elements of size 1) work. Instead, for
+        // loops should properly calculate the size of the contained elements, but that's
+        // more involved. Fixing lists will be its own thing.
+        [](const type_generic&) { return std::size_t{1}; },
         [](const type_compound&) { return std::size_t{1}; }
     }, t);
 }
