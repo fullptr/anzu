@@ -56,29 +56,51 @@ auto builtin_str_at(std::span<const block> args) -> block
 
 auto builtin_print(std::span<const block> args) -> block
 {
-    const auto& obj = args[0];
-    std::visit(overloaded{
-        [&](const block_str& blk) {
-            anzu::print("{}", format_special_chars(blk));
-        },
-        [&](const auto&) {
-            anzu::print("{}", obj);
+    const auto to_string = [](const block& blk) {
+        return std::visit(overloaded{
+            [](const block_str& blk) {
+                return std::format("{}", format_special_chars(blk));
+            },
+            [&](const auto&) {
+                return std::format("{}", blk);
+            }
+        }, blk);
+    };
+
+    if (args.size() > 1) {
+        auto out = std::format("{{{}", to_string(args.front()));
+        for (const auto& arg : args | std::views::drop(1)) {
+            out += std::format(", {}", to_string(arg));
         }
-    }, obj);
+        print("{}}}", out);
+    } else {
+        print("{}", to_string(args[0]));
+    }
     return block{block_null{}};
 }
 
 auto builtin_println(std::span<const block> args) -> block
 {
-    const auto& obj = args[0];
-    std::visit(overloaded{
-        [&](const block_str& blk) {
-            anzu::print("{}\n", format_special_chars(blk));
-        },
-        [&](const auto&) {
-            anzu::print("{}\n", obj);
+    const auto to_string = [](const block& blk) {
+        return std::visit(overloaded{
+            [](const block_str& blk) {
+                return std::format("{}", format_special_chars(blk));
+            },
+            [&](const auto&) {
+                return std::format("{}", blk);
+            }
+        }, blk);
+    };
+
+    if (args.size() > 1) {
+        auto out = std::format("{{{}", to_string(args.front()));
+        for (const auto& arg : args | std::views::drop(1)) {
+            out += std::format(", {}", to_string(arg));
         }
-    }, obj);
+        print("{}}}\n", out);
+    } else {
+        print("{}\n", to_string(args[0]));
+    }
     return block{block_null{}};
 }
 
