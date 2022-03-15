@@ -1,6 +1,7 @@
 #pragma once
 #include "type.hpp"
 
+#include <functional>
 #include <string>
 #include <vector>
 #include <span>
@@ -12,7 +13,7 @@ using builtin_function = block(*)(std::span<const block>);
 
 // A more dangerous function pointer type that had access to the entire memory
 // vector, and should only be allowed for internal implementations of builtin types.
-using builtin_mem_op = void(*)(std::vector<block>& memory);
+using builtin_mem_op = std::function<void(std::vector<block>& memory)>;
 
 struct builtin
 {
