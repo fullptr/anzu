@@ -15,7 +15,7 @@ struct block;
 struct object
 {
     std::vector<block> data;
-    anzu::type         type;
+    anzu::type_name         type;
 };
 
 using block_int  = int;

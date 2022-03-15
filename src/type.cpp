@@ -7,7 +7,7 @@
 
 namespace anzu {
 
-auto to_string(const type& type) -> std::string
+auto to_string(const type_name& type) -> std::string
 {
     return std::visit([](const auto& t) { return to_string(t); }, type);
 }
@@ -37,7 +37,7 @@ auto to_string(const type_generic& type) -> std::string
     return std::format("[{}]", type.id);
 }
 
-auto hash(const type& type) -> std::size_t
+auto hash(const type_name& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
 }
@@ -68,32 +68,32 @@ auto hash(const type_generic& type) -> std::size_t
     return std::hash<int>{}(type.id);
 }
 
-auto int_type()  -> type
+auto int_type()  -> type_name
 {
     return {type_simple{ .name = std::string{tk_int}  }};
 }
 
-auto bool_type() -> type
+auto bool_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_bool} }};
 }
 
-auto str_type()  -> type
+auto str_type()  -> type_name
 {
     return {type_simple{ .name = std::string{tk_str}  }};
 }
 
-auto null_type() -> type
+auto null_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_null} }};
 }
 
-auto generic_type(int id) -> type
+auto generic_type(int id) -> type_name
 {
     return {type_generic{ .id = id }};
 }
 
-auto vec2_type() -> type
+auto vec2_type() -> type_name
 {
     return {type_simple{
         .name = "vec2",
@@ -101,21 +101,21 @@ auto vec2_type() -> type
     }};
 }
 
-auto concrete_list_type(const type& t) -> type
+auto concrete_list_type(const type_name& t) -> type_name
 {
     return {type_compound{
         .name = std::string{tk_list}, .subtypes = { t }
     }};
 }
 
-auto generic_list_type() -> type
+auto generic_list_type() -> type_name
 {
     return {type_compound{
         .name = std::string{tk_list}, .subtypes = { generic_type(0) }
     }};
 }
 
-auto is_type_complete(const type& t) -> bool
+auto is_type_complete(const type_name& t) -> bool
 {
     return std::visit(overloaded {
         [](const type_simple&) { return true; },
@@ -128,7 +128,7 @@ auto is_type_complete(const type& t) -> bool
     }, t);
 }
 
-auto is_type_fundamental(const type& type) -> bool
+auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == int_type()
         || type == bool_type()
@@ -137,7 +137,7 @@ auto is_type_fundamental(const type& type) -> bool
         || match(type, generic_list_type());
 }
 
-auto type_block_size(const type& t) -> std::size_t
+auto type_block_size(const type_name& t) -> std::size_t
 {
     return std::visit(overloaded{
         [](const type_simple& t) {
@@ -163,7 +163,7 @@ auto type_block_size(const type& t) -> std::size_t
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a
 // different value, stop and return false.
 auto update(
-    std::unordered_map<int, type>& dst, const std::unordered_map<int, type>& src
+    std::unordered_map<int, type_name>& dst, const std::unordered_map<int, type_name>& src
 )
     -> bool
 {
@@ -179,7 +179,7 @@ auto update(
     return true;
 }
 
-auto match(const type& concrete, const type& pattern) -> std::optional<match_result>
+auto match(const type_name& concrete, const type_name& pattern) -> std::optional<match_result>
 {
     // Pre-condition, concrete must be a complete type (non-generic and no generic subtypes)
     if (!is_type_complete(concrete)) {
@@ -234,7 +234,7 @@ auto match(const type& concrete, const type& pattern) -> std::optional<match_res
     return matches;
 }
 
-auto replace(type& ret, const match_result& matches) -> void
+auto replace(type_name& ret, const match_result& matches) -> void
 {
     std::visit(overloaded {
         [&](type_simple&) {},
@@ -251,7 +251,7 @@ auto replace(type& ret, const match_result& matches) -> void
     }, ret);
 }
 
-auto bind_generics(const type& incomplete, const std::unordered_map<int, type>& matches) -> type
+auto bind_generics(const type_name& incomplete, const std::unordered_map<int, type_name>& matches) -> type_name
 {
     auto ret_type = incomplete;
     replace(ret_type, matches);
@@ -275,7 +275,7 @@ type_store::type_store()
     d_generics.emplace(generic_list_type());
 }
 
-auto type_store::is_registered_type(const type& t) const -> bool
+auto type_store::is_registered_type(const type_name& t) const -> bool
 {
     if (d_types.contains(t)) {
         return true;
@@ -290,9 +290,9 @@ auto type_store::is_registered_type(const type& t) const -> bool
     });
 }
 
-auto type_store::find_by_name(const std::string& name) const -> const type*
+auto type_store::find_by_name(const std::string& name) const -> const type_name*
 {
-    const auto get_type_name = [](const type& t) {
+    const auto get_type_name = [](const type_name& t) {
         return std::visit(overloaded{
             [](const type_simple& s) { return s.name; },
             [](const auto&) { return std::string{""}; }

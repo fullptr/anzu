@@ -30,7 +30,7 @@ struct typecheck_context
 {
     std::unordered_map<std::string, const node_function_def_stmt*> functions;
 
-    using var_types = std::unordered_map<std::string, type>;
+    using var_types = std::unordered_map<std::string, type_name>;
 
     var_types globals;
     std::optional<var_types> locals;
@@ -48,7 +48,7 @@ auto current_vars(typecheck_context& ctx) -> typecheck_context::var_types&
 }
 
 auto declare_var(
-    typecheck_context& ctx, const token& tok, const std::string& name, const type& type
+    typecheck_context& ctx, const token& tok, const std::string& name, const type_name& type
 )
     -> void
 {
@@ -63,7 +63,7 @@ auto declare_var(
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void;
-auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type;
+auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name;
 
 auto get_token(const node_stmt& node) -> token
 {
@@ -75,14 +75,14 @@ auto get_token(const node_expr& node) -> token
     return std::visit([](const auto& n) { return n.token; }, node);
 }
 
-auto verify_real_type(typecheck_context& ctx, const token& tok, const type& t) -> void
+auto verify_real_type(typecheck_context& ctx, const token& tok, const type_name& t) -> void
 {
     if (!ctx.registered_types.is_registered_type(t)) {
         type_error(tok, "'{}' is not a recognised type", t);
     }
 }
 
-auto type_of_bin_op(const type& lhs, const type& rhs, const token& op_token) -> type
+auto type_of_bin_op(const type_name& lhs, const type_name& rhs, const token& op_token) -> type_name
 {
     const auto op = op_token.text;
     const auto invalid_expr = [=]() {
@@ -232,7 +232,7 @@ auto get_typechecked_signature(
     }
 
     auto ret_sig = signature{};
-    auto matches = std::unordered_map<int, type>{};
+    auto matches = std::unordered_map<int, type_name>{};
 
     auto ait = args.begin();
     auto sit = sig.args.begin();
@@ -293,7 +293,7 @@ auto typecheck_function_call(
     const std::string& function_name,
     const std::vector<node_expr_ptr>& args
 )
-    -> type
+    -> type_name
 {
     const auto signature = get_typechecked_signature(ctx, tok, function_name, args);
 
@@ -314,7 +314,7 @@ auto typecheck_function_call(
     return signature.return_type;
 }
 
-auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
+auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
 {
     const auto expr_type = std::visit(overloaded {
         [&](const node_literal_expr& node) {
@@ -359,7 +359,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type
     return expr_type;
 };
 
-void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const type& expected)
+void verify_expression_type(typecheck_context& ctx, const node_expr& expr, const type_name& expected)
 {
     const auto actual = typecheck_expr(ctx, expr);
     if (!match(actual, expected)) {
