@@ -162,7 +162,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .sig = {
             .args = {
                 { .name = "string", .type = str_type() },
-                { .name = "index",    .type = int_type() }
+                { .name = "index",  .type = int_type() }
             },
             .return_type = str_type()
         }

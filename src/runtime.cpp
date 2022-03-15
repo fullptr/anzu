@@ -160,7 +160,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_jump_to(ctx, op.ptr); // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            auto args = std::vector<anzu::block>(op.sig.args.size());
+            auto arg_size = std::size_t{0};
+            for (const auto arg : op.sig.args) {
+                arg_size += type_block_size(arg.type);
+            }
+            auto args = std::vector<anzu::block>(arg_size);
             for (auto& arg : args | std::views::reverse) {
                 arg = pop_back(ctx.memory);
             }

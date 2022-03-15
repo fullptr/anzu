@@ -195,10 +195,19 @@ void compile_function_call(
     }
     else {
         const auto& builtin = anzu::fetch_builtin(function);
+        auto sig = builtin.sig;
+        print("compiling a '{}' call with sig {}\n", function, sig);
+
+        // TODO: Make this more generic, but we need to fill in the types before
+        // calling here, so that we can pass in the correct blocks
+        if (function == "print" || function == "println") {
+            sig.args[0].type = ctx.expr_types[args[0].get()];
+        }
+        
         ctx.program.emplace_back(anzu::op_builtin_call{
             .name=function,
             .ptr=builtin.ptr,
-            .sig=builtin.sig
+            .sig=sig
         });
     }
 }
