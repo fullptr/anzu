@@ -14,6 +14,15 @@ auto to_string(const type& type) -> std::string
 
 auto to_string(const type_simple& type) -> std::string
 {
+    if (type.fields.has_value()) {
+        return std::format(
+            "{}({})",
+            type.name,
+            format_comma_separated(type.fields.value(), [](const auto& field) {
+                return std::format("{}: {}", field.name, field.type);
+            })
+        );
+    }
     return type.name;
 }
 
@@ -28,17 +37,6 @@ auto to_string(const type_generic& type) -> std::string
     return std::format("[{}]", type.id);
 }
 
-auto to_string(const type_class& type) -> std::string
-{
-    return std::format(
-        "{}({})",
-        type.name,
-        format_comma_separated(type.fields, [](const auto& field) {
-            return std::format("{}: {}", field.name, field.type);
-        })
-    );
-}
-
 auto hash(const type& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
@@ -46,7 +44,14 @@ auto hash(const type& type) -> std::size_t
 
 auto hash(const type_simple& type) -> std::size_t
 {
-    return std::hash<std::string>{}(type.name);
+    const auto str_hash = std::hash<std::string>{};
+    auto hash_value = str_hash(type.name);
+    if (type.fields.has_value()) {
+        for (const auto& field : type.fields.value()) {
+            hash_value ^= str_hash(field.name) ^ hash(field.type);
+        }
+    }
+    return hash_value;
 }
 
 auto hash(const type_compound& type) -> std::size_t
@@ -54,16 +59,6 @@ auto hash(const type_compound& type) -> std::size_t
     auto hash_value = std::hash<std::string>{}(type.name);
     for (const auto& subtype : type.subtypes) {
         hash_value ^= hash(subtype);
-    }
-    return hash_value;
-}
-
-auto hash(const type_class& type) -> std::size_t
-{
-    const auto str_hash = std::hash<std::string>{};
-    auto hash_value = str_hash(type.name);
-    for (const auto& field : type.fields) {
-        hash_value ^= str_hash(field.name) ^ hash(field.type);
     }
     return hash_value;
 }
@@ -100,9 +95,9 @@ auto generic_type(int id) -> type
 
 auto vec2_type() -> type
 {
-    return {type_class{
+    return {type_simple{
         .name = "vec2",
-        .fields = { { .name="x", .type=int_type() }, { .name="y", .type=int_type() } }
+        .fields = {{ { .name="x", .type=int_type() }, { .name="y", .type=int_type() } }}
     }};
 }
 
@@ -129,14 +124,17 @@ auto is_type_complete(const type& t) -> bool
             return std::all_of(begin(t.subtypes), end(t.subtypes), [](const auto& st) {
                 return is_type_complete(st);
             });
-        },
-        [](const type_class&) { return true; }
+        }
     }, t);
 }
 
 auto is_type_fundamental(const type& type) -> bool
 {
-    return !std::holds_alternative<type_class>(type);
+    return type == int_type()
+        || type == bool_type()
+        || type == str_type()
+        || type == null_type()
+        || match(type, generic_list_type());
 }
 
 auto type_block_size(const type& t) -> std::size_t
@@ -146,16 +144,18 @@ auto type_block_size(const type& t) -> std::size_t
     }
 
     return std::visit(overloaded{
-        [](const type_simple&) { return std::size_t{1}; },
-        [](const type_generic&) { return std::size_t{0}; }, // Never reached
-        [](const type_compound&) { return std::size_t{1}; },
-        [](const type_class& t) {
-            auto size = std::size_t{0};
-            for (const auto& field : t.fields) {
-                size += type_block_size(field.type);
+        [](const type_simple& t) {
+            if (t.fields.has_value()) {
+                auto size = std::size_t{0};
+                for (const auto& field : t.fields.value()) {
+                    size += type_block_size(field.type);
+                }
+                return size;
             }
-            return size;
-        }
+            return std::size_t{1};
+        },
+        [](const type_generic&) { return std::size_t{0}; }, // Never reached
+        [](const type_compound&) { return std::size_t{1}; }
     }, t);
 }
 
@@ -246,8 +246,7 @@ auto replace(type& ret, const match_result& matches) -> void
             for (auto& subtype : type.subtypes) {
                 replace(subtype, matches);
             }
-        },
-        [&](type_class&) {}
+        }
     }, ret);
 }
 

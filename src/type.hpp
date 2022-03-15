@@ -16,7 +16,10 @@ struct type;
 
 struct type_simple
 {
+    struct field;
+
     std::string name;
+    std::optional<std::vector<field>> fields; // nullopt == fundamental type
     auto operator==(const type_simple&) const -> bool = default;
 };
 
@@ -33,18 +36,9 @@ struct type_generic
     auto operator==(const type_generic&) const -> bool = default;
 };
 
-struct type_class
-{
-    struct field;
+struct type : public std::variant<type_simple, type_compound, type_generic> {};
 
-    std::string        name;
-    std::vector<field> fields;
-    auto operator==(const type_class&) const -> bool = default;
-};
-
-struct type : public std::variant<type_simple, type_compound, type_generic, type_class> {};
-
-struct type_class::field
+struct type_simple::field
 {
     std::string name;
     type        type;
@@ -55,13 +49,11 @@ auto to_string(const type& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
 auto to_string(const type_compound& type) -> std::string;
 auto to_string(const type_generic& type) -> std::string;
-auto to_string(const type_class& type) -> std::string;
 
 auto hash(const type& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
-auto hash(const type_class& type) -> std::size_t;
 
 auto int_type() -> type;
 auto bool_type() -> type;
