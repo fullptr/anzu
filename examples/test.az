@@ -4,6 +4,7 @@ fn vec2_test(x: vec2) -> null
 }
 
 x := vec2(1, 2)
-y := 5
-
-println(x)
+println(vec2_first(x))
+println(vec2_second(x))
+println(vec2_second(x))
+println(vec2_first(x))
