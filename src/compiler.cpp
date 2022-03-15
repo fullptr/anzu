@@ -185,9 +185,14 @@ auto compile_function_call(
         compile_node(*arg, ctx);
     }
 
-    if (function == "vec2") {
-        return 2; // S
+    // If this is the name of a simple type, then this is a constructor call, so
+    // there is currently nothing to do since the arguments are already pushed to
+    // the stack.
+    if (const auto type = ctx.registered_types.find_by_name(function)) {
+        return type_block_size(*type);
     }
+
+    // Otherwise, it may be a custom function.
     else if (const auto function_def = find_function(ctx, function)) {
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
@@ -197,6 +202,7 @@ auto compile_function_call(
         return type_block_size(function_def->sig.return_type);
     }
 
+    // Otherwise, it must be a builtin function.
     const auto& builtin = anzu::fetch_builtin(function);
 
     // TODO: Make this more generic, but we need to fill in the types before

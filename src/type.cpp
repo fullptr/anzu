@@ -289,4 +289,21 @@ auto type_store::is_registered_type(const type& t) const -> bool
     });
 }
 
+auto type_store::find_by_name(const std::string& name) const -> const type*
+{
+    const auto get_type_name = [](const type& t) {
+        return std::visit(overloaded{
+            [](const type_simple& s) { return s.name; },
+            [](const auto&) { return std::string{""}; }
+        }, t);
+    };
+
+    for (const auto& type : d_types) {
+        if (get_type_name(type) == name) {
+            return &type;
+        }
+    }
+    return nullptr;
+}
+
 }
