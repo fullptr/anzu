@@ -25,7 +25,7 @@ auto to_string(const op& op_code) -> std::string
             return std::format("OP_LOAD_LOCAL({}: +{})", op.name, op.offset);
         },
         [&](const op_pop& op) {
-            return std::string{"OP_POP"};
+            return std::format("OP_POP({})", op.size);
         },
         [&](const op_save_global& op) {
             return std::format("OP_SAVE_GLOBAL({}: {})", op.name, op.position);

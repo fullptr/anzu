@@ -1,10 +1,14 @@
 
-fn vec2_test(x: vec2) -> null
+fn make_vec2(x: int, y: int) -> vec2
 {
+    t := vec2(x, y)
+    return t
 }
 
-x := vec2(1, 2)
-println(vec2_first(x))
-println(vec2_second(x))
-println(vec2_second(x))
-println(vec2_first(x))
+make_vec2(1, 2)
+make_vec2(1, 2)
+make_vec2(1, 2)
+make_vec2(1, 2)
+make_vec2(1, 2)
+make_vec2(1, 2)
+make_vec2(1, 2)

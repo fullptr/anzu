@@ -172,11 +172,13 @@ auto link_up_jumps(
 auto compile_node(const node_expr& root, compiler_context& ctx) -> void;
 auto compile_node(const node_stmt& root, compiler_context& ctx) -> void;
 
-void compile_function_call(
+// Returns the size of the return type
+auto compile_function_call(
     const std::string& function,
     const std::vector<node_expr_ptr>& args,
     compiler_context& ctx
 )
+    -> std::size_t
 {
     // Push the args to the stack
     for (const auto& arg : args) {
@@ -184,7 +186,7 @@ void compile_function_call(
     }
 
     if (function == "vec2") {
-        // Noop
+        return 2; // S
     }
     else if (const auto function_def = find_function(ctx, function)) {
         ctx.program.emplace_back(anzu::op_function_call{
@@ -192,23 +194,24 @@ void compile_function_call(
             .ptr=function_def->ptr + 1, // Jump into the function
             .sig=function_def->sig
         });
+        return type_block_size(function_def->sig.return_type);
     }
-    else {
-        const auto& builtin = anzu::fetch_builtin(function);
 
-        // TODO: Make this more generic, but we need to fill in the types before
-        // calling here, so that we can pass in the correct block count
-        auto sig = builtin.sig;
-        if (function == "print" || function == "println") {
-            sig.args[0].type = ctx.expr_types[args[0].get()];
-        }
-        
-        ctx.program.emplace_back(anzu::op_builtin_call{
-            .name=function,
-            .ptr=builtin.ptr,
-            .sig=sig
-        });
+    const auto& builtin = anzu::fetch_builtin(function);
+
+    // TODO: Make this more generic, but we need to fill in the types before
+    // calling here, so that we can pass in the correct block count
+    auto sig = builtin.sig;
+    if (function == "print" || function == "println") {
+        sig.args[0].type = ctx.expr_types[args[0].get()];
     }
+    
+    ctx.program.emplace_back(anzu::op_builtin_call{
+        .name=function,
+        .ptr=builtin.ptr,
+        .sig=sig
+    });
+    return type_block_size(sig.return_type);
 }
 
 void compile_node(const node_expr& expr, const node_literal_expr& node, compiler_context& ctx)
@@ -629,8 +632,8 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_function_call_stmt& node, compiler_context& ctx)
 {
-    compile_function_call(node.function_name, node.args, ctx);
-    ctx.program.emplace_back(anzu::op_pop{});
+    const auto return_size = compile_function_call(node.function_name, node.args, ctx);
+    ctx.program.emplace_back(anzu::op_pop{ .size=return_size });
 }
 
 void compile_node(const node_return_stmt& node, compiler_context& ctx)

@@ -98,7 +98,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx);
         },
         [&](const op_pop& op) {
-            ctx.memory.pop_back();
+            for (std::size_t i = 0; i != op.size; ++i) {
+                ctx.memory.pop_back();
+            }
             program_advance(ctx);
         },
         [&](const op_save_global& op) {

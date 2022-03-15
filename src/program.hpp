@@ -31,6 +31,7 @@ struct op_load_local
 
 struct op_pop
 {
+    std::size_t size;
 };
 
 struct op_save_global
