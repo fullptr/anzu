@@ -19,28 +19,33 @@ struct op_load_global
 {
     std::string name;
     std::size_t position;
+    std::size_t size;
 };
 
 struct op_load_local
 {
     std::string name;
     std::size_t offset;
+    std::size_t size;
 };
 
 struct op_pop
 {
+    std::size_t size;
 };
 
 struct op_save_global
 {
     std::string name;
     std::size_t position;
+    std::size_t size;
 };
 
 struct op_save_local
 {
     std::string name;
     std::size_t offset;
+    std::size_t size;
 };
 
 
@@ -152,3 +157,9 @@ auto to_string(const op& op_code) -> std::string;
 auto print_program(const anzu::program& program) -> void;
 
 }
+
+template <> struct std::formatter<anzu::op> : std::formatter<std::string> {
+    auto format(const anzu::op& op, auto& ctx) {
+        return std::formatter<std::string>::format(to_string(op), ctx);
+    }
+};

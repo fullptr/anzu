@@ -45,22 +45,30 @@ auto base_ptr(const runtime_context& ctx) -> std::intptr_t
     return ctx.frames.back().base_ptr;
 }
 
-auto save_top_at(runtime_context& ctx, std::size_t idx) -> void
+auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> void
 {
-    runtime_assert(idx < ctx.memory.size(), "tried to access invalid memory address {}", idx);
-    if (idx == ctx.memory.size() - 1) {
+    runtime_assert(idx + size <= ctx.memory.size(), "tried to access invalid memory address {}", idx);
+    if (idx == ctx.memory.size() - size) {
         return;
     }
-    ctx.memory[idx] = ctx.memory.back();
-    ctx.memory.pop_back();
+    for (std::size_t i = 0; i != size; ++i) {
+        ctx.memory[idx + i] = ctx.memory[ctx.memory.size() - size + i];
+    }
+    for (std::size_t i = 0; i != size; ++i) {
+        ctx.memory.pop_back();
+    }
 }
 
 // Cleans up the variables used in the current frame and removes the frame
 // pointers to return back to the previous scope.
 auto pop_frame(runtime_context& ctx) -> void
 {
-    ctx.memory[base_ptr(ctx)] = ctx.memory.back(); // Move return value
-    while (std::ssize(ctx.memory) > base_ptr(ctx) + 1) {
+    const auto return_size = ctx.frames.back().return_size;
+
+    for (std::size_t i = 0; i != return_size; ++i) {
+        ctx.memory[base_ptr(ctx) + i] = ctx.memory[ctx.memory.size() - return_size + i];
+    }
+    while (std::ssize(ctx.memory) > base_ptr(ctx) + (intptr_t)return_size) {
         ctx.memory.pop_back();
     }
     ctx.frames.pop_back();
@@ -77,24 +85,30 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         },
         [&](const op_load_global& op) {
             const auto idx = op.position;
-            ctx.memory.push_back(ctx.memory[idx]);
+            for (std::size_t i = 0; i != op.size; ++i) {
+                ctx.memory.push_back(ctx.memory[idx + i]);
+            }
             program_advance(ctx);
         },
         [&](const op_load_local& op) {
             const auto idx = base_ptr(ctx) + op.offset;
-            ctx.memory.push_back(ctx.memory[idx]);
+            for (std::size_t i = 0; i != op.size; ++i) {
+                ctx.memory.push_back(ctx.memory[idx + i]);
+            }
             program_advance(ctx);
         },
         [&](const op_pop& op) {
-            ctx.memory.pop_back();
+            for (std::size_t i = 0; i != op.size; ++i) {
+                ctx.memory.pop_back();
+            }
             program_advance(ctx);
         },
         [&](const op_save_global& op) {
-            save_top_at(ctx, op.position);
+            save_top_at(ctx, op.position, op.size);
             program_advance(ctx);
         },
         [&](const op_save_local& op) {
-            save_top_at(ctx, base_ptr(ctx) + op.offset);
+            save_top_at(ctx, base_ptr(ctx) + op.offset, op.size);
             program_advance(ctx);
         },
         [&](const op_if& op) {
@@ -144,10 +158,15 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 
             ctx.frames.emplace_back();
             ctx.frames.back().base_ptr = ctx.memory.size() - op.sig.args.size();
+            ctx.frames.back().return_size = type_block_size(op.sig.return_type);
             program_jump_to(ctx, op.ptr); // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            auto args = std::vector<anzu::block>(op.sig.args.size());
+            auto arg_size = std::size_t{0};
+            for (const auto arg : op.sig.args) {
+                arg_size += type_block_size(arg.type);
+            }
+            auto args = std::vector<anzu::block>(arg_size);
             for (auto& arg : args | std::views::reverse) {
                 arg = pop_back(ctx.memory);
             }
@@ -189,7 +208,7 @@ auto run_program_debug(const anzu::program& program) -> void
     ctx.frames.emplace_back();
     while (program_ptr(ctx) < std::ssize(program)) {
         const auto& op = program[program_ptr(ctx)];
-        anzu::print("{:>4} - {}\n", program_ptr(ctx), anzu::to_string(op));
+        anzu::print("{:>4} - {}\n", program_ptr(ctx), op);
         apply_op(ctx, program[program_ptr(ctx)]);
         anzu::print("Memory: {}\n", format_comma_separated(ctx.memory));
     }

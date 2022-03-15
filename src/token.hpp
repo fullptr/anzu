@@ -3,6 +3,7 @@
 #include "utility/peekstream.hpp"
 
 #include <string>
+#include <format>
 #include <vector>
 
 namespace anzu {
@@ -55,3 +56,9 @@ public:
 };
     
 }
+
+template <> struct std::formatter<anzu::token_type> : std::formatter<std::string> {
+    auto format(const anzu::token_type& tt, auto& ctx) {
+        return std::formatter<std::string>::format(to_string(tt), ctx);
+    }
+};

@@ -27,10 +27,7 @@ auto print_tokens(const std::vector<anzu::token>& tokens) -> void
 {
     for (const auto& token : tokens) {
         const auto text = std::format("'{}'", token.text);
-        anzu::print(
-            "{:<10} - {:<20} {:<5} {:<5}\n",
-            anzu::to_string(token.type), text, token.line, token.col
-        );
+        anzu::print("{:<10} - {:<20} {:<5} {:<5}\n", token.type, text, token.line, token.col);
     }
 }
 

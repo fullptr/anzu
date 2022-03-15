@@ -56,29 +56,51 @@ auto builtin_str_at(std::span<const block> args) -> block
 
 auto builtin_print(std::span<const block> args) -> block
 {
-    const auto& obj = args[0];
-    std::visit(overloaded{
-        [&](const block_str& blk) {
-            anzu::print("{}", format_special_chars(blk));
-        },
-        [&](const auto&) {
-            anzu::print("{}", obj);
+    const auto to_string = [](const block& blk) {
+        return std::visit(overloaded{
+            [](const block_str& blk) {
+                return std::format("{}", format_special_chars(blk));
+            },
+            [&](const auto&) {
+                return std::format("{}", blk);
+            }
+        }, blk);
+    };
+
+    if (args.size() > 1) {
+        auto out = std::format("{{{}", to_string(args.front()));
+        for (const auto& arg : args | std::views::drop(1)) {
+            out += std::format(", {}", to_string(arg));
         }
-    }, obj);
+        print("{}}}", out);
+    } else {
+        print("{}", to_string(args[0]));
+    }
     return block{block_null{}};
 }
 
 auto builtin_println(std::span<const block> args) -> block
 {
-    const auto& obj = args[0];
-    std::visit(overloaded{
-        [&](const block_str& blk) {
-            anzu::print("{}\n", format_special_chars(blk));
-        },
-        [&](const auto&) {
-            anzu::print("{}\n", obj);
+    const auto to_string = [](const block& blk) {
+        return std::visit(overloaded{
+            [](const block_str& blk) {
+                return std::format("{}", format_special_chars(blk));
+            },
+            [&](const auto&) {
+                return std::format("{}", blk);
+            }
+        }, blk);
+    };
+
+    if (args.size() > 1) {
+        auto out = std::format("{{{}", to_string(args.front()));
+        for (const auto& arg : args | std::views::drop(1)) {
+            out += std::format(", {}", to_string(arg));
         }
-    }, obj);
+        print("{}}}\n", out);
+    } else {
+        print("{}\n", to_string(args[0]));
+    }
     return block{block_null{}};
 }
 
@@ -97,6 +119,16 @@ auto builtin_range(std::span<const block> args) -> block
         list->push_back(block{i});
     }
     return block{list};
+}
+
+auto builtin_first(std::span<const block> args) -> block
+{
+    return args[0];
+}
+
+auto builtin_second(std::span<const block> args) -> block
+{
+    return args[1];
 }
 
 }
@@ -162,7 +194,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .sig = {
             .args = {
                 { .name = "string", .type = str_type() },
-                { .name = "index",    .type = int_type() }
+                { .name = "index",  .type = int_type() }
             },
             .return_type = str_type()
         }
@@ -203,6 +235,26 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
                 { .name = "max", .type = int_type() }
             },
             .return_type = concrete_list_type(int_type())
+        }
+    });
+
+    builtins.emplace("vec2_first", builtin{
+        .ptr = builtin_first,
+        .sig = {
+            .args = {
+                { .name = "v", .type = vec2_type() }
+            },
+            .return_type = int_type()
+        }
+    });
+
+    builtins.emplace("vec2_second", builtin{
+        .ptr = builtin_second,
+        .sig = {
+            .args = {
+                { .name = "v", .type = vec2_type() }
+            },
+            .return_type = int_type()
         }
     });
 

@@ -43,6 +43,8 @@ auto make_bool(block_bool val) -> object;
 auto make_str(const block_str& val) -> object;
 auto make_null() -> object;
 
+auto make_vec2(block_int x, block_int y) -> object;
+
 // Should be elsewhere
 auto format_special_chars(const std::string& str) -> std::string;
 
@@ -51,5 +53,11 @@ auto format_special_chars(const std::string& str) -> std::string;
 template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
     auto format(const anzu::block& blk, auto& ctx) {
         return std::formatter<std::string>::format(to_string(blk), ctx);
+    }
+};
+
+template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
+    auto format(const anzu::object& obj, auto& ctx) {
+        return std::formatter<std::string>::format(to_string(obj), ctx);
     }
 };

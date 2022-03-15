@@ -171,6 +171,12 @@ auto parse_type(tokenstream& tokens) -> type
         });
         return ret;
     }
+
+    // Temporary to get vec2 working, generalise later.
+    if (type_name == "vec2") {
+        return vec2_type();
+    }
+    
     return { type_simple{ .name = type_name } };
 }
 

@@ -8,6 +8,7 @@
 #include <optional>
 #include <unordered_set>
 #include <unordered_map>
+#include <utility>
 
 namespace anzu {
 
@@ -32,29 +33,53 @@ struct type_generic
     auto operator==(const type_generic&) const -> bool = default;
 };
 
-struct type : public std::variant<type_simple, type_compound, type_generic> {};
+struct type_class
+{
+    struct field;
+
+    std::string        name;
+    std::vector<field> fields;
+    auto operator==(const type_class&) const -> bool = default;
+};
+
+struct type : public std::variant<type_simple, type_compound, type_generic, type_class> {};
+
+struct type_class::field
+{
+    std::string name;
+    type        type;
+    auto operator==(const field&) const -> bool = default;
+};
 
 auto to_string(const type& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
 auto to_string(const type_compound& type) -> std::string;
 auto to_string(const type_generic& type) -> std::string;
+auto to_string(const type_class& type) -> std::string;
 
 auto hash(const type& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
+auto hash(const type_class& type) -> std::size_t;
 
 auto int_type() -> type;
 auto bool_type() -> type;
 auto str_type() -> type;
 auto null_type() -> type;
 auto generic_type(int id) -> type;
+auto vec2_type() -> type;
 
 auto concrete_list_type(const type& t) -> type;
 auto generic_list_type() -> type;
 
-auto is_type_complete(const type& type) -> bool;
-auto it_type_fundamental(const type& type) -> bool;
+auto is_type_complete(const type& t) -> bool;
+
+// Returns the number of blocks that represent this type. Returns 0 if the type is not complete.
+auto type_block_size(const type& t) -> std::size_t;
+
+// Returns true if and only if the type is not a class type.
+auto it_type_fundamental(const type& t) -> bool;
 
 using match_result = std::unordered_map<int, type>;
 auto match(const type& concrete, const type& pattern) -> std::optional<match_result>;

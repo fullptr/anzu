@@ -211,6 +211,16 @@ auto get_typechecked_signature(
 )
     -> signature
 {
+    if (function_name == "vec2") {
+        return signature{
+            .args = {
+                { .name="x", .type=int_type() },
+                { .name="y", .type=int_type() }
+            },
+            .return_type = vec2_type()
+        };
+    }
+
     const auto sig = fetch_function_signature(ctx, tok, function_name);
 
     if (sig.args.size() != args.size()) {
@@ -287,6 +297,9 @@ auto typecheck_function_call(
 {
     const auto signature = get_typechecked_signature(ctx, tok, function_name, args);
 
+    if (function_name == "vec2") {
+        return vec2_type();
+    }
     if (!is_builtin(function_name)) {
         const auto* function_def = fetch_function_def(ctx, tok, function_name);
         if (is_function_generic(*function_def)) {

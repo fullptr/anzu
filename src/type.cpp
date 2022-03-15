@@ -28,6 +28,17 @@ auto to_string(const type_generic& type) -> std::string
     return std::format("[{}]", type.id);
 }
 
+auto to_string(const type_class& type) -> std::string
+{
+    return std::format(
+        "{}({})",
+        type.name,
+        format_comma_separated(type.fields, [](const auto& field) {
+            return std::format("{}: {}", field.name, field.type);
+        })
+    );
+}
+
 auto hash(const type& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
@@ -43,6 +54,16 @@ auto hash(const type_compound& type) -> std::size_t
     auto hash_value = std::hash<std::string>{}(type.name);
     for (const auto& subtype : type.subtypes) {
         hash_value ^= hash(subtype);
+    }
+    return hash_value;
+}
+
+auto hash(const type_class& type) -> std::size_t
+{
+    const auto str_hash = std::hash<std::string>{};
+    auto hash_value = str_hash(type.name);
+    for (const auto& field : type.fields) {
+        hash_value ^= str_hash(field.name) ^ hash(field.type);
     }
     return hash_value;
 }
@@ -77,6 +98,14 @@ auto generic_type(int id) -> type
     return {type_generic{ .id = id }};
 }
 
+auto vec2_type() -> type
+{
+    return {type_class{
+        .name = "vec2",
+        .fields = { { .name="x", .type=int_type() }, { .name="y", .type=int_type() } }
+    }};
+}
+
 auto concrete_list_type(const type& t) -> type
 {
     return {type_compound{
@@ -94,28 +123,40 @@ auto generic_list_type() -> type
 auto is_type_complete(const type& t) -> bool
 {
     return std::visit(overloaded {
-        [](const type_simple&) {
-            return true;
-        },
-        [](const type_generic&) {
-            return false;
-        },
+        [](const type_simple&) { return true; },
+        [](const type_generic&) { return false; },
         [](const type_compound& t) {
             return std::all_of(begin(t.subtypes), end(t.subtypes), [](const auto& st) {
                 return is_type_complete(st);
             });
-        }
+        },
+        [](const type_class&) { return true; }
     }, t);
 }
 
 auto is_type_fundamental(const type& type) -> bool
 {
-    return type == int_type() ||
-           type == bool_type() ||
-           type == str_type() ||
-           type == generic_list_type() ||
-           match(type, generic_list_type()).has_value() ||
-           type == null_type();
+    return !std::holds_alternative<type_class>(type);
+}
+
+auto type_block_size(const type& t) -> std::size_t
+{
+    if (!is_type_complete(t)) {
+        return 0;
+    }
+
+    return std::visit(overloaded{
+        [](const type_simple&) { return std::size_t{1}; },
+        [](const type_generic&) { return std::size_t{0}; }, // Never reached
+        [](const type_compound&) { return std::size_t{1}; },
+        [](const type_class& t) {
+            auto size = std::size_t{0};
+            for (const auto& field : t.fields) {
+                size += type_block_size(field.type);
+            }
+            return size;
+        }
+    }, t);
 }
 
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a
@@ -205,7 +246,8 @@ auto replace(type& ret, const match_result& matches) -> void
             for (auto& subtype : type.subtypes) {
                 replace(subtype, matches);
             }
-        }
+        },
+        [&](type_class&) {}
     }, ret);
 }
 
@@ -228,6 +270,7 @@ type_store::type_store()
     d_types.emplace(bool_type());
     d_types.emplace(str_type());
     d_types.emplace(null_type());
+    d_types.emplace(vec2_type());
 
     d_generics.emplace(generic_list_type());
 }
