@@ -247,7 +247,11 @@ type_store::type_store()
     d_types.emplace(bool_type());
     d_types.emplace(str_type());
     d_types.emplace(null_type());
-    d_types.emplace(vec2_type());
+
+    d_classes.emplace(vec2_type(), type_fields{
+        { .name = "x", .type = int_type() },
+        { .name = "y", .type = int_type() }
+    });
 
     d_generics.emplace(generic_list_type());
 }
@@ -286,7 +290,19 @@ auto type_store::find_by_name(const std::string& name) const -> const type_name*
 
 auto type_store::block_size(const type_name& t) const -> std::size_t
 {
-    return 0;
+    if (!is_type_complete(t)) {
+        return 1; // Hack to make lists work (for fundamentals) for now. Should be 0 or exception
+    }
+
+    if (auto it = d_classes.find(t); it != d_classes.end()) {
+        auto size = std::size_t{0};
+        for (const auto& field : it->second) {
+            size += block_size(field.type);
+        }
+        return size;
+    }
+
+    return 1; // By default, assume block size of 1 (should we have this?)
 }
 
 }

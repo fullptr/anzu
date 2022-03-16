@@ -35,12 +35,15 @@ struct type_generic
 
 struct type_name : public std::variant<type_simple, type_compound, type_generic> {};
 
-struct type_field
+
+struct field
 {
     std::string name;
-    type_name        type;
-    auto operator==(const type_field&) const -> bool = default;
+    type_name   type;
+    auto operator==(const field&) const -> bool = default;
 };
+
+using type_fields = std::vector<field>;
 
 auto to_string(const type_name& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
@@ -95,6 +98,8 @@ class type_store
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
     std::unordered_set<type_name, type_hash> d_types;
     std::unordered_set<type_name, type_hash> d_generics;
+
+    std::unordered_map<type_name, type_fields, type_hash> d_classes;
 
 public:
     type_store();
