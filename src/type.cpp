@@ -14,15 +14,6 @@ auto to_string(const type_name& type) -> std::string
 
 auto to_string(const type_simple& type) -> std::string
 {
-    //if (type.fields.has_value()) {
-    //    return std::format(
-    //        "{}({})",
-    //        type.name,
-    //        format_comma_separated(type.fields.value(), [](const auto& field) {
-    //            return std::format("{}: {}", field.name, field.type);
-    //        })
-    //    );
-    //}
     return type.name;
 }
 
@@ -44,14 +35,7 @@ auto hash(const type_name& type) -> std::size_t
 
 auto hash(const type_simple& type) -> std::size_t
 {
-    const auto str_hash = std::hash<std::string>{};
-    auto hash_value = str_hash(type.name);
-    //if (type.fields.has_value()) {
-    //    for (const auto& field : type.fields.value()) {
-    //        hash_value ^= str_hash(field.name) ^ hash(field.type);
-    //    }
-    //}
-    return hash_value;
+    return std::hash<std::string>{}(type.name);
 }
 
 auto hash(const type_compound& type) -> std::size_t
