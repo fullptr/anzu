@@ -11,7 +11,7 @@ auto get_back(std::vector<block>& mem, std::size_t index) -> T&
     return std::get<std::remove_cvref_t<T>>(mem[mem.size() - index - 1]);
 }
 
-template <typename Type, template <class> class Op>
+template <typename Type, template <typename> typename Op>
 auto bin_op(std::vector<block>& mem)
 {
     const auto op = Op<Type>{};
