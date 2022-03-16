@@ -266,26 +266,13 @@ auto type_store::is_registered_type(const type_name& t) const -> bool
         return true;
     }
 
+    if (d_classes.contains(t)) {
+        return true;
+    }
+
     return std::any_of(begin(d_generics), end(d_generics), [&](const auto& generic) {
         return match(t, generic).has_value();
     });
-}
-
-auto type_store::find_by_name(const std::string& name) const -> const type_name*
-{
-    const auto get_type_name = [](const type_name& t) {
-        return std::visit(overloaded{
-            [](const type_simple& s) { return s.name; },
-            [](const auto&) { return std::string{""}; }
-        }, t);
-    };
-
-    for (const auto& type : d_types) {
-        if (get_type_name(type) == name) {
-            return &type;
-        }
-    }
-    return nullptr;
 }
 
 auto type_store::block_size(const type_name& t) const -> std::size_t

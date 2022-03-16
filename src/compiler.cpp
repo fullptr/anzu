@@ -198,8 +198,9 @@ auto compile_function_call(
     // If this is the name of a simple type, then this is a constructor call, so
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
-    if (const auto type = ctx.registered_types.find_by_name(function)) {
-        return ctx.registered_types.block_size(*type);
+    const auto as_type_name = type_name{type_simple{ .name=function }};
+    if (ctx.registered_types.is_registered_type(as_type_name)) {
+        return ctx.registered_types.block_size(as_type_name);
     }
 
     // Otherwise, it may be a custom function.

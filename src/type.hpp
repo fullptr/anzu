@@ -107,11 +107,6 @@ public:
     // Checks if the given type is registered or matches a registered generic.
     auto is_registered_type(const type_name& t) const -> bool;
 
-    // Finds the given type with the given name if it exists, otherwise returns
-    // nullptr. This is currently O(n) so we should potentially optimise this in
-    // the future.
-    auto find_by_name(const std::string& name) const -> const type_name*;
-
     // Given a type name, return the size of the type in blocks.
     auto block_size(const type_name& t) const -> std::size_t;
 };
