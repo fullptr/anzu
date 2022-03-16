@@ -157,16 +157,12 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx); // Position after function call
 
             ctx.frames.emplace_back();
-            ctx.frames.back().base_ptr = ctx.memory.size() - op.sig.args.size();
-            ctx.frames.back().return_size = type_block_size(op.sig.return_type);
+            ctx.frames.back().base_ptr = ctx.memory.size() - op.args_size;
+            ctx.frames.back().return_size = op.return_size;
             program_jump_to(ctx, op.ptr); // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            auto arg_size = std::size_t{0};
-            for (const auto arg : op.sig.args) {
-                arg_size += type_block_size(arg.type);
-            }
-            auto args = std::vector<anzu::block>(arg_size);
+            auto args = std::vector<anzu::block>(op.args_size);
             for (auto& arg : args | std::views::reverse) {
                 arg = pop_back(ctx.memory);
             }

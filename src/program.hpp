@@ -91,14 +91,15 @@ struct op_function_call
 {
     std::string   name;
     std::intptr_t ptr;
-    signature     sig;
+    std::size_t   args_size;
+    std::size_t   return_size;
 };
 
 struct op_builtin_call
 {
     std::string      name;
     builtin_function ptr;
-    signature        sig; // TODO: Remove from op
+    std::size_t      args_size;
 };
 
 struct op_builtin_mem_op

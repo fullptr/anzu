@@ -123,11 +123,20 @@ auto load_variable(compiler_context& ctx, const std::string& name, std::size_t s
     }
 }
 
+auto signature_args_size(const compiler_context& ctx, const signature& sig) -> std::size_t
+{
+    auto args_size = std::size_t{0};
+    for (const auto& arg : sig.args) {
+        args_size += ctx.registered_types.block_size(arg.type);
+    }
+    return args_size;
+}
+
 auto call_builtin(compiler_context& ctx, const std::string& function_name) -> void
 {
     const auto& func = anzu::fetch_builtin(function_name);
     ctx.program.emplace_back(anzu::op_builtin_call{
-        .name=function_name, .ptr=func.ptr, .sig=func.sig
+        .name=function_name, .ptr=func.ptr, .args_size=signature_args_size(ctx, func.sig)
     });
 }
 
@@ -198,7 +207,8 @@ auto compile_function_call(
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
             .ptr=function_def->ptr + 1, // Jump into the function
-            .sig=function_def->sig
+            .args_size=signature_args_size(ctx, function_def->sig),
+            .return_size=ctx.registered_types.block_size(function_def->sig.return_type)
         });
         return ctx.registered_types.block_size(function_def->sig.return_type);
     }
@@ -213,10 +223,15 @@ auto compile_function_call(
         sig.args[0].type = ctx.expr_types[args[0].get()];
     }
     
+    auto args_size = std::size_t{0};
+    for (const auto& arg : sig.args) {
+        args_size += ctx.registered_types.block_size(arg.type);
+    }
+
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name=function,
         .ptr=builtin.ptr,
-        .sig=sig
+        .args_size=args_size
     });
     return ctx.registered_types.block_size(sig.return_type);
 }
