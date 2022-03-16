@@ -49,17 +49,17 @@ auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info
         } else if (desc.op == tk_mod) {
             return bin_op_info{ .operator_func = int_mod_int, .result_type = type };
         } else if (desc.op == "<") {
-            return bin_op_info{ .operator_func = int_lt_int, .result_type = type };
+            return bin_op_info{ .operator_func = int_lt_int, .result_type = bool_type() };
         } else if (desc.op == "<=") {
-            return bin_op_info{ .operator_func = int_le_int, .result_type = type };
+            return bin_op_info{ .operator_func = int_le_int, .result_type = bool_type() };
         } else if (desc.op == ">") {
-            return bin_op_info{ .operator_func = int_gt_int, .result_type = type };
+            return bin_op_info{ .operator_func = int_gt_int, .result_type = bool_type() };
         } else if (desc.op == ">=") {
-            return bin_op_info{ .operator_func = int_ge_int, .result_type = type };
+            return bin_op_info{ .operator_func = int_ge_int, .result_type = bool_type() };
         } else if (desc.op == "==") {
-            return bin_op_info{ .operator_func = int_eq_int, .result_type = type };
+            return bin_op_info{ .operator_func = int_eq_int, .result_type = bool_type() };
         } else if (desc.op == "!=") {
-            return bin_op_info{ .operator_func = int_ne_int, .result_type = type };
+            return bin_op_info{ .operator_func = int_ne_int, .result_type = bool_type() };
         }
     }
     else if (type == bool_type()) {
@@ -77,9 +77,9 @@ auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info
         if (desc.op == "+") {
             return bin_op_info{ .operator_func = str_add_str, .result_type = type };
         } else if (desc.op == "==") {
-            return bin_op_info{ .operator_func = str_eq_str, .result_type = type };
+            return bin_op_info{ .operator_func = str_eq_str, .result_type = bool_type() };
         } else if (desc.op == "!=") {
-            return bin_op_info{ .operator_func = str_ne_str, .result_type = type };
+            return bin_op_info{ .operator_func = str_ne_str, .result_type = bool_type() };
         }
     }
 

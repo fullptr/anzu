@@ -1,5 +1,6 @@
 #include "typecheck.hpp"
 #include "vocabulary.hpp"
+#include "operators.hpp"
 #include "type.hpp"
 #include "utility/overloaded.hpp"
 
@@ -85,49 +86,11 @@ auto verify_real_type(typecheck_context& ctx, const token& tok, const type_name&
 auto type_of_bin_op(const type_name& lhs, const type_name& rhs, const token& op_token) -> type_name
 {
     const auto op = op_token.text;
-    const auto invalid_expr = [=]() {
+    const auto info = resolve_bin_op({ .op = op, .lhs = lhs, .rhs = rhs });
+    if (!info) {
         type_error(op_token, "could not evaluate '{} {} {}'", lhs, op, rhs);
     };
-
-    if (lhs != rhs) {
-        invalid_expr();
-    }
-
-    if (match(lhs, generic_list_type()).has_value()) {// No support for having these in binary ops.
-        invalid_expr();
-    }
-
-    if (lhs == null_type()) { // No support for having these in binary ops.
-        invalid_expr();
-    }
-
-    if (lhs == str_type()) {
-        // Allowed: string concatenation and equality check
-        if (op == tk_add) {
-            return str_type();
-        }
-        if (op == tk_eq || op == tk_ne) {
-            return bool_type();
-        }
-        invalid_expr();
-    }
-
-    if (lhs == bool_type()) {
-        if (op == tk_or || op == tk_and || op == tk_eq || op == tk_ne) {
-            return bool_type();
-        }
-        invalid_expr();
-    }
-
-    if (lhs == int_type()) {
-        if (is_comparison(op)) {
-            return bool_type();
-        }
-        return int_type();
-    }
-
-    invalid_expr();
-    return int_type(); // Unreachable
+    return info->result_type;
 }
 
 // Returns true if any of the parameters to the function are incomplete. If none of the
