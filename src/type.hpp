@@ -109,6 +109,8 @@ public:
 
     // Given a type name, return the size of the type in blocks.
     auto block_size(const type_name& t) const -> std::size_t;
+
+    auto get_fields(const type_name& t) const -> type_fields;
 };
 
 }

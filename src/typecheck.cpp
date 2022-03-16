@@ -251,6 +251,24 @@ auto typecheck_function_call(
     // If this is a type name, its a constructor call
     const auto as_type_name = type_name{type_simple{ .name=function_name }};
     if (ctx.registered_types.is_registered_type(as_type_name)) {
+        const auto fields = ctx.registered_types.get_fields(as_type_name);
+        if (fields.size() != args.size()) {
+            type_error(
+                tok,
+                "Invalid number of args for {} constructor, expected {} got {}\n",
+                function_name, fields.size(), args.size()
+            );
+        }
+        for (std::size_t i = 0; i != args.size(); ++i) {
+            const auto given_type = typecheck_expr(ctx, *args[i]);
+            if (fields[i].type != given_type) {
+                type_error(
+                    tok,
+                    "Invalid type at position {} for {} constructor, expected {} got {}\n",
+                    i, function_name, fields[i].type, given_type
+                );
+            }
+        }
         return as_type_name;
     }
 

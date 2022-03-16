@@ -292,4 +292,15 @@ auto type_store::block_size(const type_name& t) const -> std::size_t
     return 1; // By default, assume block size of 1 (should we have this?)
 }
 
+auto type_store::get_fields(const type_name& t) const -> type_fields
+{
+    if (auto it = d_classes.find(t); it != d_classes.end()) {
+        return it->second;
+    }
+    if (is_type_fundamental(t)) {
+        return {{ .name = "blk", .type = t }};
+    }
+    return {};
+}
+
 }

@@ -7,6 +7,3 @@ fn print_first(v: vec2) -> null
 }
 
 print_first(x)
-
-y := int(2)
-println(y)
