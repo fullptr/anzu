@@ -223,16 +223,11 @@ auto compile_function_call(
     if (function == "print" || function == "println") {
         sig.args[0].type = ctx.expr_types[args[0].get()];
     }
-    
-    auto args_size = std::size_t{0};
-    for (const auto& arg : sig.args) {
-        args_size += ctx.registered_types.block_size(arg.type);
-    }
 
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name=function,
         .ptr=builtin.ptr,
-        .args_size=args_size
+        .args_size=signature_args_size(ctx, sig)
     });
     return ctx.registered_types.block_size(sig.return_type);
 }
