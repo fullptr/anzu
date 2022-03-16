@@ -284,4 +284,9 @@ auto type_store::find_by_name(const std::string& name) const -> const type_name*
     return nullptr;
 }
 
+auto type_store::block_size(const type_name& t) const -> std::size_t
+{
+    return 0;
+}
+
 }

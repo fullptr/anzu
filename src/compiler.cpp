@@ -190,7 +190,7 @@ auto compile_function_call(
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
     if (const auto type = ctx.registered_types.find_by_name(function)) {
-        return type_block_size(*type);
+        return ctx.registered_types.block_size(*type);
     }
 
     // Otherwise, it may be a custom function.
@@ -200,7 +200,7 @@ auto compile_function_call(
             .ptr=function_def->ptr + 1, // Jump into the function
             .sig=function_def->sig
         });
-        return type_block_size(function_def->sig.return_type);
+        return ctx.registered_types.block_size(function_def->sig.return_type);
     }
 
     // Otherwise, it must be a builtin function.
@@ -218,7 +218,7 @@ auto compile_function_call(
         .ptr=builtin.ptr,
         .sig=sig
     });
-    return type_block_size(sig.return_type);
+    return ctx.registered_types.block_size(sig.return_type);
 }
 
 void compile_node(const node_expr& expr, const node_literal_expr& node, compiler_context& ctx)
@@ -232,7 +232,7 @@ void compile_node(const node_expr& expr, const node_literal_expr& node, compiler
 
 void compile_node(const node_expr& expr, const node_variable_expr& node, compiler_context& ctx)
 {
-    const auto size = type_block_size(ctx.expr_types[&expr]);
+    const auto size = ctx.registered_types.block_size(ctx.expr_types[&expr]);
     load_variable(ctx, node.name, size);
 }
 
@@ -382,7 +382,7 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    const auto size = type_block_size(ctx.expr_types[node.expr.get()]);
+    const auto size = ctx.registered_types.block_size(ctx.expr_types[node.expr.get()]);
     declare_variable_name(ctx, node.name, size);
     save_variable(ctx, node.name, size);
 }
@@ -390,7 +390,7 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    const auto size = type_block_size(ctx.expr_types[node.expr.get()]);
+    const auto size = ctx.registered_types.block_size(ctx.expr_types[node.expr.get()]);
     save_variable(ctx, node.name, size);
 }
 

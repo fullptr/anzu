@@ -16,8 +16,6 @@ struct type_name;
 
 struct type_simple
 {
-    struct field;
-
     std::string name;
     auto operator==(const type_simple&) const -> bool = default;
 };
