@@ -3,6 +3,7 @@
 #include "object.hpp"
 #include "parser.hpp"
 #include "functions.hpp"
+#include "operators.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 
@@ -239,248 +240,22 @@ void compile_node(const node_expr& expr, const node_variable_expr& node, compile
 // generic and combine the logic.
 void compile_node(const node_expr& expr, const node_bin_op_expr& node, compiler_context& ctx)
 {
-    const auto lhs_type = ctx.expr_types[node.lhs.get()];
-    const auto rhs_type = ctx.expr_types[node.rhs.get()];
     compile_node(*node.lhs, ctx);
     compile_node(*node.rhs, ctx);
     const auto op = node.token.text;
+    const auto lhs_type = ctx.expr_types[node.lhs.get()];
+    const auto rhs_type = ctx.expr_types[node.rhs.get()];
+    const auto info = resolve_bin_op({.op = op, .lhs = lhs_type, .rhs = rhs_type});
 
-    const auto invalid_expr = [&]() {
+    if (!info) {
         anzu::print("[{}:{}] could not evaluate '{} {} {}'", node.token.line, node.token.col, lhs_type, op, rhs_type);
         std::exit(1);
-    };
-
-    if (lhs_type != rhs_type) {
-        invalid_expr();
     }
 
-    const auto& type = lhs_type; // == rhs_type too
-
-    if (match(type, generic_list_type()).has_value()) {// No support for having these in binary ops.
-        invalid_expr();
-    }
-
-    // An example of how we can remove the original bin op codes. We will want to move
-    // to this when we have custom types with operators.
-    if (type == int_type()) {
-        if (op == "+") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs_val = std::get<block_int>(penult(mem));
-                    lhs_val = lhs_val + rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "-") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs_val = std::get<block_int>(penult(mem));
-                    lhs_val = lhs_val - rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "*") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs_val = std::get<block_int>(penult(mem));
-                    lhs_val = lhs_val * rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "/") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs_val = std::get<block_int>(penult(mem));
-                    if (rhs_val == 0) {
-                        anzu::print("Division by zero error\n");
-                        std::exit(1);
-                    }
-                    lhs_val = lhs_val / rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "%") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs_val = std::get<block_int>(penult(mem));
-                    lhs_val = lhs_val % rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "<") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs = penult(mem);
-                    auto& lhs_val = std::get<block_int>(lhs);
-                    lhs = block{lhs_val < rhs_val};
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "<=") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs = penult(mem);
-                    auto& lhs_val = std::get<block_int>(lhs);
-                    lhs = block{lhs_val <= rhs_val};
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == ">") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs = penult(mem);
-                    auto& lhs_val = std::get<block_int>(lhs);
-                    lhs = block{lhs_val > rhs_val};
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == ">=") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs = penult(mem);
-                    auto& lhs_val = std::get<block_int>(lhs);
-                    lhs = block{lhs_val >= rhs_val};
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "==") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs = penult(mem);
-                    auto& lhs_val = std::get<block_int>(lhs);
-                    lhs = block{lhs_val == rhs_val};
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "!=") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_int>(back(mem));
-                    auto& lhs = penult(mem);
-                    auto& lhs_val = std::get<block_int>(lhs);
-                    lhs = block{lhs_val != rhs_val};
-                    mem.pop_back();
-                }
-            });
-        }
-    }
-    else if (type == bool_type()) {
-        if (op == "==") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_bool>(back(mem));
-                    auto& lhs_val = std::get<block_bool>(penult(mem));
-                    lhs_val = lhs_val == rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "!=") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_bool>(back(mem));
-                    auto& lhs_val = std::get<block_bool>(penult(mem));
-                    lhs_val = lhs_val != rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "&&") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_bool>(back(mem));
-                    auto& lhs_val = std::get<block_bool>(penult(mem));
-                    lhs_val = lhs_val && rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "||") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_bool>(back(mem));
-                    auto& lhs_val = std::get<block_bool>(penult(mem));
-                    lhs_val = lhs_val || rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-    }
-    else if (type == str_type()) {
-        if (op == "+") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_str>(back(mem));
-                    auto& lhs_val = std::get<block_str>(penult(mem));
-                    lhs_val = lhs_val + rhs_val;
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "==") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_str>(back(mem));
-                    auto& lhs = penult(mem);
-                    auto& lhs_val = std::get<block_str>(lhs);
-                    lhs = block{lhs_val == rhs_val};
-                    mem.pop_back();
-                }
-            });
-        }
-        else if (op == "!=") {
-            ctx.program.emplace_back(op_builtin_mem_op{
-                .name = std::format("{0} {1} {0}", type, op),
-                .ptr = +[](std::vector<block>& mem) {
-                    const auto& rhs_val = std::get<block_str>(back(mem));
-                    auto& lhs = penult(mem);
-                    auto& lhs_val = std::get<block_str>(lhs);
-                    lhs = block{lhs_val != rhs_val};
-                    mem.pop_back();
-                }
-            });
-        }
-    }
-    else {
-        invalid_expr();
-    }
+    ctx.program.emplace_back(op_builtin_mem_op{
+        .name = std::format("{} {} {}", lhs_type, op, rhs_type),
+        .ptr = info->operator_func
+    });
 }
 
 void compile_node(const node_expr& expr, const node_function_call_expr& node, compiler_context& ctx)

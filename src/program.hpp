@@ -1,5 +1,6 @@
 #pragma once
 #include "functions.hpp"
+#include "operators.hpp"
 #include "object.hpp"
 
 #include <variant>
