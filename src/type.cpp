@@ -70,7 +70,7 @@ auto hash(const type_generic& type) -> std::size_t
 
 auto int_type()  -> type_name
 {
-    return {type_simple{ .name = std::string{tk_int}  }};
+    return {type_simple{ .name = std::string{tk_int} }};
 }
 
 auto bool_type() -> type_name
@@ -80,7 +80,7 @@ auto bool_type() -> type_name
 
 auto str_type()  -> type_name
 {
-    return {type_simple{ .name = std::string{tk_str}  }};
+    return {type_simple{ .name = std::string{tk_str} }};
 }
 
 auto null_type() -> type_name
@@ -95,10 +95,7 @@ auto generic_type(int id) -> type_name
 
 auto vec2_type() -> type_name
 {
-    return {type_simple{
-        .name = "vec2",
-        //.fields = {{ { .name="x", .type=int_type() }, { .name="y", .type=int_type() } }}
-    }};
+    return {type_simple{ .name = "vec2", }};
 }
 
 auto concrete_list_type(const type_name& t) -> type_name
