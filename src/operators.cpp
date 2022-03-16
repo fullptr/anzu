@@ -24,68 +24,6 @@ auto pop_and_emplace(std::vector<block>& mem, T&& val)
     mem.back().emplace<T>(val);
 }
 
-}
-
-auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info>
-{
-    if (desc.lhs != desc.rhs) {
-        return std::nullopt;
-    }
-    const auto& type = desc.lhs;
-    
-    if (match(type, generic_list_type()).has_value()) { // No support for having these in bin ops.
-        return std::nullopt;
-    }
-
-    if (type == int_type()) {
-        if (desc.op == tk_add) {
-            return bin_op_info{ .operator_func = int_add_int, .result_type = type };
-        } else if (desc.op == tk_sub) {
-            return bin_op_info{ .operator_func = int_sub_int, .result_type = type };
-        } else if (desc.op == tk_mul) {
-            return bin_op_info{ .operator_func = int_mul_int, .result_type = type };
-        } else if (desc.op == tk_div) {
-            return bin_op_info{ .operator_func = int_div_int, .result_type = type };
-        } else if (desc.op == tk_mod) {
-            return bin_op_info{ .operator_func = int_mod_int, .result_type = type };
-        } else if (desc.op == "<") {
-            return bin_op_info{ .operator_func = int_lt_int, .result_type = bool_type() };
-        } else if (desc.op == "<=") {
-            return bin_op_info{ .operator_func = int_le_int, .result_type = bool_type() };
-        } else if (desc.op == ">") {
-            return bin_op_info{ .operator_func = int_gt_int, .result_type = bool_type() };
-        } else if (desc.op == ">=") {
-            return bin_op_info{ .operator_func = int_ge_int, .result_type = bool_type() };
-        } else if (desc.op == "==") {
-            return bin_op_info{ .operator_func = int_eq_int, .result_type = bool_type() };
-        } else if (desc.op == "!=") {
-            return bin_op_info{ .operator_func = int_ne_int, .result_type = bool_type() };
-        }
-    }
-    else if (type == bool_type()) {
-        if (desc.op == "==") {
-            return bin_op_info{ .operator_func = bool_eq_bool, .result_type = type };
-        } else if (desc.op == "!=") {
-            return bin_op_info{ .operator_func = bool_ne_bool, .result_type = type };
-        } else if (desc.op == "&&") {
-            return bin_op_info{ .operator_func = bool_and_bool, .result_type = type };
-        } else if (desc.op == "||") {
-            return bin_op_info{ .operator_func = bool_or_bool, .result_type = type };
-        }
-    }
-    else if (type == str_type()) {
-        if (desc.op == "+") {
-            return bin_op_info{ .operator_func = str_add_str, .result_type = type };
-        } else if (desc.op == "==") {
-            return bin_op_info{ .operator_func = str_eq_str, .result_type = bool_type() };
-        } else if (desc.op == "!=") {
-            return bin_op_info{ .operator_func = str_ne_str, .result_type = bool_type() };
-        }
-    }
-
-    return std::nullopt;
-}
-
 void int_add_int(std::vector<block>& mem)
 {
     const auto [lhs, rhs] = back_two<block_int, block_int>(mem);
@@ -196,6 +134,68 @@ void str_ne_str(std::vector<block>& mem)
 {
     const auto [lhs, rhs] = back_two<block_str&, block_str&>(mem);
     pop_and_emplace<block_bool>(mem, lhs != rhs);
+}
+
+}
+
+auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info>
+{
+    if (desc.lhs != desc.rhs) {
+        return std::nullopt;
+    }
+    const auto& type = desc.lhs;
+    
+    if (match(type, generic_list_type()).has_value()) { // No support for having these in bin ops.
+        return std::nullopt;
+    }
+
+    if (type == int_type()) {
+        if (desc.op == tk_add) {
+            return bin_op_info{ .operator_func = int_add_int, .result_type = type };
+        } else if (desc.op == tk_sub) {
+            return bin_op_info{ .operator_func = int_sub_int, .result_type = type };
+        } else if (desc.op == tk_mul) {
+            return bin_op_info{ .operator_func = int_mul_int, .result_type = type };
+        } else if (desc.op == tk_div) {
+            return bin_op_info{ .operator_func = int_div_int, .result_type = type };
+        } else if (desc.op == tk_mod) {
+            return bin_op_info{ .operator_func = int_mod_int, .result_type = type };
+        } else if (desc.op == "<") {
+            return bin_op_info{ .operator_func = int_lt_int, .result_type = bool_type() };
+        } else if (desc.op == "<=") {
+            return bin_op_info{ .operator_func = int_le_int, .result_type = bool_type() };
+        } else if (desc.op == ">") {
+            return bin_op_info{ .operator_func = int_gt_int, .result_type = bool_type() };
+        } else if (desc.op == ">=") {
+            return bin_op_info{ .operator_func = int_ge_int, .result_type = bool_type() };
+        } else if (desc.op == "==") {
+            return bin_op_info{ .operator_func = int_eq_int, .result_type = bool_type() };
+        } else if (desc.op == "!=") {
+            return bin_op_info{ .operator_func = int_ne_int, .result_type = bool_type() };
+        }
+    }
+    else if (type == bool_type()) {
+        if (desc.op == "==") {
+            return bin_op_info{ .operator_func = bool_eq_bool, .result_type = type };
+        } else if (desc.op == "!=") {
+            return bin_op_info{ .operator_func = bool_ne_bool, .result_type = type };
+        } else if (desc.op == "&&") {
+            return bin_op_info{ .operator_func = bool_and_bool, .result_type = type };
+        } else if (desc.op == "||") {
+            return bin_op_info{ .operator_func = bool_or_bool, .result_type = type };
+        }
+    }
+    else if (type == str_type()) {
+        if (desc.op == "+") {
+            return bin_op_info{ .operator_func = str_add_str, .result_type = type };
+        } else if (desc.op == "==") {
+            return bin_op_info{ .operator_func = str_eq_str, .result_type = bool_type() };
+        } else if (desc.op == "!=") {
+            return bin_op_info{ .operator_func = str_ne_str, .result_type = bool_type() };
+        }
+    }
+
+    return std::nullopt;
 }
 
 }
