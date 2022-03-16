@@ -14,15 +14,6 @@ auto to_string(const type_name& type) -> std::string
 
 auto to_string(const type_simple& type) -> std::string
 {
-    if (type.fields.has_value()) {
-        return std::format(
-            "{}({})",
-            type.name,
-            format_comma_separated(type.fields.value(), [](const auto& field) {
-                return std::format("{}: {}", field.name, field.type);
-            })
-        );
-    }
     return type.name;
 }
 
@@ -44,14 +35,7 @@ auto hash(const type_name& type) -> std::size_t
 
 auto hash(const type_simple& type) -> std::size_t
 {
-    const auto str_hash = std::hash<std::string>{};
-    auto hash_value = str_hash(type.name);
-    if (type.fields.has_value()) {
-        for (const auto& field : type.fields.value()) {
-            hash_value ^= str_hash(field.name) ^ hash(field.type);
-        }
-    }
-    return hash_value;
+    return std::hash<std::string>{}(type.name);
 }
 
 auto hash(const type_compound& type) -> std::size_t
@@ -70,7 +54,7 @@ auto hash(const type_generic& type) -> std::size_t
 
 auto int_type()  -> type_name
 {
-    return {type_simple{ .name = std::string{tk_int}  }};
+    return {type_simple{ .name = std::string{tk_int} }};
 }
 
 auto bool_type() -> type_name
@@ -80,7 +64,7 @@ auto bool_type() -> type_name
 
 auto str_type()  -> type_name
 {
-    return {type_simple{ .name = std::string{tk_str}  }};
+    return {type_simple{ .name = std::string{tk_str} }};
 }
 
 auto null_type() -> type_name
@@ -95,10 +79,7 @@ auto generic_type(int id) -> type_name
 
 auto vec2_type() -> type_name
 {
-    return {type_simple{
-        .name = "vec2",
-        .fields = {{ { .name="x", .type=int_type() }, { .name="y", .type=int_type() } }}
-    }};
+    return {type_simple{ .name = "vec2", }};
 }
 
 auto concrete_list_type(const type_name& t) -> type_name
@@ -135,29 +116,6 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == str_type()
         || type == null_type()
         || match(type, generic_list_type());
-}
-
-auto type_block_size(const type_name& t) -> std::size_t
-{
-    return std::visit(overloaded{
-        [](const type_simple& t) {
-            if (t.fields.has_value()) {
-                auto size = std::size_t{0};
-                for (const auto& field : t.fields.value()) {
-                    size += type_block_size(field.type);
-                }
-                return size;
-            }
-            return std::size_t{1};
-        },
-
-        // Checking the size of this should be an error, but we are making it return 1
-        // as a hack to make for loops (with lists of elements of size 1) work. Instead, for
-        // loops should properly calculate the size of the contained elements, but that's
-        // more involved. Fixing lists will be its own thing.
-        [](const type_generic&) { return std::size_t{1}; },
-        [](const type_compound&) { return std::size_t{1}; }
-    }, t);
 }
 
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a
@@ -266,45 +224,46 @@ auto to_string(const signature& sig) -> std::string
 
 type_store::type_store()
 {
-    d_types.emplace(int_type());
-    d_types.emplace(bool_type());
-    d_types.emplace(str_type());
-    d_types.emplace(null_type());
-    d_types.emplace(vec2_type());
-
-    d_generics.emplace(generic_list_type());
+    d_classes.emplace(vec2_type(), type_fields{
+        { .name = "x", .type = int_type() },
+        { .name = "y", .type = int_type() }
+    });
 }
 
 auto type_store::is_registered_type(const type_name& t) const -> bool
 {
-    if (d_types.contains(t)) {
+    if (is_type_fundamental(t)) {
         return true;
     }
-
-    if (d_generics.contains(t)) {
-        return true;
-    }
-
-    return std::any_of(begin(d_generics), end(d_generics), [&](const auto& generic) {
-        return match(t, generic).has_value();
-    });
+    return d_classes.contains(t);
 }
 
-auto type_store::find_by_name(const std::string& name) const -> const type_name*
+auto type_store::block_size(const type_name& t) const -> std::size_t
 {
-    const auto get_type_name = [](const type_name& t) {
-        return std::visit(overloaded{
-            [](const type_simple& s) { return s.name; },
-            [](const auto&) { return std::string{""}; }
-        }, t);
-    };
-
-    for (const auto& type : d_types) {
-        if (get_type_name(type) == name) {
-            return &type;
-        }
+    if (!is_type_complete(t)) {
+        return 1; // Hack to make lists work (for fundamentals) for now. Should be 0 or exception
     }
-    return nullptr;
+
+    if (auto it = d_classes.find(t); it != d_classes.end()) {
+        auto size = std::size_t{0};
+        for (const auto& field : it->second) {
+            size += block_size(field.type);
+        }
+        return size;
+    }
+
+    return 1; // By default, assume block size of 1 (should we have this?)
+}
+
+auto type_store::get_fields(const type_name& t) const -> type_fields
+{
+    if (auto it = d_classes.find(t); it != d_classes.end()) {
+        return it->second;
+    }
+    if (is_type_fundamental(t)) {
+        return {{ .name = "blk", .type = t }};
+    }
+    return {};
 }
 
 }

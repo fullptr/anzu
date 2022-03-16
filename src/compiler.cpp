@@ -123,11 +123,20 @@ auto load_variable(compiler_context& ctx, const std::string& name, std::size_t s
     }
 }
 
+auto signature_args_size(const compiler_context& ctx, const signature& sig) -> std::size_t
+{
+    auto args_size = std::size_t{0};
+    for (const auto& arg : sig.args) {
+        args_size += ctx.registered_types.block_size(arg.type);
+    }
+    return args_size;
+}
+
 auto call_builtin(compiler_context& ctx, const std::string& function_name) -> void
 {
     const auto& func = anzu::fetch_builtin(function_name);
     ctx.program.emplace_back(anzu::op_builtin_call{
-        .name=function_name, .ptr=func.ptr, .sig=func.sig
+        .name=function_name, .ptr=func.ptr, .args_size=signature_args_size(ctx, func.sig)
     });
 }
 
@@ -189,8 +198,9 @@ auto compile_function_call(
     // If this is the name of a simple type, then this is a constructor call, so
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
-    if (const auto type = ctx.registered_types.find_by_name(function)) {
-        return type_block_size(*type);
+    const auto as_type_name = type_name{type_simple{ .name=function }};
+    if (ctx.registered_types.is_registered_type(as_type_name)) {
+        return ctx.registered_types.block_size(as_type_name);
     }
 
     // Otherwise, it may be a custom function.
@@ -198,9 +208,10 @@ auto compile_function_call(
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
             .ptr=function_def->ptr + 1, // Jump into the function
-            .sig=function_def->sig
+            .args_size=signature_args_size(ctx, function_def->sig),
+            .return_size=ctx.registered_types.block_size(function_def->sig.return_type)
         });
-        return type_block_size(function_def->sig.return_type);
+        return ctx.registered_types.block_size(function_def->sig.return_type);
     }
 
     // Otherwise, it must be a builtin function.
@@ -212,13 +223,13 @@ auto compile_function_call(
     if (function == "print" || function == "println") {
         sig.args[0].type = ctx.expr_types[args[0].get()];
     }
-    
+
     ctx.program.emplace_back(anzu::op_builtin_call{
         .name=function,
         .ptr=builtin.ptr,
-        .sig=sig
+        .args_size=signature_args_size(ctx, sig)
     });
-    return type_block_size(sig.return_type);
+    return ctx.registered_types.block_size(sig.return_type);
 }
 
 void compile_node(const node_expr& expr, const node_literal_expr& node, compiler_context& ctx)
@@ -232,7 +243,7 @@ void compile_node(const node_expr& expr, const node_literal_expr& node, compiler
 
 void compile_node(const node_expr& expr, const node_variable_expr& node, compiler_context& ctx)
 {
-    const auto size = type_block_size(ctx.expr_types[&expr]);
+    const auto size = ctx.registered_types.block_size(ctx.expr_types[&expr]);
     load_variable(ctx, node.name, size);
 }
 
@@ -382,7 +393,7 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    const auto size = type_block_size(ctx.expr_types[node.expr.get()]);
+    const auto size = ctx.registered_types.block_size(ctx.expr_types[node.expr.get()]);
     declare_variable_name(ctx, node.name, size);
     save_variable(ctx, node.name, size);
 }
@@ -390,7 +401,7 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    const auto size = type_block_size(ctx.expr_types[node.expr.get()]);
+    const auto size = ctx.registered_types.block_size(ctx.expr_types[node.expr.get()]);
     save_variable(ctx, node.name, size);
 }
 

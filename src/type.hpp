@@ -16,10 +16,7 @@ struct type_name;
 
 struct type_simple
 {
-    struct field;
-
     std::string name;
-    std::optional<std::vector<field>> fields; // nullopt == fundamental type
     auto operator==(const type_simple&) const -> bool = default;
 };
 
@@ -38,12 +35,15 @@ struct type_generic
 
 struct type_name : public std::variant<type_simple, type_compound, type_generic> {};
 
-struct type_simple::field
+
+struct field
 {
     std::string name;
-    type_name        type;
+    type_name   type;
     auto operator==(const field&) const -> bool = default;
 };
+
+using type_fields = std::vector<field>;
 
 auto to_string(const type_name& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
@@ -66,9 +66,6 @@ auto concrete_list_type(const type_name& t) -> type_name;
 auto generic_list_type() -> type_name;
 
 auto is_type_complete(const type_name& t) -> bool;
-
-// Returns the number of blocks that represent this type. Returns 0 if the type is not complete.
-auto type_block_size(const type_name& t) -> std::size_t;
 
 // Returns true if and only if the type is not a class type.
 auto it_type_fundamental(const type_name& t) -> bool;
@@ -99,8 +96,7 @@ auto to_string(const signature& sig) -> std::string;
 class type_store
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
-    std::unordered_set<type_name, type_hash> d_types;
-    std::unordered_set<type_name, type_hash> d_generics;
+    std::unordered_map<type_name, type_fields, type_hash> d_classes;
 
 public:
     type_store();
@@ -108,10 +104,10 @@ public:
     // Checks if the given type is registered or matches a registered generic.
     auto is_registered_type(const type_name& t) const -> bool;
 
-    // Finds the given type with the given name if it exists, otherwise returns
-    // nullptr. This is currently O(n) so we should potentially optimise this in
-    // the future.
-    auto find_by_name(const std::string& name) const -> const type_name*;
+    // Given a type name, return the size of the type in blocks.
+    auto block_size(const type_name& t) const -> std::size_t;
+
+    auto get_fields(const type_name& t) const -> type_fields;
 };
 
 }

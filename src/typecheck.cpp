@@ -174,16 +174,6 @@ auto get_typechecked_signature(
 )
     -> signature
 {
-    if (function_name == "vec2") {
-        return signature{
-            .args = {
-                { .name="x", .type=int_type() },
-                { .name="y", .type=int_type() }
-            },
-            .return_type = vec2_type()
-        };
-    }
-
     const auto sig = fetch_function_signature(ctx, tok, function_name);
 
     if (sig.args.size() != args.size()) {
@@ -258,11 +248,31 @@ auto typecheck_function_call(
 )
     -> type_name
 {
-    const auto signature = get_typechecked_signature(ctx, tok, function_name, args);
-
-    if (function_name == "vec2") {
-        return vec2_type();
+    // If this is a type name, its a constructor call
+    const auto as_type_name = type_name{type_simple{ .name=function_name }};
+    if (ctx.registered_types.is_registered_type(as_type_name)) {
+        const auto fields = ctx.registered_types.get_fields(as_type_name);
+        if (fields.size() != args.size()) {
+            type_error(
+                tok,
+                "Invalid number of args for {} constructor, expected {} got {}\n",
+                function_name, fields.size(), args.size()
+            );
+        }
+        for (std::size_t i = 0; i != args.size(); ++i) {
+            const auto given_type = typecheck_expr(ctx, *args[i]);
+            if (fields[i].type != given_type) {
+                type_error(
+                    tok,
+                    "Invalid type at position {} for {} constructor, expected {} got {}\n",
+                    i, function_name, fields[i].type, given_type
+                );
+            }
+        }
+        return as_type_name;
     }
+
+    const auto signature = get_typechecked_signature(ctx, tok, function_name, args);
     if (!is_builtin(function_name)) {
         const auto* function_def = fetch_function_def(ctx, tok, function_name);
         if (is_function_generic(*function_def)) {

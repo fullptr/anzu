@@ -1,3 +1,9 @@
 
-println(4 + 5)
-println("hello " + "world")
+x := vec2(1, 2)
+
+fn print_first(v: vec2) -> null
+{
+    println(vec2_first(v))
+}
+
+print_first(x)
