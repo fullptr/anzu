@@ -96,9 +96,6 @@ auto to_string(const signature& sig) -> std::string;
 class type_store
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
-    std::unordered_set<type_name, type_hash> d_types;
-    std::unordered_set<type_name, type_hash> d_generics;
-
     std::unordered_map<type_name, type_fields, type_hash> d_classes;
 
 public:

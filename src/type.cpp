@@ -224,36 +224,18 @@ auto to_string(const signature& sig) -> std::string
 
 type_store::type_store()
 {
-    d_types.emplace(int_type());
-    d_types.emplace(bool_type());
-    d_types.emplace(str_type());
-    d_types.emplace(null_type());
-
     d_classes.emplace(vec2_type(), type_fields{
         { .name = "x", .type = int_type() },
         { .name = "y", .type = int_type() }
     });
-
-    d_generics.emplace(generic_list_type());
 }
 
 auto type_store::is_registered_type(const type_name& t) const -> bool
 {
-    if (d_types.contains(t)) {
+    if (is_type_fundamental(t)) {
         return true;
     }
-
-    if (d_generics.contains(t)) {
-        return true;
-    }
-
-    if (d_classes.contains(t)) {
-        return true;
-    }
-
-    return std::any_of(begin(d_generics), end(d_generics), [&](const auto& generic) {
-        return match(t, generic).has_value();
-    });
+    return d_classes.contains(t);
 }
 
 auto type_store::block_size(const type_name& t) const -> std::size_t
