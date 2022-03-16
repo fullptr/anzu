@@ -19,7 +19,6 @@ struct type_simple
     struct field;
 
     std::string name;
-    std::optional<std::vector<field>> fields; // nullopt == fundamental type
     auto operator==(const type_simple&) const -> bool = default;
 };
 
@@ -38,11 +37,11 @@ struct type_generic
 
 struct type_name : public std::variant<type_simple, type_compound, type_generic> {};
 
-struct type_simple::field
+struct type_field
 {
     std::string name;
     type_name        type;
-    auto operator==(const field&) const -> bool = default;
+    auto operator==(const type_field&) const -> bool = default;
 };
 
 auto to_string(const type_name& type) -> std::string;
@@ -66,9 +65,6 @@ auto concrete_list_type(const type_name& t) -> type_name;
 auto generic_list_type() -> type_name;
 
 auto is_type_complete(const type_name& t) -> bool;
-
-// Returns the number of blocks that represent this type. Returns 0 if the type is not complete.
-auto type_block_size(const type_name& t) -> std::size_t;
 
 // Returns true if and only if the type is not a class type.
 auto it_type_fundamental(const type_name& t) -> bool;
@@ -112,6 +108,9 @@ public:
     // nullptr. This is currently O(n) so we should potentially optimise this in
     // the future.
     auto find_by_name(const std::string& name) const -> const type_name*;
+
+    // Given a type name, return the size of the type in blocks.
+    auto block_size(const type_name& t) const -> std::size_t;
 };
 
 }
