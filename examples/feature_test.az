@@ -49,7 +49,7 @@ if false {
 
 # simple expressions
 println(2 + 2)
-println(8 * (1 + 6) || 5)
+println(8 * (1 + 6) > 5)
 println(true && true)
 println(true && false)
 println(true || false)

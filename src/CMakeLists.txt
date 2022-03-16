@@ -17,6 +17,7 @@ add_executable(
     object.cpp
     type.cpp
     functions.cpp
+    operators.cpp
     vocabulary.cpp
 )
 
