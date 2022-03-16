@@ -174,16 +174,6 @@ auto get_typechecked_signature(
 )
     -> signature
 {
-    if (function_name == "vec2") {
-        return signature{
-            .args = {
-                { .name="x", .type=int_type() },
-                { .name="y", .type=int_type() }
-            },
-            .return_type = vec2_type()
-        };
-    }
-
     const auto sig = fetch_function_signature(ctx, tok, function_name);
 
     if (sig.args.size() != args.size()) {
