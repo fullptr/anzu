@@ -304,6 +304,9 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
             }
             type_error(node.token, "could not find variable '{}'\n", node.name);
         },
+        [&](const node_field_expr& node) {
+            return int_type();
+        },
         [&](const node_function_call_expr& node) {
             return typecheck_function_call(ctx, node.token, node.function_name, node.args);
         },

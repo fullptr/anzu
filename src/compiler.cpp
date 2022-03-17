@@ -247,6 +247,10 @@ void compile_node(const node_expr& expr, const node_variable_expr& node, compile
     load_variable(ctx, node.name, size);
 }
 
+void compile_node(const node_expr& expr, const node_field_expr& node, compiler_context& ctx)
+{
+}
+
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
 // generic and combine the logic.
 void compile_node(const node_expr& expr, const node_bin_op_expr& node, compiler_context& ctx)
