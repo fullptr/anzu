@@ -51,11 +51,11 @@ constexpr auto tk_sub       = sv{"-"};
 constexpr auto tk_rarrow    = sv{"->"};
 constexpr auto tk_lbrace    = sv{"{"};
 constexpr auto tk_rbrace    = sv{"}"};
+constexpr auto tk_fullstop  = sv{"."};
 
 auto is_keyword    (sv token) -> bool;
 auto is_sentinel   (sv token) -> bool;
 auto is_symbol     (sv token) -> bool;
 auto is_comparison (sv token) -> bool;
-auto is_type       (sv token) -> bool;
 
 }

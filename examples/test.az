@@ -1,11 +1,2 @@
 
-x := vec2(1, 2)
-
-fn print_first(v: vec2) -> null
-{
-    println(vec2_first(v))
-}
-
-print_first(x)
-
-vec2(1, 2) + 3
+x.y = 5
