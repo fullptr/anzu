@@ -305,6 +305,14 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
             type_error(node.token, "could not find variable '{}'\n", node.name);
         },
         [&](const node_field_expr& node) {
+            const auto parent_type = typecheck_expr(ctx, *node.expression);
+            const auto fields = ctx.registered_types.get_fields(parent_type);
+            for (const auto& field : fields) {
+                if (field.name == node.field_name) {
+                    return field.type;
+                }
+            }
+            type_error(node.token, "type '{}' has no field named '{}'\n", parent_type, node.field_name);
             return int_type();
         },
         [&](const node_function_call_expr& node) {

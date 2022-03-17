@@ -1,4 +1,6 @@
 
 my_vec := vec2(1, 2)
 
-println(my_vec.x)
+fn foo(x: int) -> null {}
+
+foo(my_vec.z)
