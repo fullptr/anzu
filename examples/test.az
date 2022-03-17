@@ -7,3 +7,5 @@ fn print_first(v: vec2) -> null
 }
 
 print_first(x)
+
+vec2(1, 2) + 3
