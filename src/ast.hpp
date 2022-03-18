@@ -94,6 +94,17 @@ struct node_if_stmt
     anzu::token token;
 };
 
+struct node_struct_stmt
+{
+    struct field {
+        std::string name;
+        type_name   type;
+    };
+
+    std::string        name;
+    std::vector<field> fields;
+}
+
 struct node_for_stmt
 {
     std::string   var;
@@ -166,6 +177,7 @@ struct node_stmt : std::variant<
     node_sequence_stmt,
     node_while_stmt,
     node_if_stmt,
+    node_struct_stmt,
     node_for_stmt,
     node_break_stmt,
     node_continue_stmt,

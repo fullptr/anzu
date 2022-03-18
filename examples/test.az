@@ -1,17 +1,19 @@
 
+
+struct vec3
+{
+    x: int
+    y: int
+    z: int
+}
+
 my_vec := vec2(1, 2)
 
 fn int_x() -> null
 {
-    my_vec.z = my_vec.x + 1
+    my_vec.x = my_vec.x + 1
 }
 
-println(my_vec)
-int_x()
-println(my_vec)
-int_x()
-println(my_vec)
-int_x()
 println(my_vec)
 int_x()
 println(my_vec)

@@ -258,6 +258,14 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_unique<anzu::node_stmt>();
+    auto& stmt = node->emplace<anzu::node_struct_stmt>();
+
+    return node;
+}
+
 auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
@@ -329,6 +337,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     }
     if (tokens.peek(tk_for)) {
         return parse_for_stmt(tokens);
+    }
+    if (tokens.peek(tk_struct)) {
+        return parse_struct_stmt(tokens);
     }
     if (tokens.peek(tk_break)) {
         return std::make_unique<node_stmt>(node_break_stmt{ tokens.consume() });
