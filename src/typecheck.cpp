@@ -423,6 +423,11 @@ auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) ->
     type_error(node.token, "cannot assign to '{}', name not declared", node.name);
 }
 
+auto typecheck_node(typecheck_context& ctx, const node_field_assignment_stmt& node) -> void
+{
+    print("typechecking for node field assignment not implemented\n");
+}
+
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
 {
     ctx.functions.emplace(node.name, &node);

@@ -171,6 +171,7 @@ struct node_stmt : std::variant<
     node_continue_stmt,
     node_declaration_stmt,
     node_assignment_stmt,
+    node_field_assignment_stmt,
     node_function_def_stmt,
     node_function_call_stmt,
     node_return_stmt>

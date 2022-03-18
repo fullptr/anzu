@@ -449,6 +449,12 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
     save_variable(ctx, node.name);
 }
 
+void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
+{
+    print("field assignment not implemented\n");
+    std::exit(1);
+}
+
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
     const auto begin_pos = append_op(ctx, op_function{ .name=node.name, .sig=node.sig });
