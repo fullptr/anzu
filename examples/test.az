@@ -1,14 +1,9 @@
 
 
 
-fn foo(x: int) -> null {}
+
 
 
 my_vec := vec2(1, 2)
-y := my_vec.y
-x := my_vec.x
 
-println(y)
-println(y)
-println(x)
-println(y)
+my_vec.x = 5
