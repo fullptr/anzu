@@ -1,13 +1,13 @@
 
+my_vec := vec2(1, 2)
 
 fn func() -> null
 {
-    my_vec := vec2(1, 2)
 
     my_vec.x = 5
     my_vec.y = 123
-
-    println(my_vec)
 }
 
 func()
+
+println(my_vec)

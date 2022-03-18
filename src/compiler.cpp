@@ -451,8 +451,9 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
 {
+    compile_node(*node.expr, ctx);
+
     if (ctx.locals && ctx.locals->info.contains(node.name)) {
-        compile_node(*node.expr, ctx);
         const auto& info = ctx.locals->info.at(node.name);
         auto location = info.location;
         auto type = info.type;
@@ -471,16 +472,21 @@ void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
         return;
     }
     
-    //if (ctx.globals.info.contains(name)) {
-    //    const auto& info = ctx.globals.info.at(name);
-    //    ctx.program.emplace_back(anzu::op_save_global{
-    //        .name=name, .position=info.location, .size=ctx.registered_types.block_size(info.type)
-    //    });
-    //    return;
-    //}
-
-    print("field assignment not implemented for globals\n");
-    std::exit(1);
+    const auto& info = ctx.globals.info.at(node.name);
+    auto location = info.location;
+    auto type = info.type;
+    for (const auto& field_name : node.fields) { // Field names in the assignemnt
+        for (const auto& field : ctx.registered_types.get_fields(type)) { // Field of curr type
+            if (field.name == field_name) {
+                type = field.type;
+                break;
+            }
+            location += ctx.registered_types.block_size(field.type);
+        }
+    }
+    ctx.program.emplace_back(op_save_global{
+        .name="temp", .position=location, .size=ctx.registered_types.block_size(type)
+    });
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
