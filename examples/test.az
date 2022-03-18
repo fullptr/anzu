@@ -1,6 +1,18 @@
 
-my_vec := vec2(1, 2)
+
 
 fn foo(x: int) -> null {}
 
-foo(my_vec.z)
+fn func() -> null
+{
+    my_vec := vec2(1, 2)
+    y := my_vec.y
+    x := my_vec.x
+
+    println(y)
+    println(y)
+    println(x)
+    println(y)
+}
+
+func()

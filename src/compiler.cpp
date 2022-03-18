@@ -15,18 +15,6 @@
 
 namespace anzu {
 
-struct compiler_frame
-{
-    struct function_def
-    {
-        signature     sig;
-        std::intptr_t ptr;
-    };
-
-    std::unordered_map<std::string, function_def> functions;
-    std::unordered_map<std::string, std::size_t>  variables;
-};
-
 struct var_locations
 {
     std::unordered_map<std::string, std::size_t> locs;
@@ -249,6 +237,35 @@ void compile_node(const node_expr& expr, const node_variable_expr& node, compile
 
 void compile_node(const node_expr& expr, const node_field_expr& node, compiler_context& ctx)
 {
+    if (!std::holds_alternative<node_variable_expr>(*node.expression)) {
+        print("not currently supporting field access of non-variables\n");
+        std::exit(1);
+    }
+    const auto& var_name = std::get<node_variable_expr>(*node.expression).name;
+    const auto& var_type = ctx.expr_types[node.expression.get()];
+
+    if (ctx.locals) {
+        if (auto it = ctx.locals->locs.find(var_name); it != ctx.locals->locs.end()) {
+            auto field_addr = it->second;
+            auto field_size = std::size_t{0};
+            for (const auto& field : ctx.registered_types.get_fields(var_type)) {
+                if (field.name == node.field_name) {
+                    field_size = ctx.registered_types.block_size(field.type);
+                    break;
+                }
+                field_addr += ctx.registered_types.block_size(field.type);
+            }
+            ctx.program.emplace_back(op_load_local{
+                .name = std::format("{}.{}", var_name, node.field_name),
+                .offset = field_addr,
+                .size = field_size
+            });
+            return;
+        }
+    }
+
+    print("failed to compile\n");
+    std::exit(1);
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
