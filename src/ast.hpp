@@ -129,6 +129,15 @@ struct node_assignment_stmt
     anzu::token token;
 };
 
+struct node_field_assignment_stmt
+{
+    std::string              name;
+    std::vector<std::string> fields;
+    node_expr_ptr            expr;
+
+    anzu::token token;
+};
+
 struct node_function_def_stmt
 {
     std::string   name;

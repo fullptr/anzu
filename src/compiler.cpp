@@ -15,9 +15,15 @@
 
 namespace anzu {
 
+struct var_info
+{
+    std::size_t location;
+    type_name   type;
+};
+
 struct var_locations
 {
-    std::unordered_map<std::string, std::size_t> locs;
+    std::unordered_map<std::string, var_info> info;
     std::size_t next = 0;
 };
 
@@ -65,27 +71,29 @@ auto append_op(compiler_context& ctx, T&& op) -> std::intptr_t
 }
 
 // Registers the given name in the current scope
-auto declare_variable_name(compiler_context& ctx, const std::string& name, std::size_t size) -> void
+auto declare_variable_name(compiler_context& ctx, const std::string& name, const type_name& type) -> void
 {
     auto& vars = ctx.locals.has_value() ? ctx.locals.value() : ctx.globals;
-    const auto [iter, success] = vars.locs.emplace(name, vars.next);
+    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type});
     if (success) { // If not successful, then the name already existed, so dont increase
-        vars.next += size;
+        vars.next += ctx.registered_types.block_size(type);
     }
 }
 
-auto save_variable(compiler_context& ctx, const std::string& name, std::size_t size) -> void
+auto save_variable(compiler_context& ctx, const std::string& name) -> void
 {
-    if (ctx.locals && ctx.locals->locs.contains(name)) {
+    if (ctx.locals && ctx.locals->info.contains(name)) {
+        const auto& info = ctx.locals->info.at(name);
         ctx.program.emplace_back(anzu::op_save_local{
-            .name=name, .offset=ctx.locals->locs.at(name), .size=size
+            .name=name, .offset=info.location, .size=ctx.registered_types.block_size(info.type)
         });
         return;
     }
     
-    if (ctx.globals.locs.contains(name)) {
+    if (ctx.globals.info.contains(name)) {
+        const auto& info = ctx.globals.info.at(name);
         ctx.program.emplace_back(anzu::op_save_global{
-            .name=name, .position=ctx.globals.locs.at(name), .size=size
+            .name=name, .position=info.location, .size=ctx.registered_types.block_size(info.type)
         });
         return;
     }
@@ -94,19 +102,23 @@ auto save_variable(compiler_context& ctx, const std::string& name, std::size_t s
     std::exit(1);
 }
 
-auto load_variable(compiler_context& ctx, const std::string& name, std::size_t size) -> void
+auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
     if (ctx.locals) {
-        if (auto it = ctx.locals->locs.find(name); it != ctx.locals->locs.end()) {
+        if (auto it = ctx.locals->info.find(name); it != ctx.locals->info.end()) {
             ctx.program.emplace_back(anzu::op_load_local{
-                .name=name, .offset=it->second, .size=size
+                .name=name,
+                .offset=it->second.location,
+                .size=ctx.registered_types.block_size(it->second.type)
             });
             return;
         }
     }
-    if (auto it = ctx.globals.locs.find(name); it != ctx.globals.locs.end()) {
+    if (auto it = ctx.globals.info.find(name); it != ctx.globals.info.end()) {
         ctx.program.emplace_back(anzu::op_load_global{
-            .name=name, .position=it->second, .size=size
+            .name=name,
+            .position=it->second.location,
+            .size=ctx.registered_types.block_size(it->second.type)
         });
     }
 }
@@ -231,8 +243,7 @@ void compile_node(const node_expr& expr, const node_literal_expr& node, compiler
 
 void compile_node(const node_expr& expr, const node_variable_expr& node, compiler_context& ctx)
 {
-    const auto size = ctx.registered_types.block_size(ctx.expr_types[&expr]);
-    load_variable(ctx, node.name, size);
+    load_variable(ctx, node.name);
 }
 
 void compile_node(const node_expr& expr, const node_field_expr& node, compiler_context& ctx)
@@ -245,8 +256,8 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
     const auto& var_type = ctx.expr_types[node.expression.get()];
 
     if (ctx.locals) {
-        if (auto it = ctx.locals->locs.find(var_name); it != ctx.locals->locs.end()) {
-            auto field_addr = it->second;
+        if (auto it = ctx.locals->info.find(var_name); it != ctx.locals->info.end()) {
+            auto field_addr = it->second.location;
             auto field_size = std::size_t{0};
             for (const auto& field : ctx.registered_types.get_fields(var_type)) {
                 if (field.name == node.field_name) {
@@ -264,7 +275,7 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
         }
     }
 
-    auto field_addr = ctx.globals.locs[var_name];
+    auto field_addr = ctx.globals.info[var_name].location;
     auto field_size = std::size_t{0};
     for (const auto& field : ctx.registered_types.get_fields(var_type)) {
         if (field.name == node.field_name) {
@@ -355,26 +366,28 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
     const auto container_name = std::string{"_Container"};
+    const auto container_type = ctx.expr_types[node.container.get()];
+    const auto contained_type = match(container_type, generic_list_type())->at(0);
     const auto index_name = std::string{"_Index"};
 
     // Push the container to the stack
     compile_node(*node.container, ctx);
-    declare_variable_name(ctx, container_name, 1);
-    save_variable(ctx, container_name, 1); // Currently only lists are allowed in for stmts
+    declare_variable_name(ctx, container_name, container_type);
+    save_variable(ctx, container_name); // Currently only lists are allowed in for stmts
 
     // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_load_literal{
         .value=make_int(0)
     });
-    declare_variable_name(ctx, index_name, 1);
-    save_variable(ctx, index_name, 1);
+    declare_variable_name(ctx, index_name, int_type());
+    save_variable(ctx, index_name);
 
-    declare_variable_name(ctx, node.var, 1);
+    declare_variable_name(ctx, node.var, contained_type);
 
     const auto begin_pos = append_op(ctx, op_loop_begin{});
 
-    load_variable(ctx, index_name, 1);
-    load_variable(ctx, container_name, 1);
+    load_variable(ctx, index_name);
+    load_variable(ctx, container_name);
     call_builtin(ctx, "list_size");
 
     // OP_NE - TODO: Make this better
@@ -391,22 +404,22 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     
     const auto jump_pos = append_op(ctx, op_jump_if_false{}); // If size == index, jump to end
 
-    load_variable(ctx, container_name, 1);
-    load_variable(ctx, index_name, 1);
+    load_variable(ctx, container_name);
+    load_variable(ctx, index_name);
     call_builtin(ctx, "list_at");
-    save_variable(ctx, node.var, 1);
+    save_variable(ctx, node.var);
 
     compile_node(*node.body, ctx);
 
     // Increment the index
-    load_variable(ctx, index_name, 1);
+    load_variable(ctx, index_name);
     ctx.program.emplace_back(op_builtin_mem_op{
         .name = "increment",
         .ptr = +[](std::vector<block>& mem) {
             ++std::get<block_int>(back(mem));
         }
     });
-    save_variable(ctx, index_name, 1);
+    save_variable(ctx, index_name);
 
     const auto end_pos = append_op(ctx, op_loop_end{ .jump=begin_pos });
 
@@ -426,16 +439,14 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    const auto size = ctx.registered_types.block_size(ctx.expr_types[node.expr.get()]);
-    declare_variable_name(ctx, node.name, size);
-    save_variable(ctx, node.name, size);
+    declare_variable_name(ctx, node.name, ctx.expr_types[node.expr.get()]);
+    save_variable(ctx, node.name);
 }
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    const auto size = ctx.registered_types.block_size(ctx.expr_types[node.expr.get()]);
-    save_variable(ctx, node.name, size);
+    save_variable(ctx, node.name);
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
@@ -445,7 +456,7 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 
     ctx.locals.emplace();
     for (const auto& arg : node.sig.args) {
-        declare_variable_name(ctx, arg.name, 1);
+        declare_variable_name(ctx, arg.name, arg.type);
     }
     compile_node(*node.body, ctx);
     ctx.locals.reset();
