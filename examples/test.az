@@ -3,16 +3,12 @@
 
 fn foo(x: int) -> null {}
 
-fn func() -> null
-{
-    my_vec := vec2(1, 2)
-    y := my_vec.y
-    x := my_vec.x
 
-    println(y)
-    println(y)
-    println(x)
-    println(y)
-}
+my_vec := vec2(1, 2)
+y := my_vec.y
+x := my_vec.x
 
-func()
+println(y)
+println(y)
+println(x)
+println(y)

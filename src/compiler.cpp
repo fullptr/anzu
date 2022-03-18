@@ -264,8 +264,20 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
         }
     }
 
-    print("failed to compile\n");
-    std::exit(1);
+    auto field_addr = ctx.globals.locs[var_name];
+    auto field_size = std::size_t{0};
+    for (const auto& field : ctx.registered_types.get_fields(var_type)) {
+        if (field.name == node.field_name) {
+            field_size = ctx.registered_types.block_size(field.type);
+            break;
+        }
+        field_addr += ctx.registered_types.block_size(field.type);
+    }
+    ctx.program.emplace_back(op_load_global{
+        .name = std::format("{}.{}", var_name, node.field_name),
+        .position = field_addr,
+        .size = field_size
+    });
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
