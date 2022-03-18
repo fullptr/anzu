@@ -1,13 +1,17 @@
 
 my_vec := vec2(1, 2)
 
-fn func() -> null
+fn int_x() -> null
 {
-
-    my_vec.x = 5
-    my_vec.y = 123
+    my_vec.z = my_vec.x + 1
 }
 
-func()
-
+println(my_vec)
+int_x()
+println(my_vec)
+int_x()
+println(my_vec)
+int_x()
+println(my_vec)
+int_x()
 println(my_vec)
