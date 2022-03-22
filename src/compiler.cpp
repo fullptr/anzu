@@ -362,6 +362,11 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
     }
 }
 
+void compile_node(const node_struct_stmt& node, compiler_context& ctx)
+{
+
+}
+
 // TODO: This only works if the contained type has size 1, because lists are broken
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {

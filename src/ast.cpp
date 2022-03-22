@@ -76,6 +76,14 @@ auto print_node(const node_stmt& root, int indent) -> void
                 print_node(*node.else_body, indent + 1);
             }
         },
+        [&](const node_struct_stmt& node) {
+            print("{}Struct:\n", spaces);
+            print("{}- Name: {}\n", spaces, node.name);
+            print("{}- Fields:\n", spaces);
+            for (const auto& field : node.fields) {
+                print("{}  - {}: {}\n", field.name, field.type);
+            }
+        },
         [&](const node_for_stmt& node) {
             print("{}For:\n", spaces);
             print("{}- Bind: {}\n",spaces, node.var);

@@ -103,7 +103,9 @@ struct node_struct_stmt
 
     std::string        name;
     std::vector<field> fields;
-}
+
+    anzu::token token;
+};
 
 struct node_for_stmt
 {

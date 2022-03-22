@@ -1,11 +1,11 @@
 
 
-struct vec3
-{
-    x: int
-    y: int
-    z: int
-}
+#struct vec3
+#{
+#    x: int
+#    y: int
+#    z: int
+#}
 
 my_vec := vec2(1, 2)
 

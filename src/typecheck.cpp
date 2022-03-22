@@ -373,6 +373,11 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
     }
 }
 
+auto typecheck_node(typecheck_context& ctx, const node_struct_stmt& node) -> void
+{
+
+}
+
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
     const auto container_type = typecheck_expr(ctx, *node.container);
