@@ -44,9 +44,7 @@ struct compiler_context
     var_locations globals;
     std::optional<var_locations> locals;
 
-    expr_types expr_types;
-
-    type_store registered_types;
+    type_info type_info;
 };
 
 template <typename T>
@@ -76,7 +74,7 @@ auto declare_variable_name(compiler_context& ctx, const std::string& name, const
     auto& vars = ctx.locals.has_value() ? ctx.locals.value() : ctx.globals;
     const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type});
     if (success) { // If not successful, then the name already existed, so dont increase
-        vars.next += ctx.registered_types.block_size(type);
+        vars.next += ctx.type_info.types.block_size(type);
     }
 }
 
@@ -85,7 +83,7 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.locals && ctx.locals->info.contains(name)) {
         const auto& info = ctx.locals->info.at(name);
         ctx.program.emplace_back(anzu::op_save_local{
-            .name=name, .offset=info.location, .size=ctx.registered_types.block_size(info.type)
+            .name=name, .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
         return;
     }
@@ -93,7 +91,7 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.globals.info.contains(name)) {
         const auto& info = ctx.globals.info.at(name);
         ctx.program.emplace_back(anzu::op_save_global{
-            .name=name, .position=info.location, .size=ctx.registered_types.block_size(info.type)
+            .name=name, .position=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
         return;
     }
@@ -109,7 +107,7 @@ auto load_variable(compiler_context& ctx, const std::string& name) -> void
             ctx.program.emplace_back(anzu::op_load_local{
                 .name=name,
                 .offset=it->second.location,
-                .size=ctx.registered_types.block_size(it->second.type)
+                .size=ctx.type_info.types.block_size(it->second.type)
             });
             return;
         }
@@ -118,7 +116,7 @@ auto load_variable(compiler_context& ctx, const std::string& name) -> void
         ctx.program.emplace_back(anzu::op_load_global{
             .name=name,
             .position=it->second.location,
-            .size=ctx.registered_types.block_size(it->second.type)
+            .size=ctx.type_info.types.block_size(it->second.type)
         });
     }
 }
@@ -127,7 +125,7 @@ auto signature_args_size(const compiler_context& ctx, const signature& sig) -> s
 {
     auto args_size = std::size_t{0};
     for (const auto& arg : sig.args) {
-        args_size += ctx.registered_types.block_size(arg.type);
+        args_size += ctx.type_info.types.block_size(arg.type);
     }
     return args_size;
 }
@@ -199,8 +197,8 @@ auto compile_function_call(
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
     const auto as_type_name = type_name{type_simple{ .name=function }};
-    if (ctx.registered_types.is_registered_type(as_type_name)) {
-        return ctx.registered_types.block_size(as_type_name);
+    if (ctx.type_info.types.is_registered_type(as_type_name)) {
+        return ctx.type_info.types.block_size(as_type_name);
     }
 
     // Otherwise, it may be a custom function.
@@ -209,9 +207,9 @@ auto compile_function_call(
             .name=function,
             .ptr=function_def->ptr + 1, // Jump into the function
             .args_size=signature_args_size(ctx, function_def->sig),
-            .return_size=ctx.registered_types.block_size(function_def->sig.return_type)
+            .return_size=ctx.type_info.types.block_size(function_def->sig.return_type)
         });
-        return ctx.registered_types.block_size(function_def->sig.return_type);
+        return ctx.type_info.types.block_size(function_def->sig.return_type);
     }
 
     // Otherwise, it must be a builtin function.
@@ -221,7 +219,7 @@ auto compile_function_call(
     // calling here, so that we can pass in the correct block count
     auto sig = builtin.sig;
     if (function == "print" || function == "println") {
-        sig.args[0].type = ctx.expr_types[args[0].get()];
+        sig.args[0].type = ctx.type_info.expr_types[args[0].get()];
     }
 
     ctx.program.emplace_back(anzu::op_builtin_call{
@@ -229,7 +227,7 @@ auto compile_function_call(
         .ptr=builtin.ptr,
         .args_size=signature_args_size(ctx, sig)
     });
-    return ctx.registered_types.block_size(sig.return_type);
+    return ctx.type_info.types.block_size(sig.return_type);
 }
 
 void compile_node(const node_expr& expr, const node_literal_expr& node, compiler_context& ctx)
@@ -253,18 +251,18 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
         std::exit(1);
     }
     const auto& var_name = std::get<node_variable_expr>(*node.expression).name;
-    const auto& var_type = ctx.expr_types[node.expression.get()];
+    const auto& var_type = ctx.type_info.expr_types[node.expression.get()];
 
     if (ctx.locals) {
         if (auto it = ctx.locals->info.find(var_name); it != ctx.locals->info.end()) {
             auto field_addr = it->second.location;
             auto field_size = std::size_t{0};
-            for (const auto& field : ctx.registered_types.get_fields(var_type)) {
+            for (const auto& field : ctx.type_info.types.get_fields(var_type)) {
                 if (field.name == node.field_name) {
-                    field_size = ctx.registered_types.block_size(field.type);
+                    field_size = ctx.type_info.types.block_size(field.type);
                     break;
                 }
-                field_addr += ctx.registered_types.block_size(field.type);
+                field_addr += ctx.type_info.types.block_size(field.type);
             }
             ctx.program.emplace_back(op_load_local{
                 .name = std::format("{}.{}", var_name, node.field_name),
@@ -277,12 +275,12 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
 
     auto field_addr = ctx.globals.info[var_name].location;
     auto field_size = std::size_t{0};
-    for (const auto& field : ctx.registered_types.get_fields(var_type)) {
+    for (const auto& field : ctx.type_info.types.get_fields(var_type)) {
         if (field.name == node.field_name) {
-            field_size = ctx.registered_types.block_size(field.type);
+            field_size = ctx.type_info.types.block_size(field.type);
             break;
         }
-        field_addr += ctx.registered_types.block_size(field.type);
+        field_addr += ctx.type_info.types.block_size(field.type);
     }
     ctx.program.emplace_back(op_load_global{
         .name = std::format("{}.{}", var_name, node.field_name),
@@ -298,8 +296,8 @@ void compile_node(const node_expr& expr, const node_bin_op_expr& node, compiler_
     compile_node(*node.lhs, ctx);
     compile_node(*node.rhs, ctx);
     const auto op = node.token.text;
-    const auto lhs_type = ctx.expr_types[node.lhs.get()];
-    const auto rhs_type = ctx.expr_types[node.rhs.get()];
+    const auto lhs_type = ctx.type_info.expr_types[node.lhs.get()];
+    const auto rhs_type = ctx.type_info.expr_types[node.rhs.get()];
     const auto info = resolve_bin_op({.op = op, .lhs = lhs_type, .rhs = rhs_type});
 
     if (!info) {
@@ -371,7 +369,7 @@ void compile_node(const node_struct_stmt& node, compiler_context& ctx)
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
     const auto container_name = std::string{"_Container"};
-    const auto container_type = ctx.expr_types[node.container.get()];
+    const auto container_type = ctx.type_info.expr_types[node.container.get()];
     const auto contained_type = match(container_type, generic_list_type())->at(0);
     const auto index_name = std::string{"_Index"};
 
@@ -444,7 +442,7 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    declare_variable_name(ctx, node.name, ctx.expr_types[node.expr.get()]);
+    declare_variable_name(ctx, node.name, ctx.type_info.expr_types[node.expr.get()]);
     save_variable(ctx, node.name);
 }
 
@@ -463,16 +461,16 @@ void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
         auto location = info.location;
         auto type = info.type;
         for (const auto& field_name : node.fields) { // Field names in the assignemnt
-            for (const auto& field : ctx.registered_types.get_fields(type)) { // Field of curr type
+            for (const auto& field : ctx.type_info.types.get_fields(type)) { // Field of curr type
                 if (field.name == field_name) {
                     type = field.type;
                     break;
                 }
-                location += ctx.registered_types.block_size(field.type);
+                location += ctx.type_info.types.block_size(field.type);
             }
         }
         ctx.program.emplace_back(op_save_local{
-            .name="temp", .offset=location, .size=ctx.registered_types.block_size(type)
+            .name="temp", .offset=location, .size=ctx.type_info.types.block_size(type)
         });
         return;
     }
@@ -481,16 +479,16 @@ void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
     auto location = info.location;
     auto type = info.type;
     for (const auto& field_name : node.fields) { // Field names in the assignemnt
-        for (const auto& field : ctx.registered_types.get_fields(type)) { // Field of curr type
+        for (const auto& field : ctx.type_info.types.get_fields(type)) { // Field of curr type
             if (field.name == field_name) {
                 type = field.type;
                 break;
             }
-            location += ctx.registered_types.block_size(field.type);
+            location += ctx.type_info.types.block_size(field.type);
         }
     }
     ctx.program.emplace_back(op_save_global{
-        .name="temp", .position=location, .size=ctx.registered_types.block_size(type)
+        .name="temp", .position=location, .size=ctx.type_info.types.block_size(type)
     });
 }
 
@@ -535,10 +533,10 @@ auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
 
 }
 
-auto compile(const node_stmt_ptr& root, const expr_types& types) -> anzu::program
+auto compile(const node_stmt_ptr& root, const type_info& types) -> anzu::program
 {
     anzu::compiler_context ctx;
-    ctx.expr_types = types;
+    ctx.type_info = types;
     compile_node(*root, ctx);
     return ctx.program;
 }

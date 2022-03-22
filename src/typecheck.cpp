@@ -40,7 +40,7 @@ struct typecheck_context
 
     std::unordered_map<const node_function_def_stmt*, std::unordered_set<signature>> checked_sigs;
 
-    expr_types node_types;
+    type_info types;
 };
 
 auto current_vars(typecheck_context& ctx) -> typecheck_context::var_types&
@@ -339,7 +339,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
         }
     }, expr);
 
-    ctx.node_types.emplace(&expr, expr_type);
+    ctx.types.expr_types.emplace(&expr, expr_type);
     return expr_type;
 };
 
@@ -511,11 +511,11 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 
 }
 
-auto typecheck_ast(const node_stmt_ptr& ast) -> expr_types
+auto typecheck_ast(const node_stmt_ptr& ast) -> type_info
 {
     auto ctx = typecheck_context{};
     typecheck_node(ctx, *ast);
-    return ctx.node_types;
+    return ctx.types;
 }
 
 }
