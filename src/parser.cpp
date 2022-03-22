@@ -264,7 +264,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<anzu::node_struct_stmt>();
 
     stmt.token = tokens.consume_only(tk_struct);
-    stmt.name = parse_name(tokens);
+    stmt.name = type_name{type_simple{ .name = parse_name(tokens) }};;
     tokens.consume_only(tk_lbrace);
     while (!tokens.consume_maybe(tk_rbrace)) {
         stmt.fields.emplace_back();

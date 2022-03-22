@@ -97,8 +97,8 @@ struct node_if_stmt
 
 struct node_struct_stmt
 {
-    std::string        name;
-    std::vector<field> fields;
+    type_name   name;
+    type_fields fields;
 
     anzu::token token;
 };

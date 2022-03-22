@@ -375,7 +375,19 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_struct_stmt& node) -> void
 {
-
+    if (ctx.types.types.is_registered_type(node.name)) {
+        type_error(node.token, "type '{}' is already defined\n", node.name);
+    }
+    for (const auto& field : node.fields) {
+        if (!ctx.types.types.is_registered_type(field.type)) {
+            type_error(
+                node.token,
+                "unknown type '{}' of field {} for struct {}\n",
+                field.type, field.name, node.name
+            );
+        }
+    }
+    ctx.types.types.register_type(node.name, node.fields);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
