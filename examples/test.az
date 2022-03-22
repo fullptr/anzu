@@ -1,9 +1,19 @@
 
-x := vec2(1, 2)
 
-fn print_first(v: vec2) -> null
+#struct vec3
+#{
+#    x: int
+#    y: int
+#    z: int
+#}
+
+my_vec := vec2(1, 2)
+
+fn int_x() -> null
 {
-    println(vec2_first(v))
+    my_vec.x = my_vec.x + 1
 }
 
-print_first(x)
+println(my_vec)
+int_x()
+println(my_vec)

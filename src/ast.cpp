@@ -7,34 +7,40 @@
 
 namespace anzu {
 
-auto print_node(const anzu::node_expr& root, int indent) -> void
+auto print_node(const node_expr& root, int indent) -> void
 {
     const auto spaces = std::string(4 * indent, ' ');
     std::visit(overloaded {
         [&](const node_literal_expr& node) {
-            anzu::print("{}Literal: {}\n", spaces, node.value);
+            print("{}Literal: {}\n", spaces, node.value);
         },
         [&](const node_variable_expr& node) {
-            anzu::print("{}Variable: {}\n", spaces, node.name);
+            print("{}Variable: {}\n", spaces, node.name);
+        },
+        [&](const node_field_expr& node) {
+            print("{}Field: \n", spaces);
+            print("{}- Expr:\n", spaces);
+            print_node(*node.expression, indent + 1);
+            print("{}- Field: {}\n", spaces, node.field_name);
         },
         [&](const node_bin_op_expr& node) {
-            anzu::print("{}BinOp: \n", spaces);
-            anzu::print("{}- Op: {}\n", spaces, node.token.text);
-            anzu::print("{}- Lhs:\n", spaces);
+            print("{}BinOp: \n", spaces);
+            print("{}- Op: {}\n", spaces, node.token.text);
+            print("{}- Lhs:\n", spaces);
             print_node(*node.lhs, indent + 1);
-            anzu::print("{}- Rhs:\n", spaces);
+            print("{}- Rhs:\n", spaces);
             print_node(*node.rhs, indent + 1);
         },
         [&](const node_function_call_expr& node) {
-            anzu::print("{}FunctionCall (Expr): {}\n", spaces, node.function_name);
-            anzu::print("{}- Args:\n", spaces);
+            print("{}FunctionCall (Expr): {}\n", spaces, node.function_name);
+            print("{}- Args:\n", spaces);
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
             }
         },
         [&](const node_list_expr& node) {
-            anzu::print("{}List (Expr):\n", spaces);
-            anzu::print("{}- Elements:\n", spaces);
+            print("{}List (Expr):\n", spaces);
+            print("{}- Elements:\n", spaces);
             for (const auto& element : node.elements) {
                 print_node(*element, indent + 1);
             }
@@ -42,77 +48,92 @@ auto print_node(const anzu::node_expr& root, int indent) -> void
     }, root);
 }
 
-auto print_node(const anzu::node_stmt& root, int indent) -> void
+auto print_node(const node_stmt& root, int indent) -> void
 {
     const auto spaces = std::string(4 * indent, ' ');
     std::visit(overloaded {
         [&](const node_sequence_stmt& node) {
-            anzu::print("{}Sequence:\n", spaces);
+            print("{}Sequence:\n", spaces);
             for (const auto& seq_node : node.sequence) {
                 print_node(*seq_node, indent + 1);
             }
         },
         [&](const node_while_stmt& node) {
-            anzu::print("{}While:\n", spaces);
-            anzu::print("{}- Condition:\n", spaces);
+            print("{}While:\n", spaces);
+            print("{}- Condition:\n", spaces);
             print_node(*node.condition, indent + 1);
-            anzu::print("{}- Body:\n", spaces);
+            print("{}- Body:\n", spaces);
             print_node(*node.body, indent + 1);
         },
         [&](const node_if_stmt& node) {
-            anzu::print("{}If:\n", spaces);
-            anzu::print("{}- Condition:\n", spaces);
+            print("{}If:\n", spaces);
+            print("{}- Condition:\n", spaces);
             print_node(*node.condition, indent + 1);
-            anzu::print("{}- Body:\n", spaces);
+            print("{}- Body:\n", spaces);
             print_node(*node.body, indent + 1);
             if (node.else_body) {
-                anzu::print("{}- Else:\n", spaces);
+                print("{}- Else:\n", spaces);
                 print_node(*node.else_body, indent + 1);
             }
         },
+        [&](const node_struct_stmt& node) {
+            print("{}Struct:\n", spaces);
+            print("{}- Name: {}\n", spaces, node.name);
+            print("{}- Fields:\n", spaces);
+            for (const auto& field : node.fields) {
+                print("{}  - {}: {}\n", field.name, field.type);
+            }
+        },
         [&](const node_for_stmt& node) {
-            anzu::print("{}For:\n", spaces);
-            anzu::print("{}- Bind: {}\n",spaces, node.var);
-            anzu::print("{}- Container:\n",spaces);
+            print("{}For:\n", spaces);
+            print("{}- Bind: {}\n",spaces, node.var);
+            print("{}- Container:\n",spaces);
             print_node(*node.container, indent + 1);
-            anzu::print("{}- Body:\n",spaces);
+            print("{}- Body:\n",spaces);
             print_node(*node.body, indent + 1);
         },
         [&](const node_break_stmt& node) {
-            anzu::print("{}Break\n", spaces);
+            print("{}Break\n", spaces);
         },
         [&](const node_continue_stmt& node) {
-            anzu::print("{}Continue\n", spaces);
+            print("{}Continue\n", spaces);
         },
         [&](const node_declaration_stmt& node) {
-            anzu::print("{}Declaration:\n", spaces);
-            anzu::print("{}- Name: {}\n", spaces, node.name);
-            anzu::print("{}- Value:\n", spaces);
+            print("{}Declaration:\n", spaces);
+            print("{}- Name: {}\n", spaces, node.name);
+            print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
         [&](const node_assignment_stmt& node) {
-            anzu::print("{}Assignment:\n", spaces);
-            anzu::print("{}- Name: {}\n", spaces, node.name);
-            anzu::print("{}- Value:\n", spaces);
+            print("{}Assignment:\n", spaces);
+            print("{}- Name: {}\n", spaces, node.name);
+            print("{}- Value:\n", spaces);
+            print_node(*node.expr, indent + 1);
+        },
+        [&](const node_field_assignment_stmt& node) {
+            print("{}FieldAssignment:\n", spaces);
+            print("{}- Name: {}\n", spaces, node.name);
+            print("{}- Fields: {}\n", spaces, format_comma_separated(node.fields));
+            print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
         [&](const node_function_def_stmt& node) {
-            anzu::print("{}Function: {} (", spaces, node.name);
-            anzu::print_comma_separated(node.sig.args, [](const auto& arg) {
+            print("{}Function: {} (", spaces, node.name);
+            print_comma_separated(node.sig.args, [](const auto& arg) {
                 return std::format("{}: {}", arg.name, arg.type);
             });
-            anzu::print(") -> {}\n", node.sig.return_type);
+            print(") -> {}\n", node.sig.return_type);
             print_node(*node.body, indent + 1);
         },
         [&](const node_function_call_stmt& node) {
-            anzu::print("{}FunctionCall (Stmt): {}\n", spaces, node.function_name);
-            anzu::print("{}- Args:\n", spaces);
+            print("{}FunctionCall (Stmt): {}\n", spaces, node.function_name);
+            print("{}- Args:\n", spaces);
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
             }
         },
         [&](const node_return_stmt& node) {
-            anzu::print("{}Return:\n", spaces);
+            print("{}Return:\n", spaces);
             print_node(*node.return_value, indent + 1);
         }
     }, root);

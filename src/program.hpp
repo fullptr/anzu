@@ -49,7 +49,6 @@ struct op_save_local
     std::size_t size;
 };
 
-
 struct op_if
 {
 };

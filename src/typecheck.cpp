@@ -304,6 +304,17 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
             }
             type_error(node.token, "could not find variable '{}'\n", node.name);
         },
+        [&](const node_field_expr& node) {
+            const auto parent_type = typecheck_expr(ctx, *node.expression);
+            const auto fields = ctx.registered_types.get_fields(parent_type);
+            for (const auto& field : fields) {
+                if (field.name == node.field_name) {
+                    return field.type;
+                }
+            }
+            type_error(node.token, "type '{}' has no field named '{}'\n", parent_type, node.field_name);
+            return int_type();
+        },
         [&](const node_function_call_expr& node) {
             return typecheck_function_call(ctx, node.token, node.function_name, node.args);
         },
@@ -362,6 +373,11 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
     }
 }
 
+auto typecheck_node(typecheck_context& ctx, const node_struct_stmt& node) -> void
+{
+
+}
+
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
 {
     const auto container_type = typecheck_expr(ctx, *node.container);
@@ -410,6 +426,53 @@ auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) ->
     }
 
     type_error(node.token, "cannot assign to '{}', name not declared", node.name);
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_field_assignment_stmt& node) -> void
+{
+    if (ctx.locals) {
+        if (auto it = ctx.locals->find(node.name); it != ctx.locals->end()) {
+            auto type = it->second;
+            for (const auto& field_name : node.fields) {
+                for (const auto& field : ctx.registered_types.get_fields(type)) {
+                    if (field.name == field_name) {
+                        type = field.type;
+                        break;
+                    }
+                    type_error(node.token, "type '{}' has no field '{}\n", type, field_name);
+                }
+            }
+
+            const auto rhs_type = typecheck_expr(ctx, *node.expr);
+            if (rhs_type != type) {
+                type_error(
+                    node.token, "(field assignment) tried to assign '{}' to '{}'\n", rhs_type, type
+                );
+            }
+            return;
+        }
+    }
+    if (auto it = ctx.globals.find(node.name); it != ctx.globals.end()) {
+        auto type = it->second;
+        for (const auto& field_name : node.fields) {
+            for (const auto& field : ctx.registered_types.get_fields(type)) {
+                if (field.name == field_name) {
+                    type = field.type;
+                    break;
+                }
+                type_error(node.token, "type '{}' has no field '{}\n", type, field_name);
+            }
+        }
+
+        const auto rhs_type = typecheck_expr(ctx, *node.expr);
+        if (rhs_type != type) {
+            type_error(
+                node.token, "(field assignment) tried to assign '{}' to '{}'\n", rhs_type, type
+            );
+        }
+        return;
+    }
+    print("typechecking for node field assignment not implemented\n");
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void

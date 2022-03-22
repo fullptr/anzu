@@ -45,37 +45,37 @@ auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info
             return bin_op_info{ bin_op<block_int, std::divides>, type };
         } else if (desc.op == tk_mod) {
             return bin_op_info{ bin_op<block_int, std::modulus>, type };
-        } else if (desc.op == "<") {
+        } else if (desc.op == tk_lt) {
             return bin_op_info{ bin_op<block_int, std::less>, bool_type() };
-        } else if (desc.op == "<=") {
+        } else if (desc.op == tk_le) {
             return bin_op_info{ bin_op<block_int, std::less_equal>, bool_type() };
-        } else if (desc.op == ">") {
+        } else if (desc.op == tk_gt) {
             return bin_op_info{ bin_op<block_int, std::greater>, bool_type() };
-        } else if (desc.op == ">=") {
+        } else if (desc.op == tk_ge) {
             return bin_op_info{ bin_op<block_int, std::greater_equal>, bool_type() };
-        } else if (desc.op == "==") {
+        } else if (desc.op == tk_eq) {
             return bin_op_info{ bin_op<block_int, std::equal_to>, bool_type() };
-        } else if (desc.op == "!=") {
+        } else if (desc.op == tk_ne) {
             return bin_op_info{ bin_op<block_int, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == bool_type()) {
-        if (desc.op == "==") {
+        if (desc.op == tk_eq) {
             return bin_op_info{ bin_op<block_bool, std::equal_to>, type };
-        } else if (desc.op == "!=") {
+        } else if (desc.op == tk_ne) {
             return bin_op_info{ bin_op<block_bool, std::not_equal_to>, type };
-        } else if (desc.op == "&&") {
+        } else if (desc.op == tk_and) {
             return bin_op_info{ bin_op<block_bool, std::logical_and>, type };
-        } else if (desc.op == "||") {
+        } else if (desc.op == tk_or) {
             return bin_op_info{ bin_op<block_bool, std::logical_or>, type };
         }
     }
     else if (type == str_type()) {
-        if (desc.op == "+") {
+        if (desc.op == tk_add) {
             return bin_op_info{ bin_op<block_str, std::plus>, type };
-        } else if (desc.op == "==") {
+        } else if (desc.op == tk_eq) {
             return bin_op_info{ bin_op<block_str, std::equal_to>, bool_type() };
-        } else if (desc.op == "!=") {
+        } else if (desc.op == tk_ne) {
             return bin_op_info{ bin_op<block_str, std::not_equal_to>, bool_type() };
         }
     }

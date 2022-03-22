@@ -121,16 +121,6 @@ auto builtin_range(std::span<const block> args) -> block
     return block{list};
 }
 
-auto builtin_first(std::span<const block> args) -> block
-{
-    return args[0];
-}
-
-auto builtin_second(std::span<const block> args) -> block
-{
-    return args[1];
-}
-
 }
 
 auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
@@ -235,26 +225,6 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
                 { .name = "max", .type = int_type() }
             },
             .return_type = concrete_list_type(int_type())
-        }
-    });
-
-    builtins.emplace("vec2_first", builtin{
-        .ptr = builtin_first,
-        .sig = {
-            .args = {
-                { .name = "v", .type = vec2_type() }
-            },
-            .return_type = int_type()
-        }
-    });
-
-    builtins.emplace("vec2_second", builtin{
-        .ptr = builtin_second,
-        .sig = {
-            .args = {
-                { .name = "v", .type = vec2_type() }
-            },
-            .return_type = int_type()
         }
     });
 
