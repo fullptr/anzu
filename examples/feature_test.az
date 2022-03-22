@@ -111,3 +111,11 @@ fn print_one_to_ten() -> null
         println(i)
     }
 }
+
+# Attribute access
+my_vec := vec2(1, 2)
+println(my_vec)
+println(my_vec.x)
+println(my_vec.y)
+my_vec.x = 5
+println(my_vec.x)
