@@ -7,7 +7,10 @@ struct vec3
     z: int
 }
 
-v := vec3(1, 2, 3)
+v := vec3(7, 20, 3)
 println(v.x)
 println(v.y)
+println(v.z)
+
+v.z = v.x + v.y
 println(v.z)
