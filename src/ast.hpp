@@ -1,5 +1,6 @@
 #pragma once
 #include "object.hpp"
+#include "type.hpp"
 #include "functions.hpp"
 #include "token.hpp"
 
@@ -96,11 +97,6 @@ struct node_if_stmt
 
 struct node_struct_stmt
 {
-    struct field {
-        std::string name;
-        type_name   type;
-    };
-
     std::string        name;
     std::vector<field> fields;
 

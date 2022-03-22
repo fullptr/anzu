@@ -108,6 +108,10 @@ public:
     auto block_size(const type_name& t) const -> std::size_t;
 
     auto get_fields(const type_name& t) const -> type_fields;
+
+    // Registers a type with the given name and fields. Returns true if successful and false
+    // if the type already exists.
+    auto register_type(const type_name& name, const type_fields& fields) -> bool;
 };
 
 }

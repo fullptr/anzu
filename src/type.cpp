@@ -266,4 +266,13 @@ auto type_store::get_fields(const type_name& t) const -> type_fields
     return {};
 }
 
+auto type_store::register_type(const type_name& name, const type_fields& fields) -> bool
+{
+    if (d_classes.contains(name)) {
+        return false;
+    }
+    d_classes.emplace(name, fields);
+    return true;
+}
+
 }

@@ -81,7 +81,7 @@ auto print_node(const node_stmt& root, int indent) -> void
             print("{}- Name: {}\n", spaces, node.name);
             print("{}- Fields:\n", spaces);
             for (const auto& field : node.fields) {
-                print("{}  - {}: {}\n", field.name, field.type);
+                print("{}  - {}: {}\n", spaces, field.name, field.type);
             }
         },
         [&](const node_for_stmt& node) {
