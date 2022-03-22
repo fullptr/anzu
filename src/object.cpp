@@ -58,11 +58,6 @@ auto make_null() -> object
     return { .data = { block_null{} }, .type = null_type() };
 }
 
-auto make_vec2(block_int x, block_int y) -> object
-{
-    return { .data = { block_int(x), block_int(y) }, .type = vec2_type() };
-}
-
 auto format_special_chars(const std::string& str) -> std::string
 {
     std::string ret;

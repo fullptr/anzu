@@ -60,7 +60,6 @@ auto bool_type() -> type_name;
 auto str_type() -> type_name;
 auto null_type() -> type_name;
 auto generic_type(int id) -> type_name;
-auto vec2_type() -> type_name;
 
 inline auto make_type(const std::string& name) -> type_name
 {
