@@ -1,19 +1,18 @@
 
 
-#struct vec3
-#{
-#    x: int
-#    y: int
-#    z: int
-#}
-
-my_vec := vec2(1, 2)
-
-fn int_x() -> null
+struct vec2
 {
-    my_vec.x = my_vec.x + 1
+    x: int
+    y: int
 }
 
+fn inc(v: vec2) -> vec2
+{
+    v.x = v.x + 1
+    return v
+}
+
+my_vec := vec2(1, 2)
 println(my_vec)
-int_x()
+my_vec = inc(my_vec)
 println(my_vec)

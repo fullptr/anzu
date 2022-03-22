@@ -5,6 +5,6 @@
 
 namespace anzu {
 
-auto compile(const node_stmt_ptr& root, const expr_types& types) -> anzu::program;
+auto compile(const node_stmt_ptr& root, const type_info& types) -> anzu::program;
 
 }

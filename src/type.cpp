@@ -77,11 +77,6 @@ auto generic_type(int id) -> type_name
     return {type_generic{ .id = id }};
 }
 
-auto vec2_type() -> type_name
-{
-    return {type_simple{ .name = "vec2", }};
-}
-
 auto concrete_list_type(const type_name& t) -> type_name
 {
     return {type_compound{
@@ -224,10 +219,6 @@ auto to_string(const signature& sig) -> std::string
 
 type_store::type_store()
 {
-    d_classes.emplace(vec2_type(), type_fields{
-        { .name = "x", .type = int_type() },
-        { .name = "y", .type = int_type() }
-    });
 }
 
 auto type_store::is_registered_type(const type_name& t) const -> bool
@@ -264,6 +255,15 @@ auto type_store::get_fields(const type_name& t) const -> type_fields
         return {{ .name = "blk", .type = t }};
     }
     return {};
+}
+
+auto type_store::register_type(const type_name& name, const type_fields& fields) -> bool
+{
+    if (d_classes.contains(name)) {
+        return false;
+    }
+    d_classes.emplace(name, fields);
+    return true;
 }
 
 }

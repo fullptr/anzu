@@ -263,6 +263,17 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_struct_stmt>();
 
+    stmt.token = tokens.consume_only(tk_struct);
+    stmt.name = make_type(parse_name(tokens));
+    tokens.consume_only(tk_lbrace);
+    while (!tokens.consume_maybe(tk_rbrace)) {
+        stmt.fields.emplace_back();
+        auto& f = stmt.fields.back();
+        f.name = parse_name(tokens);
+        tokens.consume_only(tk_colon);
+        f.type = parse_type(tokens);
+    }
+
     return node;
 }
 

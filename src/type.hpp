@@ -60,7 +60,11 @@ auto bool_type() -> type_name;
 auto str_type() -> type_name;
 auto null_type() -> type_name;
 auto generic_type(int id) -> type_name;
-auto vec2_type() -> type_name;
+
+inline auto make_type(const std::string& name) -> type_name
+{
+    return { type_simple{ .name=name } };
+}
 
 auto concrete_list_type(const type_name& t) -> type_name;
 auto generic_list_type() -> type_name;
@@ -108,6 +112,10 @@ public:
     auto block_size(const type_name& t) const -> std::size_t;
 
     auto get_fields(const type_name& t) const -> type_fields;
+
+    // Registers a type with the given name and fields. Returns true if successful and false
+    // if the type already exists.
+    auto register_type(const type_name& name, const type_fields& fields) -> bool;
 };
 
 }

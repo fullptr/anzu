@@ -36,11 +36,9 @@ struct typecheck_context
     var_types globals;
     std::optional<var_types> locals;
 
-    anzu::type_store registered_types;
-
     std::unordered_map<const node_function_def_stmt*, std::unordered_set<signature>> checked_sigs;
 
-    expr_types node_types;
+    type_info types;
 };
 
 auto current_vars(typecheck_context& ctx) -> typecheck_context::var_types&
@@ -78,7 +76,7 @@ auto get_token(const node_expr& node) -> token
 
 auto verify_real_type(typecheck_context& ctx, const token& tok, const type_name& t) -> void
 {
-    if (!ctx.registered_types.is_registered_type(t)) {
+    if (!ctx.types.types.is_registered_type(t)) {
         type_error(tok, "'{}' is not a recognised type", t);
     }
 }
@@ -249,9 +247,9 @@ auto typecheck_function_call(
     -> type_name
 {
     // If this is a type name, its a constructor call
-    const auto as_type_name = type_name{type_simple{ .name=function_name }};
-    if (ctx.registered_types.is_registered_type(as_type_name)) {
-        const auto fields = ctx.registered_types.get_fields(as_type_name);
+    const auto as_type_name = make_type(function_name);
+    if (ctx.types.types.is_registered_type(as_type_name)) {
+        const auto fields = ctx.types.types.get_fields(as_type_name);
         if (fields.size() != args.size()) {
             type_error(
                 tok,
@@ -306,7 +304,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
         },
         [&](const node_field_expr& node) {
             const auto parent_type = typecheck_expr(ctx, *node.expression);
-            const auto fields = ctx.registered_types.get_fields(parent_type);
+            const auto fields = ctx.types.types.get_fields(parent_type);
             for (const auto& field : fields) {
                 if (field.name == node.field_name) {
                     return field.type;
@@ -339,7 +337,7 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
         }
     }, expr);
 
-    ctx.node_types.emplace(&expr, expr_type);
+    ctx.types.expr_types.emplace(&expr, expr_type);
     return expr_type;
 };
 
@@ -375,7 +373,19 @@ auto typecheck_node(typecheck_context& ctx, const node_if_stmt& node) -> void
 
 auto typecheck_node(typecheck_context& ctx, const node_struct_stmt& node) -> void
 {
-
+    if (ctx.types.types.is_registered_type(node.name)) {
+        type_error(node.token, "type '{}' is already defined\n", node.name);
+    }
+    for (const auto& field : node.fields) {
+        if (!ctx.types.types.is_registered_type(field.type)) {
+            type_error(
+                node.token,
+                "unknown type '{}' of field {} for struct {}\n",
+                field.type, field.name, node.name
+            );
+        }
+    }
+    ctx.types.types.register_type(node.name, node.fields);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_for_stmt& node) -> void
@@ -434,12 +444,14 @@ auto typecheck_node(typecheck_context& ctx, const node_field_assignment_stmt& no
         if (auto it = ctx.locals->find(node.name); it != ctx.locals->end()) {
             auto type = it->second;
             for (const auto& field_name : node.fields) {
-                for (const auto& field : ctx.registered_types.get_fields(type)) {
-                    if (field.name == field_name) {
-                        type = field.type;
-                        break;
-                    }
-                    type_error(node.token, "type '{}' has no field '{}\n", type, field_name);
+                const auto& type_fields = ctx.types.types.get_fields(type);
+                const auto it = std::find_if(begin(type_fields), end(type_fields), [&](auto&& field) {
+                    return field.name == field_name;
+                });
+                if (it != type_fields.end()) {
+                    type = it->type;
+                } else {
+                    type_error(node.token, "type '{}' has no field '{}'\n", type, field_name);
                 }
             }
 
@@ -455,12 +467,14 @@ auto typecheck_node(typecheck_context& ctx, const node_field_assignment_stmt& no
     if (auto it = ctx.globals.find(node.name); it != ctx.globals.end()) {
         auto type = it->second;
         for (const auto& field_name : node.fields) {
-            for (const auto& field : ctx.registered_types.get_fields(type)) {
-                if (field.name == field_name) {
-                    type = field.type;
-                    break;
-                }
-                type_error(node.token, "type '{}' has no field '{}\n", type, field_name);
+            const auto& type_fields = ctx.types.types.get_fields(type);
+            const auto it = std::find_if(begin(type_fields), end(type_fields), [&](auto&& field) {
+                return field.name == field_name;
+            });
+            if (it != type_fields.end()) {
+                type = it->type;
+            } else {
+                type_error(node.token, "type '{}' has no field '{}'\n", type, field_name);
             }
         }
 
@@ -511,11 +525,11 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 
 }
 
-auto typecheck_ast(const node_stmt_ptr& ast) -> expr_types
+auto typecheck_ast(const node_stmt_ptr& ast) -> type_info
 {
     auto ctx = typecheck_context{};
     typecheck_node(ctx, *ast);
-    return ctx.node_types;
+    return ctx.types;
 }
 
 }
