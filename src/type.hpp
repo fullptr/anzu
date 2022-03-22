@@ -62,6 +62,11 @@ auto null_type() -> type_name;
 auto generic_type(int id) -> type_name;
 auto vec2_type() -> type_name;
 
+inline auto make_type(const std::string& name) -> type_name
+{
+    return { type_simple{ .name=name } };
+}
+
 auto concrete_list_type(const type_name& t) -> type_name;
 auto generic_list_type() -> type_name;
 

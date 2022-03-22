@@ -7,13 +7,7 @@ struct vec3
     z: int
 }
 
-my_vec := vec2(1, 2)
-
-fn int_x() -> null
-{
-    my_vec.x = my_vec.x + 1
-}
-
-println(my_vec)
-int_x()
-println(my_vec)
+v := vec3(1, 2, 3)
+println(v.x)
+println(v.y)
+println(v.z)
