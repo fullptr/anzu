@@ -69,6 +69,9 @@ inline auto make_type(const std::string& name) -> type_name
 auto concrete_list_type(const type_name& t) -> type_name;
 auto generic_list_type() -> type_name;
 
+auto concrete_ptr_type(const type_name& t) -> type_name;
+auto generic_ptr_type() -> type_name;
+
 auto is_type_complete(const type_name& t) -> bool;
 
 // Returns true if and only if the type is not a class type.
