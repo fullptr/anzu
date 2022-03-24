@@ -1,4 +1,5 @@
 
+x := 4
 
 struct vec2
 {
@@ -6,13 +7,6 @@ struct vec2
     y: int
 }
 
-fn inc(v: vec2) -> vec2
-{
-    v.x = v.x + 1
-    return v
-}
+v := vec2(1, 2)
 
-my_vec := vec2(1, 2)
-println(my_vec)
-my_vec = inc(my_vec)
-println(my_vec)
+println(addrof v.x)

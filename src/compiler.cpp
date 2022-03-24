@@ -324,6 +324,18 @@ void compile_node(const node_expr& expr, const node_list_expr& node, compiler_co
     ctx.program.emplace_back(op_build_list{ .size = node.elements.size() });
 }
 
+void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_context& ctx)
+{
+    std::visit(overloaded{
+        [&](const node_variable_expr& var) {},
+        [&](const node_field_expr& field) {},
+        [](const auto&) {
+            print("compiler error: cannot take address of a non-lvalue\n");
+            std::exit(1);
+        }
+    }, *node.expr);
+}
+
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
 {
     for (const auto& seq_node : node.sequence) {

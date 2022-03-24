@@ -334,6 +334,10 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
                 }
             }
             return concrete_list_type(subtype);
+        },
+        [&](const node_addrof_expr& node) {
+            const auto type = typecheck_expr(ctx, *node.expr);
+            return concrete_ptr_type(type);
         }
     }, expr);
 

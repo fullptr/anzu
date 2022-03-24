@@ -101,6 +101,11 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         tokens.consume_comma_separated_list(tk_rbracket, [&] {
             expr.elements.push_back(parse_expression(tokens));
         });
+    }
+    else if (tokens.peek(tk_addrof)) {
+        auto& expr = node->emplace<anzu::node_addrof_expr>();
+        expr.token = tokens.consume();
+        expr.expr = parse_expression(tokens);
     }  
     else if (tokens.peek_next(tk_lparen)) {
         node = parse_function_call_expr(tokens);
