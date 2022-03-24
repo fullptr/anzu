@@ -324,16 +324,35 @@ void compile_node(const node_expr& expr, const node_list_expr& node, compiler_co
     ctx.program.emplace_back(op_build_list{ .size = node.elements.size() });
 }
 
-void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_context& ctx)
+auto address_of(const compiler_context& ctx, const node_expr& node) -> std::size_t
 {
-    std::visit(overloaded{
-        [&](const node_variable_expr& var) {},
-        [&](const node_field_expr& field) {},
+    return std::visit(overloaded{
+        [&](const node_variable_expr& var) {
+            return std::size_t{0};
+        },
+        [&](const node_field_expr& field) {
+            return std::size_t{0};
+        },
         [](const auto&) {
             print("compiler error: cannot take address of a non-lvalue\n");
             std::exit(1);
+            return std::size_t{0};
         }
-    }, *node.expr);
+    }, node);
+}
+
+void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_context& ctx)
+{
+    const auto addr_of = address_of(ctx, *node.expr);
+    const auto type_of = ctx.type_info.expr_types[node.expr.get()];
+    const auto size_of = ctx.type_info.types.block_size(type_of);
+
+    const auto ptr_obj = object{
+        .data = { block{ block_ptr{ .ptr=addr_of, .size=size_of } } },
+        .type = ctx.type_info.expr_types[&expr]
+    };
+
+    ctx.program.emplace_back(op_load_literal{ .value = ptr_obj });
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
