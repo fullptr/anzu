@@ -7,8 +7,10 @@ struct vec2
     y: int
 }
 
+a := 1
+b := 2
 v := vec2(1, 2)
 v.x = 4
-println(v.x)
+println(addrof v.y)
 
 #println(addrof v.y)

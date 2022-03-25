@@ -371,7 +371,15 @@ void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_
     const auto type_of = ctx.type_info.expr_types[node.expr.get()];
     const auto size_of = ctx.type_info.types.block_size(type_of);
 
-    
+    if (addr_of.is_local) {
+        ctx.program.emplace_back(op_load_addr_of_local{
+            .offset=addr_of.position, .size=size_of
+        });
+    } else {
+        ctx.program.emplace_back(op_load_addr_of_global{
+            .position=addr_of.position, .size=size_of
+        });
+    }
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
