@@ -194,11 +194,16 @@ auto address_of(
 auto address_of_expr(const compiler_context& ctx, const node_expr& node) -> addrof
 {
     return std::visit(overloaded{
-        [&](const node_variable_expr& var) {
-            return address_of(ctx, var.name, {});
+        [&](const node_variable_expr& n) {
+            return address_of(ctx, n.name, {});
         },
-        [&](const node_field_expr& field) {
-            return addrof{.position=0, .is_local=false, .type=int_type()};
+        [&](const node_field_expr& n) {
+            if (!std::holds_alternative<node_variable_expr>(*n.expression)) {
+                print("not currently supporting field access of non-variables\n");
+                std::exit(1);
+            }
+            const auto& var = std::get<node_variable_expr>(*n.expression);
+            return address_of(ctx, var.name, std::vector{n.field_name});
         },
         [](const auto&) {
             print("compiler error: cannot take address of a non-lvalue\n");
@@ -305,14 +310,10 @@ void compile_node(const node_expr& expr, const node_variable_expr& node, compile
 
 void compile_node(const node_expr& expr, const node_field_expr& node, compiler_context& ctx)
 {
-    if (!std::holds_alternative<node_variable_expr>(*node.expression)) {
-        print("not currently supporting field access of non-variables\n");
-        std::exit(1);
-    }
     const auto& var_name = std::get<node_variable_expr>(*node.expression).name;
     const auto& var_type = ctx.type_info.expr_types[node.expression.get()];
 
-    const auto addr_of = address_of(ctx, var_name, std::vector{node.field_name});
+    const auto addr_of = address_of_expr(ctx, expr);
     const auto type_size = ctx.type_info.types.block_size(addr_of.type);
     if (addr_of.is_local) {
         ctx.program.emplace_back(op_load_local{
