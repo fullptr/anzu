@@ -1,16 +1,6 @@
 
 x := 4
 
-struct vec2
-{
-    x: int
-    y: int
-}
-
 a := 1
-b := 2
-v := vec2(1, 2)
-v.x = 4
-println(addrof v.y)
-
-#println(addrof v.y)
+a_ptr := addrof a
+println(a_ptr)

@@ -65,6 +65,13 @@ struct node_addrof_expr
     anzu::token token;
 };
 
+struct node_deref_expr
+{
+    node_expr_ptr expr;
+    
+    anzu::token token;
+};
+
 struct node_expr : std::variant<
     node_literal_expr,
     node_variable_expr,
@@ -72,7 +79,8 @@ struct node_expr : std::variant<
     node_bin_op_expr,
     node_function_call_expr,
     node_list_expr,
-    node_addrof_expr>
+    node_addrof_expr,
+    node_deref_expr>
 {
 };
 

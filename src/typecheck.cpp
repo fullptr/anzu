@@ -338,6 +338,14 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
         [&](const node_addrof_expr& node) {
             const auto type = typecheck_expr(ctx, *node.expr);
             return concrete_ptr_type(type);
+        },
+        [&](const node_deref_expr& node) {
+            const auto type = typecheck_expr(ctx, *node.expr);
+            const auto type_match = match(type, generic_ptr_type());
+            if (!type_match) {
+                type_error(node.token, "cannot dereference a non-pointer type");
+            }
+            return type_match->at(0);
         }
     }, expr);
 
