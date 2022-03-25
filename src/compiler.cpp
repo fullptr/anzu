@@ -385,7 +385,7 @@ void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_
 void compile_node(const node_expr& expr, const node_deref_expr& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    //ctx.program.emplace_back(op_deref{});
+    ctx.program.emplace_back(op_deref{});
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)

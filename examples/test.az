@@ -1,6 +1,1 @@
 
-x := 4
-
-a := 1
-a_ptr := addrof a
-println(a_ptr)
