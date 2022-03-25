@@ -1,5 +1,7 @@
 
-x := 10
-y := addrof x
-z := addrof y
-println(deref deref z)
+fn foo() -> null {
+    x := 10
+    y := addrof x
+    z := addrof y
+    println(deref deref z)
+}

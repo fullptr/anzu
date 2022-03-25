@@ -28,7 +28,7 @@ auto to_string(const op& op_code) -> std::string
             return std::format("OP_LOAD_ADDR_OF_GLOBAL({}, {})", op.position, op.size);
         },
         [&](const op_load_addr_of_local& op) {
-            return std::format("OP_LOAD_ADDR_OF_GLOBAL(+{}, {})", op.offset, op.size);
+            return std::format("OP_LOAD_ADDR_OF_LOCAL(+{}, {})", op.offset, op.size);
         },
         [&](const op_deref&) {
             return std::string{"OP_DEREF"};
