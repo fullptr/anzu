@@ -14,6 +14,14 @@
 #include <unordered_map>
 
 namespace anzu {
+namespace {
+
+struct addrof
+{
+    std::size_t position;
+    bool        is_local; // If true, the position is an offset
+    type_name   type;
+};
 
 struct var_info
 {
@@ -147,7 +155,58 @@ auto find_function(const compiler_context& ctx, const std::string& function)
     return nullptr;
 }
 
-namespace {
+auto address_of(
+    const compiler_context& ctx, const std::string& name, std::span<const std::string> fields
+)
+    -> addrof
+{
+    if (ctx.locals && ctx.locals->info.contains(name)) {
+        const auto& info = ctx.locals->info.at(name);
+        auto location = info.location;
+        auto type = info.type;
+        for (const auto& field_name : fields) { // Field names in the assignemnt
+            for (const auto& field : ctx.type_info.types.get_fields(type)) { // Field of curr type
+                if (field.name == field_name) {
+                    type = field.type;
+                    break;
+                }
+                location += ctx.type_info.types.block_size(field.type);
+            }
+        }
+        return { .position=location, .is_local=true, .type=type};
+    }
+    
+    const auto& info = ctx.globals.info.at(name);
+    auto location = info.location;
+    auto type = info.type;
+    for (const auto& field_name : fields) { // Field names in the assignemnt
+        for (const auto& field : ctx.type_info.types.get_fields(type)) { // Field of curr type
+            if (field.name == field_name) {
+                type = field.type;
+                break;
+            }
+            location += ctx.type_info.types.block_size(field.type);
+        }
+    }
+    return { .position=location, .is_local=false, .type=type};
+}
+
+auto address_of_expr(const compiler_context& ctx, const node_expr& node) -> addrof
+{
+    return std::visit(overloaded{
+        [&](const node_variable_expr& var) {
+            return address_of(ctx, var.name, {});
+        },
+        [&](const node_field_expr& field) {
+            return addrof{.position=0, .is_local=false, .type=int_type()};
+        },
+        [](const auto&) {
+            print("compiler error: cannot take address of a non-lvalue\n");
+            std::exit(1);
+            return anzu::addrof{.position=0, .is_local=false, .type=int_type()};
+        }
+    }, node);
+}
 
 // Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
 // This function links the do to jump to one past the end if false, makes breaks
@@ -253,40 +312,21 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
     const auto& var_name = std::get<node_variable_expr>(*node.expression).name;
     const auto& var_type = ctx.type_info.expr_types[node.expression.get()];
 
-    if (ctx.locals) {
-        if (auto it = ctx.locals->info.find(var_name); it != ctx.locals->info.end()) {
-            auto field_addr = it->second.location;
-            auto field_size = std::size_t{0};
-            for (const auto& field : ctx.type_info.types.get_fields(var_type)) {
-                if (field.name == node.field_name) {
-                    field_size = ctx.type_info.types.block_size(field.type);
-                    break;
-                }
-                field_addr += ctx.type_info.types.block_size(field.type);
-            }
-            ctx.program.emplace_back(op_load_local{
-                .name = std::format("{}.{}", var_name, node.field_name),
-                .offset = field_addr,
-                .size = field_size
-            });
-            return;
-        }
+    const auto addr_of = address_of(ctx, var_name, std::vector{node.field_name});
+    const auto type_size = ctx.type_info.types.block_size(addr_of.type);
+    if (addr_of.is_local) {
+        ctx.program.emplace_back(op_load_local{
+            .name = std::format("{}.{}", var_name, node.field_name),
+            .offset = addr_of.position,
+            .size = type_size
+        });
+    } else {
+        ctx.program.emplace_back(op_load_global{
+            .name = std::format("{}.{}", var_name, node.field_name),
+            .position = addr_of.position,
+            .size = type_size
+        });
     }
-
-    auto field_addr = ctx.globals.info[var_name].location;
-    auto field_size = std::size_t{0};
-    for (const auto& field : ctx.type_info.types.get_fields(var_type)) {
-        if (field.name == node.field_name) {
-            field_size = ctx.type_info.types.block_size(field.type);
-            break;
-        }
-        field_addr += ctx.type_info.types.block_size(field.type);
-    }
-    ctx.program.emplace_back(op_load_global{
-        .name = std::format("{}.{}", var_name, node.field_name),
-        .position = field_addr,
-        .size = field_size
-    });
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
@@ -324,35 +364,13 @@ void compile_node(const node_expr& expr, const node_list_expr& node, compiler_co
     ctx.program.emplace_back(op_build_list{ .size = node.elements.size() });
 }
 
-auto address_of(const compiler_context& ctx, const node_expr& node) -> std::size_t
-{
-    return std::visit(overloaded{
-        [&](const node_variable_expr& var) {
-            return std::size_t{0};
-        },
-        [&](const node_field_expr& field) {
-            return std::size_t{0};
-        },
-        [](const auto&) {
-            print("compiler error: cannot take address of a non-lvalue\n");
-            std::exit(1);
-            return std::size_t{0};
-        }
-    }, node);
-}
-
 void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_context& ctx)
 {
-    const auto addr_of = address_of(ctx, *node.expr);
+    const auto addr_of = address_of_expr(ctx, *node.expr);
     const auto type_of = ctx.type_info.expr_types[node.expr.get()];
     const auto size_of = ctx.type_info.types.block_size(type_of);
 
-    const auto ptr_obj = object{
-        .data = { block{ block_ptr{ .ptr=addr_of, .size=size_of } } },
-        .type = ctx.type_info.expr_types[&expr]
-    };
-
-    ctx.program.emplace_back(op_load_literal{ .value = ptr_obj });
+    
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
@@ -486,41 +504,16 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-
-    if (ctx.locals && ctx.locals->info.contains(node.name)) {
-        const auto& info = ctx.locals->info.at(node.name);
-        auto location = info.location;
-        auto type = info.type;
-        for (const auto& field_name : node.fields) { // Field names in the assignemnt
-            for (const auto& field : ctx.type_info.types.get_fields(type)) { // Field of curr type
-                if (field.name == field_name) {
-                    type = field.type;
-                    break;
-                }
-                location += ctx.type_info.types.block_size(field.type);
-            }
-        }
+    const auto addr = address_of(ctx, node.name, node.fields);
+    if (addr.is_local) {
         ctx.program.emplace_back(op_save_local{
-            .name="temp", .offset=location, .size=ctx.type_info.types.block_size(type)
+            .name="temp", .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
         });
-        return;
+    } else {
+        ctx.program.emplace_back(op_save_local{
+            .name="temp", .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
+        });
     }
-    
-    const auto& info = ctx.globals.info.at(node.name);
-    auto location = info.location;
-    auto type = info.type;
-    for (const auto& field_name : node.fields) { // Field names in the assignemnt
-        for (const auto& field : ctx.type_info.types.get_fields(type)) { // Field of curr type
-            if (field.name == field_name) {
-                type = field.type;
-                break;
-            }
-            location += ctx.type_info.types.block_size(field.type);
-        }
-    }
-    ctx.program.emplace_back(op_save_global{
-        .name="temp", .position=location, .size=ctx.type_info.types.block_size(type)
-    });
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)

@@ -8,5 +8,7 @@ struct vec2
 }
 
 v := vec2(1, 2)
+v.x = 4
+println(v.x)
 
-println(addrof v.y)
+#println(addrof v.y)
