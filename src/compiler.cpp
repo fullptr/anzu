@@ -535,10 +535,6 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
                 });
             }
         },
-        [&](node_function_call_expr& n) {
-            print("assigning to a function call not currently implemented\n");
-            std::exit(1);
-        },
         [&](node_deref_expr& n) {
             compile_node(*n.expr, ctx);
             ctx.program.emplace_back(op_save_to_addr{});
