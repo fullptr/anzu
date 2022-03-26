@@ -453,11 +453,6 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
     }
 }
 
-auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
-{
-    typecheck_function_call(ctx, node.token, node.function_name, node.args);
-}
-
 auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node) -> void
 {
     if (!ctx.locals) {

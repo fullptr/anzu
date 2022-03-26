@@ -32,7 +32,7 @@ auto print_node(const node_expr& root, int indent) -> void
             print_node(*node.rhs, indent + 1);
         },
         [&](const node_function_call_expr& node) {
-            print("{}FunctionCall (Expr): {}\n", spaces, node.function_name);
+            print("{}FunctionCall: {}\n", spaces, node.function_name);
             print("{}- Args:\n", spaces);
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
@@ -126,13 +126,6 @@ auto print_node(const node_stmt& root, int indent) -> void
             });
             print(") -> {}\n", node.sig.return_type);
             print_node(*node.body, indent + 1);
-        },
-        [&](const node_function_call_stmt& node) {
-            print("{}FunctionCall (Stmt): {}\n", spaces, node.function_name);
-            print("{}- Args:\n", spaces);
-            for (const auto& arg : node.args) {
-                print_node(*arg, indent + 1);
-            }
         },
         [&](const node_expression_stmt& node) {
             print("{}Expression:\n", spaces);

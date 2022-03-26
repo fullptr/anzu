@@ -1,12 +1,4 @@
-struct vec2
+fn noisy() -> null
 {
-    x: int
-    y: int
+    
 }
-
-v := vec2(1, 2)
-
-v.y = 7
-v.x = 2
-
-println(v)
