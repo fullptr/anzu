@@ -91,7 +91,7 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.locals && ctx.locals->info.contains(name)) {
         const auto& info = ctx.locals->info.at(name);
         ctx.program.emplace_back(anzu::op_save_local{
-            .name=name, .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
+            .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
         return;
     }
@@ -99,7 +99,7 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.globals.info.contains(name)) {
         const auto& info = ctx.globals.info.at(name);
         ctx.program.emplace_back(anzu::op_save_global{
-            .name=name, .position=info.location, .size=ctx.type_info.types.block_size(info.type)
+            .position=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
         return;
     }
@@ -512,13 +512,20 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
-    compile_node(*node.expr, ctx);
-    if (!std::holds_alternative<node_variable_expr>(*node.position)) {
-        print("currently cannot assign to a non-variable\n");
-        std::exit(1);
-    }
+    const auto address = address_of_expr(ctx, *node.position);
     const auto& name = std::get<node_variable_expr>(*node.position).name;
-    save_variable(ctx, name);
+
+    compile_node(*node.expr, ctx);
+    const auto addr = address_of(ctx, name, {});
+    if (addr.is_local) {
+        ctx.program.emplace_back(op_save_local{
+            .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
+        });
+    } else {
+        ctx.program.emplace_back(op_save_global{
+            .position=addr.position, .size=ctx.type_info.types.block_size(addr.type)
+        });
+    }
 }
 
 void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
@@ -527,11 +534,11 @@ void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
     const auto addr = address_of(ctx, node.name, node.fields);
     if (addr.is_local) {
         ctx.program.emplace_back(op_save_local{
-            .name="temp", .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
+            .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
         });
     } else {
-        ctx.program.emplace_back(op_save_local{
-            .name="temp", .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
+        ctx.program.emplace_back(op_save_global{
+            .position=addr.position, .size=ctx.type_info.types.block_size(addr.type)
         });
     }
 }
