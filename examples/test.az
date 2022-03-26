@@ -4,12 +4,9 @@ struct vec2
     y: int
 }
 
-struct wrapper
-{
-    a: vec2
-}
+x := 5
+xp := addrof x
 
-fn foo() -> null
-{}
+deref xp = 6
 
-foo() 
+println(x)

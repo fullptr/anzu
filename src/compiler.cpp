@@ -549,8 +549,8 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
             std::exit(1);
         },
         [&](node_deref_expr& n) {
-            print("assigning to a deref expr not currently implemented\n");
-            std::exit(1);
+            compile_node(*n.expr, ctx);
+            ctx.program.emplace_back(op_save_to_addr{});
         },
         [](const auto&) {
             print("invalid expression to assign to\n");
