@@ -131,6 +131,12 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             save_top_at(ctx, base_ptr(ctx) + op.offset, op.size);
             program_advance(ctx);
         },
+        [&](const op_save_to_addr& op) {
+            const auto ptr_blk = pop_back(ctx.memory);
+            const auto ptr = std::get<block_ptr>(ptr_blk);
+            save_top_at(ctx, ptr.ptr, ptr.size);
+            program_advance(ctx);
+        },
         [&](const op_if& op) {
             program_advance(ctx);
         },

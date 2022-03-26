@@ -4,5 +4,12 @@ struct vec2
     y: int
 }
 
-y := 6
-x := addrof y
+struct wrapper
+{
+    a: vec2
+}
+
+fn foo() -> null
+{}
+
+foo() 

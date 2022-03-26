@@ -63,6 +63,10 @@ struct op_save_local
     std::size_t size;
 };
 
+struct op_save_to_addr
+{
+};
+
 struct op_if
 {
 };
@@ -151,6 +155,7 @@ struct op : std::variant<
     op_pop,
     op_save_global,
     op_save_local,
+    op_save_to_addr,
     op_if,
     op_if_end,
     op_else,

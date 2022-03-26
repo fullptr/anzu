@@ -42,6 +42,9 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_save_local& op) {
             return std::format("OP_SAVE_LOCAL({}: +{})", op.offset, op.size);
         },
+        [&](const op_save_to_addr& op) {
+            return std::string{"OP_SAVE_TO_ADDR"};
+        },
         [&](const op_if& op) {
             return std::string{"OP_IF"};
         },
