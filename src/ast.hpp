@@ -148,17 +148,8 @@ struct node_declaration_stmt
 
 struct node_assignment_stmt
 {
-    std::string   name;
+    node_expr_ptr position;
     node_expr_ptr expr;
-
-    anzu::token token;
-};
-
-struct node_field_assignment_stmt
-{
-    std::string              name;
-    std::vector<std::string> fields;
-    node_expr_ptr            expr;
 
     anzu::token token;
 };
@@ -197,7 +188,6 @@ struct node_stmt : std::variant<
     node_continue_stmt,
     node_declaration_stmt,
     node_assignment_stmt,
-    node_field_assignment_stmt,
     node_function_def_stmt,
     node_function_call_stmt,
     node_return_stmt>

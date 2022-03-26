@@ -53,16 +53,18 @@ struct op_pop
 
 struct op_save_global
 {
-    std::string name;
     std::size_t position;
     std::size_t size;
 };
 
 struct op_save_local
 {
-    std::string name;
     std::size_t offset;
     std::size_t size;
+};
+
+struct op_save_to_addr
+{
 };
 
 struct op_if
@@ -153,6 +155,7 @@ struct op : std::variant<
     op_pop,
     op_save_global,
     op_save_local,
+    op_save_to_addr,
     op_if,
     op_if_end,
     op_else,

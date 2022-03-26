@@ -1,7 +1,12 @@
-
-fn foo() -> null {
-    x := 10
-    y := addrof x
-    z := addrof y
-    println(deref deref z)
+struct vec2
+{
+    x: int
+    y: int
 }
+
+v := vec2(1, 2)
+
+v.y = 7
+v.x = 2
+
+println(v)

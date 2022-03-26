@@ -114,14 +114,8 @@ auto print_node(const node_stmt& root, int indent) -> void
         },
         [&](const node_assignment_stmt& node) {
             print("{}Assignment:\n", spaces);
-            print("{}- Name: {}\n", spaces, node.name);
-            print("{}- Value:\n", spaces);
-            print_node(*node.expr, indent + 1);
-        },
-        [&](const node_field_assignment_stmt& node) {
-            print("{}FieldAssignment:\n", spaces);
-            print("{}- Name: {}\n", spaces, node.name);
-            print("{}- Fields: {}\n", spaces, format_comma_separated(node.fields));
+            print("{}- Name:\n", spaces);
+            print_node(*node.position, indent + 1);
             print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },

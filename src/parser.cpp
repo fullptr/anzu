@@ -303,21 +303,7 @@ auto parse_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_unique<anzu::node_stmt>();
     auto& stmt = node->emplace<anzu::node_assignment_stmt>();
 
-    stmt.name = parse_name(tokens);
-    stmt.token = tokens.consume_only(tk_assign);
-    stmt.expr = parse_expression(tokens);
-    return node;
-}
-
-auto parse_field_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
-{
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_field_assignment_stmt>();
-
-    stmt.name = parse_name(tokens);
-    while (tokens.consume_maybe(tk_fullstop)) {
-        stmt.fields.push_back(parse_name(tokens));
-    }
+    stmt.position = parse_expression(tokens);
     stmt.token = tokens.consume_only(tk_assign);
     stmt.expr = parse_expression(tokens);
     return node;
@@ -371,19 +357,13 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek_next(tk_declare)) { // <name> ':=' <expr>
         return parse_declaration_stmt(tokens);
     }
-    if (tokens.peek_next(tk_assign)) { // <name> '=' <expr>
-        return parse_assignment_stmt(tokens);
-    }
-    if (tokens.peek_next(tk_fullstop)) {
-        return parse_field_assignment_stmt(tokens);
-    }
     if (tokens.peek_next(tk_lparen)) { // <name> '('
         return parse_function_call_stmt(tokens);
     }
     if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(tokens);
     }
-    parser_error(tokens.curr(), "unknown statement '{}'", tokens.curr().text);
+    return parse_assignment_stmt(tokens);
 }
 
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr

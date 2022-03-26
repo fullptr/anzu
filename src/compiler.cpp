@@ -91,7 +91,7 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.locals && ctx.locals->info.contains(name)) {
         const auto& info = ctx.locals->info.at(name);
         ctx.program.emplace_back(anzu::op_save_local{
-            .name=name, .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
+            .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
         return;
     }
@@ -99,7 +99,7 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.globals.info.contains(name)) {
         const auto& info = ctx.globals.info.at(name);
         ctx.program.emplace_back(anzu::op_save_global{
-            .name=name, .position=info.location, .size=ctx.type_info.types.block_size(info.type)
+            .position=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
         return;
     }
@@ -204,6 +204,12 @@ auto address_of_expr(const compiler_context& ctx, const node_expr& node) -> addr
             }
             const auto& var = std::get<node_variable_expr>(*n.expression);
             return address_of(ctx, var.name, std::vector{n.field_name});
+        },
+        [&](const node_deref_expr& n) {
+            
+            print("Returning address of a deref not currently implemented\n");
+            std::exit(1);
+            return anzu::addrof{.position=0, .is_local=false, .type=int_type()};
         },
         [](const auto&) {
             print("compiler error: cannot take address of a non-lvalue\n");
@@ -510,25 +516,34 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
     save_variable(ctx, node.name);
 }
 
+template <typename T>
+concept named_location_expr = std::same_as<T, node_variable_expr> || std::same_as<T, node_field_expr>;
+
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    save_variable(ctx, node.name);
-}
-
-void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)
-{
-    compile_node(*node.expr, ctx);
-    const auto addr = address_of(ctx, node.name, node.fields);
-    if (addr.is_local) {
-        ctx.program.emplace_back(op_save_local{
-            .name="temp", .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
-        });
-    } else {
-        ctx.program.emplace_back(op_save_local{
-            .name="temp", .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
-        });
-    }
+    std::visit(overloaded{
+        [&](named_location_expr auto& n) {
+            const auto addr = address_of_expr(ctx, *node.position);
+            if (addr.is_local) {
+                ctx.program.emplace_back(op_save_local{
+                    .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
+                });
+            } else {
+                ctx.program.emplace_back(op_save_global{
+                    .position=addr.position, .size=ctx.type_info.types.block_size(addr.type)
+                });
+            }
+        },
+        [&](node_deref_expr& n) {
+            compile_node(*n.expr, ctx);
+            ctx.program.emplace_back(op_save_to_addr{});
+        },
+        [](const auto&) {
+            print("invalid expression to assign to\n");
+            std::exit(1);
+        }
+    }, *node.position);
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
