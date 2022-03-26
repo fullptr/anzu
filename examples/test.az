@@ -4,9 +4,10 @@ struct vec2
     y: int
 }
 
-x := 5
-xp := addrof x
+v := vec2(1, 2)
 
-deref xp = 6
+x := addrof(v.y)
 
-println(x)
+deref(x) = 8
+
+println(v)
