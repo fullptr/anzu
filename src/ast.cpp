@@ -134,6 +134,10 @@ auto print_node(const node_stmt& root, int indent) -> void
                 print_node(*arg, indent + 1);
             }
         },
+        [&](const node_expression_stmt& node) {
+            print("{}Expression:\n", spaces);
+            print_node(*node.expr, indent + 1);
+        },
         [&](const node_return_stmt& node) {
             print("{}Return:\n", spaces);
             print_node(*node.return_value, indent + 1);

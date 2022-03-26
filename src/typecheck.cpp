@@ -458,13 +458,18 @@ auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node)
     typecheck_function_call(ctx, node.token, node.function_name, node.args);
 }
 
-auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node)
+auto typecheck_node(typecheck_context& ctx, const node_return_stmt& node) -> void
 {
     if (!ctx.locals) {
         type_error(node.token, "return statements can only be within functions");
     }
     const auto& return_type = ctx.locals->at(return_key());
     verify_expression_type(ctx, *node.return_value, return_type);
+}
+
+auto typecheck_node(typecheck_context& ctx, const node_expression_stmt& node) -> void
+{
+    typecheck_expr(ctx, *node.expr);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void

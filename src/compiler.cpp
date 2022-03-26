@@ -575,6 +575,13 @@ void compile_node(const node_return_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(anzu::op_return{});
 }
 
+void compile_node(const node_expression_stmt& node, compiler_context& ctx)
+{
+    compile_node(*node.expr, ctx);
+    const auto type = ctx.type_info.expr_types[node.expr.get()];
+    ctx.program.emplace_back(anzu::op_pop{ .size=ctx.type_info.types.block_size(type) });
+}
+
 auto compile_node(const node_expr& expr, compiler_context& ctx) -> void
 {
     std::visit([&](const auto& node) { compile_node(expr, node, ctx); }, expr);
