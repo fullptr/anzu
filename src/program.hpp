@@ -30,6 +30,22 @@ struct op_load_local
     std::size_t size;
 };
 
+struct op_load_addr_of_global
+{
+    std::size_t position;
+    std::size_t size;
+};
+
+struct op_load_addr_of_local
+{
+    std::size_t offset;
+    std::size_t size;
+};
+
+struct op_deref
+{
+};
+
 struct op_pop
 {
     std::size_t size;
@@ -131,6 +147,9 @@ struct op : std::variant<
     op_load_literal,
     op_load_global,
     op_load_local,
+    op_load_addr_of_global,
+    op_load_addr_of_local,
+    op_deref,
     op_pop,
     op_save_global,
     op_save_local,

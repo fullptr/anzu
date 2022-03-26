@@ -91,6 +91,20 @@ auto generic_list_type() -> type_name
     }};
 }
 
+auto concrete_ptr_type(const type_name& t) -> type_name
+{
+    return {type_compound{
+        .name = "ptr", .subtypes = { t }
+    }};
+}
+
+auto generic_ptr_type() -> type_name
+{
+    return {type_compound{
+        .name = "ptr", .subtypes = { generic_type(0) }
+    }};
+}
+
 auto is_type_complete(const type_name& t) -> bool
 {
     return std::visit(overloaded {
@@ -110,7 +124,8 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == bool_type()
         || type == str_type()
         || type == null_type()
-        || match(type, generic_list_type());
+        || match(type, generic_list_type())
+        || match(type, generic_ptr_type());
 }
 
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a

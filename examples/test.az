@@ -1,18 +1,7 @@
 
-
-struct vec2
-{
-    x: int
-    y: int
+fn foo() -> null {
+    x := 10
+    y := addrof x
+    z := addrof y
+    println(deref deref z)
 }
-
-fn inc(v: vec2) -> vec2
-{
-    v.x = v.x + 1
-    return v
-}
-
-my_vec := vec2(1, 2)
-println(my_vec)
-my_vec = inc(my_vec)
-println(my_vec)

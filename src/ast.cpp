@@ -39,11 +39,19 @@ auto print_node(const node_expr& root, int indent) -> void
             }
         },
         [&](const node_list_expr& node) {
-            print("{}List (Expr):\n", spaces);
+            print("{}List:\n", spaces);
             print("{}- Elements:\n", spaces);
             for (const auto& element : node.elements) {
                 print_node(*element, indent + 1);
             }
+        },
+        [&](const node_addrof_expr& node) {
+            print("{}AddrOf:\n", spaces);
+            print_node(*node.expr, indent + 1);
+        },
+        [&](const node_deref_expr& node) {
+            print("{}Deref:\n", spaces);
+            print_node(*node.expr, indent + 1);
         }
     }, root);
 }

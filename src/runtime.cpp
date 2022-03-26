@@ -97,6 +97,27 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
             program_advance(ctx);
         },
+        [&](const op_load_addr_of_global& op) {
+            const auto idx = op.position;
+            const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
+            ctx.memory.push_back(ptr);
+            program_advance(ctx);
+        },
+        [&](const op_load_addr_of_local& op) {
+            const auto idx = base_ptr(ctx) + op.offset;
+            const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
+            ctx.memory.push_back(ptr);
+            program_advance(ctx);
+        },
+        [&](const op_deref& op) {
+            const auto ptr_blk = ctx.memory.back();
+            ctx.memory.pop_back();
+            const auto ptr = std::get<block_ptr>(ptr_blk);
+            for (std::size_t i = 0; i != ptr.size; ++i) {
+                ctx.memory.push_back(ctx.memory[ptr.ptr + i]);
+            }
+            program_advance(ctx);
+        },
         [&](const op_pop& op) {
             for (std::size_t i = 0; i != op.size; ++i) {
                 ctx.memory.pop_back();
