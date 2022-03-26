@@ -6,8 +6,7 @@ struct vec2
 
 v := vec2(1, 2)
 
-x := addrof(v.y)
-
-deref(x) = 8
+v.y = 7
+v.x = 2
 
 println(v)

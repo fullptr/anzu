@@ -516,23 +516,14 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
     save_variable(ctx, node.name);
 }
 
+template <typename T>
+concept named_location_expr = std::same_as<T, node_variable_expr> || std::same_as<T, node_field_expr>;
+
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
     std::visit(overloaded{
-        [&](node_variable_expr& n) {
-            const auto addr = address_of_expr(ctx, *node.position);
-            if (addr.is_local) {
-                ctx.program.emplace_back(op_save_local{
-                    .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
-                });
-            } else {
-                ctx.program.emplace_back(op_save_global{
-                    .position=addr.position, .size=ctx.type_info.types.block_size(addr.type)
-                });
-            }
-        },
-        [&](node_field_expr& n) {
+        [&](named_location_expr auto& n) {
             const auto addr = address_of_expr(ctx, *node.position);
             if (addr.is_local) {
                 ctx.program.emplace_back(op_save_local{
