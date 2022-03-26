@@ -309,20 +309,6 @@ auto parse_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
-auto parse_field_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
-{
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_field_assignment_stmt>();
-
-    stmt.name = parse_name(tokens);
-    while (tokens.consume_maybe(tk_fullstop)) {
-        stmt.fields.push_back(parse_name(tokens));
-    }
-    stmt.token = tokens.consume_only(tk_assign);
-    stmt.expr = parse_expression(tokens);
-    return node;
-}
-
 auto parse_function_call_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     return parse_function_call<anzu::node_stmt, anzu::node_function_call_stmt>(tokens);
@@ -371,9 +357,6 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek_next(tk_declare)) { // <name> ':=' <expr>
         return parse_declaration_stmt(tokens);
     }
-    //if (tokens.peek_next(tk_fullstop)) {
-    //    return parse_field_assignment_stmt(tokens);
-    //}
     if (tokens.peek_next(tk_lparen)) { // <name> '('
         return parse_function_call_stmt(tokens);
     }

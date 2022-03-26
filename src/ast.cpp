@@ -119,13 +119,6 @@ auto print_node(const node_stmt& root, int indent) -> void
             print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
-        [&](const node_field_assignment_stmt& node) {
-            print("{}FieldAssignment:\n", spaces);
-            print("{}- Name: {}\n", spaces, node.name);
-            print("{}- Fields: {}\n", spaces, format_comma_separated(node.fields));
-            print("{}- Value:\n", spaces);
-            print_node(*node.expr, indent + 1);
-        },
         [&](const node_function_def_stmt& node) {
             print("{}Function: {} (", spaces, node.name);
             print_comma_separated(node.sig.args, [](const auto& arg) {

@@ -439,57 +439,6 @@ auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) ->
     }
 }
 
-auto typecheck_node(typecheck_context& ctx, const node_field_assignment_stmt& node) -> void
-{
-    if (ctx.locals) {
-        if (auto it = ctx.locals->find(node.name); it != ctx.locals->end()) {
-            auto type = it->second;
-            for (const auto& field_name : node.fields) {
-                const auto& type_fields = ctx.types.types.get_fields(type);
-                const auto it = std::find_if(begin(type_fields), end(type_fields), [&](auto&& field) {
-                    return field.name == field_name;
-                });
-                if (it != type_fields.end()) {
-                    type = it->type;
-                } else {
-                    type_error(node.token, "type '{}' has no field '{}'\n", type, field_name);
-                }
-            }
-
-            const auto rhs_type = typecheck_expr(ctx, *node.expr);
-            if (rhs_type != type) {
-                type_error(
-                    node.token, "(field assignment) tried to assign '{}' to '{}'\n", rhs_type, type
-                );
-            }
-            return;
-        }
-    }
-    if (auto it = ctx.globals.find(node.name); it != ctx.globals.end()) {
-        auto type = it->second;
-        for (const auto& field_name : node.fields) {
-            const auto& type_fields = ctx.types.types.get_fields(type);
-            const auto it = std::find_if(begin(type_fields), end(type_fields), [&](auto&& field) {
-                return field.name == field_name;
-            });
-            if (it != type_fields.end()) {
-                type = it->type;
-            } else {
-                type_error(node.token, "type '{}' has no field '{}'\n", type, field_name);
-            }
-        }
-
-        const auto rhs_type = typecheck_expr(ctx, *node.expr);
-        if (rhs_type != type) {
-            type_error(
-                node.token, "(field assignment) tried to assign '{}' to '{}'\n", rhs_type, type
-            );
-        }
-        return;
-    }
-    print("typechecking for node field assignment not implemented\n");
-}
-
 auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) -> void
 {
     ctx.functions.emplace(node.name, &node);
@@ -502,7 +451,6 @@ auto typecheck_node(typecheck_context& ctx, const node_function_def_stmt& node) 
     else {
         typecheck_function_body_with_signature(ctx, node, node.sig);
     }
-
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_function_call_stmt& node) -> void
