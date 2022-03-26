@@ -513,7 +513,12 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    save_variable(ctx, node.name);
+    if (!std::holds_alternative<node_variable_expr>(*node.position)) {
+        print("currently cannot assign to a non-variable\n");
+        std::exit(1);
+    }
+    const auto& name = std::get<node_variable_expr>(*node.position).name;
+    save_variable(ctx, name);
 }
 
 void compile_node(const node_field_assignment_stmt& node, compiler_context& ctx)

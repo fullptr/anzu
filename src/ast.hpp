@@ -148,7 +148,7 @@ struct node_declaration_stmt
 
 struct node_assignment_stmt
 {
-    std::string   name;
+    node_expr_ptr position;
     node_expr_ptr expr;
 
     anzu::token token;

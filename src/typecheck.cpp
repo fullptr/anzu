@@ -430,24 +430,30 @@ auto typecheck_node(typecheck_context& ctx, const node_declaration_stmt& node) -
 
 auto typecheck_node(typecheck_context& ctx, const node_assignment_stmt& node) -> void
 {
+    if (!std::holds_alternative<node_variable_expr>(*node.position)) {
+        print("currently cannot assign to a non-variable\n");
+        std::exit(1);
+    }
+    const auto& name = std::get<node_variable_expr>(*node.position).name;
+
     const auto expr_type = typecheck_expr(ctx, *node.expr);
     if (ctx.locals) {
-        if (auto it = ctx.locals->find(node.name); it != ctx.locals->end()) {
+        if (auto it = ctx.locals->find(name); it != ctx.locals->end()) {
             if (expr_type != it->second) {
-                type_error(node.token, "cannot assign to '{}', incorrect type", node.name);
+                type_error(node.token, "cannot assign to '{}', incorrect type", name);
             }
             return;
         }
     }
 
-    if (auto it = ctx.globals.find(node.name); it != ctx.globals.end()) {
+    if (auto it = ctx.globals.find(name); it != ctx.globals.end()) {
         if (expr_type != it->second) {
-            type_error(node.token, "cannot assign to '{}', incorrect type", node.name);
+            type_error(node.token, "cannot assign to '{}', incorrect type", name);
         }
         return;
     }
 
-    type_error(node.token, "cannot assign to '{}', name not declared", node.name);
+    type_error(node.token, "cannot assign to '{}', name not declared", name);
 }
 
 auto typecheck_node(typecheck_context& ctx, const node_field_assignment_stmt& node) -> void
