@@ -1,4 +1,8 @@
-x := 5
-x = 6
+struct vec2
+{
+    x: int
+    y: int
+}
 
-println(x)
+v := vec2(1, 2)
+v.y = 6

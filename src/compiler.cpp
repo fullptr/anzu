@@ -512,11 +512,8 @@ void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
-    const auto address = address_of_expr(ctx, *node.position);
-    const auto& name = std::get<node_variable_expr>(*node.position).name;
-
     compile_node(*node.expr, ctx);
-    const auto addr = address_of(ctx, name, {});
+    const auto addr = address_of_expr(ctx, *node.position);
     if (addr.is_local) {
         ctx.program.emplace_back(op_save_local{
             .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)

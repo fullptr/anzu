@@ -371,9 +371,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek_next(tk_declare)) { // <name> ':=' <expr>
         return parse_declaration_stmt(tokens);
     }
-    if (tokens.peek_next(tk_fullstop)) {
-        return parse_field_assignment_stmt(tokens);
-    }
+    //if (tokens.peek_next(tk_fullstop)) {
+    //    return parse_field_assignment_stmt(tokens);
+    //}
     if (tokens.peek_next(tk_lparen)) { // <name> '('
         return parse_function_call_stmt(tokens);
     }
