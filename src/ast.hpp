@@ -163,10 +163,9 @@ struct node_function_def_stmt
     anzu::token token;
 };
 
-struct node_function_call_stmt
+struct node_expression_stmt
 {
-    std::string                function_name;
-    std::vector<node_expr_ptr> args;
+    node_expr_ptr expr;
 
     anzu::token token;
 };
@@ -189,7 +188,7 @@ struct node_stmt : std::variant<
     node_declaration_stmt,
     node_assignment_stmt,
     node_function_def_stmt,
-    node_function_call_stmt,
+    node_expression_stmt,
     node_return_stmt>
 {
 };

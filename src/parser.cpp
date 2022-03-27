@@ -54,21 +54,6 @@ auto parse_literal(tokenstream& tokens) -> object
     parser_error(tokens.curr(), "failed to parse literal");
 };
 
-template <typename NodeVariant, typename NodeType>
-auto parse_function_call(tokenstream& tokens) -> std::unique_ptr<NodeVariant>
-{
-    auto node = std::make_unique<NodeVariant>();
-    auto& out = node->emplace<NodeType>();
-    out.token = tokens.consume();
-
-    out.function_name = out.token.text;
-    tokens.consume_only(tk_lparen);
-    tokens.consume_comma_separated_list(tk_rparen, [&] {
-        out.args.push_back(parse_expression(tokens));
-    });
-    return node;
-}
-
 auto precedence_table()
 {
     auto table = std::array<std::unordered_set<std::string_view>, 6>{};
@@ -82,9 +67,18 @@ auto precedence_table()
 }
 static const auto bin_ops_table = precedence_table();
 
-auto parse_function_call_expr(tokenstream& tokens) -> node_expr_ptr
+auto parse_function_call(tokenstream& tokens) -> node_expr_ptr
 {
-    return parse_function_call<anzu::node_expr, anzu::node_function_call_expr>(tokens);
+    auto node = std::make_unique<anzu::node_expr>();
+    auto& out = node->emplace<anzu::node_function_call_expr>();
+    out.token = tokens.consume();
+
+    out.function_name = out.token.text;
+    tokens.consume_only(tk_lparen);
+    tokens.consume_comma_separated_list(tk_rparen, [&] {
+        out.args.push_back(parse_expression(tokens));
+    });
+    return node;
 }
 
 auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
@@ -113,7 +107,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.expr = parse_expression(tokens);
     }
     else if (tokens.peek_next(tk_lparen)) {
-        node = parse_function_call_expr(tokens);
+        node = parse_function_call(tokens);
     }
     else if (tokens.curr().type == token_type::name) {
         auto& expr = node->emplace<anzu::node_variable_expr>();
@@ -309,11 +303,6 @@ auto parse_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
-auto parse_function_call_stmt(tokenstream& tokens) -> node_stmt_ptr
-{
-    return parse_function_call<anzu::node_stmt, anzu::node_function_call_stmt>(tokens);
-}
-
 auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_unique<anzu::node_stmt>();
@@ -357,13 +346,25 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek_next(tk_declare)) { // <name> ':=' <expr>
         return parse_declaration_stmt(tokens);
     }
-    if (tokens.peek_next(tk_lparen)) { // <name> '('
-        return parse_function_call_stmt(tokens);
-    }
     if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(tokens);
     }
-    return parse_assignment_stmt(tokens);
+
+    auto expr = parse_expression(tokens);
+    if (tokens.peek(tk_assign)) {
+        auto node = std::make_unique<anzu::node_stmt>();
+        auto& stmt = node->emplace<anzu::node_assignment_stmt>();
+        stmt.token = tokens.consume();
+        stmt.position = std::move(expr);
+        stmt.expr = parse_expression(tokens);
+        return node;
+    } else {
+        auto node = std::make_unique<anzu::node_stmt>();
+        auto& stmt = node->emplace<anzu::node_expression_stmt>();
+        stmt.token = std::visit([](auto&& n) { return n.token; }, *expr);
+        stmt.expr = std::move(expr);
+        return node;
+    }
 }
 
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr

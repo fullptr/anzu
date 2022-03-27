@@ -563,16 +563,17 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
     std::get<anzu::op_function>(ctx.program[begin_pos]).jump = end_pos + 1;
 }
 
-void compile_node(const node_function_call_stmt& node, compiler_context& ctx)
-{
-    const auto return_size = compile_function_call(node.function_name, node.args, ctx);
-    ctx.program.emplace_back(anzu::op_pop{ .size=return_size });
-}
-
 void compile_node(const node_return_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.return_value, ctx);
     ctx.program.emplace_back(anzu::op_return{});
+}
+
+void compile_node(const node_expression_stmt& node, compiler_context& ctx)
+{
+    compile_node(*node.expr, ctx);
+    const auto type = ctx.type_info.expr_types[node.expr.get()];
+    ctx.program.emplace_back(anzu::op_pop{ .size=ctx.type_info.types.block_size(type) });
 }
 
 auto compile_node(const node_expr& expr, compiler_context& ctx) -> void
