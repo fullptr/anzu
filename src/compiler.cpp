@@ -73,7 +73,7 @@ template <typename T>
 auto append_op(compiler_context& ctx, T&& op) -> std::size_t
 {
     ctx.program.emplace_back(std::forward<T>(op));
-    return std::size(ctx.program) - 1;
+    return ctx.program.size() - 1;
 }
 
 // Registers the given name in the current scope
@@ -410,10 +410,10 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
         compile_node(*node.else_body, ctx);
         ctx.program.emplace_back(anzu::op_if_end{});
         std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
-        std::get<op_else>(ctx.program[else_pos]).jump = std::size(ctx.program); // Jump past the end if false
+        std::get<op_else>(ctx.program[else_pos]).jump = ctx.program.size(); // Jump past the end if false
     } else {
         ctx.program.emplace_back(anzu::op_if_end{});
-        std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = std::size(ctx.program); // Jump past the end if false
+        std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = ctx.program.size(); // Jump past the end if false
     }
 }
 

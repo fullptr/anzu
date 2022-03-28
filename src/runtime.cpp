@@ -68,7 +68,7 @@ auto pop_frame(runtime_context& ctx) -> void
     for (std::size_t i = 0; i != return_size; ++i) {
         ctx.memory[base_ptr(ctx) + i] = ctx.memory[ctx.memory.size() - return_size + i];
     }
-    while (std::size(ctx.memory) > base_ptr(ctx) + return_size) {
+    while (ctx.memory.size() > base_ptr(ctx) + return_size) {
         ctx.memory.pop_back();
     }
     ctx.frames.pop_back();
@@ -217,7 +217,7 @@ auto run_program(const anzu::program& program) -> void
 
     runtime_context ctx;
     ctx.frames.emplace_back();
-    while (program_ptr(ctx) < std::size(program)) {
+    while (program_ptr(ctx) < program.size()) {
         apply_op(ctx, program[program_ptr(ctx)]);
     }
 }
@@ -228,7 +228,7 @@ auto run_program_debug(const anzu::program& program) -> void
 
     runtime_context ctx;
     ctx.frames.emplace_back();
-    while (program_ptr(ctx) < std::size(program)) {
+    while (program_ptr(ctx) < program.size()) {
         const auto& op = program[program_ptr(ctx)];
         anzu::print("{:>4} - {}\n", program_ptr(ctx), op);
         apply_op(ctx, program[program_ptr(ctx)]);
