@@ -18,14 +18,12 @@ struct op_load_literal
 
 struct op_load_global
 {
-    std::string name;
     std::size_t position;
     std::size_t size;
 };
 
 struct op_load_local
 {
-    std::string name;
     std::size_t offset;
     std::size_t size;
 };
@@ -128,7 +126,6 @@ struct op_builtin_mem_op
 struct op_function
 {
     std::string name;
-    signature   sig;
     std::size_t jump;
 };
 
