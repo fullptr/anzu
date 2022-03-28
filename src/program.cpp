@@ -16,13 +16,13 @@ auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
         [&](const op_load_literal& op) {
-            return std::format("OP_LOAD_LITERAL({})", op.value);
+            return std::format("OP_LOAD_LITERAL({})", format_comma_separated(op.value));
         },
         [&](const op_load_global& op) {
-            return std::format("OP_LOAD_GLOBAL({}: {})", op.name, op.position);
+            return std::format("OP_LOAD_GLOBAL({}: {})", op.position, op.size);
         },
         [&](const op_load_local& op) {
-            return std::format("OP_LOAD_LOCAL({}: +{})", op.name, op.offset);
+            return std::format("OP_LOAD_LOCAL({}: +{})", op.offset, op.size);
         },
         [&](const op_load_addr_of_global& op) {
             return std::format("OP_LOAD_ADDR_OF_GLOBAL({}, {})", op.position, op.size);

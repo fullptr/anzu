@@ -43,8 +43,8 @@ struct compiler_context
 
     struct function_def
     {
-        signature     sig;
-        std::intptr_t ptr;
+        signature   sig;
+        std::size_t ptr;
     };
 
     std::unordered_map<std::string, function_def> functions;
@@ -70,10 +70,10 @@ auto penult(std::vector<T>& elements) -> T&
 }
 
 template <typename T>
-auto append_op(compiler_context& ctx, T&& op) -> std::intptr_t
+auto append_op(compiler_context& ctx, T&& op) -> std::size_t
 {
     ctx.program.emplace_back(std::forward<T>(op));
-    return std::ssize(ctx.program) - 1;
+    return ctx.program.size() - 1;
 }
 
 // Registers the given name in the current scope
@@ -113,7 +113,6 @@ auto load_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.locals) {
         if (auto it = ctx.locals->info.find(name); it != ctx.locals->info.end()) {
             ctx.program.emplace_back(anzu::op_load_local{
-                .name=name,
                 .offset=it->second.location,
                 .size=ctx.type_info.types.block_size(it->second.type)
             });
@@ -122,7 +121,6 @@ auto load_variable(compiler_context& ctx, const std::string& name) -> void
     }
     if (auto it = ctx.globals.info.find(name); it != ctx.globals.info.end()) {
         ctx.program.emplace_back(anzu::op_load_global{
-            .name=name,
             .position=it->second.location,
             .size=ctx.type_info.types.block_size(it->second.type)
         });
@@ -223,24 +221,21 @@ auto address_of_expr(const compiler_context& ctx, const node_expr& node) -> addr
 // This function links the do to jump to one past the end if false, makes breaks
 // jump past the end, and makes continues jump back to the beginning.
 auto link_up_jumps(
-    compiler_context& ctx,
-    std::intptr_t loop_begin,
-    std::intptr_t loop_do,
-    std::intptr_t loop_end
+    compiler_context& ctx, std::size_t begin, std::size_t jump, std::size_t end
 )
     -> void
 {
     // Jump past the end if false
-    std::get<op_jump_if_false>(ctx.program[loop_do]).jump = loop_end + 1;
+    std::get<op_jump_if_false>(ctx.program[jump]).jump = end + 1;
         
     // Only set unset jumps, there may be other already set from nested loops
-    for (std::intptr_t idx = loop_do + 1; idx != loop_end; ++idx) {
+    for (std::size_t idx = jump + 1; idx != end; ++idx) {
         std::visit(overloaded{
             [&](op_break& op) {
-                if (op.jump == -1) { op.jump = loop_end + 1; }
+                if (op.jump == 0) { op.jump = end + 1; }
             },
             [&](op_continue& op) {
-                if (op.jump == -1) { op.jump = loop_begin; }
+                if (op.jump == 0) { op.jump = begin; }
             },
             [](auto&&) {}
         }, ctx.program[idx]);
@@ -302,11 +297,7 @@ auto compile_function_call(
 
 void compile_node(const node_expr& expr, const node_literal_expr& node, compiler_context& ctx)
 {
-    if (node.value.data.size() != 1) {
-        anzu::print("Objects with block-size != 1 not currently supported\n");
-        std::exit(1);
-    }
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value });
+    ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value.data });
 }
 
 void compile_node(const node_expr& expr, const node_variable_expr& node, compiler_context& ctx)
@@ -323,15 +314,11 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
     const auto type_size = ctx.type_info.types.block_size(addr_of.type);
     if (addr_of.is_local) {
         ctx.program.emplace_back(op_load_local{
-            .name = std::format("{}.{}", var_name, node.field_name),
-            .offset = addr_of.position,
-            .size = type_size
+            .offset = addr_of.position, .size = type_size
         });
     } else {
         ctx.program.emplace_back(op_load_global{
-            .name = std::format("{}.{}", var_name, node.field_name),
-            .position = addr_of.position,
-            .size = type_size
+            .position = addr_of.position, .size = type_size
         });
     }
 }
@@ -423,10 +410,10 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
         compile_node(*node.else_body, ctx);
         ctx.program.emplace_back(anzu::op_if_end{});
         std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
-        std::get<op_else>(ctx.program[else_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
+        std::get<op_else>(ctx.program[else_pos]).jump = ctx.program.size(); // Jump past the end if false
     } else {
         ctx.program.emplace_back(anzu::op_if_end{});
-        std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
+        std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = ctx.program.size(); // Jump past the end if false
     }
 }
 
@@ -450,7 +437,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_load_literal{
-        .value=make_int(0)
+        .value=make_int(0).data
     });
     declare_variable_name(ctx, index_name, int_type());
     save_variable(ctx, index_name);
@@ -548,7 +535,7 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
-    const auto begin_pos = append_op(ctx, op_function{ .name=node.name, .sig=node.sig });
+    const auto begin_pos = append_op(ctx, op_function{ .name=node.name });
     ctx.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     ctx.locals.emplace();

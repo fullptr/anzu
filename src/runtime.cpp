@@ -30,17 +30,17 @@ auto program_advance(runtime_context& ctx) -> void
     ctx.frames.back().program_ptr += 1;
 }
 
-auto program_jump_to(runtime_context& ctx, std::intptr_t idx) -> void
+auto program_jump_to(runtime_context& ctx, std::size_t idx) -> void
 {
     ctx.frames.back().program_ptr = idx;
 }
 
-auto program_ptr(const runtime_context& ctx) -> std::intptr_t
+auto program_ptr(const runtime_context& ctx) -> std::size_t
 {
     return ctx.frames.back().program_ptr;
 }
 
-auto base_ptr(const runtime_context& ctx) -> std::intptr_t
+auto base_ptr(const runtime_context& ctx) -> std::size_t
 {
     return ctx.frames.back().base_ptr;
 }
@@ -68,7 +68,7 @@ auto pop_frame(runtime_context& ctx) -> void
     for (std::size_t i = 0; i != return_size; ++i) {
         ctx.memory[base_ptr(ctx) + i] = ctx.memory[ctx.memory.size() - return_size + i];
     }
-    while (std::ssize(ctx.memory) > base_ptr(ctx) + (intptr_t)return_size) {
+    while (ctx.memory.size() > base_ptr(ctx) + return_size) {
         ctx.memory.pop_back();
     }
     ctx.frames.pop_back();
@@ -78,7 +78,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
         [&](const op_load_literal& op) {
-            for (const auto& block : op.value.data) {
+            for (const auto& block : op.value) {
                 ctx.memory.push_back(block);
             }
             program_advance(ctx);
@@ -217,7 +217,7 @@ auto run_program(const anzu::program& program) -> void
 
     runtime_context ctx;
     ctx.frames.emplace_back();
-    while (program_ptr(ctx) < std::ssize(program)) {
+    while (program_ptr(ctx) < program.size()) {
         apply_op(ctx, program[program_ptr(ctx)]);
     }
 }
@@ -228,7 +228,7 @@ auto run_program_debug(const anzu::program& program) -> void
 
     runtime_context ctx;
     ctx.frames.emplace_back();
-    while (program_ptr(ctx) < std::ssize(program)) {
+    while (program_ptr(ctx) < program.size()) {
         const auto& op = program[program_ptr(ctx)];
         anzu::print("{:>4} - {}\n", program_ptr(ctx), op);
         apply_op(ctx, program[program_ptr(ctx)]);
