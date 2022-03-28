@@ -77,7 +77,7 @@ struct op_if_end
 
 struct op_else
 {
-    std::intptr_t jump = -1;
+    std::size_t jump;
 };
 
 struct op_loop_begin
@@ -86,30 +86,30 @@ struct op_loop_begin
 
 struct op_loop_end
 {
-    std::intptr_t jump = -1;
+    std::size_t jump;
 };
 
 struct op_break
 {
-    std::intptr_t jump = -1;
+    std::size_t jump;
 };
 
 struct op_continue
 {
-    std::intptr_t jump = -1;
+    std::size_t jump;
 };
 
 struct op_jump_if_false
 {
-    std::intptr_t jump = -1;
+    std::size_t jump;
 };
 
 struct op_function_call
 {
-    std::string   name;
-    std::intptr_t ptr;
-    std::size_t   args_size;
-    std::size_t   return_size;
+    std::string name;
+    std::size_t ptr;
+    std::size_t args_size;
+    std::size_t return_size;
 };
 
 struct op_builtin_call
@@ -127,9 +127,9 @@ struct op_builtin_mem_op
 
 struct op_function
 {
-    std::string   name;
-    signature     sig;
-    std::intptr_t jump;
+    std::string name;
+    signature   sig;
+    std::size_t jump;
 };
 
 struct op_function_end

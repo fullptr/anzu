@@ -43,8 +43,8 @@ struct compiler_context
 
     struct function_def
     {
-        signature     sig;
-        std::intptr_t ptr;
+        signature   sig;
+        std::size_t ptr;
     };
 
     std::unordered_map<std::string, function_def> functions;
@@ -70,10 +70,10 @@ auto penult(std::vector<T>& elements) -> T&
 }
 
 template <typename T>
-auto append_op(compiler_context& ctx, T&& op) -> std::intptr_t
+auto append_op(compiler_context& ctx, T&& op) -> std::size_t
 {
     ctx.program.emplace_back(std::forward<T>(op));
-    return std::ssize(ctx.program) - 1;
+    return std::size(ctx.program) - 1;
 }
 
 // Registers the given name in the current scope
@@ -224,9 +224,9 @@ auto address_of_expr(const compiler_context& ctx, const node_expr& node) -> addr
 // jump past the end, and makes continues jump back to the beginning.
 auto link_up_jumps(
     compiler_context& ctx,
-    std::intptr_t loop_begin,
-    std::intptr_t loop_do,
-    std::intptr_t loop_end
+    std::size_t loop_begin,
+    std::size_t loop_do,
+    std::size_t loop_end
 )
     -> void
 {
@@ -234,13 +234,13 @@ auto link_up_jumps(
     std::get<op_jump_if_false>(ctx.program[loop_do]).jump = loop_end + 1;
         
     // Only set unset jumps, there may be other already set from nested loops
-    for (std::intptr_t idx = loop_do + 1; idx != loop_end; ++idx) {
+    for (std::size_t idx = loop_do + 1; idx != loop_end; ++idx) {
         std::visit(overloaded{
             [&](op_break& op) {
-                if (op.jump == -1) { op.jump = loop_end + 1; }
+                if (op.jump == 0) { op.jump = loop_end + 1; }
             },
             [&](op_continue& op) {
-                if (op.jump == -1) { op.jump = loop_begin; }
+                if (op.jump == 0) { op.jump = loop_begin; }
             },
             [](auto&&) {}
         }, ctx.program[idx]);
@@ -423,10 +423,10 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
         compile_node(*node.else_body, ctx);
         ctx.program.emplace_back(anzu::op_if_end{});
         std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
-        std::get<op_else>(ctx.program[else_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
+        std::get<op_else>(ctx.program[else_pos]).jump = std::size(ctx.program); // Jump past the end if false
     } else {
         ctx.program.emplace_back(anzu::op_if_end{});
-        std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = std::ssize(ctx.program); // Jump past the end if false
+        std::get<op_jump_if_false>(ctx.program[jump_pos]).jump = std::size(ctx.program); // Jump past the end if false
     }
 }
 
