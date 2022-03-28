@@ -297,11 +297,7 @@ auto compile_function_call(
 
 void compile_node(const node_expr& expr, const node_literal_expr& node, compiler_context& ctx)
 {
-    if (node.value.data.size() != 1) {
-        anzu::print("Objects with block-size != 1 not currently supported\n");
-        std::exit(1);
-    }
-    ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value });
+    ctx.program.emplace_back(anzu::op_load_literal{ .value=node.value.data });
 }
 
 void compile_node(const node_expr& expr, const node_variable_expr& node, compiler_context& ctx)
@@ -441,7 +437,7 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
 
     // Push the counter to the stack
     ctx.program.emplace_back(anzu::op_load_literal{
-        .value=make_int(0)
+        .value=make_int(0).data
     });
     declare_variable_name(ctx, index_name, int_type());
     save_variable(ctx, index_name);

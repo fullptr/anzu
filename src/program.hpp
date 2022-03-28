@@ -13,7 +13,7 @@ namespace anzu {
 
 struct op_load_literal
 {
-    object value;
+    std::vector<block> value;
 };
 
 struct op_load_global
