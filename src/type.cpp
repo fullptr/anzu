@@ -99,14 +99,14 @@ auto generic_list_type() -> type_name
 auto concrete_ptr_type(const type_name& t) -> type_name
 {
     return {type_compound{
-        .name = "ptr", .subtypes = { t }
+        .name = std::string{tk_ptr}, .subtypes = { t }
     }};
 }
 
 auto generic_ptr_type() -> type_name
 {
     return {type_compound{
-        .name = "ptr", .subtypes = { generic_type(0) }
+        .name = std::string{tk_ptr}, .subtypes = { generic_type(0) }
     }};
 }
 

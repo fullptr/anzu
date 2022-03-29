@@ -19,7 +19,6 @@ constexpr auto tk_while     = sv{"while"};
 constexpr auto tk_function  = sv{"fn"};
 constexpr auto tk_return    = sv{"return"};
 constexpr auto tk_struct    = sv{"struct"};
-constexpr auto tk_deref     = sv{"deref"};
 
 // Builtin Types
 constexpr auto tk_int       = sv{"int"};
@@ -27,6 +26,7 @@ constexpr auto tk_float     = sv{"float"};
 constexpr auto tk_bool      = sv{"bool"};
 constexpr auto tk_str       = sv{"str"};
 constexpr auto tk_list      = sv{"list"};
+constexpr auto tk_ptr       = sv{"ptr"};
 
 // Symbols
 constexpr auto tk_add       = sv{"+"};
