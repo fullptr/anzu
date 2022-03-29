@@ -113,7 +113,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     else if (tokens.peek(tk_sub)) {
         auto& expr = node->emplace<node_unary_op_expr>();
         expr.token = tokens.consume();
-        expr.expr = parse_expression(tokens);
+        expr.expr = parse_single_factor(tokens);
     }
     else if (tokens.peek(tk_addrof)) {
         auto& expr = node->emplace<anzu::node_addrof_expr>();
