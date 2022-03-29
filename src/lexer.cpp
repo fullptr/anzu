@@ -17,30 +17,13 @@ using line_iterator = peekstream<std::string>;
 
 auto is_int(std::string_view token) -> bool
 {
-    auto it = token.begin();
-    if (token.starts_with("-")) {
-        std::advance(it, 1);
-    }
-    return std::all_of(it, token.end(), [](char c) { return std::isdigit(c); });
+    return std::ranges::all_of(token, [](char c) { return std::isdigit(c); });
 }
 
 auto is_float(std::string_view token) -> bool
 {
-    auto it = token.begin();
-    if (token.starts_with("-")) {
-        std::advance(it, 1);
-    }
-    auto dot_count = std::size_t{0};
-    while (it != token.end()) {
-        if (!std::isdigit(*it) && *it != '.') {
-            return false;
-        }
-        if (*it == '.') {
-            ++dot_count;
-        }
-        ++it;
-    }
-    return dot_count <= 1;
+    return std::ranges::all_of(token, [](char c) { return std::isdigit(c) || c == '.'; })
+        && (std::ranges::count(token, '.') <= 1);
 }
 
 auto is_alphanumeric(const line_iterator& iter) -> bool
