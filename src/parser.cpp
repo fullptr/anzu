@@ -115,15 +115,15 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
-    else if (tokens.peek(tk_addrof)) {
+    else if (tokens.peek(tk_ampersand)) {
         auto& expr = node->emplace<anzu::node_addrof_expr>();
         expr.token = tokens.consume();
-        expr.expr = parse_expression(tokens);
+        expr.expr = parse_single_factor(tokens);
     }
     else if (tokens.peek(tk_deref)) {
         auto& expr = node->emplace<anzu::node_deref_expr>();
         expr.token = tokens.consume();
-        expr.expr = parse_expression(tokens);
+        expr.expr = parse_single_factor(tokens);
     }
     else if (tokens.peek_next(tk_lparen)) {
         node = parse_function_call(tokens);
