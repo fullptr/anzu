@@ -14,12 +14,13 @@ auto is_consumable_type(token_type type) -> bool
 auto to_string(token_type type) -> std::string
 {
     switch (type) {
-        break; case token_type::keyword:  { return "keyword"; };
-        break; case token_type::symbol:   { return "symbol"; };
-        break; case token_type::name:     { return "name"; };
-        break; case token_type::integer:  { return "integer"; };
-        break; case token_type::string:   { return "string"; };
-        break; default:                   { return "UNKNOWN"; };
+        break; case token_type::keyword:   { return "keyword"; };
+        break; case token_type::symbol:    { return "symbol"; };
+        break; case token_type::name:      { return "name"; };
+        break; case token_type::int_num:   { return "integer"; };
+        break; case token_type::float_num: { return "float"; };
+        break; case token_type::string:    { return "string"; };
+        break; default:                    { return "UNKNOWN"; };
     }
 }
 
@@ -64,7 +65,7 @@ auto tokenstream::consume_int() -> int
         anzu::print("[ERROR] (EOF) expected a number\n");
         std::exit(1);
     }
-    if (curr().type != token_type::integer) {
+    if (curr().type != token_type::int_num) {
         const auto [tok_text, line, col, type] = curr();
         anzu::print("[ERROR] ({}:{}) expected a number, got '{}\n", line, col, tok_text);
         std::exit(1);
