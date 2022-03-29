@@ -67,6 +67,29 @@ auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info
             return bin_op_info{ bin_op<block_int, std::not_equal_to>, bool_type() };
         }
     }
+    else if (type == float_type()) {
+        if (desc.op == tk_add) {
+            return bin_op_info{ bin_op<block_float, std::plus>, type };
+        } else if (desc.op == tk_sub) {
+            return bin_op_info{ bin_op<block_float, std::minus>, type };
+        } else if (desc.op == tk_mul) {
+            return bin_op_info{ bin_op<block_float, std::multiplies>, type };
+        } else if (desc.op == tk_div) {
+            return bin_op_info{ bin_op<block_float, std::divides>, type };
+        } else if (desc.op == tk_lt) {
+            return bin_op_info{ bin_op<block_float, std::less>, bool_type() };
+        } else if (desc.op == tk_le) {
+            return bin_op_info{ bin_op<block_float, std::less_equal>, bool_type() };
+        } else if (desc.op == tk_gt) {
+            return bin_op_info{ bin_op<block_float, std::greater>, bool_type() };
+        } else if (desc.op == tk_ge) {
+            return bin_op_info{ bin_op<block_float, std::greater_equal>, bool_type() };
+        } else if (desc.op == tk_eq) {
+            return bin_op_info{ bin_op<block_float, std::equal_to>, bool_type() };
+        } else if (desc.op == tk_ne) {
+            return bin_op_info{ bin_op<block_float, std::not_equal_to>, bool_type() };
+        }
+    }
     else if (type == bool_type()) {
         if (desc.op == tk_eq) {
             return bin_op_info{ bin_op<block_bool, std::equal_to>, type };
@@ -97,6 +120,11 @@ auto resolve_unary_op(const unary_op_description& desc) -> std::optional<unary_o
     if (type == int_type()) {
         if (desc.op == tk_sub) {
             return unary_op_info{ unary_op<block_int, std::negate>, type };
+        }
+    }
+    if (type == float_type()) {
+        if (desc.op == tk_sub) {
+            return unary_op_info{ unary_op<block_float, std::negate>, type };
         }
     }
     return std::nullopt;

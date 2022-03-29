@@ -49,6 +49,7 @@ struct block : std::variant<
 };
 
 auto make_int(block_int val) -> object;
+auto make_float(block_float val) -> object;
 auto make_bool(block_bool val) -> object;
 auto make_str(const block_str& val) -> object;
 auto make_null() -> object;

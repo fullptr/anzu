@@ -25,13 +25,11 @@ auto list_repr(const block_list& list) -> std::string
 auto to_string(const block& blk) -> std::string
 {
     return std::visit(overloaded {
-        [](block_int val) { return std::to_string(val); },
-        [](block_float val) { return std::to_string(val); },
-        [](block_bool val) { return std::string{val ? "true" : "false"}; },
         [](const block_str& v) { return std::format("'{}'", v); },
         [](const block_list& v) { return list_repr(v); },
         [](block_ptr ptr) { return std::format("{:x}", ptr.ptr); },
-        [](block_null) { return std::string{"null"}; }
+        [](block_null) { return std::string{"null"}; },
+        [](auto&& val) { return std::format("{}", val); }
     }, blk);
 }
 
@@ -43,6 +41,11 @@ auto to_string(const object& object) -> std::string
 auto make_int(block_int val) -> object
 {
     return { .data = { block_int{val} }, .type = int_type() };
+}
+
+auto make_float(block_float val) -> object
+{
+    return { .data = { block_float{val} }, .type = float_type() };
 }
 
 auto make_bool(block_bool val) -> object

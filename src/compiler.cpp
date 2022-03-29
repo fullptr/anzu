@@ -352,7 +352,7 @@ void compile_node(const node_expr& expr, const node_unary_op_expr& node, compile
     const auto type = ctx.type_info.expr_types[node.expr.get()];
     const auto info = resolve_unary_op({.op = op, .type = type});
     if (!info) {
-        anzu::print("[{}:{}] could not evaluate '{}{}'", node.token.line, op, type);
+        anzu::print("[{}:{}] could not evaluate '{}{}'", node.token.line, node.token.col, op, type);
         std::exit(1);
     }
 

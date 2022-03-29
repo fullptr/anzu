@@ -20,9 +20,20 @@ template <typename... Args>
     std::exit(1);
 }
 
-auto to_int(std::string_view token) -> int
+auto to_int(std::string_view token) -> block_int
 {
-    auto result = int{};
+    auto result = block_int{};
+    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
+    if (ec != std::errc{}) {
+        anzu::print("type error: cannot convert '{}' to int\n", token);
+        std::exit(1);
+    }
+    return result;
+}
+   
+auto to_float(std::string_view token) -> block_float
+{
+    auto result = block_float{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
         anzu::print("type error: cannot convert '{}' to int\n", token);
@@ -38,6 +49,9 @@ auto parse_literal(tokenstream& tokens) -> object
 {
     if (tokens.curr().type == token_type::integer) {
         return make_int(to_int(tokens.consume().text));
+    }
+    if (tokens.curr().type == token_type::floating) {
+        return make_float(to_float(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::string) {
         return make_str(tokens.consume().text);
