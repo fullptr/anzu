@@ -36,7 +36,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
-    if (tokens.curr().type == token_type::number) {
+    if (tokens.curr().type == token_type::integer) {
         return make_int(to_int(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::string) {

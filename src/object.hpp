@@ -24,18 +24,20 @@ struct pointer
     std::size_t size;
 };
 
-using block_int  = int;
-using block_bool = bool;
-using block_str  = std::string;
-using block_list = std::shared_ptr<std::vector<block>>;
-using block_ptr  = pointer;
-using block_null = std::monostate;
+using block_int   = int;
+using block_float = double;
+using block_bool  = bool;
+using block_str   = std::string;
+using block_list  = std::shared_ptr<std::vector<block>>;
+using block_ptr   = pointer;
+using block_null  = std::monostate;
 
 auto to_string(const block& blk) -> std::string;
 auto to_string(const object& object) -> std::string;
 
 struct block : std::variant<
     block_int,
+    block_float,
     block_bool,
     block_str,
     block_list,

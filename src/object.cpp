@@ -26,6 +26,7 @@ auto to_string(const block& blk) -> std::string
 {
     return std::visit(overloaded {
         [](block_int val) { return std::to_string(val); },
+        [](block_float val) { return std::to_string(val); },
         [](block_bool val) { return std::string{val ? "true" : "false"}; },
         [](const block_str& v) { return std::format("'{}'", v); },
         [](const block_list& v) { return list_repr(v); },

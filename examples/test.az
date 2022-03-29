@@ -1,4 +1,13 @@
-fn noisy() -> null
+
+
+fn foo(l: list<[0]>) -> null
 {
-    
+    println(list_size(l))
 }
+
+
+x := [1, 2, 3]
+y := ["hello", "world"]
+
+foo(x)
+foo(y)
