@@ -56,6 +56,7 @@ auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
 
 auto int_type() -> type_name;
+auto float_type() -> type_name;
 auto bool_type() -> type_name;
 auto str_type() -> type_name;
 auto null_type() -> type_name;

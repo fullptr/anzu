@@ -20,9 +20,20 @@ template <typename... Args>
     std::exit(1);
 }
 
-auto to_int(std::string_view token) -> int
+auto to_int(std::string_view token) -> block_int
 {
-    auto result = int{};
+    auto result = block_int{};
+    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
+    if (ec != std::errc{}) {
+        anzu::print("type error: cannot convert '{}' to int\n", token);
+        std::exit(1);
+    }
+    return result;
+}
+   
+auto to_float(std::string_view token) -> block_float
+{
+    auto result = block_float{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
         anzu::print("type error: cannot convert '{}' to int\n", token);
@@ -36,8 +47,11 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
-    if (tokens.curr().type == token_type::number) {
+    if (tokens.curr().type == token_type::integer) {
         return make_int(to_int(tokens.consume().text));
+    }
+    if (tokens.curr().type == token_type::floating) {
+        return make_float(to_float(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::string) {
         return make_str(tokens.consume().text);
@@ -96,6 +110,11 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             expr.elements.push_back(parse_expression(tokens));
         });
     }
+    else if (tokens.peek(tk_sub)) {
+        auto& expr = node->emplace<node_unary_op_expr>();
+        expr.token = tokens.consume();
+        expr.expr = parse_single_factor(tokens);
+    }
     else if (tokens.peek(tk_addrof)) {
         auto& expr = node->emplace<anzu::node_addrof_expr>();
         expr.token = tokens.consume();
@@ -142,7 +161,7 @@ auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr
     auto factor = parse_compound_factor(tokens, level - 1);
     while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().text)) {
         auto node = std::make_unique<anzu::node_expr>();
-        auto& expr = node->emplace<anzu::node_bin_op_expr>();
+        auto& expr = node->emplace<anzu::node_binary_op_expr>();
         expr.lhs = std::move(factor);
         expr.token = tokens.consume();
         expr.rhs = parse_compound_factor(tokens, level - 1);

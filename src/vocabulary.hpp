@@ -24,6 +24,7 @@ constexpr auto tk_deref     = sv{"deref"};
 
 // Builtin Types
 constexpr auto tk_int       = sv{"int"};
+constexpr auto tk_float     = sv{"float"};
 constexpr auto tk_bool      = sv{"bool"};
 constexpr auto tk_str       = sv{"str"};
 constexpr auto tk_list      = sv{"list"};

@@ -57,6 +57,11 @@ auto int_type()  -> type_name
     return {type_simple{ .name = std::string{tk_int} }};
 }
 
+auto float_type() -> type_name
+{
+    return {type_simple{ .name = std::string{tk_float} }};
+}
+
 auto bool_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_bool} }};

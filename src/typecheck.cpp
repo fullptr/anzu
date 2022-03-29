@@ -316,10 +316,13 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
         [&](const node_function_call_expr& node) {
             return typecheck_function_call(ctx, node.token, node.function_name, node.args);
         },
-        [&](const node_bin_op_expr& node) {
+        [&](const node_binary_op_expr& node) {
             return type_of_bin_op(
                 typecheck_expr(ctx, *node.lhs), typecheck_expr(ctx, *node.rhs), node.token
             );
+        },
+        [&](const node_unary_op_expr& node) {
+            return typecheck_expr(ctx, *node.expr); // Assume negating doesn't change type
         },
         [&](const node_list_expr& node) {
             // For now, empty lists are lists of ints. When we can explicitly state the type when

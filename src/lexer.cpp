@@ -17,11 +17,13 @@ using line_iterator = peekstream<std::string>;
 
 auto is_int(std::string_view token) -> bool
 {
-    auto it = token.begin();
-    if (token.starts_with("-")) {
-        std::advance(it, 1);
-    }
-    return std::all_of(it, token.end(), [](char c) { return std::isdigit(c); });
+    return std::ranges::all_of(token, [](char c) { return std::isdigit(c); });
+}
+
+auto is_float(std::string_view token) -> bool
+{
+    return std::ranges::all_of(token, [](char c) { return std::isdigit(c) || c == '.'; })
+        && (std::ranges::count(token, '.') <= 1);
 }
 
 auto is_alphanumeric(const line_iterator& iter) -> bool
@@ -80,8 +82,9 @@ auto try_parse_symbol(line_iterator& iter) -> std::optional<std::string>
 
 auto parse_token(line_iterator& iter) -> std::string
 {
+    const auto is_digit = std::isdigit(iter.curr());
     std::string return_value;
-    while (is_alphanumeric(iter)) {
+    while (iter.valid() && (is_alphanumeric(iter) || (is_digit && iter.curr() == '.'))) {
         return_value += iter.consume();
     }
     return return_value;
@@ -113,11 +116,14 @@ auto lex_line(
         else {
             const auto token = parse_token(iter);
             if (!token.empty()) {
-                if (anzu::is_keyword(token)) {
+                if (is_keyword(token)) {
                     push_token(token, col, token_type::keyword);
                 }
-                else if (anzu::is_int(token)) {
-                    push_token(token, col, token_type::number);
+                else if (is_int(token)) {
+                    push_token(token, col, token_type::integer);
+                }
+                else if (is_float(token)) {
+                    push_token(token, col, token_type::floating);
                 }
                 else if (!std::isdigit(token[0])) {
                     push_token(token, col, token_type::name);
