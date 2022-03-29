@@ -24,6 +24,25 @@ auto is_int(std::string_view token) -> bool
     return std::all_of(it, token.end(), [](char c) { return std::isdigit(c); });
 }
 
+auto is_float(std::string_view token) -> bool
+{
+    auto it = token.begin();
+    if (token.starts_with("-")) {
+        std::advance(it, 1);
+    }
+    auto dot_count = std::size_t{0};
+    while (it != token.end()) {
+        if (!std::isdigit(*it) && *it != '.') {
+            return false;
+        }
+        if (*it == '.') {
+            ++dot_count;
+        }
+        ++it;
+    }
+    return dot_count <= 1;
+}
+
 auto is_alphanumeric(const line_iterator& iter) -> bool
 {
     return iter.valid() && (std::isalnum(iter.curr()) || iter.curr() == '_');
@@ -80,8 +99,9 @@ auto try_parse_symbol(line_iterator& iter) -> std::optional<std::string>
 
 auto parse_token(line_iterator& iter) -> std::string
 {
+    const auto is_digit = std::isdigit(iter.curr());
     std::string return_value;
-    while (is_alphanumeric(iter)) {
+    while (iter.valid() && (is_alphanumeric(iter) || (is_digit && iter.curr() == '.'))) {
         return_value += iter.consume();
     }
     return return_value;
@@ -113,11 +133,14 @@ auto lex_line(
         else {
             const auto token = parse_token(iter);
             if (!token.empty()) {
-                if (anzu::is_keyword(token)) {
+                if (is_keyword(token)) {
                     push_token(token, col, token_type::keyword);
                 }
-                else if (anzu::is_int(token)) {
+                else if (is_int(token)) {
                     push_token(token, col, token_type::int_num);
+                }
+                else if (is_float(token)) {
+                    push_token(token, col, token_type::float_num);
                 }
                 else if (!std::isdigit(token[0])) {
                     push_token(token, col, token_type::name);
