@@ -17,8 +17,8 @@ auto to_string(token_type type) -> std::string
         break; case token_type::keyword:   { return "keyword"; };
         break; case token_type::symbol:    { return "symbol"; };
         break; case token_type::name:      { return "name"; };
-        break; case token_type::int_num:   { return "integer"; };
-        break; case token_type::float_num: { return "float"; };
+        break; case token_type::integer:   { return "integer"; };
+        break; case token_type::floating: { return "float"; };
         break; case token_type::string:    { return "string"; };
         break; default:                    { return "UNKNOWN"; };
     }
@@ -65,7 +65,7 @@ auto tokenstream::consume_int() -> int
         anzu::print("[ERROR] (EOF) expected a number\n");
         std::exit(1);
     }
-    if (curr().type != token_type::int_num) {
+    if (curr().type != token_type::integer) {
         const auto [tok_text, line, col, type] = curr();
         anzu::print("[ERROR] ({}:{}) expected a number, got '{}\n", line, col, tok_text);
         std::exit(1);

@@ -120,10 +120,10 @@ auto lex_line(
                     push_token(token, col, token_type::keyword);
                 }
                 else if (is_int(token)) {
-                    push_token(token, col, token_type::int_num);
+                    push_token(token, col, token_type::integer);
                 }
                 else if (is_float(token)) {
-                    push_token(token, col, token_type::float_num);
+                    push_token(token, col, token_type::floating);
                 }
                 else if (!std::isdigit(token[0])) {
                     push_token(token, col, token_type::name);

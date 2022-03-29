@@ -13,8 +13,8 @@ enum class token_type
     keyword,
     symbol,
     name,
-    int_num,
-    float_num,
+    integer,
+    floating,
     string
 };
 

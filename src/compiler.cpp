@@ -325,15 +325,15 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
 // generic and combine the logic.
-void compile_node(const node_expr& expr, const node_bin_op_expr& node, compiler_context& ctx)
+void compile_node(const node_expr& expr, const node_binary_op_expr& node, compiler_context& ctx)
 {
     compile_node(*node.lhs, ctx);
     compile_node(*node.rhs, ctx);
     const auto op = node.token.text;
     const auto lhs_type = ctx.type_info.expr_types[node.lhs.get()];
     const auto rhs_type = ctx.type_info.expr_types[node.rhs.get()];
-    const auto info = resolve_bin_op({.op = op, .lhs = lhs_type, .rhs = rhs_type});
 
+    const auto info = resolve_bin_op({.op = op, .lhs = lhs_type, .rhs = rhs_type});
     if (!info) {
         anzu::print("[{}:{}] could not evaluate '{} {} {}'", node.token.line, node.token.col, lhs_type, op, rhs_type);
         std::exit(1);
@@ -344,6 +344,23 @@ void compile_node(const node_expr& expr, const node_bin_op_expr& node, compiler_
         .ptr = info->operator_func
     });
 }
+
+void compile_node(const node_expr& expr, const node_unary_op_expr& node, compiler_context& ctx)
+{
+    compile_node(*node.expr, ctx);
+    const auto op = node.token.text;
+    const auto type = ctx.type_info.expr_types[node.expr.get()];
+    const auto info = resolve_unary_op({.op = op, .type = type});
+    if (!info) {
+        anzu::print("[{}:{}] could not evaluate '{}{}'", node.token.line, op, type);
+        std::exit(1);
+    }
+
+    ctx.program.emplace_back(op_builtin_mem_op{
+        .name = std::format("{}{}", op, type),
+        .ptr = info->operator_func
+    });
+} 
 
 void compile_node(const node_expr& expr, const node_function_call_expr& node, compiler_context& ctx)
 {

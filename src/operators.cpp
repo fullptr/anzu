@@ -21,6 +21,14 @@ auto bin_op(std::vector<block>& mem)
     mem.back().emplace<decltype(op(lhs, rhs))>(op(lhs, rhs));
 }
 
+template <typename Type, template <typename> typename Op>
+auto unary_op(std::vector<block>& mem)
+{
+    const auto op = Op<Type>{};
+    auto& obj = get_back<Type>(mem, 0);
+    obj = op(obj);
+}
+
 }
 
 auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info>
@@ -80,6 +88,17 @@ auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info
         }
     }
 
+    return std::nullopt;
+}
+
+auto resolve_unary_op(const unary_op_description& desc) -> std::optional<unary_op_info>
+{
+    const auto& type = desc.type;
+    if (type == int_type()) {
+        if (desc.op == tk_sub) {
+            return unary_op_info{ unary_op<block_int, std::negate>, type };
+        }
+    }
     return std::nullopt;
 }
 

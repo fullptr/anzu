@@ -35,7 +35,14 @@ struct node_field_expr
     anzu::token token;
 };
 
-struct node_bin_op_expr
+struct node_unary_op_expr
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
+struct node_binary_op_expr
 {
     node_expr_ptr lhs;
     node_expr_ptr rhs;
@@ -76,7 +83,8 @@ struct node_expr : std::variant<
     node_literal_expr,
     node_variable_expr,
     node_field_expr,
-    node_bin_op_expr,
+    node_unary_op_expr,
+    node_binary_op_expr,
     node_function_call_expr,
     node_list_expr,
     node_addrof_expr,
