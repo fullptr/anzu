@@ -12,13 +12,21 @@ auto get_back(std::vector<block>& mem, std::size_t index) -> T&
 }
 
 template <typename Type, template <typename> typename Op>
-auto bin_op(std::vector<block>& mem)
+auto bin_op(std::vector<block>& mem) -> void
 {
     const auto op = Op<Type>{};
     const auto rhs = get_back<Type>(mem, 0);
     const auto lhs = get_back<Type>(mem, 1);
     mem.pop_back();
     mem.back().emplace<decltype(op(lhs, rhs))>(op(lhs, rhs));
+}
+
+auto int_division(std::vector<block>& mem) -> void
+{
+    const auto rhs = get_back<block_int>(mem, 0);
+    const auto lhs = get_back<block_int>(mem, 1);
+    mem.pop_back();
+    mem.back().emplace<block_float>(static_cast<block_float>(lhs) / rhs);
 }
 
 template <typename Type, template <typename> typename Op>
@@ -50,7 +58,7 @@ auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info
         } else if (desc.op == tk_mul) {
             return bin_op_info{ bin_op<block_int, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return bin_op_info{ bin_op<block_int, std::divides>, type };
+            return bin_op_info{ int_division, type };
         } else if (desc.op == tk_mod) {
             return bin_op_info{ bin_op<block_int, std::modulus>, type };
         } else if (desc.op == tk_lt) {
