@@ -79,14 +79,13 @@ auto declare_variable_name(compiler_context& ctx, const std::string& name, const
     }
 }
 
-auto save_variable(compiler_context& ctx, const std::string& name) -> void
+auto find_variable(compiler_context& ctx, const std::string& name) -> void
 {
     if (ctx.locals && ctx.locals->info.contains(name)) {
         const auto& info = ctx.locals->info.at(name);
         ctx.program.emplace_back(anzu::op_push_local_addr{
             .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
-        ctx.program.emplace_back(anzu::op_save{});
         return;
     }
     
@@ -95,33 +94,23 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
         ctx.program.emplace_back(anzu::op_push_global_addr{
             .position=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
-        ctx.program.emplace_back(anzu::op_save{});
         return;
     }
 
-    anzu::print("BAD! Could not assign to variable\n");
+    anzu::print("could not find variable '{}'\n", name);
     std::exit(1);
+}
+
+auto save_variable(compiler_context& ctx, const std::string& name) -> void
+{
+    find_variable(ctx, name);
+    ctx.program.emplace_back(anzu::op_save{});
 }
 
 auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
-    if (ctx.locals) {
-        if (auto it = ctx.locals->info.find(name); it != ctx.locals->info.end()) {
-            ctx.program.emplace_back(anzu::op_push_local_addr{
-                .offset=it->second.location,
-                .size=ctx.type_info.types.block_size(it->second.type)
-            });
-            ctx.program.emplace_back(op_load{});
-            return;
-        }
-    }
-    if (auto it = ctx.globals.info.find(name); it != ctx.globals.info.end()) {
-        ctx.program.emplace_back(anzu::op_push_global_addr{
-            .position=it->second.location,
-            .size=ctx.type_info.types.block_size(it->second.type)
-        });
-        ctx.program.emplace_back(op_load{});
-    }
+    find_variable(ctx, name);
+    ctx.program.emplace_back(anzu::op_load{});
 }
 
 auto signature_args_size(const compiler_context& ctx, const signature& sig) -> std::size_t
