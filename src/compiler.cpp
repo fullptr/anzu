@@ -185,7 +185,7 @@ auto offset_of_field(const compiler& com, const type_name& type, const std::stri
 }
 
 auto compile_expr(compiler& com, const node_expr& expr) -> type_name;
-auto compile_node(const node_stmt& root, compiler& com) -> void;
+auto compile_stmt(compiler& com, const node_stmt& root) -> void;
 auto push_address_of(compiler& com, const node_expr& node) -> type_name;
 
 auto push_address_of(compiler& com, const node_variable_expr& node) -> type_name
@@ -427,14 +427,14 @@ auto compile_expr(compiler& com, const node_deref_expr& node) -> type_name
     return type_match->at(0);
 }
 
-void compile_node(const node_sequence_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
     for (const auto& seq_node : node.sequence) {
-        compile_node(*seq_node, com);
+        compile_stmt(com, *seq_node);
     }
 }
 
-void compile_node(const node_while_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_while_stmt& node)
 {
     const auto begin_pos = append_op(com, op_loop_begin{});
     const auto condition_type = compile_expr(com, *node.condition);
@@ -442,12 +442,12 @@ void compile_node(const node_while_stmt& node, compiler& com)
         compiler_error(node.token, "while statement expected bool, got {}", condition_type);
     }
     const auto jump_pos = append_op(com, op_jump_if_false{});
-    compile_node(*node.body, com);
+    compile_stmt(com, *node.body);
     const auto end_pos = append_op(com, op_loop_end{ .jump=begin_pos });
     link_up_jumps(com, begin_pos, jump_pos, end_pos);
 }
 
-void compile_node(const node_if_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_if_stmt& node)
 {
     const auto if_pos = append_op(com, op_if{});
     const auto condition_type = compile_expr(com, *node.condition);
@@ -455,11 +455,11 @@ void compile_node(const node_if_stmt& node, compiler& com)
         compiler_error(node.token, "if statement expected bool, got {}", condition_type);
     }
     const auto jump_pos = append_op(com, op_jump_if_false{});
-    compile_node(*node.body, com);
+    compile_stmt(com, *node.body);
 
     if (node.else_body) {
         const auto else_pos = append_op(com, op_else{});
-        compile_node(*node.else_body, com);
+        compile_stmt(com, *node.else_body);
         com.program.emplace_back(anzu::op_if_end{});
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
         std::get<op_else>(com.program[else_pos]).jump = com.program.size(); // Jump past the end if false
@@ -469,26 +469,26 @@ void compile_node(const node_if_stmt& node, compiler& com)
     }
 }
 
-void compile_node(const node_struct_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_struct_stmt& node)
 {
     if (com.types.is_registered_type(node.name)) {
-        print("type '{}' is already defined\n", node.name);
+        compiler_error(node.token, "type '{}' is already defined", node.name);
         std::exit(1);
     }
     for (const auto& field : node.fields) {
         if (!com.types.is_registered_type(field.type)) {
-            print(
+            compiler_error(
+                node.token, 
                 "unknown type '{}' of field {} for struct {}\n",
                 field.type, field.name, node.name
             );
-            std::exit(1);
         }
     }
     com.types.register_type(node.name, node.fields);
 }
 
 // TODO: This only works if the contained type has size 1, because lists are broken
-void compile_node(const node_for_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_for_stmt& node)
 {
     const auto container_name = std::string{"_Container"};
     const auto index_name = std::string{"_Index"};
@@ -535,7 +535,7 @@ void compile_node(const node_for_stmt& node, compiler& com)
     call_builtin(com, "list_at");
     save_variable(com, node.var);
 
-    compile_node(*node.body, com);
+    compile_stmt(com, *node.body);
 
     // Increment the index
     load_variable(com, index_name);
@@ -552,17 +552,17 @@ void compile_node(const node_for_stmt& node, compiler& com)
     link_up_jumps(com, begin_pos, jump_pos, end_pos);
 }
 
-void compile_node(const node_break_stmt&, compiler& com)
+void compile_stmt(compiler& com, const node_break_stmt&)
 {
     com.program.emplace_back(anzu::op_break{});
 }
 
-void compile_node(const node_continue_stmt&, compiler& com)
+void compile_stmt(compiler& com, const node_continue_stmt&)
 {
     com.program.emplace_back(anzu::op_continue{});
 }
 
-void compile_node(const node_declaration_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = compile_expr(com, *node.expr);
     if (current_vars(com).info.contains(node.name)) {
@@ -572,7 +572,7 @@ void compile_node(const node_declaration_stmt& node, compiler& com)
     save_variable(com, node.name);
 }
 
-void compile_node(const node_assignment_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs_type = compile_expr(com, *node.expr);
     const auto lhs_type = push_address_of(com, *node.position);
@@ -610,7 +610,7 @@ auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
     }
 }
 
-void compile_node(const node_function_def_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_function_def_stmt& node)
 {
     for (const auto& arg : node.sig.args) {
         verify_real_type(com, node.token, arg.type);
@@ -625,7 +625,7 @@ void compile_node(const node_function_def_stmt& node, compiler& com)
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, arg.name, arg.type);
     }
-    compile_node(*node.body, com);
+    compile_stmt(com, *node.body);
     com.current_func.reset();
 
     const auto end_pos = append_op(com, op_function_end{});
@@ -633,7 +633,7 @@ void compile_node(const node_function_def_stmt& node, compiler& com)
     std::get<anzu::op_function>(com.program[begin_pos]).jump = end_pos + 1;
 }
 
-void compile_node(const node_return_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_return_stmt& node)
 {
     if (!com.current_func) {
         compiler_error(node.token, "return statements can only be within functions");
@@ -649,7 +649,7 @@ void compile_node(const node_return_stmt& node, compiler& com)
     com.program.emplace_back(anzu::op_return{});
 }
 
-void compile_node(const node_expression_stmt& node, compiler& com)
+void compile_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = compile_expr(com, *node.expr);
     com.program.emplace_back(anzu::op_pop{ .size=com.types.block_size(type) });
@@ -660,9 +660,9 @@ auto compile_expr(compiler& com, const node_expr& expr) -> type_name
     return std::visit([&](const auto& node) { return compile_expr(com, node); }, expr);
 }
 
-auto compile_node(const node_stmt& root, compiler& com) -> void
+auto compile_stmt(compiler& com, const node_stmt& root) -> void
 {
-    std::visit([&](const auto& node) { compile_node(node, com); }, root);
+    std::visit([&](const auto& node) { compile_stmt(com, node); }, root);
 }
 
 }
@@ -670,7 +670,7 @@ auto compile_node(const node_stmt& root, compiler& com) -> void
 auto compile(const node_stmt_ptr& root) -> anzu::program
 {
     anzu::compiler com;
-    compile_node(*root, com);
+    compile_stmt(com, *root);
     return com.program;
 }
 
