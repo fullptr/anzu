@@ -241,8 +241,9 @@ auto compile_function_call(
     -> type_name
 {
     // Push the args to the stack
+    std::vector<type_name> param_types;
     for (const auto& arg : args) {
-        compile_expr(ctx, *arg);
+        param_types.emplace_back(compile_expr(ctx, *arg));
     }
 
     // If this is the name of a simple type, then this is a constructor call, so
@@ -271,7 +272,7 @@ auto compile_function_call(
     // calling here, so that we can pass in the correct block count
     auto sig = builtin.sig;
     if (function == "print" || function == "println") {
-        sig.args[0].type = ctx.type_info.expr_types[args[0].get()];
+        sig.args[0].type = param_types[0];
     }
 
     ctx.program.emplace_back(anzu::op_builtin_call{
@@ -383,7 +384,7 @@ auto compile_expr(
         }
     }
     ctx.program.emplace_back(op_build_list{ .size = node.elements.size() });
-    return inner_type;
+    return concrete_list_type(inner_type);
 }
 
 auto compile_expr(
@@ -455,12 +456,17 @@ void compile_node(const node_struct_stmt& node, compiler_context& ctx)
 void compile_node(const node_for_stmt& node, compiler_context& ctx)
 {
     const auto container_name = std::string{"_Container"};
-    const auto container_type = ctx.type_info.expr_types[node.container.get()];
-    const auto contained_type = match(container_type, generic_list_type())->at(0);
     const auto index_name = std::string{"_Index"};
 
     // Push the container to the stack
-    compile_expr(ctx, *node.container);
+    const auto container_type = compile_expr(ctx, *node.container);
+    const auto m = match(container_type, generic_list_type());
+    if (!m) {
+        print("error, {} must be a list type\n", container_type);
+        std::exit(1);
+    }
+    const auto contained_type = m->at(0);
+
     declare_variable_name(ctx, container_name, container_type);
     save_variable(ctx, container_name); // Currently only lists are allowed in for stmts
 
@@ -523,8 +529,8 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
-    compile_expr(ctx, *node.expr);
-    declare_variable_name(ctx, node.name, ctx.type_info.expr_types[node.expr.get()]);
+    const auto type = compile_expr(ctx, *node.expr);
+    declare_variable_name(ctx, node.name, type);
     save_variable(ctx, node.name);
 }
 
@@ -567,8 +573,7 @@ void compile_node(const node_return_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_expression_stmt& node, compiler_context& ctx)
 {
-    compile_expr(ctx, *node.expr);
-    const auto type = ctx.type_info.expr_types[node.expr.get()];
+    const auto type = compile_expr(ctx, *node.expr);
     ctx.program.emplace_back(anzu::op_pop{ .size=ctx.type_info.types.block_size(type) });
 }
 

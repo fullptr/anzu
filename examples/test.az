@@ -14,3 +14,5 @@ v := vec2(2, 3)
 inc_y(&v)
 
 println(v)
+
+l := [1, 2, "a"]
