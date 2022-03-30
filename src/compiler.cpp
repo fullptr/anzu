@@ -44,6 +44,12 @@ struct function_def
     std::size_t ptr;
 };
 
+struct current_function
+{
+    var_locations vars;
+    type_name     return_type;
+};
+
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler
@@ -53,21 +59,23 @@ struct compiler
     std::unordered_map<std::string, function_def> functions;
 
     var_locations globals;
-    std::optional<var_locations> locals;
-    std::optional<type_name> return_type; // Only set in functions
+    std::optional<current_function> current_func;
 
     type_store types;
 };
 
 auto current_vars(compiler& com) -> var_locations&
 {
-    return com.locals ? *com.locals : com.globals;
+    return com.current_func ? com.current_func->vars : com.globals;
 }
 
 auto verify_real_type(const compiler& com, const token& tok, const type_name& t) -> void
 {
     if (!com.types.is_registered_type(t)) {
-        compiler_error(tok, "'{}' is not a recognised type", t);
+        compiler_error(tok, "{} is not a recognised type", t);
+    }
+    if (!is_type_complete(t)) {
+        compiler_error(tok, "generic function definitions currently disallowed ({})", t);
     }
 }
 
@@ -87,7 +95,7 @@ auto append_op(compiler& com, T&& op) -> std::size_t
 // Registers the given name in the current scope
 auto declare_variable_name(compiler& com, const std::string& name, const type_name& type) -> void
 {
-    auto& vars = com.locals.has_value() ? com.locals.value() : com.globals;
+    auto& vars = current_vars(com);
     const auto type_size = com.types.block_size(type);
     const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type, type_size});
     if (success) { // If not successful, then the name already existed, so dont increase
@@ -97,8 +105,8 @@ auto declare_variable_name(compiler& com, const std::string& name, const type_na
 
 auto find_variable(compiler& com, const std::string& name) -> void
 {
-    if (com.locals && com.locals->info.contains(name)) {
-        const auto& info = com.locals->info.at(name);
+    if (com.current_func && com.current_func->vars.info.contains(name)) {
+        const auto& info = com.current_func->vars.info.at(name);
         com.program.emplace_back(anzu::op_push_local_addr{
             .offset=info.location, .size=info.type_size
         });
@@ -183,8 +191,8 @@ auto push_address_of(compiler& com, const node_expr& node) -> type_name
 {
     return std::visit(overloaded{
         [&](const node_variable_expr& n) {
-            if (com.locals && com.locals->info.contains(n.name)) {
-                const auto& info = com.locals->info.at(n.name);
+            if (com.current_func && com.current_func->vars.info.contains(n.name)) {
+                const auto& info = com.current_func->vars.info.at(n.name);
                 com.program.emplace_back(op_push_local_addr{
                     .offset=info.location, .size=info.type_size
                 });
@@ -598,27 +606,19 @@ void compile_node(const node_function_def_stmt& node, compiler& com)
 {
     for (const auto& arg : node.sig.args) {
         verify_real_type(com, node.token, arg.type);
-        if (!is_type_complete(arg.type)) {
-            compiler_error(node.token, "generic function definitions currently disallowed");
-        }
     }
     verify_real_type(com, node.token, node.sig.return_type);
-    if (!is_type_complete(node.sig.return_type)) {
-        compiler_error(node.token, "generic function definitions currently disallowed");
-    }
     check_function_ends_with_return(node);
 
     const auto begin_pos = append_op(com, op_function{ .name=node.name });
     com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
-    com.locals.emplace();
-    com.return_type.emplace(node.sig.return_type);
+    com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, arg.name, arg.type);
     }
     compile_node(*node.body, com);
-    com.return_type.reset();
-    com.locals.reset();
+    com.current_func.reset();
 
     const auto end_pos = append_op(com, op_function_end{});
 
@@ -627,15 +627,15 @@ void compile_node(const node_function_def_stmt& node, compiler& com)
 
 void compile_node(const node_return_stmt& node, compiler& com)
 {
-    if (!com.return_type) {
+    if (!com.current_func) {
         compiler_error(node.token, "return statements can only be within functions");
     }
     const auto return_type = compile_expr(com, *node.return_value);
-    if (return_type != *com.return_type) {
+    if (return_type != com.current_func->return_type) {
         compiler_error(
             node.token,
             "mismatched return type, expected {}, got {}",
-            *com.return_type, return_type
+            com.current_func->return_type, return_type
         );
     }
     com.program.emplace_back(anzu::op_return{});
