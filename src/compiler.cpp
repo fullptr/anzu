@@ -287,29 +287,29 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
     return sig;
 }
 
-auto compile_expr(compiler& com, const node_expr& expr, const node_literal_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_literal_expr& node) -> type_name
 {
     com.program.emplace_back(anzu::op_load_literal{ .value=node.value.data });
     return node.value.type;
 }
 
-auto compile_expr(compiler& com, const node_expr& expr, const node_variable_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_variable_expr& node) -> type_name
 {
-    const auto type = push_address_of(com, expr);
+    const auto type = push_address_of(com, node);
     com.program.emplace_back(op_load{});
     return type;
 }
 
-auto compile_expr(compiler& com, const node_expr& expr, const node_field_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto type = push_address_of(com, expr);
+    const auto type = push_address_of(com, node);
     com.program.emplace_back(op_load{});
     return type;
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
 // generic and combine the logic.
-auto compile_expr(compiler& com, const node_expr& expr, const node_binary_op_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     const auto lhs_type = compile_expr(com, *node.lhs);
     const auto rhs_type = compile_expr(com, *node.rhs);
@@ -327,7 +327,7 @@ auto compile_expr(compiler& com, const node_expr& expr, const node_binary_op_exp
     return info->result_type;
 }
 
-auto compile_expr(compiler& com, const node_expr& expr, const node_unary_op_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     const auto type = compile_expr(com, *node.expr);
     const auto op = node.token.text;
@@ -343,7 +343,7 @@ auto compile_expr(compiler& com, const node_expr& expr, const node_unary_op_expr
     return info->result_type;
 } 
 
-auto compile_expr(compiler& com, const node_expr& expr, const node_function_call_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_function_call_expr& node) -> type_name
 {
     // Push the args to the stack
     std::vector<type_name> param_types;
@@ -390,7 +390,7 @@ auto compile_expr(compiler& com, const node_expr& expr, const node_function_call
     return sig.return_type;
 }
 
-auto compile_expr(compiler& com, const node_expr& expr, const node_list_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_list_expr& node) -> type_name
 {
     if (node.elements.empty()) {
         print("currently do not support empty list literals\n");
@@ -409,12 +409,12 @@ auto compile_expr(compiler& com, const node_expr& expr, const node_list_expr& no
     return concrete_list_type(inner_type);
 }
 
-auto compile_expr(compiler& com, const node_expr& expr, const node_addrof_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_addrof_expr& node) -> type_name
 {
-    return push_address_of(com, expr);
+    return push_address_of(com, node);
 }
 
-auto compile_expr(compiler& com, const node_expr& expr, const node_deref_expr& node) -> type_name
+auto compile_expr(compiler& com, const node_deref_expr& node) -> type_name
 {
     const auto type = compile_expr(com, *node.expr);
     com.program.emplace_back(op_load{});
@@ -657,7 +657,7 @@ void compile_node(const node_expression_stmt& node, compiler& com)
 
 auto compile_expr(compiler& com, const node_expr& expr) -> type_name
 {
-    return std::visit([&](const auto& node) { return compile_expr(com, expr, node); }, expr);
+    return std::visit([&](const auto& node) { return compile_expr(com, node); }, expr);
 }
 
 auto compile_node(const node_stmt& root, compiler& com) -> void
