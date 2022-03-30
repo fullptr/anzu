@@ -1,14 +1,16 @@
+
 struct vec2
 {
     x: int
     y: int
 }
 
-struct wrapper
+fn inc_y(p: ptr<vec2>) -> null
 {
-    w: vec2
+    (*p).y = 5
 }
 
-w := wrapper(vec2(1, 2))
-w.w.y = 5
-println(w.w.y)
+v := vec2(2, 3)
+inc_y(&v)
+
+println(v)

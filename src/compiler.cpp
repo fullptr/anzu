@@ -243,6 +243,9 @@ auto address_of_expr(const compiler_context& ctx, const node_expr& node) -> addr
     }, node);
 }
 
+auto compile_node(const node_expr& root, compiler_context& ctx) -> void;
+auto compile_node(const node_stmt& root, compiler_context& ctx) -> void;
+
 auto push_address_of(compiler_context& ctx, const node_expr& node) -> void
 {
     std::visit(overloaded{
@@ -267,7 +270,7 @@ auto push_address_of(compiler_context& ctx, const node_expr& node) -> void
             });
         },
         [&](const node_deref_expr& n) {
-            // Nothing to do, the pointer is already loaded at the top.
+            compile_node(*n.expr, ctx); // Push the address
         },
         [](const auto&) {
             print("compiler error: cannot take address of a non-lvalue\n");
@@ -300,9 +303,6 @@ auto link_up_jumps(
         }, ctx.program[idx]);
     }
 }
-
-auto compile_node(const node_expr& root, compiler_context& ctx) -> void;
-auto compile_node(const node_stmt& root, compiler_context& ctx) -> void;
 
 // Returns the size of the return type
 auto compile_function_call(
