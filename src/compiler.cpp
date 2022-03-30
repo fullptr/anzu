@@ -157,6 +157,28 @@ auto find_function(const compiler_context& ctx, const std::string& function)
     return nullptr;
 }
 
+auto offset_of_field(
+    const compiler_context& ctx, const type_name& type, const std::string& field_name
+)
+    -> std::pair<std::size_t, std::size_t>
+{
+    auto offset = std::size_t{0};
+    auto size   = std::size_t{0};
+    for (const auto& field : ctx.type_info.types.get_fields(type)) {
+        const auto field_size = ctx.type_info.types.block_size(field.type);
+        if (field.name == field_name) {
+            size = field_size;
+            break;
+        }
+        offset += field_size;
+    }
+    if (size == 0) {
+        print("type {} has no field '{}'\n", type, field_name);
+        std::exit(1);
+    }
+    return std::pair{offset, size};
+}
+
 auto address_of(
     const compiler_context& ctx, const std::string& name, std::span<const std::string> fields
 )
@@ -239,8 +261,9 @@ auto push_address_of(compiler_context& ctx, const node_expr& node) -> void
         [&](const node_field_expr& n) {
             push_address_of(ctx, *n.expression);
             const auto type = ctx.type_info.expr_types[n.expression.get()];
+            const auto [offset, size] = offset_of_field(ctx, type, n.field_name);
             ctx.program.emplace_back(op_modify_addr{
-                .offset = 0, .new_size = ctx.type_info.types.block_size(type)
+                .offset=offset, .new_size=size
             });
         },
         [&](const node_deref_expr& n) {
@@ -551,29 +574,8 @@ concept named_location_expr = std::same_as<T, node_variable_expr> || std::same_a
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    std::visit(overloaded{
-        [&](named_location_expr auto& n) {
-            const auto addr = address_of_expr(ctx, *node.position);
-            if (addr.is_local) {
-                ctx.program.emplace_back(op_push_local_addr{
-                    .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
-                });
-            } else {
-                ctx.program.emplace_back(op_push_global_addr{
-                    .position=addr.position, .size=ctx.type_info.types.block_size(addr.type)
-                });
-            }
-            ctx.program.emplace_back(op_save{});
-        },
-        [&](node_deref_expr& n) {
-            compile_node(*n.expr, ctx);
-            ctx.program.emplace_back(op_save{});
-        },
-        [](const auto&) {
-            print("invalid expression to assign to\n");
-            std::exit(1);
-        }
-    }, *node.position);
+    push_address_of(ctx, *node.position);
+    ctx.program.emplace_back(op_save{});
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)

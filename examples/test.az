@@ -9,10 +9,6 @@ struct wrapper
     w: vec2
 }
 
-v := vec2(1, 2)
-
-println(v.x + 5)
-
-t := 5
-
-println(t * 2 + t)
+w := wrapper(vec2(1, 2))
+w.w.y = 5
+println(w.w.y)
