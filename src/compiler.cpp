@@ -90,17 +90,19 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
 {
     if (ctx.locals && ctx.locals->info.contains(name)) {
         const auto& info = ctx.locals->info.at(name);
-        ctx.program.emplace_back(anzu::op_save_local{
+        ctx.program.emplace_back(anzu::op_load_addr_of_local{
             .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
+        ctx.program.emplace_back(anzu::op_save_to_addr{});
         return;
     }
     
     if (ctx.globals.info.contains(name)) {
         const auto& info = ctx.globals.info.at(name);
-        ctx.program.emplace_back(anzu::op_save_global{
+        ctx.program.emplace_back(anzu::op_load_addr_of_global{
             .position=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
+        ctx.program.emplace_back(anzu::op_save_to_addr{});
         return;
     }
 
@@ -530,14 +532,15 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
         [&](named_location_expr auto& n) {
             const auto addr = address_of_expr(ctx, *node.position);
             if (addr.is_local) {
-                ctx.program.emplace_back(op_save_local{
+                ctx.program.emplace_back(op_load_addr_of_local{
                     .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
                 });
             } else {
-                ctx.program.emplace_back(op_save_global{
+                ctx.program.emplace_back(op_load_addr_of_global{
                     .position=addr.position, .size=ctx.type_info.types.block_size(addr.type)
                 });
             }
+            ctx.program.emplace_back(op_save_to_addr{});
         },
         [&](node_deref_expr& n) {
             compile_node(*n.expr, ctx);
