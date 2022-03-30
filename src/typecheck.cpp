@@ -352,7 +352,6 @@ auto typecheck_expr(typecheck_context& ctx, const node_expr& expr) -> type_name
         }
     }, expr);
 
-    ctx.types.expr_types.emplace(&expr, expr_type);
     return expr_type;
 };
 

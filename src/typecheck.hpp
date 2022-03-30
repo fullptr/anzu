@@ -11,7 +11,6 @@ namespace anzu {
 struct type_info
 {
     type_store types;
-    std::unordered_map<const node_expr*, type_name> expr_types;
 };
 
 // Scans the AST and performs the following:
