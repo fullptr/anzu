@@ -224,18 +224,6 @@ auto typecheck_function_body_with_signature(
 )
     -> void
 {
-    ctx.locals.emplace();
-    for (const auto& arg : sig.args) {
-        verify_real_type(ctx, node.token, arg.type);
-        ctx.locals->emplace(arg.name, arg.type);
-    }
-    verify_real_type(ctx, node.token, sig.return_type);
-    ctx.locals->emplace(return_key(), sig.return_type); // Expose return type for children
- 
-    typecheck_node(ctx, *node.body);
-    ctx.locals.reset();
-
-    check_function_ends_with_return(node);
 }
 
 auto typecheck_function_call(

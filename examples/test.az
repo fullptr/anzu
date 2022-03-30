@@ -1,14 +1,2 @@
 
-struct vec2
-{
-    x: int
-    y: int
-}
-
-fn identity(x: [0]) -> [0]
-{
-    return x
-}
-
-println(identity(vec2(1, 2)))
-println(identity(1))
+x := baz(5)

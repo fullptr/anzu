@@ -63,6 +63,13 @@ auto current_vars(compiler_context& ctx) -> var_locations&
     return ctx.locals ? *ctx.locals : ctx.globals;
 }
 
+auto verify_real_type(const compiler_context& ctx, const token& tok, const type_name& t) -> void
+{
+    if (!ctx.types.is_registered_type(t)) {
+        compiler_error(tok, "'{}' is not a recognised type", t);
+    }
+}
+
 template <typename T>
 auto back(std::vector<T>& elements) -> T&
 {
@@ -655,10 +662,12 @@ auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
     for (const auto& arg : node.sig.args) {
+        verify_real_type(ctx, node.token, arg.type);
         if (!is_type_complete(arg.type)) {
             compiler_error(node.token, "generic function definitions currently disallowed");
         }
     }
+    verify_real_type(ctx, node.token, node.sig.return_type);
     if (!is_type_complete(node.sig.return_type)) {
         compiler_error(node.token, "generic function definitions currently disallowed");
     }
