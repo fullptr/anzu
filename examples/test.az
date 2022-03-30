@@ -5,14 +5,10 @@ struct vec2
     y: int
 }
 
-fn inc_y(p: ptr<vec2>) -> null
+fn identity(x: [0]) -> [0]
 {
-    (*p).y = 5
+    return x
 }
 
-v := vec2(2, 3)
-inc_y(&v)
-
-println(v)
-
-l := [1, 2]
+println(identity(vec2(1, 2)))
+println(identity(1))

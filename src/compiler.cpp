@@ -53,9 +53,15 @@ struct compiler_context
 
     var_locations globals;
     std::optional<var_locations> locals;
+    std::optional<type_name> return_type; // Only set in functions
 
     type_store types;
 };
+
+auto current_vars(compiler_context& ctx) -> var_locations&
+{
+    return ctx.locals ? *ctx.locals : ctx.globals;
+}
 
 template <typename T>
 auto back(std::vector<T>& elements) -> T&
@@ -240,71 +246,30 @@ auto link_up_jumps(
     }
 }
 
-auto fetch_function_signature(
-    const compiler_context& ctx, const token& tok, const std::string& function_name
-)
-    -> signature
-{
-    if (auto it = ctx.functions.find(function_name); it != ctx.functions.end()) {
-        return it->second.sig;
-    }
-    if (anzu::is_builtin(function_name)) {
-        return anzu::fetch_builtin(function_name).sig;
-    }
-    compiler_error(tok, "could not find function '{}'", function_name);
-}
-
-auto get_typechecked_signature(
+auto check_signature(
     compiler_context& ctx,
     const token& tok,
     const std::string& function_name,
+    const signature& function_sig,
     const std::vector<type_name>& param_types
 )
-    -> signature
+    -> void
 {
-    const auto sig = fetch_function_signature(ctx, tok, function_name);
-
-    if (sig.args.size() != param_types.size()) {
+    if (function_sig.args.size() != param_types.size()) {
         compiler_error(
             tok,
             "function '{}' expected {} args, got {}",
-            function_name, sig.args.size(), param_types.size()
+            function_name, function_sig.args.size(), param_types.size()
         );
     }
 
-    auto ret_sig = signature{};
-    auto matches = std::unordered_map<int, type_name>{};
-
     auto ait = param_types.begin();
-    auto sit = sig.args.begin();
+    auto sit = function_sig.args.begin();
     for (; ait != param_types.end(); ++ait, ++sit) {
-        const auto actual_type = *ait;
-        const auto pattern_type = sit->type;
-        const auto arg_match = match(actual_type, pattern_type);
-        if (!arg_match.has_value()) {
-            compiler_error(tok, "'{}' does not match '{}'", actual_type, pattern_type);
+        if (*ait != sit->type) {
+            compiler_error(tok, "'{}' does not match '{}'", *ait, sit->type);
         }
-        for (const auto& [key, type] : arg_match.value()) {
-            if (auto it = matches.find(key); it != matches.end()) {
-                if (it->second != type) {
-                    compiler_error(tok, "bad function call (WIP, make error better)");
-                }
-            }
-            else {
-                matches.emplace(key, type);
-            }
-        }
-        auto arg = signature::arg{};
-        arg.name = sit->name;
-        arg.type = actual_type;
-        ret_sig.args.push_back(arg);
     }
-
-    ret_sig.return_type = bind_generics(sig.return_type, matches);
-    if (!is_type_complete(ret_sig.return_type)) {
-        compiler_error(tok, "could not deduce return type for '{}'", function_name);
-    }
-    return ret_sig;
 }
 
 // Returns the return type
@@ -349,14 +314,14 @@ auto compile_function_call(
 
     // Otherwise, it may be a custom function.
     else if (const auto function_def = find_function(ctx, function)) {
-        const auto sig = get_typechecked_signature(ctx, tok, function, param_types);
+        check_signature(ctx, tok, function, function_def->sig, param_types);
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
             .ptr=function_def->ptr + 1, // Jump into the function
             .args_size=signature_args_size(ctx, function_def->sig),
-            .return_size=ctx.types.block_size(sig.return_type)
+            .return_size=ctx.types.block_size(function_def->sig.return_type)
         });
-        return sig.return_type;
+        return function_def->sig.return_type;
     }
 
     // Otherwise, it must be a builtin function.
@@ -636,12 +601,12 @@ void compile_node(const node_continue_stmt&, compiler_context& ctx)
 void compile_node(const node_declaration_stmt& node, compiler_context& ctx)
 {
     const auto type = compile_expr(ctx, *node.expr);
+    if (current_vars(ctx).info.contains(node.name)) {
+        compiler_error(node.token, "redeclaration of variable '{}'", node.name);
+    }
     declare_variable_name(ctx, node.name, type);
     save_variable(ctx, node.name);
 }
-
-template <typename T>
-concept named_location_expr = std::same_as<T, node_variable_expr> || std::same_as<T, node_field_expr>;
 
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
@@ -656,14 +621,22 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
+    for (const auto& arg : node.sig.args) {
+        if (!is_type_complete(arg.type)) {
+            compiler_error(node.token, "generic function definitions currently disallowed");
+        }
+    }
+
     const auto begin_pos = append_op(ctx, op_function{ .name=node.name });
     ctx.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     ctx.locals.emplace();
+    ctx.return_type.emplace(node.sig.return_type);
     for (const auto& arg : node.sig.args) {
         declare_variable_name(ctx, arg.name, arg.type);
     }
     compile_node(*node.body, ctx);
+    ctx.return_type.reset();
     ctx.locals.reset();
 
     const auto end_pos = append_op(ctx, op_function_end{});
@@ -673,7 +646,17 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_return_stmt& node, compiler_context& ctx)
 {
-    compile_expr(ctx, *node.return_value);
+    if (!ctx.return_type) {
+        compiler_error(node.token, "return statements can only be within functions");
+    }
+    const auto return_type = compile_expr(ctx, *node.return_value);
+    if (return_type != *ctx.return_type) {
+        compiler_error(
+            node.token,
+            "mismatched return type, expected {}, got {}",
+            *ctx.return_type, return_type
+        );
+    }
     ctx.program.emplace_back(anzu::op_return{});
 }
 
