@@ -110,7 +110,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             expr.elements.push_back(parse_expression(tokens));
         });
     }
-    else if (tokens.peek(tk_sub)) {
+    else if (tokens.peek(tk_sub) || tokens.peek(tk_bang)) {
         auto& expr = node->emplace<node_unary_op_expr>();
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);

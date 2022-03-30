@@ -3,9 +3,7 @@ fn inc(p: ptr<int>) -> null
     *p = *p + 1
 }
 
-x := 5
-px := &x
 
-println(x)
-inc(px)
-println(x)
+if !false {
+    println("hello")
+}

@@ -135,6 +135,11 @@ auto resolve_unary_op(const unary_op_description& desc) -> std::optional<unary_o
             return unary_op_info{ unary_op<block_float, std::negate>, type };
         }
     }
+    if (type == bool_type()) {
+        if (desc.op == tk_bang) {
+            return unary_op_info{ unary_op<block_bool, std::logical_not>, type };
+        }
+    }
     return std::nullopt;
 }
 
