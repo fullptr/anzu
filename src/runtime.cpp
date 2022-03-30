@@ -95,6 +95,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory.push_back(ptr);
             program_advance(ctx);
         },
+        [&](const op_modify_addr& op) {
+            auto& ptr = std::get<block_ptr>(ctx.memory.back());
+            ptr.ptr += op.offset;
+            ptr.size = op.new_size;
+        },
         [&](const op_load& op) {
             const auto ptr_blk = pop_back(ctx.memory);
             const auto ptr = std::get<block_ptr>(ptr_blk);

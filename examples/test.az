@@ -1,9 +1,15 @@
-fn inc(p: ptr<int>) -> null
+struct vec2
 {
-    *p = *p + 1
+    x: int
+    y: int
 }
 
-
-if !false {
-    println("hello")
+struct wrapper
+{
+    w: vec2
 }
+
+v := wrapper(vec2(1, 2))
+
+v.w.x = 5
+println(v)

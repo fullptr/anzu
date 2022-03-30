@@ -28,6 +28,12 @@ struct op_push_local_addr
     std::size_t size;
 };
 
+struct op_modify_addr
+{
+    std::size_t offset;
+    std::size_t new_size;
+};
+
 struct op_load
 {
 };
@@ -122,6 +128,7 @@ struct op : std::variant<
     op_load_literal,
     op_push_global_addr,
     op_push_local_addr,
+    op_modify_addr,
     op_load,
     op_save,
     op_pop,
