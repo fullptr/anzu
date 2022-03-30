@@ -19,7 +19,7 @@ namespace {
 struct var_info
 {
     std::size_t location;
-    type_name   type;
+    std::size_t type_size;
 };
 
 struct var_locations
@@ -55,14 +55,6 @@ auto back(std::vector<T>& elements) -> T&
 }
 
 template <typename T>
-auto penult(std::vector<T>& elements) -> T&
-{
-    auto it = elements.end();
-    std::advance(it, -2);
-    return *it;
-}
-
-template <typename T>
 auto append_op(compiler_context& ctx, T&& op) -> std::size_t
 {
     ctx.program.emplace_back(std::forward<T>(op));
@@ -73,9 +65,10 @@ auto append_op(compiler_context& ctx, T&& op) -> std::size_t
 auto declare_variable_name(compiler_context& ctx, const std::string& name, const type_name& type) -> void
 {
     auto& vars = ctx.locals.has_value() ? ctx.locals.value() : ctx.globals;
-    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type});
+    const auto type_size = ctx.type_info.types.block_size(type);
+    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type_size});
     if (success) { // If not successful, then the name already existed, so dont increase
-        vars.next += ctx.type_info.types.block_size(type);
+        vars.next += type_size;
     }
 }
 
@@ -84,7 +77,7 @@ auto find_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.locals && ctx.locals->info.contains(name)) {
         const auto& info = ctx.locals->info.at(name);
         ctx.program.emplace_back(anzu::op_push_local_addr{
-            .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
+            .offset=info.location, .size=info.type_size
         });
         return;
     }
@@ -92,7 +85,7 @@ auto find_variable(compiler_context& ctx, const std::string& name) -> void
     if (ctx.globals.info.contains(name)) {
         const auto& info = ctx.globals.info.at(name);
         ctx.program.emplace_back(anzu::op_push_global_addr{
-            .position=info.location, .size=ctx.type_info.types.block_size(info.type)
+            .position=info.location, .size=info.type_size
         });
         return;
     }
@@ -171,15 +164,15 @@ auto push_address_of(compiler_context& ctx, const node_expr& node) -> void
             if (ctx.locals && ctx.locals->info.contains(n.name)) {
                 const auto& info = ctx.locals->info.at(n.name);
                 ctx.program.emplace_back(op_push_local_addr{
-                    .offset = info.location, .size = ctx.type_info.types.block_size(info.type)
+                    .offset=info.location, .size=info.type_size
                 });
-                return;
+            } else {
+                const auto& info = ctx.globals.info.at(n.name);
+                ctx.program.emplace_back(op_push_global_addr{
+                    .position=info.location, .size=info.type_size
+                });
             }
                 
-            const auto& info = ctx.globals.info.at(n.name);
-            ctx.program.emplace_back(op_push_global_addr{
-                .position = info.location, .size = ctx.type_info.types.block_size(info.type)
-            });
         },
         [&](const node_field_expr& n) {
             push_address_of(ctx, *n.expression);
@@ -426,16 +419,12 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     load_variable(ctx, container_name);
     call_builtin(ctx, "list_size");
 
-    // OP_NE - TODO: Make this better
+    const auto info = resolve_bin_op({
+        .op = std::string{tk_ne}, .lhs = int_type(), .rhs = int_type()
+    });
     ctx.program.emplace_back(op_builtin_mem_op{
-        .name = "int != int",
-        .ptr = +[](std::vector<block>& mem) {
-            const auto& rhs_val = std::get<block_int>(back(mem));
-            auto& lhs = penult(mem);
-            auto& lhs_val = std::get<block_int>(lhs);
-            lhs = block{lhs_val != rhs_val};
-            mem.pop_back();
-        }
+        .name = std::format("{} {} {}", int_type(), std::string{tk_ne}, int_type()),
+        .ptr = info->operator_func
     });
     
     const auto jump_pos = append_op(ctx, op_jump_if_false{}); // If size == index, jump to end
