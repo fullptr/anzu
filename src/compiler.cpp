@@ -186,52 +186,60 @@ auto offset_of_field(const compiler& com, const type_name& type, const std::stri
 
 auto compile_expr(compiler& com, const node_expr& expr) -> type_name;
 auto compile_node(const node_stmt& root, compiler& com) -> void;
+auto push_address_of(compiler& com, const node_expr& node) -> type_name;
+
+auto push_address_of(compiler& com, const node_variable_expr& node) -> type_name
+{
+    if (com.current_func && com.current_func->vars.info.contains(node.name)) {
+        const auto& info = com.current_func->vars.info.at(node.name);
+        com.program.emplace_back(op_push_local_addr{
+            .offset=info.location, .size=info.type_size
+        });
+        return info.type;
+    }
+    const auto& info = com.globals.info.at(node.name);
+    com.program.emplace_back(op_push_global_addr{
+        .position=info.location, .size=info.type_size
+    });
+    return info.type;
+}
+
+auto push_address_of(compiler& com, const node_field_expr& node) -> type_name
+{
+    const auto type = push_address_of(com, *node.expression);
+    const auto [offset, field_type, size] = offset_of_field(com, type, node.field_name);
+    com.program.emplace_back(op_modify_addr{
+        .offset=offset, .new_size=size
+    });
+    return field_type;
+}
+
+auto push_address_of(compiler& com, const node_deref_expr& node) -> type_name
+{
+    const auto type = compile_expr(com, *node.expr); // Push the address
+    const auto type_match = match(type, generic_ptr_type());
+    if (!type_match) {
+        print("tried to dereference an expression of type '{}'\n", type);
+        std::exit(1);
+    }
+    return type_match->at(0);
+}
+
+auto push_address_of(compiler& com, const node_addrof_expr& node) -> type_name
+{
+    const auto type = push_address_of(com, *node.expr);
+    return concrete_ptr_type(type);
+}
+
+auto push_address_of(compiler& com, const auto& node) -> type_name
+{
+    compiler_error(node.token, "cannot take address of a non-lvalue\n");
+    return int_type();
+}
 
 auto push_address_of(compiler& com, const node_expr& node) -> type_name
 {
-    return std::visit(overloaded{
-        [&](const node_variable_expr& n) {
-            if (com.current_func && com.current_func->vars.info.contains(n.name)) {
-                const auto& info = com.current_func->vars.info.at(n.name);
-                com.program.emplace_back(op_push_local_addr{
-                    .offset=info.location, .size=info.type_size
-                });
-                return info.type;
-            } else {
-                const auto& info = com.globals.info.at(n.name);
-                com.program.emplace_back(op_push_global_addr{
-                    .position=info.location, .size=info.type_size
-                });
-                return info.type;
-            }                
-        },
-        [&](const node_field_expr& n) {
-            const auto type = push_address_of(com, *n.expression);
-            const auto [offset, field_type, size] = offset_of_field(com, type, n.field_name);
-            com.program.emplace_back(op_modify_addr{
-                .offset=offset, .new_size=size
-            });
-            return field_type;
-        },
-        [&](const node_deref_expr& n) {
-            const auto type = compile_expr(com, *n.expr); // Push the address
-            const auto type_match = match(type, generic_ptr_type());
-            if (!type_match) {
-                print("tried to dereference an expression of type '{}'\n", type);
-                std::exit(1);
-            }
-            return type_match->at(0);
-        },
-        [&](const node_addrof_expr& n) {
-            const auto type = push_address_of(com, *n.expr);
-            return concrete_ptr_type(type);
-        },
-        [](const auto&) {
-            print("compiler error: cannot take address of a non-lvalue\n");
-            std::exit(1);
-            return int_type();
-        }
-    }, node);
+    return std::visit([&](const auto& expr) { return push_address_of(com, expr); }, node);
 }
 
 // Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
