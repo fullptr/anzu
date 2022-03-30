@@ -16,17 +16,10 @@
 namespace anzu {
 namespace {
 
-struct addrof
-{
-    std::size_t position;
-    bool        is_local; // If true, the position is an offset
-    type_name   type;
-};
-
 struct var_info
 {
     std::size_t location;
-    type_name   type;
+    std::size_t type_size;
 };
 
 struct var_locations
@@ -62,14 +55,6 @@ auto back(std::vector<T>& elements) -> T&
 }
 
 template <typename T>
-auto penult(std::vector<T>& elements) -> T&
-{
-    auto it = elements.end();
-    std::advance(it, -2);
-    return *it;
-}
-
-template <typename T>
 auto append_op(compiler_context& ctx, T&& op) -> std::size_t
 {
     ctx.program.emplace_back(std::forward<T>(op));
@@ -80,51 +65,45 @@ auto append_op(compiler_context& ctx, T&& op) -> std::size_t
 auto declare_variable_name(compiler_context& ctx, const std::string& name, const type_name& type) -> void
 {
     auto& vars = ctx.locals.has_value() ? ctx.locals.value() : ctx.globals;
-    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type});
+    const auto type_size = ctx.type_info.types.block_size(type);
+    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type_size});
     if (success) { // If not successful, then the name already existed, so dont increase
-        vars.next += ctx.type_info.types.block_size(type);
+        vars.next += type_size;
     }
 }
 
-auto save_variable(compiler_context& ctx, const std::string& name) -> void
+auto find_variable(compiler_context& ctx, const std::string& name) -> void
 {
     if (ctx.locals && ctx.locals->info.contains(name)) {
         const auto& info = ctx.locals->info.at(name);
-        ctx.program.emplace_back(anzu::op_save_local{
-            .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
+        ctx.program.emplace_back(anzu::op_push_local_addr{
+            .offset=info.location, .size=info.type_size
         });
         return;
     }
     
     if (ctx.globals.info.contains(name)) {
         const auto& info = ctx.globals.info.at(name);
-        ctx.program.emplace_back(anzu::op_save_global{
-            .position=info.location, .size=ctx.type_info.types.block_size(info.type)
+        ctx.program.emplace_back(anzu::op_push_global_addr{
+            .position=info.location, .size=info.type_size
         });
         return;
     }
 
-    anzu::print("BAD! Could not assign to variable\n");
+    anzu::print("could not find variable '{}'\n", name);
     std::exit(1);
+}
+
+auto save_variable(compiler_context& ctx, const std::string& name) -> void
+{
+    find_variable(ctx, name);
+    ctx.program.emplace_back(anzu::op_save{});
 }
 
 auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
-    if (ctx.locals) {
-        if (auto it = ctx.locals->info.find(name); it != ctx.locals->info.end()) {
-            ctx.program.emplace_back(anzu::op_load_local{
-                .offset=it->second.location,
-                .size=ctx.type_info.types.block_size(it->second.type)
-            });
-            return;
-        }
-    }
-    if (auto it = ctx.globals.info.find(name); it != ctx.globals.info.end()) {
-        ctx.program.emplace_back(anzu::op_load_global{
-            .position=it->second.location,
-            .size=ctx.type_info.types.block_size(it->second.type)
-        });
-    }
+    find_variable(ctx, name);
+    ctx.program.emplace_back(anzu::op_load{});
 }
 
 auto signature_args_size(const compiler_context& ctx, const signature& sig) -> std::size_t
@@ -153,66 +132,65 @@ auto find_function(const compiler_context& ctx, const std::string& function)
     return nullptr;
 }
 
-auto address_of(
-    const compiler_context& ctx, const std::string& name, std::span<const std::string> fields
+auto offset_of_field(
+    const compiler_context& ctx, const type_name& type, const std::string& field_name
 )
-    -> addrof
+    -> std::pair<std::size_t, std::size_t>
 {
-    if (ctx.locals && ctx.locals->info.contains(name)) {
-        const auto& info = ctx.locals->info.at(name);
-        auto location = info.location;
-        auto type = info.type;
-        for (const auto& field_name : fields) { // Field names in the assignemnt
-            for (const auto& field : ctx.type_info.types.get_fields(type)) { // Field of curr type
-                if (field.name == field_name) {
-                    type = field.type;
-                    break;
-                }
-                location += ctx.type_info.types.block_size(field.type);
-            }
+    auto offset = std::size_t{0};
+    auto size   = std::size_t{0};
+    for (const auto& field : ctx.type_info.types.get_fields(type)) {
+        const auto field_size = ctx.type_info.types.block_size(field.type);
+        if (field.name == field_name) {
+            size = field_size;
+            break;
         }
-        return { .position=location, .is_local=true, .type=type};
+        offset += field_size;
     }
-    
-    const auto& info = ctx.globals.info.at(name);
-    auto location = info.location;
-    auto type = info.type;
-    for (const auto& field_name : fields) { // Field names in the assignemnt
-        for (const auto& field : ctx.type_info.types.get_fields(type)) { // Field of curr type
-            if (field.name == field_name) {
-                type = field.type;
-                break;
-            }
-            location += ctx.type_info.types.block_size(field.type);
-        }
+    if (size == 0) {
+        print("type {} has no field '{}'\n", type, field_name);
+        std::exit(1);
     }
-    return { .position=location, .is_local=false, .type=type};
+    return std::pair{offset, size};
 }
 
-auto address_of_expr(const compiler_context& ctx, const node_expr& node) -> addrof
+auto compile_node(const node_expr& root, compiler_context& ctx) -> void;
+auto compile_node(const node_stmt& root, compiler_context& ctx) -> void;
+
+auto push_address_of(compiler_context& ctx, const node_expr& node) -> void
 {
-    return std::visit(overloaded{
+    std::visit(overloaded{
         [&](const node_variable_expr& n) {
-            return address_of(ctx, n.name, {});
+            if (ctx.locals && ctx.locals->info.contains(n.name)) {
+                const auto& info = ctx.locals->info.at(n.name);
+                ctx.program.emplace_back(op_push_local_addr{
+                    .offset=info.location, .size=info.type_size
+                });
+            } else {
+                const auto& info = ctx.globals.info.at(n.name);
+                ctx.program.emplace_back(op_push_global_addr{
+                    .position=info.location, .size=info.type_size
+                });
+            }
+                
         },
         [&](const node_field_expr& n) {
-            if (!std::holds_alternative<node_variable_expr>(*n.expression)) {
-                print("not currently supporting field access of non-variables\n");
-                std::exit(1);
-            }
-            const auto& var = std::get<node_variable_expr>(*n.expression);
-            return address_of(ctx, var.name, std::vector{n.field_name});
+            push_address_of(ctx, *n.expression);
+            const auto type = ctx.type_info.expr_types[n.expression.get()];
+            const auto [offset, size] = offset_of_field(ctx, type, n.field_name);
+            ctx.program.emplace_back(op_modify_addr{
+                .offset=offset, .new_size=size
+            });
         },
         [&](const node_deref_expr& n) {
-            
-            print("Returning address of a deref not currently implemented\n");
-            std::exit(1);
-            return anzu::addrof{.position=0, .is_local=false, .type=int_type()};
+            compile_node(*n.expr, ctx); // Push the address
+        },
+        [&](const node_addrof_expr& n) {
+            push_address_of(ctx, *n.expr);
         },
         [](const auto&) {
             print("compiler error: cannot take address of a non-lvalue\n");
             std::exit(1);
-            return anzu::addrof{.position=0, .is_local=false, .type=int_type()};
         }
     }, node);
 }
@@ -241,9 +219,6 @@ auto link_up_jumps(
         }, ctx.program[idx]);
     }
 }
-
-auto compile_node(const node_expr& root, compiler_context& ctx) -> void;
-auto compile_node(const node_stmt& root, compiler_context& ctx) -> void;
 
 // Returns the size of the return type
 auto compile_function_call(
@@ -302,25 +277,14 @@ void compile_node(const node_expr& expr, const node_literal_expr& node, compiler
 
 void compile_node(const node_expr& expr, const node_variable_expr& node, compiler_context& ctx)
 {
-    load_variable(ctx, node.name);
+    push_address_of(ctx, expr);
+    ctx.program.emplace_back(op_load{});
 }
 
 void compile_node(const node_expr& expr, const node_field_expr& node, compiler_context& ctx)
 {
-    const auto& var_name = std::get<node_variable_expr>(*node.expression).name;
-    const auto& var_type = ctx.type_info.expr_types[node.expression.get()];
-
-    const auto addr_of = address_of_expr(ctx, expr);
-    const auto type_size = ctx.type_info.types.block_size(addr_of.type);
-    if (addr_of.is_local) {
-        ctx.program.emplace_back(op_load_local{
-            .offset = addr_of.position, .size = type_size
-        });
-    } else {
-        ctx.program.emplace_back(op_load_global{
-            .position = addr_of.position, .size = type_size
-        });
-    }
+    push_address_of(ctx, expr);
+    ctx.program.emplace_back(op_load{});
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
@@ -377,25 +341,13 @@ void compile_node(const node_expr& expr, const node_list_expr& node, compiler_co
 
 void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_context& ctx)
 {
-    const auto addr_of = address_of_expr(ctx, *node.expr);
-    const auto type_of = ctx.type_info.expr_types[node.expr.get()];
-    const auto size_of = ctx.type_info.types.block_size(type_of);
-
-    if (addr_of.is_local) {
-        ctx.program.emplace_back(op_load_addr_of_local{
-            .offset=addr_of.position, .size=size_of
-        });
-    } else {
-        ctx.program.emplace_back(op_load_addr_of_global{
-            .position=addr_of.position, .size=size_of
-        });
-    }
+    push_address_of(ctx, expr);
 }
 
 void compile_node(const node_expr& expr, const node_deref_expr& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    ctx.program.emplace_back(op_deref{});
+    ctx.program.emplace_back(op_load{});
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
@@ -467,16 +419,12 @@ void compile_node(const node_for_stmt& node, compiler_context& ctx)
     load_variable(ctx, container_name);
     call_builtin(ctx, "list_size");
 
-    // OP_NE - TODO: Make this better
+    const auto info = resolve_bin_op({
+        .op = std::string{tk_ne}, .lhs = int_type(), .rhs = int_type()
+    });
     ctx.program.emplace_back(op_builtin_mem_op{
-        .name = "int != int",
-        .ptr = +[](std::vector<block>& mem) {
-            const auto& rhs_val = std::get<block_int>(back(mem));
-            auto& lhs = penult(mem);
-            auto& lhs_val = std::get<block_int>(lhs);
-            lhs = block{lhs_val != rhs_val};
-            mem.pop_back();
-        }
+        .name = std::format("{} {} {}", int_type(), std::string{tk_ne}, int_type()),
+        .ptr = info->operator_func
     });
     
     const auto jump_pos = append_op(ctx, op_jump_if_false{}); // If size == index, jump to end
@@ -526,28 +474,8 @@ concept named_location_expr = std::same_as<T, node_variable_expr> || std::same_a
 void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    std::visit(overloaded{
-        [&](named_location_expr auto& n) {
-            const auto addr = address_of_expr(ctx, *node.position);
-            if (addr.is_local) {
-                ctx.program.emplace_back(op_save_local{
-                    .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
-                });
-            } else {
-                ctx.program.emplace_back(op_save_global{
-                    .position=addr.position, .size=ctx.type_info.types.block_size(addr.type)
-                });
-            }
-        },
-        [&](node_deref_expr& n) {
-            compile_node(*n.expr, ctx);
-            ctx.program.emplace_back(op_save_to_addr{});
-        },
-        [](const auto&) {
-            print("invalid expression to assign to\n");
-            std::exit(1);
-        }
-    }, *node.position);
+    push_address_of(ctx, *node.position);
+    ctx.program.emplace_back(op_save{});
 }
 
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)

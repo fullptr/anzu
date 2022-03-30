@@ -83,33 +83,25 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
             program_advance(ctx);
         },
-        [&](const op_load_global& op) {
-            const auto idx = op.position;
-            for (std::size_t i = 0; i != op.size; ++i) {
-                ctx.memory.push_back(ctx.memory[idx + i]);
-            }
-            program_advance(ctx);
-        },
-        [&](const op_load_local& op) {
-            const auto idx = base_ptr(ctx) + op.offset;
-            for (std::size_t i = 0; i != op.size; ++i) {
-                ctx.memory.push_back(ctx.memory[idx + i]);
-            }
-            program_advance(ctx);
-        },
-        [&](const op_load_addr_of_global& op) {
+        [&](const op_push_global_addr& op) {
             const auto idx = op.position;
             const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
             ctx.memory.push_back(ptr);
             program_advance(ctx);
         },
-        [&](const op_load_addr_of_local& op) {
+        [&](const op_push_local_addr& op) {
             const auto idx = base_ptr(ctx) + op.offset;
             const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
             ctx.memory.push_back(ptr);
             program_advance(ctx);
         },
-        [&](const op_deref& op) {
+        [&](const op_modify_addr& op) {
+            auto& ptr = std::get<block_ptr>(ctx.memory.back());
+            ptr.ptr += op.offset;
+            ptr.size = op.new_size;
+            program_advance(ctx);
+        },
+        [&](const op_load& op) {
             const auto ptr_blk = pop_back(ctx.memory);
             const auto ptr = std::get<block_ptr>(ptr_blk);
             for (std::size_t i = 0; i != ptr.size; ++i) {
@@ -117,24 +109,16 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
             program_advance(ctx);
         },
+        [&](const op_save& op) {
+            const auto ptr_blk = pop_back(ctx.memory);
+            const auto ptr = std::get<block_ptr>(ptr_blk);
+            save_top_at(ctx, ptr.ptr, ptr.size);
+            program_advance(ctx);
+        },
         [&](const op_pop& op) {
             for (std::size_t i = 0; i != op.size; ++i) {
                 ctx.memory.pop_back();
             }
-            program_advance(ctx);
-        },
-        [&](const op_save_global& op) {
-            save_top_at(ctx, op.position, op.size);
-            program_advance(ctx);
-        },
-        [&](const op_save_local& op) {
-            save_top_at(ctx, base_ptr(ctx) + op.offset, op.size);
-            program_advance(ctx);
-        },
-        [&](const op_save_to_addr& op) {
-            const auto ptr_blk = pop_back(ctx.memory);
-            const auto ptr = std::get<block_ptr>(ptr_blk);
-            save_top_at(ctx, ptr.ptr, ptr.size);
             program_advance(ctx);
         },
         [&](const op_if& op) {

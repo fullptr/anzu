@@ -15,7 +15,7 @@ struct frame
 
 struct runtime_context
 {
-    std::vector<frame>  frames;
+    std::vector<frame> frames;
     std::vector<block> memory;
 };
 

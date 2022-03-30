@@ -1,9 +1,16 @@
-fn inc(p: ptr<int>) -> null
+
+struct vec2
 {
-    *p = *p + 1
+    x: int
+    y: int
 }
 
-
-if !false {
-    println("hello")
+fn inc_y(p: ptr<vec2>) -> null
+{
+    (*p).y = 5
 }
+
+v := vec2(2, 3)
+inc_y(&v)
+
+println(v)
