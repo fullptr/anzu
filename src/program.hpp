@@ -16,18 +16,6 @@ struct op_load_literal
     std::vector<block> value;
 };
 
-struct op_load_global
-{
-    std::size_t position;
-    std::size_t size;
-};
-
-struct op_load_local
-{
-    std::size_t offset;
-    std::size_t size;
-};
-
 struct op_load_addr_of_global
 {
     std::size_t position;
@@ -132,8 +120,6 @@ struct op_build_list
 
 struct op : std::variant<
     op_load_literal,
-    op_load_global,
-    op_load_local,
     op_load_addr_of_global,
     op_load_addr_of_local,
     op_deref,

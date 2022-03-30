@@ -114,18 +114,20 @@ auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
     if (ctx.locals) {
         if (auto it = ctx.locals->info.find(name); it != ctx.locals->info.end()) {
-            ctx.program.emplace_back(anzu::op_load_local{
+            ctx.program.emplace_back(anzu::op_load_addr_of_local{
                 .offset=it->second.location,
                 .size=ctx.type_info.types.block_size(it->second.type)
             });
+            ctx.program.emplace_back(op_deref{});
             return;
         }
     }
     if (auto it = ctx.globals.info.find(name); it != ctx.globals.info.end()) {
-        ctx.program.emplace_back(anzu::op_load_global{
+        ctx.program.emplace_back(anzu::op_load_addr_of_global{
             .position=it->second.location,
             .size=ctx.type_info.types.block_size(it->second.type)
         });
+        ctx.program.emplace_back(op_deref{});
     }
 }
 
@@ -315,14 +317,15 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
     const auto addr_of = address_of_expr(ctx, expr);
     const auto type_size = ctx.type_info.types.block_size(addr_of.type);
     if (addr_of.is_local) {
-        ctx.program.emplace_back(op_load_local{
+        ctx.program.emplace_back(op_load_addr_of_local{
             .offset = addr_of.position, .size = type_size
         });
     } else {
-        ctx.program.emplace_back(op_load_global{
+        ctx.program.emplace_back(op_load_addr_of_global{
             .position = addr_of.position, .size = type_size
         });
     }
+    ctx.program.emplace_back(op_deref{});
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
