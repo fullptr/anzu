@@ -1,6 +1,5 @@
 #include "lexer.hpp"
 #include "parser.hpp"
-#include "typecheck.hpp"
 #include "compiler.hpp"
 #include "runtime.hpp"
 #include "type.hpp"
@@ -10,12 +9,11 @@
 
 void print_usage()
 {
-    anzu::print("usage: anzu.exe <program_file> <option> [-o]\n\n");
+    anzu::print("usage: anzu.exe <program_file> <option>\n\n");
     anzu::print("The Anzu Programming Language\n\n");
     anzu::print("options:\n");
     anzu::print("    lex   - runs the lexer and prints the tokens\n");
     anzu::print("    parse - runs the parser and prints the AST\n");
-    anzu::print("    check - after parsing, run the type checker then exit\n");
     anzu::print("    com   - runs the compiler and prints the bytecode\n");
     anzu::print("    debug - runs the program and prints each op code executed\n");
     anzu::print("    run   - runs the program\n");
@@ -23,7 +21,7 @@ void print_usage()
 
 int main(int argc, char** argv)
 {
-    if (argc != 3 && argc != 4) {
+    if (argc != 3) {
         print_usage();
         return 1;
     }
@@ -42,13 +40,6 @@ int main(int argc, char** argv)
     anzu::print("-> Parsing\n");
     auto ast = anzu::parse(tokens);
     if (mode == "parse") {
-        print_node(*ast);
-        return 0;
-    }
-
-    anzu::print("-> Type Checking\n");
-    anzu::typecheck_ast(ast);
-    if (mode == "check") {
         print_node(*ast);
         return 0;
     }
