@@ -18,20 +18,20 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_load_literal& op) {
             return std::format("OP_LOAD_LITERAL({})", format_comma_separated(op.value));
         },
-        [&](const op_load_addr_of_global& op) {
-            return std::format("OP_LOAD_ADDR_OF_GLOBAL({}, {})", op.position, op.size);
+        [&](const op_push_global_addr& op) {
+            return std::format("OP_PUSH_GLOBAL_ADDR({}, {})", op.position, op.size);
         },
-        [&](const op_load_addr_of_local& op) {
-            return std::format("OP_LOAD_ADDR_OF_LOCAL(+{}, {})", op.offset, op.size);
+        [&](const op_push_local_addr& op) {
+            return std::format("OP_PUSH_LOCAL_ADDR(+{}, {})", op.offset, op.size);
         },
-        [&](const op_deref&) {
-            return std::string{"OP_DEREF"};
+        [&](const op_load&) {
+            return std::string{"OP_LOAD"};
+        },
+        [&](const op_save& op) {
+            return std::string{"OP_SAVE"};
         },
         [&](const op_pop& op) {
             return std::format("OP_POP({})", op.size);
-        },
-        [&](const op_save_to_addr& op) {
-            return std::string{"OP_SAVE_TO_ADDR"};
         },
         [&](const op_if& op) {
             return std::string{"OP_IF"};

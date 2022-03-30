@@ -90,19 +90,19 @@ auto save_variable(compiler_context& ctx, const std::string& name) -> void
 {
     if (ctx.locals && ctx.locals->info.contains(name)) {
         const auto& info = ctx.locals->info.at(name);
-        ctx.program.emplace_back(anzu::op_load_addr_of_local{
+        ctx.program.emplace_back(anzu::op_push_local_addr{
             .offset=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
-        ctx.program.emplace_back(anzu::op_save_to_addr{});
+        ctx.program.emplace_back(anzu::op_save{});
         return;
     }
     
     if (ctx.globals.info.contains(name)) {
         const auto& info = ctx.globals.info.at(name);
-        ctx.program.emplace_back(anzu::op_load_addr_of_global{
+        ctx.program.emplace_back(anzu::op_push_global_addr{
             .position=info.location, .size=ctx.type_info.types.block_size(info.type)
         });
-        ctx.program.emplace_back(anzu::op_save_to_addr{});
+        ctx.program.emplace_back(anzu::op_save{});
         return;
     }
 
@@ -114,20 +114,20 @@ auto load_variable(compiler_context& ctx, const std::string& name) -> void
 {
     if (ctx.locals) {
         if (auto it = ctx.locals->info.find(name); it != ctx.locals->info.end()) {
-            ctx.program.emplace_back(anzu::op_load_addr_of_local{
+            ctx.program.emplace_back(anzu::op_push_local_addr{
                 .offset=it->second.location,
                 .size=ctx.type_info.types.block_size(it->second.type)
             });
-            ctx.program.emplace_back(op_deref{});
+            ctx.program.emplace_back(op_load{});
             return;
         }
     }
     if (auto it = ctx.globals.info.find(name); it != ctx.globals.info.end()) {
-        ctx.program.emplace_back(anzu::op_load_addr_of_global{
+        ctx.program.emplace_back(anzu::op_push_global_addr{
             .position=it->second.location,
             .size=ctx.type_info.types.block_size(it->second.type)
         });
-        ctx.program.emplace_back(op_deref{});
+        ctx.program.emplace_back(op_load{});
     }
 }
 
@@ -317,15 +317,15 @@ void compile_node(const node_expr& expr, const node_field_expr& node, compiler_c
     const auto addr_of = address_of_expr(ctx, expr);
     const auto type_size = ctx.type_info.types.block_size(addr_of.type);
     if (addr_of.is_local) {
-        ctx.program.emplace_back(op_load_addr_of_local{
+        ctx.program.emplace_back(op_push_local_addr{
             .offset = addr_of.position, .size = type_size
         });
     } else {
-        ctx.program.emplace_back(op_load_addr_of_global{
+        ctx.program.emplace_back(op_push_global_addr{
             .position = addr_of.position, .size = type_size
         });
     }
-    ctx.program.emplace_back(op_deref{});
+    ctx.program.emplace_back(op_load{});
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
@@ -387,11 +387,11 @@ void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_
     const auto size_of = ctx.type_info.types.block_size(type_of);
 
     if (addr_of.is_local) {
-        ctx.program.emplace_back(op_load_addr_of_local{
+        ctx.program.emplace_back(op_push_local_addr{
             .offset=addr_of.position, .size=size_of
         });
     } else {
-        ctx.program.emplace_back(op_load_addr_of_global{
+        ctx.program.emplace_back(op_push_global_addr{
             .position=addr_of.position, .size=size_of
         });
     }
@@ -400,7 +400,7 @@ void compile_node(const node_expr& expr, const node_addrof_expr& node, compiler_
 void compile_node(const node_expr& expr, const node_deref_expr& node, compiler_context& ctx)
 {
     compile_node(*node.expr, ctx);
-    ctx.program.emplace_back(op_deref{});
+    ctx.program.emplace_back(op_load{});
 }
 
 void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
@@ -535,19 +535,19 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
         [&](named_location_expr auto& n) {
             const auto addr = address_of_expr(ctx, *node.position);
             if (addr.is_local) {
-                ctx.program.emplace_back(op_load_addr_of_local{
+                ctx.program.emplace_back(op_push_local_addr{
                     .offset=addr.position, .size=ctx.type_info.types.block_size(addr.type)
                 });
             } else {
-                ctx.program.emplace_back(op_load_addr_of_global{
+                ctx.program.emplace_back(op_push_global_addr{
                     .position=addr.position, .size=ctx.type_info.types.block_size(addr.type)
                 });
             }
-            ctx.program.emplace_back(op_save_to_addr{});
+            ctx.program.emplace_back(op_save{});
         },
         [&](node_deref_expr& n) {
             compile_node(*n.expr, ctx);
-            ctx.program.emplace_back(op_save_to_addr{});
+            ctx.program.emplace_back(op_save{});
         },
         [](const auto&) {
             print("invalid expression to assign to\n");
