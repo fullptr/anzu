@@ -221,6 +221,38 @@ auto address_of_expr(const compiler_context& ctx, const node_expr& node) -> addr
     }, node);
 }
 
+auto push_address_of(compiler_context& ctx, const node_expr& node) -> void
+{
+    std::visit(overloaded{
+        [&](const node_variable_expr& n) {
+            const auto addr = address_of(ctx, n.name, {});
+            if (addr.is_local) {
+                ctx.program.emplace_back(op_push_local_addr{
+                    .offset = addr.position, .size = ctx.type_info.types.block_size(addr.type)
+                });
+            } else {
+                ctx.program.emplace_back(op_push_global_addr{
+                    .position = addr.position, .size = ctx.type_info.types.block_size(addr.type)
+                });
+            }
+        },
+        [&](const node_field_expr& n) {
+            push_address_of(ctx, *n.expression);
+            const auto type = ctx.type_info.expr_types[n.expression.get()];
+            ctx.program.emplace_back(op_modify_addr{
+                .offset = 0, .new_size = ctx.type_info.types.block_size(type)
+            });
+        },
+        [&](const node_deref_expr& n) {
+            // Nothing to do, the pointer is already loaded at the top.
+        },
+        [](const auto&) {
+            print("compiler error: cannot take address of a non-lvalue\n");
+            std::exit(1);
+        }
+    }, node);
+}
+
 // Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
 // This function links the do to jump to one past the end if false, makes breaks
 // jump past the end, and makes continues jump back to the beginning.
@@ -306,25 +338,13 @@ void compile_node(const node_expr& expr, const node_literal_expr& node, compiler
 
 void compile_node(const node_expr& expr, const node_variable_expr& node, compiler_context& ctx)
 {
-    load_variable(ctx, node.name);
+    push_address_of(ctx, expr);
+    ctx.program.emplace_back(op_load{});
 }
 
 void compile_node(const node_expr& expr, const node_field_expr& node, compiler_context& ctx)
 {
-    const auto& var_name = std::get<node_variable_expr>(*node.expression).name;
-    const auto& var_type = ctx.type_info.expr_types[node.expression.get()];
-
-    const auto addr_of = address_of_expr(ctx, expr);
-    const auto type_size = ctx.type_info.types.block_size(addr_of.type);
-    if (addr_of.is_local) {
-        ctx.program.emplace_back(op_push_local_addr{
-            .offset = addr_of.position, .size = type_size
-        });
-    } else {
-        ctx.program.emplace_back(op_push_global_addr{
-            .position = addr_of.position, .size = type_size
-        });
-    }
+    push_address_of(ctx, expr);
     ctx.program.emplace_back(op_load{});
 }
 
