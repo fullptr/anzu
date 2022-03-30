@@ -1,1 +1,9 @@
+fn inc(p: ptr<int>) -> null
+{
+    *p = *p + 1
+}
 
+
+if !false {
+    println("hello")
+}
