@@ -16,6 +16,14 @@
 namespace anzu {
 namespace {
 
+template <typename... Args>
+[[noreturn]] void compiler_error(const token& tok, std::string_view msg, Args&&... args)
+{
+    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
+    anzu::print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
+    std::exit(1);
+}
+
 struct var_info
 {
     std::size_t location;
@@ -232,11 +240,79 @@ auto link_up_jumps(
     }
 }
 
+auto fetch_function_signature(
+    const compiler_context& ctx, const token& tok, const std::string& function_name
+)
+    -> signature
+{
+    if (auto it = ctx.functions.find(function_name); it != ctx.functions.end()) {
+        return it->second.sig;
+    }
+    if (anzu::is_builtin(function_name)) {
+        return anzu::fetch_builtin(function_name).sig;
+    }
+    compiler_error(tok, "could not find function '{}'", function_name);
+}
+
+auto get_typechecked_signature(
+    compiler_context& ctx,
+    const token& tok,
+    const std::string& function_name,
+    const std::vector<type_name>& param_types
+)
+    -> signature
+{
+    const auto sig = fetch_function_signature(ctx, tok, function_name);
+
+    if (sig.args.size() != param_types.size()) {
+        compiler_error(
+            tok,
+            "function '{}' expected {} args, got {}",
+            function_name, sig.args.size(), param_types.size()
+        );
+    }
+
+    auto ret_sig = signature{};
+    auto matches = std::unordered_map<int, type_name>{};
+
+    auto ait = param_types.begin();
+    auto sit = sig.args.begin();
+    for (; ait != param_types.end(); ++ait, ++sit) {
+        const auto actual_type = *ait;
+        const auto pattern_type = sit->type;
+        const auto arg_match = match(actual_type, pattern_type);
+        if (!arg_match.has_value()) {
+            compiler_error(tok, "'{}' does not match '{}'", actual_type, pattern_type);
+        }
+        for (const auto& [key, type] : arg_match.value()) {
+            if (auto it = matches.find(key); it != matches.end()) {
+                if (it->second != type) {
+                    compiler_error(tok, "bad function call (WIP, make error better)");
+                }
+            }
+            else {
+                matches.emplace(key, type);
+            }
+        }
+        auto arg = signature::arg{};
+        arg.name = sit->name;
+        arg.type = actual_type;
+        ret_sig.args.push_back(arg);
+    }
+
+    ret_sig.return_type = bind_generics(sig.return_type, matches);
+    if (!is_type_complete(ret_sig.return_type)) {
+        compiler_error(tok, "could not deduce return type for '{}'", function_name);
+    }
+    return ret_sig;
+}
+
 // Returns the return type
 auto compile_function_call(
+    compiler_context& ctx,
+    const token& tok,
     const std::string& function,
-    const std::vector<node_expr_ptr>& args,
-    compiler_context& ctx
+    const std::vector<node_expr_ptr>& args
 )
     -> type_name
 {
@@ -249,20 +325,38 @@ auto compile_function_call(
     // If this is the name of a simple type, then this is a constructor call, so
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
-    const auto as_type_name = type_name{type_simple{ .name=function }};
+    const auto as_type_name = make_type(function);
     if (ctx.types.is_registered_type(as_type_name)) {
+        const auto fields = ctx.types.get_fields(as_type_name);
+        if (fields.size() != args.size()) {
+            compiler_error(
+                tok,
+                "Invalid number of args for {} constructor, expected {} got {}\n",
+                function, fields.size(), args.size()
+            );
+        }
+        for (std::size_t i = 0; i != args.size(); ++i) {
+            if (fields[i].type != param_types[i]) {
+                compiler_error(
+                    tok,
+                    "Invalid type at position {} for {} constructor, expected {} got {}\n",
+                    i, function, fields[i].type, param_types[i]
+                );
+            }
+        }
         return as_type_name;
     }
 
     // Otherwise, it may be a custom function.
     else if (const auto function_def = find_function(ctx, function)) {
+        const auto sig = get_typechecked_signature(ctx, tok, function, param_types);
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
             .ptr=function_def->ptr + 1, // Jump into the function
             .args_size=signature_args_size(ctx, function_def->sig),
-            .return_size=ctx.types.block_size(function_def->sig.return_type)
+            .return_size=ctx.types.block_size(sig.return_type)
         });
-        return function_def->sig.return_type;
+        return sig.return_type;
     }
 
     // Otherwise, it must be a builtin function.
@@ -361,7 +455,7 @@ auto compile_expr(
 )
     -> type_name
 {
-    return compile_function_call(node.function_name, node.args, ctx);
+    return compile_function_call(ctx, node.token, node.function_name, node.args);
 }
 
 auto compile_expr(
@@ -374,8 +468,7 @@ auto compile_expr(
         std::exit(1);
     }
     auto element_view = node.elements | std::views::reverse;
-    const auto& first = element_view.front();
-    const auto inner_type = compile_expr(ctx, *first);
+    const auto inner_type = compile_expr(ctx, *element_view.front());
     for (const auto& element : element_view | std::views::drop(1)) {
         const auto element_type = compile_expr(ctx, *element);
         if (element_type != inner_type) {
