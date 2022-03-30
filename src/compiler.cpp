@@ -46,7 +46,6 @@ struct compiler_context
     var_locations globals;
     std::optional<var_locations> locals;
 
-    type_info type_info;
     type_store types;
 };
 
@@ -603,10 +602,9 @@ auto compile_node(const node_stmt& root, compiler_context& ctx) -> void
 
 }
 
-auto compile(const node_stmt_ptr& root, const type_info& types) -> anzu::program
+auto compile(const node_stmt_ptr& root) -> anzu::program
 {
     anzu::compiler_context ctx;
-    ctx.type_info = types;
     compile_node(*root, ctx);
     return ctx.program;
 }

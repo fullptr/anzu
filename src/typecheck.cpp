@@ -476,11 +476,10 @@ auto typecheck_node(typecheck_context& ctx, const node_stmt& node) -> void
 
 }
 
-auto typecheck_ast(const node_stmt_ptr& ast) -> type_info
+auto typecheck_ast(const node_stmt_ptr& ast) -> void
 {
     auto ctx = typecheck_context{};
     typecheck_node(ctx, *ast);
-    return ctx.types;
 }
 
 }

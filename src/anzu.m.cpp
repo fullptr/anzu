@@ -47,14 +47,14 @@ int main(int argc, char** argv)
     }
 
     anzu::print("-> Type Checking\n");
-    const auto type_info = anzu::typecheck_ast(ast);
+    anzu::typecheck_ast(ast);
     if (mode == "check") {
         print_node(*ast);
         return 0;
     }
 
     anzu::print("-> Compiling\n");
-    const auto program = anzu::compile(ast, type_info);
+    const auto program = anzu::compile(ast);
     if (mode == "com") {
         anzu::print_program(program);
         return 0;
