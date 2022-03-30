@@ -47,6 +47,7 @@ struct compiler_context
     std::optional<var_locations> locals;
 
     type_info type_info;
+    type_store types;
 };
 
 template <typename T>
@@ -66,7 +67,7 @@ auto append_op(compiler_context& ctx, T&& op) -> std::size_t
 auto declare_variable_name(compiler_context& ctx, const std::string& name, const type_name& type) -> void
 {
     auto& vars = ctx.locals.has_value() ? ctx.locals.value() : ctx.globals;
-    const auto type_size = ctx.type_info.types.block_size(type);
+    const auto type_size = ctx.types.block_size(type);
     const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type, type_size});
     if (success) { // If not successful, then the name already existed, so dont increase
         vars.next += type_size;
@@ -111,7 +112,7 @@ auto signature_args_size(const compiler_context& ctx, const signature& sig) -> s
 {
     auto args_size = std::size_t{0};
     for (const auto& arg : sig.args) {
-        args_size += ctx.type_info.types.block_size(arg.type);
+        args_size += ctx.types.block_size(arg.type);
     }
     return args_size;
 }
@@ -141,8 +142,8 @@ auto offset_of_field(
     auto offset     = std::size_t{0};
     auto size       = std::size_t{0};
     auto field_type = type_name{};
-    for (const auto& field : ctx.type_info.types.get_fields(type)) {
-        const auto field_size = ctx.type_info.types.block_size(field.type);
+    for (const auto& field : ctx.types.get_fields(type)) {
+        const auto field_size = ctx.types.block_size(field.type);
         if (field.name == field_name) {
             size = field_size;
             field_type = field.type;
@@ -250,7 +251,7 @@ auto compile_function_call(
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
     const auto as_type_name = type_name{type_simple{ .name=function }};
-    if (ctx.type_info.types.is_registered_type(as_type_name)) {
+    if (ctx.types.is_registered_type(as_type_name)) {
         return as_type_name;
     }
 
@@ -260,7 +261,7 @@ auto compile_function_call(
             .name=function,
             .ptr=function_def->ptr + 1, // Jump into the function
             .args_size=signature_args_size(ctx, function_def->sig),
-            .return_size=ctx.type_info.types.block_size(function_def->sig.return_type)
+            .return_size=ctx.types.block_size(function_def->sig.return_type)
         });
         return function_def->sig.return_type;
     }
@@ -449,7 +450,20 @@ void compile_node(const node_if_stmt& node, compiler_context& ctx)
 
 void compile_node(const node_struct_stmt& node, compiler_context& ctx)
 {
-
+    if (ctx.types.is_registered_type(node.name)) {
+        print("type '{}' is already defined\n", node.name);
+        std::exit(1);
+    }
+    for (const auto& field : node.fields) {
+        if (!ctx.types.is_registered_type(field.type)) {
+            print(
+                "unknown type '{}' of field {} for struct {}\n",
+                field.type, field.name, node.name
+            );
+            std::exit(1);
+        }
+    }
+    ctx.types.register_type(node.name, node.fields);
 }
 
 // TODO: This only works if the contained type has size 1, because lists are broken
@@ -574,7 +588,7 @@ void compile_node(const node_return_stmt& node, compiler_context& ctx)
 void compile_node(const node_expression_stmt& node, compiler_context& ctx)
 {
     const auto type = compile_expr(ctx, *node.expr);
-    ctx.program.emplace_back(anzu::op_pop{ .size=ctx.type_info.types.block_size(type) });
+    ctx.program.emplace_back(anzu::op_pop{ .size=ctx.types.block_size(type) });
 }
 
 auto compile_expr(compiler_context& ctx, const node_expr& expr) -> type_name
