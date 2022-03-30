@@ -6,6 +6,7 @@
 #include "operators.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
+#include "utility/views.hpp"
 
 #include <string_view>
 #include <optional>
@@ -256,25 +257,20 @@ auto link_up_jumps(
 auto check_signature(
     compiler_context& ctx,
     const token& tok,
-    const std::string& function_name,
-    const signature& function_sig,
+    const signature& sig,
     const std::vector<type_name>& param_types
 )
     -> void
 {
-    if (function_sig.args.size() != param_types.size()) {
+    if (sig.args.size() != param_types.size()) {
         compiler_error(
-            tok,
-            "function '{}' expected {} args, got {}",
-            function_name, function_sig.args.size(), param_types.size()
+            tok, "function expected {} args, got {}", sig.args.size(), param_types.size()
         );
     }
 
-    auto ait = param_types.begin();
-    auto sit = function_sig.args.begin();
-    for (; ait != param_types.end(); ++ait, ++sit) {
-        if (*ait != sit->type) {
-            compiler_error(tok, "'{}' does not match '{}'", *ait, sit->type);
+    for (const auto& [actual, expected] : zip(param_types, sig.args)) {
+        if (actual != expected.type) {
+            compiler_error(tok, "'{}' does not match '{}'", actual, expected.type);
         }
     }
 }
@@ -321,7 +317,7 @@ auto compile_function_call(
 
     // Otherwise, it may be a custom function.
     else if (const auto function_def = find_function(ctx, function)) {
-        check_signature(ctx, tok, function, function_def->sig, param_types);
+        check_signature(ctx, tok, function_def->sig, param_types);
         ctx.program.emplace_back(anzu::op_function_call{
             .name=function,
             .ptr=function_def->ptr + 1, // Jump into the function
