@@ -103,7 +103,7 @@ auto declare_variable_name(compiler& com, const std::string& name, const type_na
     }
 }
 
-auto find_variable(compiler& com, const std::string& name) -> void
+auto find_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     if (com.current_func && com.current_func->vars.info.contains(name)) {
         const auto& info = com.current_func->vars.info.at(name);
@@ -121,19 +121,18 @@ auto find_variable(compiler& com, const std::string& name) -> void
         return;
     }
 
-    anzu::print("could not find variable '{}'\n", name);
-    std::exit(1);
+    compiler_error(tok, "could not find variable '{}'\n", name);
 }
 
-auto save_variable(compiler& com, const std::string& name) -> void
+auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
-    find_variable(com, name);
+    find_variable(com, tok, name);
     com.program.emplace_back(anzu::op_save{});
 }
 
-auto load_variable(compiler& com, const std::string& name) -> void
+auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
-    find_variable(com, name);
+    find_variable(com, tok, name);
     com.program.emplace_back(anzu::op_load{});
 }
 
@@ -177,10 +176,6 @@ auto offset_of_field(const compiler& com, const type_name& type, const std::stri
         }
         offset += field_size;
     }
-    if (size == 0) {
-        print("type {} has no field '{}'\n", type, field_name);
-        std::exit(1);
-    }
     return std::tuple{offset, field_type, size};
 }
 
@@ -208,6 +203,9 @@ auto push_address_of(compiler& com, const node_field_expr& node) -> type_name
 {
     const auto type = push_address_of(com, *node.expression);
     const auto [offset, field_type, size] = offset_of_field(com, type, node.field_name);
+    if (size == 0) {
+        compiler_error(node.token, "type {} has no field '{}'\n", type, node.field_name);
+    }
     com.program.emplace_back(op_modify_addr{
         .offset=offset, .new_size=size
     });
@@ -219,8 +217,7 @@ auto push_address_of(compiler& com, const node_deref_expr& node) -> type_name
     const auto type = compile_expr(com, *node.expr); // Push the address
     const auto type_match = match(type, generic_ptr_type());
     if (!type_match) {
-        print("tried to dereference an expression of type '{}'\n", type);
-        std::exit(1);
+        compiler_error(node.token, "tried to dereference an expression of type '{}'\n", type);
     }
     return type_match->at(0);
 }
@@ -393,16 +390,14 @@ auto compile_expr(compiler& com, const node_function_call_expr& node) -> type_na
 auto compile_expr(compiler& com, const node_list_expr& node) -> type_name
 {
     if (node.elements.empty()) {
-        print("currently do not support empty list literals\n");
-        std::exit(1);
+        compiler_error(node.token, "currently do not support empty list literals\n");
     }
     auto element_view = node.elements | std::views::reverse;
     const auto inner_type = compile_expr(com, *element_view.front());
     for (const auto& element : element_view | std::views::drop(1)) {
         const auto element_type = compile_expr(com, *element);
         if (element_type != inner_type) {
-            print("list has mismatching element types\n");
-            std::exit(1);
+            compiler_error(node.token, "list has mismatching element types\n");
         }
     }
     com.program.emplace_back(op_build_list{ .size = node.elements.size() });
@@ -421,8 +416,7 @@ auto compile_expr(compiler& com, const node_deref_expr& node) -> type_name
 
     const auto type_match = match(type, generic_ptr_type());
     if (!type_match) {
-        print("tried to dereference an expression of type '{}'\n", type);
-        std::exit(1);
+        compiler_error(node.token, "tried to dereference an expression of type '{}'\n", type);
     }
     return type_match->at(0);
 }
@@ -473,7 +467,6 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
 {
     if (com.types.is_registered_type(node.name)) {
         compiler_error(node.token, "type '{}' is already defined", node.name);
-        std::exit(1);
     }
     for (const auto& field : node.fields) {
         if (!com.types.is_registered_type(field.type)) {
@@ -497,27 +490,26 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     const auto container_type = compile_expr(com, *node.container);
     const auto m = match(container_type, generic_list_type());
     if (!m) {
-        print("error, {} must be a list type\n", container_type);
-        std::exit(1);
+        compiler_error(node.token, "error, {} must be a list type\n", container_type);
     }
     const auto contained_type = m->at(0);
 
     declare_variable_name(com, container_name, container_type);
-    save_variable(com, container_name); // Currently only lists are allowed in for stmts
+    save_variable(com, node.token, container_name); // Currently only lists are allowed in for stmts
 
     // Push the counter to the stack
     com.program.emplace_back(anzu::op_load_literal{
         .value=make_int(0).data
     });
     declare_variable_name(com, index_name, int_type());
-    save_variable(com, index_name);
+    save_variable(com, node.token, index_name);
 
     declare_variable_name(com, node.var, contained_type);
 
     const auto begin_pos = append_op(com, op_loop_begin{});
 
-    load_variable(com, index_name);
-    load_variable(com, container_name);
+    load_variable(com, node.token, index_name);
+    load_variable(com, node.token, container_name);
     call_builtin(com, "list_size");
 
     const auto info = resolve_bin_op({
@@ -530,22 +522,22 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     
     const auto jump_pos = append_op(com, op_jump_if_false{}); // If size == index, jump to end
 
-    load_variable(com, container_name);
-    load_variable(com, index_name);
+    load_variable(com, node.token, container_name);
+    load_variable(com, node.token, index_name);
     call_builtin(com, "list_at");
-    save_variable(com, node.var);
+    save_variable(com, node.token, node.var);
 
     compile_stmt(com, *node.body);
 
     // Increment the index
-    load_variable(com, index_name);
+    load_variable(com, node.token, index_name);
     com.program.emplace_back(op_builtin_mem_op{
         .name = "increment",
         .ptr = +[](std::vector<block>& mem) {
             ++std::get<block_int>(back(mem));
         }
     });
-    save_variable(com, index_name);
+    save_variable(com, node.token, index_name);
 
     const auto end_pos = append_op(com, op_loop_end{ .jump=begin_pos });
 
@@ -569,7 +561,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         compiler_error(node.token, "redeclaration of variable '{}'", node.name);
     }
     declare_variable_name(com, node.name, type);
-    save_variable(com, node.name);
+    save_variable(com, node.token, node.name);
 }
 
 void compile_stmt(compiler& com, const node_assignment_stmt& node)
@@ -577,16 +569,14 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     const auto rhs_type = compile_expr(com, *node.expr);
     const auto lhs_type = push_address_of(com, *node.position);
     if (lhs_type != rhs_type) {
-        print("cannot assign a {} to a {}\n", rhs_type, lhs_type);
-        std::exit(1);
+        compiler_error(node.token, "cannot assign a {} to a {}\n", rhs_type, lhs_type);
     }
     com.program.emplace_back(op_save{});
 }
 
 auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
 {
-    // Functions returning null don't need a return statement.
-    if (node.sig.return_type == null_type()) {
+    if (node.sig.return_type == null_type() || std::holds_alternative<node_return_stmt>(*node.body)) {
         return;
     }
 
@@ -594,13 +584,8 @@ auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
         compiler_error(node.token, "function '{}' does not end in a return statement\n", node.name);
     };
 
-    const auto& body = *node.body;
-    if (std::holds_alternative<node_return_stmt>(body)) {
-        return;
-    }
-
-    if (std::holds_alternative<node_sequence_stmt>(body)) {
-        const auto& seq = std::get<node_sequence_stmt>(body).sequence;
+    if (std::holds_alternative<node_sequence_stmt>(*node.body)) {
+        const auto& seq = std::get<node_sequence_stmt>(*node.body).sequence;
         if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
             bad_function();
         }
