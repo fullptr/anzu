@@ -16,13 +16,6 @@
 namespace anzu {
 namespace {
 
-struct addrof
-{
-    std::size_t position;
-    bool        is_local; // If true, the position is an offset
-    type_name   type;
-};
-
 struct var_info
 {
     std::size_t location;
@@ -179,21 +172,6 @@ auto offset_of_field(
     return std::pair{offset, size};
 }
 
-auto address_of(const compiler_context& ctx, const std::string& name) -> addrof
-{
-    if (ctx.locals && ctx.locals->info.contains(name)) {
-        const auto& info = ctx.locals->info.at(name);
-        auto location = info.location;
-        auto type = info.type;
-        return { .position=location, .is_local=true, .type=type};
-    }
-    
-    const auto& info = ctx.globals.info.at(name);
-    auto location = info.location;
-    auto type = info.type;
-    return { .position=location, .is_local=false, .type=type};
-}
-
 auto compile_node(const node_expr& root, compiler_context& ctx) -> void;
 auto compile_node(const node_stmt& root, compiler_context& ctx) -> void;
 
@@ -201,16 +179,18 @@ auto push_address_of(compiler_context& ctx, const node_expr& node) -> void
 {
     std::visit(overloaded{
         [&](const node_variable_expr& n) {
-            const auto addr = address_of(ctx, n.name);
-            if (addr.is_local) {
+            if (ctx.locals && ctx.locals->info.contains(n.name)) {
+                const auto& info = ctx.locals->info.at(n.name);
                 ctx.program.emplace_back(op_push_local_addr{
-                    .offset = addr.position, .size = ctx.type_info.types.block_size(addr.type)
+                    .offset = info.location, .size = ctx.type_info.types.block_size(info.type)
                 });
-            } else {
-                ctx.program.emplace_back(op_push_global_addr{
-                    .position = addr.position, .size = ctx.type_info.types.block_size(addr.type)
-                });
+                return;
             }
+                
+            const auto& info = ctx.globals.info.at(n.name);
+            ctx.program.emplace_back(op_push_global_addr{
+                .position = info.location, .size = ctx.type_info.types.block_size(info.type)
+            });
         },
         [&](const node_field_expr& n) {
             push_address_of(ctx, *n.expression);
