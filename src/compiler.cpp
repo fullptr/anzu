@@ -479,7 +479,10 @@ void compile_node(const node_sequence_stmt& node, compiler_context& ctx)
 void compile_node(const node_while_stmt& node, compiler_context& ctx)
 {
     const auto begin_pos = append_op(ctx, op_loop_begin{});
-    compile_expr(ctx, *node.condition);
+    const auto condition_type = compile_expr(ctx, *node.condition);
+    if (condition_type != bool_type()) {
+        compiler_error(node.token, "while statement expected bool, got {}", condition_type);
+    }
     const auto jump_pos = append_op(ctx, op_jump_if_false{});
     compile_node(*node.body, ctx);
     const auto end_pos = append_op(ctx, op_loop_end{ .jump=begin_pos });
@@ -489,7 +492,10 @@ void compile_node(const node_while_stmt& node, compiler_context& ctx)
 void compile_node(const node_if_stmt& node, compiler_context& ctx)
 {
     const auto if_pos = append_op(ctx, op_if{});
-    compile_expr(ctx, *node.condition);
+    const auto condition_type = compile_expr(ctx, *node.condition);
+    if (condition_type != bool_type()) {
+        compiler_error(node.token, "if statement expected bool, got {}", condition_type);
+    }
     const auto jump_pos = append_op(ctx, op_jump_if_false{});
     compile_node(*node.body, ctx);
 
@@ -619,6 +625,33 @@ void compile_node(const node_assignment_stmt& node, compiler_context& ctx)
     ctx.program.emplace_back(op_save{});
 }
 
+auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
+{
+    // Functions returning null don't need a return statement.
+    if (node.sig.return_type == null_type()) {
+        return;
+    }
+
+    const auto bad_function = [&]() {
+        compiler_error(node.token, "function '{}' does not end in a return statement\n", node.name);
+    };
+
+    const auto& body = *node.body;
+    if (std::holds_alternative<node_return_stmt>(body)) {
+        return;
+    }
+
+    if (std::holds_alternative<node_sequence_stmt>(body)) {
+        const auto& seq = std::get<node_sequence_stmt>(body).sequence;
+        if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
+            bad_function();
+        }
+    }
+    else {
+        bad_function();
+    }
+}
+
 void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
 {
     for (const auto& arg : node.sig.args) {
@@ -626,6 +659,10 @@ void compile_node(const node_function_def_stmt& node, compiler_context& ctx)
             compiler_error(node.token, "generic function definitions currently disallowed");
         }
     }
+    if (!is_type_complete(node.sig.return_type)) {
+        compiler_error(node.token, "generic function definitions currently disallowed");
+    }
+    check_function_ends_with_return(node);
 
     const auto begin_pos = append_op(ctx, op_function{ .name=node.name });
     ctx.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
