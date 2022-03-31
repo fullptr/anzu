@@ -576,11 +576,9 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
 
 void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
-    const auto rhs_type = compile_expr(com, *node.expr);
-    const auto lhs_type = push_address_of(com, *node.position);
-    if (lhs_type != rhs_type) {
-        compiler_error(node.token, "cannot assign a {} to a {}\n", rhs_type, lhs_type);
-    }
+    const auto rhs = compile_expr(com, *node.expr);
+    const auto lhs = push_address_of(com, *node.position);
+    compiler_assert(lhs == rhs, node.token, "cannot assign a {} to a {}\n", rhs, lhs);
     com.program.emplace_back(op_save{});
 }
 
