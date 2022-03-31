@@ -110,7 +110,7 @@ public:
     type_store();
 
     // Checks if the given type is registered or matches a registered generic.
-    auto is_registered_type(const type_name& t) const -> bool;
+    auto is_valid(const type_name& t) const -> bool;
 
     // Given a type name, return the size of the type in blocks.
     auto block_size(const type_name& t) const -> std::size_t;

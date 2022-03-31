@@ -8,11 +8,5 @@ struct vec2
 
 g := vec2(1.0, 2.0)
 
-fn get_g() -> ptr<vec2>
-{
-    return &g
-}
-
-get_g()->x = 5.0
-
-println(g)
+x := 5.0 + (&g)->x
+println(x)

@@ -242,7 +242,7 @@ type_store::type_store()
 {
 }
 
-auto type_store::is_registered_type(const type_name& t) const -> bool
+auto type_store::is_valid(const type_name& t) const -> bool
 {
     if (is_type_fundamental(t)) {
         return true;
