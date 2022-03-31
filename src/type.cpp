@@ -126,6 +126,7 @@ auto is_type_complete(const type_name& t) -> bool
 auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == int_type()
+        || type == float_type()
         || type == bool_type()
         || type == str_type()
         || type == null_type()
@@ -241,7 +242,7 @@ type_store::type_store()
 {
 }
 
-auto type_store::is_registered_type(const type_name& t) const -> bool
+auto type_store::is_valid(const type_name& t) const -> bool
 {
     if (is_type_fundamental(t)) {
         return true;

@@ -25,6 +25,14 @@ template <typename... Args>
     std::exit(1);
 }
 
+template <typename... Args>
+[[noreturn]] void compiler_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
+{
+    if (!cond) {
+        compiler_error(tok, msg, std::forward<Args>(args)...);
+    }
+}
+
 struct var_info
 {
     std::size_t location;
@@ -71,18 +79,12 @@ auto current_vars(compiler& com) -> var_locations&
 
 auto verify_real_type(const compiler& com, const token& tok, const type_name& t) -> void
 {
-    if (!com.types.is_registered_type(t)) {
+    if (!com.types.is_valid(t)) {
         compiler_error(tok, "{} is not a recognised type", t);
     }
     if (!is_type_complete(t)) {
         compiler_error(tok, "generic function definitions currently disallowed ({})", t);
     }
-}
-
-template <typename T>
-auto back(std::vector<T>& elements) -> T&
-{
-    return elements.back();
 }
 
 template <typename T>
@@ -212,13 +214,29 @@ auto push_address_of(compiler& com, const node_field_expr& node) -> type_name
     return field_type;
 }
 
+auto push_address_of(compiler& com, const node_arrow_expr& node) -> type_name
+{
+    const auto type = compile_expr(com, *node.expression); // Push the address
+    const auto type_match = match(type, generic_ptr_type());
+    if (!type_match) {
+        compiler_error(node.token, "cannot use arrow operator on non-pointer type '{}'\n", type);
+    }
+    
+    const auto [offset, field_type, size] = offset_of_field(com, type_match->at(0), node.field_name);
+    if (size == 0) {
+        compiler_error(node.token, "type {} has no field '{}'\n", type, node.field_name);
+    }
+    com.program.emplace_back(op_modify_addr{
+        .offset=offset, .new_size=size
+    });
+    return field_type;
+}
+
 auto push_address_of(compiler& com, const node_deref_expr& node) -> type_name
 {
     const auto type = compile_expr(com, *node.expr); // Push the address
     const auto type_match = match(type, generic_ptr_type());
-    if (!type_match) {
-        compiler_error(node.token, "tried to dereference an expression of type '{}'\n", type);
-    }
+    compiler_assert(type_match.has_value(), node.token, "cannot dereference non-ptr type {}", type);
     return type_match->at(0);
 }
 
@@ -290,14 +308,12 @@ auto compile_expr(compiler& com, const node_literal_expr& node) -> type_name
     return node.value.type;
 }
 
-auto compile_expr(compiler& com, const node_variable_expr& node) -> type_name
-{
-    const auto type = push_address_of(com, node);
-    com.program.emplace_back(op_load{});
-    return type;
-}
+template <typename T>
+concept lvalue_expr = std::same_as<T, node_variable_expr> ||
+                      std::same_as<T, node_field_expr> ||
+                      std::same_as<T, node_arrow_expr>;
 
-auto compile_expr(compiler& com, const node_field_expr& node) -> type_name
+auto compile_expr(compiler& com, const lvalue_expr auto& node) -> type_name
 {
     const auto type = push_address_of(com, node);
     com.program.emplace_back(op_load{});
@@ -308,17 +324,15 @@ auto compile_expr(compiler& com, const node_field_expr& node) -> type_name
 // generic and combine the logic.
 auto compile_expr(compiler& com, const node_binary_op_expr& node) -> type_name
 {
-    const auto lhs_type = compile_expr(com, *node.lhs);
-    const auto rhs_type = compile_expr(com, *node.rhs);
+    const auto lhs = compile_expr(com, *node.lhs);
+    const auto rhs = compile_expr(com, *node.rhs);
     const auto op = node.token.text;
 
-    const auto info = resolve_bin_op({.op = op, .lhs = lhs_type, .rhs = rhs_type});
-    if (!info) {
-        compiler_error(node.token, " could not evaluate '{} {} {}'", lhs_type, op, rhs_type);
-    }
+    const auto info = resolve_bin_op({ .op=op, .lhs=lhs, .rhs=rhs });
+    compiler_assert(info.has_value(), node.token, "could not evaluate '{} {} {}'", lhs, op, rhs);
 
     com.program.emplace_back(op_builtin_mem_op{
-        .name = std::format("{} {} {}", lhs_type, op, rhs_type),
+        .name = std::format("{} {} {}", lhs, op, rhs),
         .ptr = info->operator_func
     });
     return info->result_type;
@@ -329,9 +343,7 @@ auto compile_expr(compiler& com, const node_unary_op_expr& node) -> type_name
     const auto type = compile_expr(com, *node.expr);
     const auto op = node.token.text;
     const auto info = resolve_unary_op({.op = op, .type = type});
-    if (!info) {
-        compiler_error(node.token, " could not evaluate '{}{}'", op, type);
-    }
+    compiler_assert(info.has_value(), node.token, "could not evaluate '{}{}'", op, type);
 
     com.program.emplace_back(op_builtin_mem_op{
         .name = std::format("{}{}", op, type),
@@ -351,7 +363,7 @@ auto compile_expr(compiler& com, const node_function_call_expr& node) -> type_na
     // If this is the name of a simple type, then this is a constructor call, so
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
-    if (const auto type = make_type(node.function_name); com.types.is_registered_type(type)) {
+    if (const auto type = make_type(node.function_name); com.types.is_valid(type)) {
         const auto sig = make_constructor_sig(com, type);
         verify_sig(node.token, sig, param_types);
         return type;
@@ -389,16 +401,13 @@ auto compile_expr(compiler& com, const node_function_call_expr& node) -> type_na
 
 auto compile_expr(compiler& com, const node_list_expr& node) -> type_name
 {
-    if (node.elements.empty()) {
-        compiler_error(node.token, "currently do not support empty list literals\n");
-    }
+    compiler_assert(!node.elements.empty(), node.token, "currently do not support empty list literals");
+
     auto element_view = node.elements | std::views::reverse;
     const auto inner_type = compile_expr(com, *element_view.front());
     for (const auto& element : element_view | std::views::drop(1)) {
         const auto element_type = compile_expr(com, *element);
-        if (element_type != inner_type) {
-            compiler_error(node.token, "list has mismatching element types\n");
-        }
+        compiler_assert(element_type == inner_type, node.token, "list has mismatching element types");
     }
     com.program.emplace_back(op_build_list{ .size = node.elements.size() });
     return concrete_list_type(inner_type);
@@ -414,11 +423,9 @@ auto compile_expr(compiler& com, const node_deref_expr& node) -> type_name
     const auto type = compile_expr(com, *node.expr);
     com.program.emplace_back(op_load{});
 
-    const auto type_match = match(type, generic_ptr_type());
-    if (!type_match) {
-        compiler_error(node.token, "tried to dereference an expression of type '{}'\n", type);
-    }
-    return type_match->at(0);
+    const auto m = match(type, generic_ptr_type());
+    compiler_assert(m.has_value(), node.token, "tried to dereference an expression of type {}", type);
+    return m->at(0);
 }
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
@@ -431,10 +438,9 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
 void compile_stmt(compiler& com, const node_while_stmt& node)
 {
     const auto begin_pos = append_op(com, op_loop_begin{});
-    const auto condition_type = compile_expr(com, *node.condition);
-    if (condition_type != bool_type()) {
-        compiler_error(node.token, "while statement expected bool, got {}", condition_type);
-    }
+    const auto cond_type = compile_expr(com, *node.condition);
+    compiler_assert(cond_type == bool_type(), node.token, "while-stmt expected bool, got {}", cond_type);
+
     const auto jump_pos = append_op(com, op_jump_if_false{});
     compile_stmt(com, *node.body);
     const auto end_pos = append_op(com, op_loop_end{ .jump=begin_pos });
@@ -444,10 +450,9 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
 void compile_stmt(compiler& com, const node_if_stmt& node)
 {
     const auto if_pos = append_op(com, op_if{});
-    const auto condition_type = compile_expr(com, *node.condition);
-    if (condition_type != bool_type()) {
-        compiler_error(node.token, "if statement expected bool, got {}", condition_type);
-    }
+    const auto cond_type = compile_expr(com, *node.condition);
+    compiler_assert(cond_type == bool_type(), node.token, "if-stmt expected bool, got {}", cond_type);
+
     const auto jump_pos = append_op(com, op_jump_if_false{});
     compile_stmt(com, *node.body);
 
@@ -465,18 +470,17 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
 
 void compile_stmt(compiler& com, const node_struct_stmt& node)
 {
-    if (com.types.is_registered_type(node.name)) {
-        compiler_error(node.token, "type '{}' is already defined", node.name);
-    }
+    compiler_assert(!com.types.is_valid(node.name), node.token, "type {} already defined", node.name);
+
     for (const auto& field : node.fields) {
-        if (!com.types.is_registered_type(field.type)) {
-            compiler_error(
-                node.token, 
-                "unknown type '{}' of field {} for struct {}\n",
-                field.type, field.name, node.name
-            );
-        }
+        compiler_assert(
+            com.types.is_valid(field.type),
+            node.token, 
+            "unknown type {} of field {} for struct {}\n",
+            field.type, field.name, node.name
+        );
     }
+
     com.types.register_type(node.name, node.fields);
 }
 
@@ -489,9 +493,7 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     // Push the container to the stack
     const auto container_type = compile_expr(com, *node.container);
     const auto m = match(container_type, generic_list_type());
-    if (!m) {
-        compiler_error(node.token, "error, {} must be a list type\n", container_type);
-    }
+    compiler_assert(m.has_value(), node.token, "error, {} must be a list type\n", container_type);
     const auto contained_type = m->at(0);
 
     declare_variable_name(com, container_name, container_type);
@@ -533,9 +535,7 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     load_variable(com, node.token, index_name);
     com.program.emplace_back(op_builtin_mem_op{
         .name = "increment",
-        .ptr = +[](std::vector<block>& mem) {
-            ++std::get<block_int>(back(mem));
-        }
+        .ptr = +[](std::vector<block>& mem) { ++std::get<block_int>(mem.back()); }
     });
     save_variable(com, node.token, index_name);
 
@@ -566,11 +566,9 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
 
 void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
-    const auto rhs_type = compile_expr(com, *node.expr);
-    const auto lhs_type = push_address_of(com, *node.position);
-    if (lhs_type != rhs_type) {
-        compiler_error(node.token, "cannot assign a {} to a {}\n", rhs_type, lhs_type);
-    }
+    const auto rhs = compile_expr(com, *node.expr);
+    const auto lhs = push_address_of(com, *node.position);
+    compiler_assert(lhs == rhs, node.token, "cannot assign a {} to a {}\n", rhs, lhs);
     com.program.emplace_back(op_save{});
 }
 

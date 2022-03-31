@@ -1,2 +1,12 @@
 
-continue
+
+struct vec2
+{
+    x: float
+    y: float
+}
+
+g := vec2(1.0, 2.0)
+
+x := 5.0 + (&g)->x
+println(x)
