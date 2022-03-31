@@ -23,6 +23,12 @@ auto print_node(const node_expr& root, int indent) -> void
             print_node(*node.expression, indent + 1);
             print("{}- Field: {}\n", spaces, node.field_name);
         },
+        [&](const node_arrow_expr& node) {
+            print("{}Arrow: \n", spaces);
+            print("{}- Expr:\n", spaces);
+            print_node(*node.expression, indent + 1);
+            print("{}- Field: {}\n", spaces, node.field_name);
+        },
         [&](const node_unary_op_expr& node) {
             print("{}UnaryOp: \n", spaces);
             print("{}- Op: {}\n", spaces, node.token.text);

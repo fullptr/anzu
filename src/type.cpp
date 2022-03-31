@@ -126,6 +126,7 @@ auto is_type_complete(const type_name& t) -> bool
 auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == int_type()
+        || type == float_type()
         || type == bool_type()
         || type == str_type()
         || type == null_type()

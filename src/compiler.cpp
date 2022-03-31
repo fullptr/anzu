@@ -212,6 +212,25 @@ auto push_address_of(compiler& com, const node_field_expr& node) -> type_name
     return field_type;
 }
 
+auto push_address_of(compiler& com, const node_arrow_expr& node) -> type_name
+{
+    const auto type = compile_expr(com, *node.expression); // Push the address
+    const auto type_match = match(type, generic_ptr_type());
+    if (!type_match) {
+        compiler_error(node.token, "cannot use arrow operator on non-pointer type '{}'\n", type);
+    }
+    const auto pointed_type = type_match->at(0);
+
+    const auto [offset, field_type, size] = offset_of_field(com, pointed_type, node.field_name);
+    if (size == 0) {
+        compiler_error(node.token, "type {} has no field '{}'\n", type, node.field_name);
+    }
+    com.program.emplace_back(op_modify_addr{
+        .offset=offset, .new_size=size
+    });
+    return field_type;
+}
+
 auto push_address_of(compiler& com, const node_deref_expr& node) -> type_name
 {
     const auto type = compile_expr(com, *node.expr); // Push the address
@@ -290,14 +309,12 @@ auto compile_expr(compiler& com, const node_literal_expr& node) -> type_name
     return node.value.type;
 }
 
-auto compile_expr(compiler& com, const node_variable_expr& node) -> type_name
-{
-    const auto type = push_address_of(com, node);
-    com.program.emplace_back(op_load{});
-    return type;
-}
+template <typename T>
+concept lvalue_expr = std::same_as<T, node_variable_expr> ||
+                      std::same_as<T, node_field_expr> ||
+                      std::same_as<T, node_arrow_expr>;
 
-auto compile_expr(compiler& com, const node_field_expr& node) -> type_name
+auto compile_expr(compiler& com, const lvalue_expr auto& node) -> type_name
 {
     const auto type = push_address_of(com, node);
     com.program.emplace_back(op_load{});
