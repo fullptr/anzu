@@ -88,12 +88,6 @@ auto verify_real_type(const compiler& com, const token& tok, const type_name& t)
 }
 
 template <typename T>
-auto back(std::vector<T>& elements) -> T&
-{
-    return elements.back();
-}
-
-template <typename T>
 auto append_op(compiler& com, T&& op) -> std::size_t
 {
     com.program.emplace_back(std::forward<T>(op));
@@ -543,9 +537,7 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     load_variable(com, node.token, index_name);
     com.program.emplace_back(op_builtin_mem_op{
         .name = "increment",
-        .ptr = +[](std::vector<block>& mem) {
-            ++std::get<block_int>(back(mem));
-        }
+        .ptr = +[](std::vector<block>& mem) { ++std::get<block_int>(mem.back()); }
     });
     save_variable(com, node.token, index_name);
 
