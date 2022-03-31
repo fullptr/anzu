@@ -477,9 +477,7 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
             com.types.is_valid(field.type),
             node.token, 
             "unknown type {} of field {} for struct {}\n",
-            field.type,
-            field.name,
-            node.name
+            field.type, field.name, node.name
         );
     }
 
