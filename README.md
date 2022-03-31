@@ -79,7 +79,6 @@ Lexer    -- lexer.hpp     : Converts a .az file into a vector of tokens
    |     -- token.hpp     : Definition of a token and utility
    |
 Parser   -- parser.hpp    : Converts a vector of tokens into an AST
-   |     -- typecheck.hpp : Type checks expressions and function defs/calls.
    |
    |     -- ast.hpp       : Definitions of AST nodes and utility
    |
@@ -96,6 +95,7 @@ Common Modules
 -- object.hpp      : Definition of an object in anzu
 -- type.hpp        : Definition of a type in anzu
 -- vocabulary.hpp  : Definitions of keywords and symbols
+-- views.hpp       : A collection of some helper views not in C++20
 
 Utility Modules (in src/utility)
 -- print.hpp       : Wrapper for std::format, similar to {fmt}

@@ -1,7 +1,6 @@
 #include "functions.hpp"
 #include "object.hpp"
 #include "runtime.hpp"
-#include "typecheck.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 

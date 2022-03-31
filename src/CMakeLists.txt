@@ -10,7 +10,6 @@ add_executable(
     token.cpp
     parser.cpp
     ast.cpp
-    typecheck.cpp
     compiler.cpp
     program.cpp
     runtime.cpp

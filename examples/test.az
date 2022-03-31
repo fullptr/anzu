@@ -1,16 +1,2 @@
 
-struct vec2
-{
-    x: int
-    y: int
-}
-
-fn inc_y(p: ptr<vec2>) -> null
-{
-    (*p).y = 5
-}
-
-v := vec2(2, 3)
-inc_y(&v)
-
-println(v)
+continue
