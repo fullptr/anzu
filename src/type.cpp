@@ -1,6 +1,7 @@
 #include "type.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
+#include "utility/views.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -96,6 +97,11 @@ auto generic_list_type() -> type_name
     }};
 }
 
+auto is_list_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_compound>(t) && std::get<type_compound>(t).name == tk_list;
+}
+
 auto concrete_ptr_type(const type_name& t) -> type_name
 {
     return {type_compound{
@@ -108,6 +114,16 @@ auto generic_ptr_type() -> type_name
     return {type_compound{
         .name = std::string{tk_ptr}, .subtypes = { generic_type(0) }
     }};
+}
+
+auto is_ptr_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_compound>(t) && std::get<type_compound>(t).name == tk_ptr;
+}
+
+auto inner_type(const type_name& t) -> type_name
+{
+    return std::get<type_compound>(t).subtypes.front();
 }
 
 auto is_type_complete(const type_name& t) -> bool
@@ -192,15 +208,10 @@ auto match(const type_name& concrete, const type_name& pattern) -> std::optional
 
     // Loop through the subtypes and do pairwise matches. Any successful matches should be
     // lifted into our match map. If an index is already in our map with a different type,
-    // the match fails and we return nullopt. (std::views::zip in C++23 would be nice here)
-    auto cit = c.subtypes.begin();
-    auto pit = p.subtypes.begin();
-    for (; cit != c.subtypes.end(); ++cit, ++pit) {
-        const auto submatch = match(*cit, *pit);
-        if (!submatch.has_value()) {
-            return std::nullopt;
-        }
-        if (!update(matches, submatch.value())) {
+    // the match fails and we return nullopt.
+    for (const auto& [ct, pt] : zip(c.subtypes, p.subtypes)) {
+        const auto submatch = match(ct, pt);
+        if (!submatch.has_value() || !update(matches, submatch.value())) {
             return std::nullopt;
         }
     }
@@ -244,13 +255,10 @@ type_store::type_store()
 
 auto type_store::is_valid(const type_name& t) const -> bool
 {
-    if (is_type_fundamental(t)) {
-        return true;
-    }
-    return d_classes.contains(t);
+    return is_type_fundamental(t) || d_classes.contains(t);
 }
 
-auto type_store::block_size(const type_name& t) const -> std::size_t
+auto type_store::size_of(const type_name& t) const -> std::size_t
 {
     if (!is_type_complete(t)) {
         return 1; // Hack to make lists work (for fundamentals) for now. Should be 0 or exception
@@ -259,7 +267,7 @@ auto type_store::block_size(const type_name& t) const -> std::size_t
     if (auto it = d_classes.find(t); it != d_classes.end()) {
         auto size = std::size_t{0};
         for (const auto& field : it->second) {
-            size += block_size(field.type);
+            size += size_of(field.type);
         }
         return size;
     }
@@ -267,7 +275,7 @@ auto type_store::block_size(const type_name& t) const -> std::size_t
     return 1; // By default, assume block size of 1 (should we have this?)
 }
 
-auto type_store::get_fields(const type_name& t) const -> type_fields
+auto type_store::fields_of(const type_name& t) const -> type_fields
 {
     if (auto it = d_classes.find(t); it != d_classes.end()) {
         return it->second;

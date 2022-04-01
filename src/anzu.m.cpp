@@ -38,7 +38,7 @@ int main(int argc, char** argv)
     }
 
     anzu::print("-> Parsing\n");
-    auto ast = anzu::parse(tokens);
+    const auto ast = anzu::parse(tokens);
     if (mode == "parse") {
         print_node(*ast);
         return 0;

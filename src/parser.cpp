@@ -145,12 +145,12 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             auto& expr = new_node->emplace<anzu::node_field_expr>();
             expr.token = tokens.consume();
             expr.field_name = tokens.consume().text;
-            expr.expression = std::move(node);
+            expr.expr = std::move(node);
         } else {
             auto& expr = new_node->emplace<anzu::node_arrow_expr>();
             expr.token = tokens.consume();
             expr.field_name = tokens.consume().text;
-            expr.expression = std::move(node);
+            expr.expr = std::move(node);
         }
         node = std::move(new_node);
     }
@@ -339,10 +339,6 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
         stmt.sequence.push_back(parse_statement(tokens));
     }
 
-    // If there is only one element in the sequence, return that directly
-    if (stmt.sequence.size() == 1) {
-        node = std::move(stmt.sequence.back());
-    }
     return node;
 }
 

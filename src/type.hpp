@@ -69,9 +69,15 @@ inline auto make_type(const std::string& name) -> type_name
 
 auto concrete_list_type(const type_name& t) -> type_name;
 auto generic_list_type() -> type_name;
+auto is_list_type(const type_name& t) -> bool;
 
 auto concrete_ptr_type(const type_name& t) -> type_name;
 auto generic_ptr_type() -> type_name;
+auto is_ptr_type(const type_name& t) -> bool;
+
+// Extracts the single inner type of the given t. Undefined if the given t is not a compound
+// type with a single subtype.
+auto inner_type(const type_name& t) -> type_name;
 
 auto is_type_complete(const type_name& t) -> bool;
 
@@ -90,12 +96,12 @@ struct signature
     struct arg
     {
         std::string name;
-        anzu::type_name  type;
+        type_name   type;
         auto operator==(const arg&) const -> bool = default;
     };
 
     std::vector<arg> args;
-    anzu::type_name       return_type;
+    type_name        return_type;
     auto operator==(const signature&) const -> bool = default;
 };
 
@@ -113,9 +119,9 @@ public:
     auto is_valid(const type_name& t) const -> bool;
 
     // Given a type name, return the size of the type in blocks.
-    auto block_size(const type_name& t) const -> std::size_t;
+    auto size_of(const type_name& t) const -> std::size_t;
 
-    auto get_fields(const type_name& t) const -> type_fields;
+    auto fields_of(const type_name& t) const -> type_fields;
 
     // Registers a type with the given name and fields. Returns true if successful and false
     // if the type already exists.
