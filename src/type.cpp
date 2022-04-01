@@ -1,6 +1,7 @@
 #include "type.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
+#include "utility/views.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -96,6 +97,11 @@ auto generic_list_type() -> type_name
     }};
 }
 
+auto is_list_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_compound>(t) && std::get<type_compound>(t).name == tk_list;
+}
+
 auto concrete_ptr_type(const type_name& t) -> type_name
 {
     return {type_compound{
@@ -108,6 +114,16 @@ auto generic_ptr_type() -> type_name
     return {type_compound{
         .name = std::string{tk_ptr}, .subtypes = { generic_type(0) }
     }};
+}
+
+auto is_ptr_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_compound>(t) && std::get<type_compound>(t).name == tk_ptr;
+}
+
+auto inner_type(const type_name& t) -> type_name
+{
+    return std::get<type_compound>(t).subtypes.front();
 }
 
 auto is_type_complete(const type_name& t) -> bool
@@ -192,15 +208,10 @@ auto match(const type_name& concrete, const type_name& pattern) -> std::optional
 
     // Loop through the subtypes and do pairwise matches. Any successful matches should be
     // lifted into our match map. If an index is already in our map with a different type,
-    // the match fails and we return nullopt. (std::views::zip in C++23 would be nice here)
-    auto cit = c.subtypes.begin();
-    auto pit = p.subtypes.begin();
-    for (; cit != c.subtypes.end(); ++cit, ++pit) {
-        const auto submatch = match(*cit, *pit);
-        if (!submatch.has_value()) {
-            return std::nullopt;
-        }
-        if (!update(matches, submatch.value())) {
+    // the match fails and we return nullopt.
+    for (const auto& [ct, pt] : zip(c.subtypes, p.subtypes)) {
+        const auto submatch = match(ct, pt);
+        if (!submatch.has_value() || !update(matches, submatch.value())) {
             return std::nullopt;
         }
     }

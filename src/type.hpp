@@ -69,9 +69,15 @@ inline auto make_type(const std::string& name) -> type_name
 
 auto concrete_list_type(const type_name& t) -> type_name;
 auto generic_list_type() -> type_name;
+auto is_list_type(const type_name& t) -> bool;
 
 auto concrete_ptr_type(const type_name& t) -> type_name;
 auto generic_ptr_type() -> type_name;
+auto is_ptr_type(const type_name& t) -> bool;
+
+// Extracts the single inner type of the given t. Undefined if the given t is not a compound
+// type with a single subtype.
+auto inner_type(const type_name& t) -> type_name;
 
 auto is_type_complete(const type_name& t) -> bool;
 

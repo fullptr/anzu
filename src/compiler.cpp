@@ -163,10 +163,13 @@ auto find_function(const compiler& com, const std::string& function) -> const fu
     return nullptr;
 }
 
-auto offset_of_field(
-    const compiler& com, const token& tok, const type_name& type, const std::string& field_name
+// Given a type and field name, and assuming that the top of the stack at runtime is a pointer
+// to an object of the given type, this function adds an op code to modify that pointer to
+// instead point to the given field. Returns the type of the field.
+auto compile_ptr_to_field(
+    compiler& com, const token& tok, const type_name& type, const std::string& field_name
 )
-    -> std::tuple<std::size_t, type_name, std::size_t>
+    -> type_name
 {
     auto offset     = std::size_t{0};
     auto size       = std::size_t{0};
@@ -182,7 +185,8 @@ auto offset_of_field(
     }
     
     compiler_assert(size != 0, tok, "type {} has no field '{}'\n", type, field_name);
-    return std::tuple{offset, field_type, size};
+    com.program.emplace_back(op_modify_addr{ .offset=offset, .new_size=size });
+    return field_type;
 }
 
 auto compile_stmt(compiler& com, const node_stmt& root) -> void;
@@ -208,34 +212,21 @@ auto compile_expr_ptr(compiler& com, const node_variable_expr& node) -> type_nam
 auto compile_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, *node.expression);
-    const auto [offset, field_type, size] = offset_of_field(com, node.token, type, node.field_name);
-    com.program.emplace_back(op_modify_addr{
-        .offset=offset, .new_size=size
-    });
-    return field_type;
+    return compile_ptr_to_field(com, node.token, type, node.field_name);
 }
 
 auto compile_expr_ptr(compiler& com, const node_arrow_expr& node) -> type_name
 {
     const auto type = compile_expr_val(com, *node.expression); // Push the address
-    const auto type_match = match(type, generic_ptr_type());
-    if (!type_match) {
-        compiler_error(node.token, "cannot use arrow operator on non-pointer type '{}'\n", type);
-    }
-    
-    const auto [offset, field_type, size] = offset_of_field(com, node.token, type_match->at(0), node.field_name);
-    com.program.emplace_back(op_modify_addr{
-        .offset=offset, .new_size=size
-    });
-    return field_type;
+    compiler_assert(is_ptr_type(type), node.token, "cannot use arrow operator on non-ptr type '{}'", type);
+    return compile_ptr_to_field(com, node.token, type, node.field_name);
 }
 
 auto compile_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 {
     const auto type = compile_expr_val(com, *node.expr); // Push the address
-    const auto m = match(type, generic_ptr_type());
-    compiler_assert(m.has_value(), node.token, "cannot dereference non-ptr type {}", type);
-    return m->at(0);
+    compiler_assert(is_ptr_type(type), node.token, "cannot use deref operator on non-ptr type '{}'", type);
+    return inner_type(type);
 }
 
 auto compile_expr_ptr(compiler& com, const auto& node) -> type_name
