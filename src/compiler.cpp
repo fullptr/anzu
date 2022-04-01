@@ -163,7 +163,9 @@ auto find_function(const compiler& com, const std::string& function) -> const fu
     return nullptr;
 }
 
-auto offset_of_field(const compiler& com, const type_name& type, const std::string& field_name)
+auto offset_of_field(
+    const compiler& com, const token& tok, const type_name& type, const std::string& field_name
+)
     -> std::tuple<std::size_t, type_name, std::size_t>
 {
     auto offset     = std::size_t{0};
@@ -178,6 +180,8 @@ auto offset_of_field(const compiler& com, const type_name& type, const std::stri
         }
         offset += field_size;
     }
+    
+    compiler_assert(size != 0, tok, "type {} has no field '{}'\n", type, field_name);
     return std::tuple{offset, field_type, size};
 }
 
@@ -204,10 +208,7 @@ auto compile_expr_ptr(compiler& com, const node_variable_expr& node) -> type_nam
 auto compile_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, *node.expression);
-    const auto [offset, field_type, size] = offset_of_field(com, type, node.field_name);
-    if (size == 0) {
-        compiler_error(node.token, "type {} has no field '{}'\n", type, node.field_name);
-    }
+    const auto [offset, field_type, size] = offset_of_field(com, node.token, type, node.field_name);
     com.program.emplace_back(op_modify_addr{
         .offset=offset, .new_size=size
     });
@@ -222,10 +223,7 @@ auto compile_expr_ptr(compiler& com, const node_arrow_expr& node) -> type_name
         compiler_error(node.token, "cannot use arrow operator on non-pointer type '{}'\n", type);
     }
     
-    const auto [offset, field_type, size] = offset_of_field(com, type_match->at(0), node.field_name);
-    if (size == 0) {
-        compiler_error(node.token, "type {} has no field '{}'\n", type, node.field_name);
-    }
+    const auto [offset, field_type, size] = offset_of_field(com, node.token, type_match->at(0), node.field_name);
     com.program.emplace_back(op_modify_addr{
         .offset=offset, .new_size=size
     });
@@ -296,23 +294,25 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
     return sig;
 }
 
-auto compile_expr_val(compiler& com, const node_literal_expr& node) -> type_name
-{
-    com.program.emplace_back(anzu::op_load_literal{ .value=node.value.data });
-    return node.value.type;
-}
-
 template <typename T>
 concept lvalue_expr = std::same_as<T, node_variable_expr> ||
                       std::same_as<T, node_field_expr> ||
                       std::same_as<T, node_arrow_expr> ||
                       std::same_as<T, node_deref_expr>;
 
+// All possible expressions that can appear on the left of an assignment can be loaded
+// in the same way
 auto compile_expr_val(compiler& com, const lvalue_expr auto& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, node);
     com.program.emplace_back(op_load{});
     return type;
+}
+
+auto compile_expr_val(compiler& com, const node_literal_expr& node) -> type_name
+{
+    com.program.emplace_back(anzu::op_load_literal{ .value=node.value.data });
+    return node.value.type;
 }
 
 // This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
