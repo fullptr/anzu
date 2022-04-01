@@ -88,15 +88,18 @@ struct node_deref_expr
 };
 
 struct node_expr : std::variant<
+    // Rvalue expressions
     node_literal_expr,
-    node_variable_expr,
-    node_field_expr,
-    node_arrow_expr,
     node_unary_op_expr,
     node_binary_op_expr,
     node_function_call_expr,
     node_list_expr,
     node_addrof_expr,
+
+    // Lvalue expressions
+    node_variable_expr,
+    node_field_expr,
+    node_arrow_expr,
     node_deref_expr>
 {
 };

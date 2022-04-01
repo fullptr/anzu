@@ -3,9 +3,5 @@
 x := 5
 p := &x
 
-fn foo() -> null {}
 
-*p = 6
-println(x)
-
-vec2(1, 2).x
+x := [1]

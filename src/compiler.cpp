@@ -188,57 +188,6 @@ auto compile_ptr_to_field(
     return field_type;
 }
 
-auto compile_stmt(compiler& com, const node_stmt& root) -> void;
-auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name;
-auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name;
-
-auto compile_expr_ptr(compiler& com, const node_variable_expr& node) -> type_name
-{
-    if (com.current_func && com.current_func->vars.info.contains(node.name)) {
-        const auto& info = com.current_func->vars.info.at(node.name);
-        com.program.emplace_back(op_push_local_addr{
-            .offset=info.location, .size=com.types.size_of(info.type)
-        });
-        return info.type;
-    }
-    const auto& info = com.globals.info.at(node.name);
-    com.program.emplace_back(op_push_global_addr{
-        .position=info.location, .size=com.types.size_of(info.type)
-    });
-    return info.type;
-}
-
-auto compile_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
-{
-    const auto type = compile_expr_ptr(com, *node.expression);
-    return compile_ptr_to_field(com, node.token, type, node.field_name);
-}
-
-auto compile_expr_ptr(compiler& com, const node_arrow_expr& node) -> type_name
-{
-    const auto type = compile_expr_val(com, *node.expression); // Push the address
-    compiler_assert(is_ptr_type(type), node.token, "cannot use arrow operator on non-ptr type '{}'", type);
-    return compile_ptr_to_field(com, node.token, type, node.field_name);
-}
-
-auto compile_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
-{
-    const auto type = compile_expr_val(com, *node.expr); // Push the address
-    compiler_assert(is_ptr_type(type), node.token, "cannot use deref operator on non-ptr type '{}'", type);
-    return inner_type(type);
-}
-
-auto compile_expr_ptr(compiler& com, const auto& node) -> type_name
-{
-    compiler_error(node.token, "cannot take address of a non-lvalue\n");
-    return int_type();
-}
-
-auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name
-{
-    return std::visit([&](const auto& expr) { return compile_expr_ptr(com, expr); }, node);
-}
-
 // Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
 // This function links the do to jump to one past the end if false, makes breaks
 // jump past the end, and makes continues jump back to the beginning.
@@ -284,20 +233,78 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
     return sig;
 }
 
-template <typename T>
-concept lvalue_expr = std::same_as<T, node_variable_expr> ||
-                      std::same_as<T, node_field_expr> ||
-                      std::same_as<T, node_arrow_expr> ||
-                      std::same_as<T, node_deref_expr>;
-
-// All possible expressions that can appear on the left of an assignment can be loaded
-// in the same way
-auto compile_expr_val(compiler& com, const lvalue_expr auto& node) -> type_name
+auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
 {
-    const auto type = compile_expr_ptr(com, node);
-    com.program.emplace_back(op_load{});
-    return type;
+    if (node.sig.return_type == null_type() || std::holds_alternative<node_return_stmt>(*node.body)) {
+        return;
+    }
+
+    const auto bad_function = [&]() {
+        compiler_error(node.token, "function '{}' does not end in a return statement\n", node.name);
+    };
+
+    if (std::holds_alternative<node_sequence_stmt>(*node.body)) {
+        const auto& seq = std::get<node_sequence_stmt>(*node.body).sequence;
+        if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
+            bad_function();
+        }
+    }
+    else {
+        bad_function();
+    }
 }
+
+auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name;
+auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name;
+auto compile_stmt(compiler& com, const node_stmt& root) -> void;
+
+auto compile_expr_ptr(compiler& com, const node_variable_expr& node) -> type_name
+{
+    if (com.current_func && com.current_func->vars.info.contains(node.name)) {
+        const auto& info = com.current_func->vars.info.at(node.name);
+        com.program.emplace_back(op_push_local_addr{
+            .offset=info.location, .size=com.types.size_of(info.type)
+        });
+        return info.type;
+    }
+    const auto& info = com.globals.info.at(node.name);
+    com.program.emplace_back(op_push_global_addr{
+        .position=info.location, .size=com.types.size_of(info.type)
+    });
+    return info.type;
+}
+
+auto compile_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
+{
+    const auto type = compile_expr_ptr(com, *node.expression);
+    return compile_ptr_to_field(com, node.token, type, node.field_name);
+}
+
+auto compile_expr_ptr(compiler& com, const node_arrow_expr& node) -> type_name
+{
+    const auto type = compile_expr_val(com, *node.expression); // Push the address
+    compiler_assert(is_ptr_type(type), node.token, "cannot use arrow operator on non-ptr type '{}'", type);
+    return compile_ptr_to_field(com, node.token, type, node.field_name);
+}
+
+auto compile_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
+{
+    const auto type = compile_expr_val(com, *node.expr); // Push the address
+    compiler_assert(is_ptr_type(type), node.token, "cannot use deref operator on non-ptr type '{}'", type);
+    return inner_type(type);
+}
+
+[[noreturn]] auto compile_expr_ptr(compiler& com, const auto& node) -> type_name
+{
+    compiler_error(node.token, "cannot take address of a non-lvalue\n");
+}
+
+auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name
+{
+    return std::visit([&](const auto& expr) { return compile_expr_ptr(com, expr); }, node);
+}
+
+
 
 auto compile_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
@@ -305,8 +312,6 @@ auto compile_expr_val(compiler& com, const node_literal_expr& node) -> type_name
     return node.value.type;
 }
 
-// This is a copy of the logic from typecheck.cpp now, pretty bad, we should make it more
-// generic and combine the logic.
 auto compile_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     const auto lhs = compile_expr_val(com, *node.lhs);
@@ -402,6 +407,15 @@ auto compile_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, *node.expr);
     return concrete_ptr_type(type);
+}
+
+// If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
+// we can load it by pushing the address to the stack and loading.
+auto compile_expr_val(compiler& com, const auto& node) -> type_name
+{
+    const auto type = compile_expr_ptr(com, node);
+    com.program.emplace_back(op_load{});
+    return type;
 }
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
@@ -546,27 +560,6 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     const auto lhs = compile_expr_ptr(com, *node.position);
     compiler_assert(lhs == rhs, node.token, "cannot assign a {} to a {}\n", rhs, lhs);
     com.program.emplace_back(op_save{});
-}
-
-auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
-{
-    if (node.sig.return_type == null_type() || std::holds_alternative<node_return_stmt>(*node.body)) {
-        return;
-    }
-
-    const auto bad_function = [&]() {
-        compiler_error(node.token, "function '{}' does not end in a return statement\n", node.name);
-    };
-
-    if (std::holds_alternative<node_sequence_stmt>(*node.body)) {
-        const auto& seq = std::get<node_sequence_stmt>(*node.body).sequence;
-        if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
-            bad_function();
-        }
-    }
-    else {
-        bad_function();
-    }
 }
 
 void compile_stmt(compiler& com, const node_function_def_stmt& node)
