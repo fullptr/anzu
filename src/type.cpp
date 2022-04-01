@@ -255,10 +255,7 @@ type_store::type_store()
 
 auto type_store::is_valid(const type_name& t) const -> bool
 {
-    if (is_type_fundamental(t)) {
-        return true;
-    }
-    return d_classes.contains(t);
+    return is_type_fundamental(t) || d_classes.contains(t);
 }
 
 auto type_store::size_of(const type_name& t) const -> std::size_t

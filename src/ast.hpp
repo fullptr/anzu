@@ -29,7 +29,7 @@ struct node_variable_expr
 
 struct node_field_expr
 {
-    node_expr_ptr expression;
+    node_expr_ptr expr;
     std::string   field_name;
 
     anzu::token token;
@@ -37,7 +37,7 @@ struct node_field_expr
 
 struct node_arrow_expr
 {
-    node_expr_ptr expression;
+    node_expr_ptr expr;
     std::string   field_name;
 
     anzu::token token; 

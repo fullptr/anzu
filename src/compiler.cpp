@@ -104,22 +104,22 @@ auto declare_variable_name(compiler& com, const std::string& name, const type_na
     }
 }
 
-auto find_variable(compiler& com, const token& tok, const std::string& name) -> void
+auto find_variable(compiler& com, const token& tok, const std::string& name) -> type_name
 {
     if (com.current_func && com.current_func->vars.info.contains(name)) {
         const auto& info = com.current_func->vars.info.at(name);
-        com.program.emplace_back(anzu::op_push_local_addr{
+        com.program.emplace_back(op_push_local_addr{
             .offset=info.location, .size=com.types.size_of(info.type)
         });
-        return;
+        return info.type;
     }
     
     if (com.globals.info.contains(name)) {
         const auto& info = com.globals.info.at(name);
-        com.program.emplace_back(anzu::op_push_global_addr{
+        com.program.emplace_back(op_push_global_addr{
             .position=info.location, .size=com.types.size_of(info.type)
         });
-        return;
+        return info.type;
     }
 
     compiler_error(tok, "could not find variable '{}'\n", name);
@@ -260,29 +260,18 @@ auto compile_stmt(compiler& com, const node_stmt& root) -> void;
 
 auto compile_expr_ptr(compiler& com, const node_variable_expr& node) -> type_name
 {
-    if (com.current_func && com.current_func->vars.info.contains(node.name)) {
-        const auto& info = com.current_func->vars.info.at(node.name);
-        com.program.emplace_back(op_push_local_addr{
-            .offset=info.location, .size=com.types.size_of(info.type)
-        });
-        return info.type;
-    }
-    const auto& info = com.globals.info.at(node.name);
-    com.program.emplace_back(op_push_global_addr{
-        .position=info.location, .size=com.types.size_of(info.type)
-    });
-    return info.type;
+    return find_variable(com, node.token, node.name);
 }
 
 auto compile_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto type = compile_expr_ptr(com, *node.expression);
+    const auto type = compile_expr_ptr(com, *node.expr);
     return compile_ptr_to_field(com, node.token, type, node.field_name);
 }
 
 auto compile_expr_ptr(compiler& com, const node_arrow_expr& node) -> type_name
 {
-    const auto type = compile_expr_val(com, *node.expression); // Push the address
+    const auto type = compile_expr_val(com, *node.expr); // Push the address
     compiler_assert(is_ptr_type(type), node.token, "cannot use arrow operator on non-ptr type '{}'", type);
     return compile_ptr_to_field(com, node.token, type, node.field_name);
 }

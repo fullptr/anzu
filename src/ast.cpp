@@ -20,13 +20,13 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_field_expr& node) {
             print("{}Field: \n", spaces);
             print("{}- Expr:\n", spaces);
-            print_node(*node.expression, indent + 1);
+            print_node(*node.expr, indent + 1);
             print("{}- Field: {}\n", spaces, node.field_name);
         },
         [&](const node_arrow_expr& node) {
             print("{}Arrow: \n", spaces);
             print("{}- Expr:\n", spaces);
-            print_node(*node.expression, indent + 1);
+            print_node(*node.expr, indent + 1);
             print("{}- Field: {}\n", spaces, node.field_name);
         },
         [&](const node_unary_op_expr& node) {
