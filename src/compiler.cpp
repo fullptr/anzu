@@ -240,12 +240,6 @@ auto push_address_of(compiler& com, const node_deref_expr& node) -> type_name
     return type_match->at(0);
 }
 
-auto push_address_of(compiler& com, const node_addrof_expr& node) -> type_name
-{
-    const auto type = push_address_of(com, *node.expr);
-    return concrete_ptr_type(type);
-}
-
 auto push_address_of(compiler& com, const auto& node) -> type_name
 {
     compiler_error(node.token, "cannot take address of a non-lvalue\n");
@@ -415,7 +409,8 @@ auto compile_expr(compiler& com, const node_list_expr& node) -> type_name
 
 auto compile_expr(compiler& com, const node_addrof_expr& node) -> type_name
 {
-    return push_address_of(com, node);
+    const auto type = push_address_of(com, *node.expr);
+    return concrete_ptr_type(type);
 }
 
 auto compile_expr(compiler& com, const node_deref_expr& node) -> type_name

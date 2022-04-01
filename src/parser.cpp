@@ -339,10 +339,6 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
         stmt.sequence.push_back(parse_statement(tokens));
     }
 
-    // If there is only one element in the sequence, return that directly
-    if (stmt.sequence.size() == 1) {
-        node = std::move(stmt.sequence.back());
-    }
     return node;
 }
 

@@ -8,5 +8,5 @@ struct vec2
 
 g := vec2(1.0, 2.0)
 
-x := 5.0 + (&g)->x
-println(x)
+x := &g
+println(*x)
