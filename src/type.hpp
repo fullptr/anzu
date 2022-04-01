@@ -96,12 +96,12 @@ struct signature
     struct arg
     {
         std::string name;
-        anzu::type_name  type;
+        type_name   type;
         auto operator==(const arg&) const -> bool = default;
     };
 
     std::vector<arg> args;
-    anzu::type_name       return_type;
+    type_name        return_type;
     auto operator==(const signature&) const -> bool = default;
 };
 
