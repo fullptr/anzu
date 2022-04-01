@@ -119,9 +119,9 @@ public:
     auto is_valid(const type_name& t) const -> bool;
 
     // Given a type name, return the size of the type in blocks.
-    auto block_size(const type_name& t) const -> std::size_t;
+    auto size_of(const type_name& t) const -> std::size_t;
 
-    auto get_fields(const type_name& t) const -> type_fields;
+    auto fields_of(const type_name& t) const -> type_fields;
 
     // Registers a type with the given name and fields. Returns true if successful and false
     // if the type already exists.

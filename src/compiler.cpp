@@ -37,7 +37,6 @@ struct var_info
 {
     std::size_t location;
     type_name   type;
-    std::size_t type_size;
 };
 
 struct var_locations
@@ -98,8 +97,8 @@ auto append_op(compiler& com, T&& op) -> std::size_t
 auto declare_variable_name(compiler& com, const std::string& name, const type_name& type) -> void
 {
     auto& vars = current_vars(com);
-    const auto type_size = com.types.block_size(type);
-    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type, type_size});
+    const auto type_size = com.types.size_of(type);
+    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type});
     if (success) { // If not successful, then the name already existed, so dont increase
         vars.next += type_size;
     }
@@ -110,7 +109,7 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
     if (com.current_func && com.current_func->vars.info.contains(name)) {
         const auto& info = com.current_func->vars.info.at(name);
         com.program.emplace_back(anzu::op_push_local_addr{
-            .offset=info.location, .size=info.type_size
+            .offset=info.location, .size=com.types.size_of(info.type)
         });
         return;
     }
@@ -118,7 +117,7 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
     if (com.globals.info.contains(name)) {
         const auto& info = com.globals.info.at(name);
         com.program.emplace_back(anzu::op_push_global_addr{
-            .position=info.location, .size=info.type_size
+            .position=info.location, .size=com.types.size_of(info.type)
         });
         return;
     }
@@ -142,7 +141,7 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
 {
     auto args_size = std::size_t{0};
     for (const auto& arg : sig.args) {
-        args_size += com.types.block_size(arg.type);
+        args_size += com.types.size_of(arg.type);
     }
     return args_size;
 }
@@ -174,8 +173,8 @@ auto compile_ptr_to_field(
     auto offset     = std::size_t{0};
     auto size       = std::size_t{0};
     auto field_type = type_name{};
-    for (const auto& field : com.types.get_fields(type)) {
-        const auto field_size = com.types.block_size(field.type);
+    for (const auto& field : com.types.fields_of(type)) {
+        const auto field_size = com.types.size_of(field.type);
         if (field.name == field_name) {
             size = field_size;
             field_type = field.type;
@@ -198,13 +197,13 @@ auto compile_expr_ptr(compiler& com, const node_variable_expr& node) -> type_nam
     if (com.current_func && com.current_func->vars.info.contains(node.name)) {
         const auto& info = com.current_func->vars.info.at(node.name);
         com.program.emplace_back(op_push_local_addr{
-            .offset=info.location, .size=info.type_size
+            .offset=info.location, .size=com.types.size_of(info.type)
         });
         return info.type;
     }
     const auto& info = com.globals.info.at(node.name);
     com.program.emplace_back(op_push_global_addr{
-        .position=info.location, .size=info.type_size
+        .position=info.location, .size=com.types.size_of(info.type)
     });
     return info.type;
 }
@@ -278,7 +277,7 @@ void verify_sig(const token& tok, const signature& sig, const std::vector<type_n
 auto make_constructor_sig(const compiler& com, const type_name& type) -> signature
 {
     auto sig = signature{};
-    for (const auto& field : com.types.get_fields(type)) {
+    for (const auto& field : com.types.fields_of(type)) {
         sig.args.emplace_back(field.name, field.type);
     }
     sig.return_type = type;
@@ -362,7 +361,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
             .name=node.function_name,
             .ptr=function_def->ptr + 1, // Jump into the function
             .args_size=signature_args_size(com, function_def->sig),
-            .return_size=com.types.block_size(function_def->sig.return_type)
+            .return_size=com.types.size_of(function_def->sig.return_type)
         });
         return function_def->sig.return_type;
     }
@@ -612,7 +611,7 @@ void compile_stmt(compiler& com, const node_return_stmt& node)
 void compile_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
-    com.program.emplace_back(anzu::op_pop{ .size=com.types.block_size(type) });
+    com.program.emplace_back(anzu::op_pop{ .size=com.types.size_of(type) });
 }
 
 auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name

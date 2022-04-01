@@ -261,7 +261,7 @@ auto type_store::is_valid(const type_name& t) const -> bool
     return d_classes.contains(t);
 }
 
-auto type_store::block_size(const type_name& t) const -> std::size_t
+auto type_store::size_of(const type_name& t) const -> std::size_t
 {
     if (!is_type_complete(t)) {
         return 1; // Hack to make lists work (for fundamentals) for now. Should be 0 or exception
@@ -270,7 +270,7 @@ auto type_store::block_size(const type_name& t) const -> std::size_t
     if (auto it = d_classes.find(t); it != d_classes.end()) {
         auto size = std::size_t{0};
         for (const auto& field : it->second) {
-            size += block_size(field.type);
+            size += size_of(field.type);
         }
         return size;
     }
@@ -278,7 +278,7 @@ auto type_store::block_size(const type_name& t) const -> std::size_t
     return 1; // By default, assume block size of 1 (should we have this?)
 }
 
-auto type_store::get_fields(const type_name& t) const -> type_fields
+auto type_store::fields_of(const type_name& t) const -> type_fields
 {
     if (auto it = d_classes.find(t); it != d_classes.end()) {
         return it->second;
