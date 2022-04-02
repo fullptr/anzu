@@ -93,23 +93,23 @@ auto generic_type(int id) -> type_name
     return {type_generic{ .id = id }};
 }
 
-auto concrete_list_type(const type_name& t) -> type_name
+auto concrete_list_type(const type_name& t, std::size_t size) -> type_name
 {
-    return {type_compound{
-        .name = std::string{tk_list}, .subtypes = { t }
+    return {type_list{
+        .inner_type = { t }, .count = size
     }};
 }
 
-auto generic_list_type() -> type_name
+auto generic_list_type(std::size_t size) -> type_name
 {
-    return {type_compound{
-        .name = std::string{tk_list}, .subtypes = { generic_type(0) }
+    return {type_list{
+        .inner_type = { generic_type(0) }, .count = size
     }};
 }
 
 auto is_list_type(const type_name& t) -> bool
 {
-    return std::holds_alternative<type_compound>(t) && std::get<type_compound>(t).name == tk_list;
+    return std::holds_alternative<type_list>(t);
 }
 
 auto concrete_ptr_type(const type_name& t) -> type_name
@@ -159,8 +159,8 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == bool_type()
         || type == str_type()
         || type == null_type()
-        || match(type, generic_list_type())
-        || match(type, generic_ptr_type());
+        || is_list_type(type)
+        || is_ptr_type(type);
 }
 
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a

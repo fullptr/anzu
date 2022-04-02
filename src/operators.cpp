@@ -46,7 +46,7 @@ auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binar
     }
     const auto& type = desc.lhs;
     
-    if (match(type, generic_list_type()).has_value()) { // No support for having these in bin ops.
+    if (is_list_type(type)) { // No support for having these in bin ops.
         return std::nullopt;
     }
 

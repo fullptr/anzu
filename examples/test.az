@@ -7,8 +7,7 @@ struct vec3
     z: int
 }
 
-l := [vec3(1, 2, 3), vec3(1, 2, 3), vec3(1, 2, 3), vec3(1, 2, 3)]
+l := [1, 2, 6, 5, 3, 4]
 
-size := size_of(l) / size_of(l[0])
+println(size_of(l) / size_of(l[0]))
 
-0 < size

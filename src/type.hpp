@@ -82,8 +82,8 @@ inline auto make_type(const std::string& name) -> type_name
     return { type_simple{ .name=name } };
 }
 
-auto concrete_list_type(const type_name& t) -> type_name;
-auto generic_list_type() -> type_name;
+auto concrete_list_type(const type_name& t, std::size_t size) -> type_name;
+auto generic_list_type(std::size_t size) -> type_name;
 auto is_list_type(const type_name& t) -> bool;
 
 auto concrete_ptr_type(const type_name& t) -> type_name;
