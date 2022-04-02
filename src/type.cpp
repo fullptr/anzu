@@ -20,12 +20,12 @@ auto to_string(const type_simple& type) -> std::string
 
 auto to_string(const type_list& type) -> std::string
 {
-    return std::format("{}[{}]", to_string(type.inner_type[0]), type.count);
+    return std::format("{}[{}]", to_string(*type.inner_type), type.count);
 }
 
 auto to_string(const type_ptr& type) -> std::string
 {
-    return std::format("&{}", to_string(type.inner_type[0]));
+    return std::format("&{}", to_string(*type.inner_type));
 }
 
 auto hash(const type_name& type) -> std::size_t
@@ -40,12 +40,12 @@ auto hash(const type_simple& type) -> std::size_t
 
 auto hash(const type_list& type) -> std::size_t
 {
-    return hash(type.inner_type[0]) ^ std::hash<std::size_t>{}(type.count);
+    return hash(*type.inner_type) ^ std::hash<std::size_t>{}(type.count);
 }
 
 auto hash(const type_ptr& type) -> std::size_t
 {
-    return hash(type.inner_type[0]) ^ std::hash<std::size_t>{}(100);
+    return hash(*type.inner_type) ^ std::hash<std::size_t>{}(100);
 }
 
 auto int_type()  -> type_name
@@ -96,10 +96,10 @@ auto is_ptr_type(const type_name& t) -> bool
 auto inner_type(const type_name& t) -> type_name
 {
     if (is_list_type(t)) {
-        return std::get<type_list>(t).inner_type[0];
+        return *std::get<type_list>(t).inner_type;
     }
     if (is_ptr_type(t)) {
-        return std::get<type_ptr>(t).inner_type[0];
+        return *std::get<type_ptr>(t).inner_type;
     }
     print("OH NO MY TYPE\n");
     std::exit(1);
@@ -177,7 +177,7 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             return size;
         },
         [&](const type_list& t) {
-            return size_of(t.inner_type[0]) * t.count;
+            return size_of(*t.inner_type) * t.count;
         },
         [](const type_ptr&) {
             return std::size_t{1};

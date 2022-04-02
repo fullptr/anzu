@@ -332,7 +332,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             if (!std::holds_alternative<type_list>(ltype)) {
                 compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
             }
-            return std::get<type_list>(ltype).inner_type[0];
+            return *std::get<type_list>(ltype).inner_type;
         }
     }, node);
 }
@@ -372,7 +372,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     if (!std::holds_alternative<type_list>(ltype)) {
         compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
     }
-    const auto etype = std::get<type_list>(ltype).inner_type[0];
+    const auto etype = *std::get<type_list>(ltype).inner_type;
     const auto etype_size = com.types.size_of(etype);
 
     // Push the offset (index * size)
