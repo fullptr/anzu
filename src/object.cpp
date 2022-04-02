@@ -27,7 +27,7 @@ auto to_string(const block& blk) -> std::string
     return std::visit(overloaded {
         [](const block_str& v) { return std::format("'{}'", v); },
         [](const block_list& v) { return list_repr(v); },
-        [](block_ptr ptr) { return std::format("{:x}", ptr.ptr); },
+        [](block_ptr ptr) { return std::format("[{:x}:{}]", ptr.ptr, ptr.size); },
         [](block_null) { return std::string{"null"}; },
         [](auto&& val) { return std::format("{}", val); }
     }, blk);
