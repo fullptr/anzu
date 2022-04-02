@@ -27,6 +27,12 @@ struct type_list
     auto operator==(const type_list&) const -> bool = default;
 };
 
+struct type_ptr
+{
+    std::vector<type_name> inner_type; // Should be a value_ptr
+    auto operator==(const type_ptr&) const -> bool = default;
+};
+
 struct type_compound
 {
     std::string            name;
@@ -43,6 +49,7 @@ struct type_generic
 struct type_name : public std::variant<
     type_simple,
     type_list,
+    type_ptr,
     type_compound,
     type_generic>
 {
@@ -60,12 +67,14 @@ using type_fields = std::vector<field>;
 
 auto to_string(const type_name& type) -> std::string;
 auto to_string(const type_list& type) -> std::string;
+auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
 auto to_string(const type_compound& type) -> std::string;
 auto to_string(const type_generic& type) -> std::string;
 
 auto hash(const type_name& type) -> std::size_t;
 auto hash(const type_list& type) -> std::size_t;
+auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;
@@ -83,11 +92,9 @@ inline auto make_type(const std::string& name) -> type_name
 }
 
 auto concrete_list_type(const type_name& t, std::size_t size) -> type_name;
-auto generic_list_type(std::size_t size) -> type_name;
 auto is_list_type(const type_name& t) -> bool;
 
 auto concrete_ptr_type(const type_name& t) -> type_name;
-auto generic_ptr_type() -> type_name;
 auto is_ptr_type(const type_name& t) -> bool;
 
 // Extracts the single inner type of the given t. Undefined if the given t is not a compound

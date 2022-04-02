@@ -500,9 +500,7 @@ auto compile_expr_val(compiler& com, const node_list_expr& node) -> type_name
         const auto element_type = compile_expr_val(com, *element);
         compiler_assert(element_type == inner_type, node.token, "list has mismatching element types");
     }
-    //com.program.emplace_back(op_build_list{ .size = node.elements.size() });
-    //return concrete_list_type(inner_type);
-    return type_name{type_list{ .inner_type={inner_type}, .count=node.elements.size() }};
+    return concrete_list_type(inner_type, node.elements.size());
 }
 
 auto compile_expr_val(compiler& com, const node_addrof_expr& node) -> type_name

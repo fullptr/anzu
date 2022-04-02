@@ -23,6 +23,11 @@ auto to_string(const type_list& type) -> std::string
     return std::format("{}[{}]", to_string(type.inner_type[0]), type.count);
 }
 
+auto to_string(const type_ptr& type) -> std::string
+{
+    return std::format("&{}", to_string(type.inner_type[0]));
+}
+
 auto to_string(const type_compound& type) -> std::string
 {
     const auto subtypes = format_comma_separated(type.subtypes);
@@ -48,6 +53,12 @@ auto hash(const type_list& type) -> std::size_t
 {
     return hash(type.inner_type[0]) ^ std::hash<std::size_t>{}(type.count);
 }
+
+auto hash(const type_ptr& type) -> std::size_t
+{
+    return hash(type.inner_type[0]) ^ std::hash<std::size_t>{}(100);
+}
+
 
 auto hash(const type_compound& type) -> std::size_t
 {
@@ -100,13 +111,6 @@ auto concrete_list_type(const type_name& t, std::size_t size) -> type_name
     }};
 }
 
-auto generic_list_type(std::size_t size) -> type_name
-{
-    return {type_list{
-        .inner_type = { generic_type(0) }, .count = size
-    }};
-}
-
 auto is_list_type(const type_name& t) -> bool
 {
     return std::holds_alternative<type_list>(t);
@@ -116,13 +120,6 @@ auto concrete_ptr_type(const type_name& t) -> type_name
 {
     return {type_compound{
         .name = std::string{tk_ptr}, .subtypes = { t }
-    }};
-}
-
-auto generic_ptr_type() -> type_name
-{
-    return {type_compound{
-        .name = std::string{tk_ptr}, .subtypes = { generic_type(0) }
     }};
 }
 
@@ -142,6 +139,9 @@ auto is_type_complete(const type_name& t) -> bool
         [](const type_simple&) { return true; },
         [](const type_generic&) { return false; },
         [](const type_list& t) {
+            return is_type_complete(t.inner_type[0]);
+        },
+        [](const type_ptr& t) {
             return is_type_complete(t.inner_type[0]);
         },
         [](const type_compound& t) {
@@ -237,6 +237,9 @@ auto replace(type_name& ret, const match_result& matches) -> void
     std::visit(overloaded {
         [&](type_simple&) {},
         [&](type_list& type) {
+            replace(type.inner_type[0], matches);
+        },
+        [&](type_ptr& type) {
             replace(type.inner_type[0], matches);
         },
         [&](type_generic& type) {
