@@ -10,7 +10,27 @@
 
 namespace anzu {
 
-struct block;
+
+using block_int   = int;
+using block_float = double;
+using block_bool  = bool;
+using block_str   = std::string;
+using block_null  = std::monostate;
+
+struct block_ptr
+{
+    std::size_t ptr;
+    std::size_t size;
+};
+
+using block = std::variant<
+    block_int,
+    block_float,
+    block_bool,
+    block_str,
+    block_ptr,
+    block_null
+>;
 
 struct object
 {
@@ -18,33 +38,8 @@ struct object
     anzu::type_name    type;
 };
 
-struct pointer
-{
-    std::size_t ptr;
-    std::size_t size;
-};
-
-using block_int   = int;
-using block_float = double;
-using block_bool  = bool;
-using block_str   = std::string;
-using block_ptr   = pointer;
-using block_null  = std::monostate;
-
 auto to_string(const block& blk) -> std::string;
 auto to_string(const object& object) -> std::string;
-
-struct block : std::variant<
-    block_int,
-    block_float,
-    block_bool,
-    block_str,
-    block_ptr,
-    block_null
->
-{
-    using variant::variant;
-};
 
 auto make_int(block_int val) -> object;
 auto make_float(block_float val) -> object;

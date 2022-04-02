@@ -1,5 +1,6 @@
 #pragma once
 #include "type.hpp"
+#include "object.hpp"
 
 #include <functional>
 #include <string>
@@ -8,7 +9,6 @@
 
 namespace anzu {
 
-struct block;
 using builtin_function = block(*)(std::span<const block>);
 
 struct builtin
