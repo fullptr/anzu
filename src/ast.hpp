@@ -94,6 +94,14 @@ struct node_sizeof_expr
     anzu::token token;
 };
 
+struct node_subscript_expr
+{
+    node_expr_ptr expr;
+    int           index; // TODO: Make into an expr
+
+    anzu::token token;
+};
+
 struct node_expr : std::variant<
     // Rvalue expressions
     node_literal_expr,
@@ -108,7 +116,8 @@ struct node_expr : std::variant<
     node_variable_expr,
     node_field_expr,
     node_arrow_expr,
-    node_deref_expr>
+    node_deref_expr,
+    node_subscript_expr>
 {
 };
 

@@ -330,6 +330,13 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             const auto ptype = type_of_expr(com, *expr.expr);
             compiler_assert(is_ptr_type(ptype), expr.token, "cannot use deref operator on non-ptr type '{}'", ptype);
             return inner_type(ptype);
+        },
+        [&](const node_subscript_expr& expr) {
+            const auto ltype = type_of_expr(com, *expr.expr);
+            if (!std::holds_alternative<type_list>(ltype)) {
+                compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
+            }
+            return std::get<type_list>(ltype).inner_type[0];
         }
     }, node);
 }
@@ -361,6 +368,20 @@ auto compile_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
     const auto type = compile_expr_val(com, *node.expr); // Push the address
     compiler_assert(is_ptr_type(type), node.token, "cannot use deref operator on non-ptr type '{}'", type);
     return inner_type(type);
+}
+
+auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
+{
+    const auto ltype = compile_expr_ptr(com, *expr.expr);
+    if (!std::holds_alternative<type_list>(ltype)) {
+        compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
+    }
+    const auto etype = std::get<type_list>(ltype).inner_type[0];
+    com.program.emplace_back(op_modify_addr{
+        .offset = expr.index * com.types.size_of(etype),
+        .new_size = com.types.size_of(etype)
+    });
+    return etype;
 }
 
 [[noreturn]] auto compile_expr_ptr(compiler& com, const auto& node) -> type_name

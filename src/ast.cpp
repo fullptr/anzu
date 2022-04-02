@@ -68,6 +68,12 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_sizeof_expr& node) {
             print("{}SizeOf:\n", spaces);
             print_node(*node.expr, indent + 1);
+        },
+        [&](const node_subscript_expr& node) {
+            print("{}Subscript:\n", spaces);
+            print("{}- Expr:\n", spaces);
+            print_node(*node.expr, indent + 1);
+            print("{}- Index: {}:\n", spaces, node.index);
         }
     }, root);
 }
