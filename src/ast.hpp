@@ -97,8 +97,8 @@ struct node_sizeof_expr
 struct node_subscript_expr
 {
     node_expr_ptr expr;
-    int           index; // TODO: Make into an expr
-
+    node_expr_ptr index;
+    
     anzu::token token;
 };
 

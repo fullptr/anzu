@@ -161,14 +161,6 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
     return args_size;
 }
 
-auto call_builtin(compiler& com, const std::string& function_name) -> void
-{
-    const auto& func = anzu::fetch_builtin(function_name);
-    com.program.emplace_back(anzu::op_builtin_call{
-        .name=function_name, .ptr=func.ptr, .args_size=signature_args_size(com, func.sig)
-    });
-}
-
 auto find_function(const compiler& com, const std::string& function) -> const function_def*
 {
     if (const auto it = com.functions.find(function); it != com.functions.end()) {
@@ -384,7 +376,23 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
         compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
     }
     const auto etype = std::get<type_list>(ltype).inner_type[0];
-    modify_ptr(com, expr.index * com.types.size_of(etype), com.types.size_of(etype));
+    const auto etype_size = com.types.size_of(etype);
+
+    // Push the offset (index * size)
+    const auto itype = compile_expr_val(com, *expr.index);
+    compiler_assert(itype == int_type(), expr.token, "subscript argument must be an int, got '{}'", itype);
+
+    com.program.emplace_back(op_load_literal{ .value={static_cast<int>(etype_size)} });
+    const auto info = resolve_binary_op({ .op='*', .lhs=int_type(), .rhs=int_type() });
+    com.program.emplace_back(op_builtin_mem_op{
+        .name = "int * int",
+        .ptr = info->operator_func
+    });
+
+    // Push the size
+    com.program.emplace_back(op_load_literal{ .value={static_cast<int>(etype_size)} });
+
+    com.program.emplace_back(op_modify_ptr{});
     return etype;
 }
 

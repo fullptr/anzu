@@ -161,7 +161,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         } else {
             auto& expr = new_node->emplace<node_subscript_expr>();
             expr.token = tokens.consume();
-            expr.index = tokens.consume_int();
+            expr.index = parse_expression(tokens);
             tokens.consume_only(tk_rbracket);
             expr.expr = std::move(node);
         }

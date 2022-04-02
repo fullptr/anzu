@@ -1,12 +1,6 @@
+y := 4
+l := [1, 2, 3, 4, 5]
 
-struct vec2
-{
-    x: int
-    y: int
-}
-
-
-v := vec2(1, 2)
-
-v.y = 5
-println(v)
+x := 5
+l[2] = 0
+println(l)

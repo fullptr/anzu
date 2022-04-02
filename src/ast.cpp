@@ -73,7 +73,8 @@ auto print_node(const node_expr& root, int indent) -> void
             print("{}Subscript:\n", spaces);
             print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
-            print("{}- Index: {}:\n", spaces, node.index);
+            print("{}- Index:\n", spaces);
+            print_node(*node.index, indent + 1);
         }
     }, root);
 }
