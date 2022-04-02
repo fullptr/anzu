@@ -20,9 +20,16 @@ struct type_simple
     auto operator==(const type_simple&) const -> bool = default;
 };
 
+struct type_list
+{
+    std::vector<type_name> inner_type; // Should be a value_ptr
+    std::size_t            count;
+    auto operator==(const type_list&) const -> bool = default;
+};
+
 struct type_compound
 {
-    std::string       name;
+    std::string            name;
     std::vector<type_name> subtypes;
     auto operator==(const type_compound&) const -> bool = default;
 };
@@ -33,7 +40,13 @@ struct type_generic
     auto operator==(const type_generic&) const -> bool = default;
 };
 
-struct type_name : public std::variant<type_simple, type_compound, type_generic> {};
+struct type_name : public std::variant<
+    type_simple,
+    type_list,
+    type_compound,
+    type_generic>
+{
+};
 
 
 struct field
@@ -46,11 +59,13 @@ struct field
 using type_fields = std::vector<field>;
 
 auto to_string(const type_name& type) -> std::string;
+auto to_string(const type_list& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
 auto to_string(const type_compound& type) -> std::string;
 auto to_string(const type_generic& type) -> std::string;
 
 auto hash(const type_name& type) -> std::size_t;
+auto hash(const type_list& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_compound& type) -> std::size_t;
 auto hash(const type_generic& type) -> std::size_t;

@@ -18,6 +18,11 @@ auto to_string(const type_simple& type) -> std::string
     return type.name;
 }
 
+auto to_string(const type_list& type) -> std::string
+{
+    return std::format("{}[{}]", to_string(type.inner_type[0]), type.count);
+}
+
 auto to_string(const type_compound& type) -> std::string
 {
     const auto subtypes = format_comma_separated(type.subtypes);
@@ -37,6 +42,11 @@ auto hash(const type_name& type) -> std::size_t
 auto hash(const type_simple& type) -> std::size_t
 {
     return std::hash<std::string>{}(type.name);
+}
+
+auto hash(const type_list& type) -> std::size_t
+{
+    return hash(type.inner_type[0]) ^ std::hash<std::size_t>{}(type.count);
 }
 
 auto hash(const type_compound& type) -> std::size_t
@@ -131,6 +141,9 @@ auto is_type_complete(const type_name& t) -> bool
     return std::visit(overloaded {
         [](const type_simple&) { return true; },
         [](const type_generic&) { return false; },
+        [](const type_list& t) {
+            return is_type_complete(t.inner_type[0]);
+        },
         [](const type_compound& t) {
             return std::all_of(begin(t.subtypes), end(t.subtypes), [](const auto& st) {
                 return is_type_complete(st);
@@ -223,6 +236,9 @@ auto replace(type_name& ret, const match_result& matches) -> void
 {
     std::visit(overloaded {
         [&](type_simple&) {},
+        [&](type_list& type) {
+            replace(type.inner_type[0], matches);
+        },
         [&](type_generic& type) {
             if (auto it = matches.find(type.id); it != matches.end()) {
                 ret = it->second;
