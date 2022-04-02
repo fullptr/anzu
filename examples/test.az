@@ -1,13 +1,13 @@
 
 
-struct vec3
+fn foo(l: ptr<list<int, 5>>) -> null
 {
-    x: int
-    y: int
-    z: int
+    idx := 0
+    while idx != 5 {
+        println((*l)[idx])
+        idx = idx + 1
+    }
 }
 
-l := [1, 2, 6, 5, 3, 4]
-
-println(size_of(l) / size_of(l[0]))
-
+l := [1, 2, 3, 4, 5]
+foo(&l)
