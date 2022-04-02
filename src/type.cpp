@@ -142,11 +142,16 @@ auto to_string(const signature& sig) -> std::string
     return std::format("({}) -> {}", format_comma_separated(sig.args, proj), sig.return_type);
 }
 
-type_store::type_store()
+auto type_store::add(const type_name& name, const type_fields& fields) -> bool
 {
+    if (d_classes.contains(name)) {
+        return false;
+    }
+    d_classes.emplace(name, fields);
+    return true;
 }
 
-auto type_store::is_valid(const type_name& type) const -> bool
+auto type_store::contains(const type_name& type) const -> bool
 {
     return d_classes.contains(type)
         || type == int_type()
@@ -185,15 +190,6 @@ auto type_store::fields_of(const type_name& t) const -> type_fields
         return it->second;
     }
     return {};
-}
-
-auto type_store::register_type(const type_name& name, const type_fields& fields) -> bool
-{
-    if (d_classes.contains(name)) {
-        return false;
-    }
-    d_classes.emplace(name, fields);
-    return true;
 }
 
 }

@@ -103,19 +103,12 @@ class type_store
     std::unordered_map<type_name, type_fields, type_hash> d_classes;
 
 public:
-    type_store();
+    auto add(const type_name& name, const type_fields& fields) -> bool;
+    auto contains(const type_name& t) const -> bool;
 
-    // Checks if the given type is registered or matches a registered generic.
-    auto is_valid(const type_name& t) const -> bool;
-
-    // Given a type name, return the size of the type in blocks.
     auto size_of(const type_name& t) const -> std::size_t;
-
     auto fields_of(const type_name& t) const -> type_fields;
 
-    // Registers a type with the given name and fields. Returns true if successful and false
-    // if the type already exists.
-    auto register_type(const type_name& name, const type_fields& fields) -> bool;
 };
 
 }

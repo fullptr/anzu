@@ -78,7 +78,7 @@ auto current_vars(compiler& com) -> var_locations&
 
 auto verify_real_type(const compiler& com, const token& tok, const type_name& t) -> void
 {
-    if (!com.types.is_valid(t)) {
+    if (!com.types.contains(t)) {
         compiler_error(tok, "{} is not a recognised type", t);
     }
 }
@@ -452,7 +452,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     // If this is the name of a simple type, then this is a constructor call, so
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
-    if (const auto type = make_type(node.function_name); com.types.is_valid(type)) {
+    if (const auto type = make_type(node.function_name); com.types.contains(type)) {
         const auto sig = make_constructor_sig(com, type);
         verify_sig(node.token, sig, param_types);
         return type;
@@ -567,18 +567,18 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
 
 void compile_stmt(compiler& com, const node_struct_stmt& node)
 {
-    compiler_assert(!com.types.is_valid(node.name), node.token, "type {} already defined", node.name);
+    compiler_assert(!com.types.contains(node.name), node.token, "type {} already defined", node.name);
 
     for (const auto& field : node.fields) {
         compiler_assert(
-            com.types.is_valid(field.type),
+            com.types.contains(field.type),
             node.token, 
             "unknown type {} of field {} for struct {}\n",
             field.type, field.name, node.name
         );
     }
 
-    com.types.register_type(node.name, node.fields);
+    com.types.add(node.name, node.fields);
 }
 
 void compile_stmt(compiler& com, const node_break_stmt&)
