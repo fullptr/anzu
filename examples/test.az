@@ -5,7 +5,8 @@ struct vec2
     y: int
 }
 
-x := [1, 2, 3, 4]
 
-x[2] = 4
-println(x[3])
+v := vec2(1, 2)
+
+v.y = 5
+println(v)

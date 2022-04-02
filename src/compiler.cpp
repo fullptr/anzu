@@ -177,6 +177,13 @@ auto find_function(const compiler& com, const std::string& function) -> const fu
     return nullptr;
 }
 
+auto modify_ptr(compiler& com, std::size_t offset, std::size_t size) -> void
+{
+    com.program.emplace_back(op_load_literal{ .value={static_cast<int>(offset)} });
+    com.program.emplace_back(op_load_literal{ .value={static_cast<int>(size)} });
+    com.program.emplace_back(op_modify_ptr{});
+}
+
 // Given a type and field name, and assuming that the top of the stack at runtime is a pointer
 // to an object of the given type, this function adds an op code to modify that pointer to
 // instead point to the given field. Returns the type of the field.
@@ -199,7 +206,7 @@ auto compile_ptr_to_field(
     }
     
     compiler_assert(size != 0, tok, "type {} has no field '{}'\n", type, field_name);
-    com.program.emplace_back(op_modify_addr{ .offset=offset, .new_size=size });
+    modify_ptr(com, offset, size);
     return field_type;
 }
 
@@ -377,10 +384,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
         compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
     }
     const auto etype = std::get<type_list>(ltype).inner_type[0];
-    com.program.emplace_back(op_modify_addr{
-        .offset = expr.index * com.types.size_of(etype),
-        .new_size = com.types.size_of(etype)
-    });
+    modify_ptr(com, expr.index * com.types.size_of(etype), com.types.size_of(etype));
     return etype;
 }
 

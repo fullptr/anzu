@@ -95,15 +95,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory.push_back(ptr);
             program_advance(ctx);
         },
-        [&](const op_modify_addr& op) {
-            auto& ptr = std::get<block_ptr>(ctx.memory.back());
-            ptr.ptr += op.offset;
-            ptr.size = op.new_size;
-            program_advance(ctx);
-        },
         [&](op_modify_ptr) {
-            const auto offset = std::get<block_int>(pop_back(ctx.memory));
             const auto size = std::get<block_int>(pop_back(ctx.memory));
+            const auto offset = std::get<block_int>(pop_back(ctx.memory));
             auto& ptr = std::get<block_ptr>(ctx.memory.back());
             ptr.ptr += offset;
             ptr.size = size;
