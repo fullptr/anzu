@@ -146,17 +146,23 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.value = parse_literal(tokens);
     }
 
-    while (tokens.peek(tk_fullstop) || tokens.peek(tk_rarrow)) {
-        auto new_node = std::make_unique<anzu::node_expr>();
+    while (tokens.peek(tk_fullstop) || tokens.peek(tk_rarrow) || tokens.peek(tk_lbracket)) {
+        auto new_node = std::make_unique<node_expr>();
         if (tokens.peek(tk_fullstop)) {
-            auto& expr = new_node->emplace<anzu::node_field_expr>();
+            auto& expr = new_node->emplace<node_field_expr>();
+            expr.token = tokens.consume();
+            expr.field_name = tokens.consume().text;
+            expr.expr = std::move(node);
+        } else if (tokens.peek(tk_rarrow)) {
+            auto& expr = new_node->emplace<node_arrow_expr>();
             expr.token = tokens.consume();
             expr.field_name = tokens.consume().text;
             expr.expr = std::move(node);
         } else {
-            auto& expr = new_node->emplace<anzu::node_arrow_expr>();
+            auto& expr = new_node->emplace<node_subscript_expr>();
             expr.token = tokens.consume();
-            expr.field_name = tokens.consume().text;
+            expr.index = tokens.consume_int();
+            tokens.consume_only(tk_rbracket);
             expr.expr = std::move(node);
         }
         node = std::move(new_node);
