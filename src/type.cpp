@@ -280,6 +280,11 @@ auto type_store::size_of(const type_name& t) const -> std::size_t
         return 1; // Hack to make lists work (for fundamentals) for now. Should be 0 or exception
     }
 
+    if (std::holds_alternative<type_list>(t)) {
+        const auto& list = std::get<type_list>(t);
+        return size_of(list.inner_type[0]) * list.count;
+    }
+
     if (auto it = d_classes.find(t); it != d_classes.end()) {
         auto size = std::size_t{0};
         for (const auto& field : it->second) {

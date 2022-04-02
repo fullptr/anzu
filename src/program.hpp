@@ -119,11 +119,6 @@ struct op_return
 {
 };
 
-struct op_build_list
-{
-    std::size_t size;
-};
-
 struct op : std::variant<
     op_load_literal,
     op_push_global_addr,
@@ -145,8 +140,7 @@ struct op : std::variant<
     op_function_end,
     op_return,
     op_function_call,
-    op_builtin_call,
-    op_build_list
+    op_builtin_call
 >
 {};
 

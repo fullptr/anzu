@@ -382,14 +382,14 @@ auto compile_expr_val(compiler& com, const node_list_expr& node) -> type_name
 {
     compiler_assert(!node.elements.empty(), node.token, "currently do not support empty list literals");
 
-    auto element_view = node.elements | std::views::reverse;
-    const auto inner_type = compile_expr_val(com, *element_view.front());
-    for (const auto& element : element_view | std::views::drop(1)) {
+    const auto inner_type = compile_expr_val(com, *node.elements.front());
+    for (const auto& element : node.elements | std::views::drop(1)) {
         const auto element_type = compile_expr_val(com, *element);
         compiler_assert(element_type == inner_type, node.token, "list has mismatching element types");
     }
-    com.program.emplace_back(op_build_list{ .size = node.elements.size() });
-    return concrete_list_type(inner_type);
+    //com.program.emplace_back(op_build_list{ .size = node.elements.size() });
+    //return concrete_list_type(inner_type);
+    return type_name{type_list{ .inner_type={inner_type}, .count=node.elements.size() }};
 }
 
 auto compile_expr_val(compiler& com, const node_addrof_expr& node) -> type_name

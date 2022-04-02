@@ -86,9 +86,6 @@ auto to_string(const op& op_code) -> std::string
         },
         [&](const op_builtin_mem_op& op) {
             return std::format("BUILTIN_MEM_OP({})", op.name);
-        },
-        [&](const op_build_list& op) {
-            return std::format("BUILD_LIST({})", op.size);
         }
     }, op_code);
 }

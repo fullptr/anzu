@@ -183,14 +183,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_builtin_mem_op& op) {
             op.ptr(ctx.memory);
             program_advance(ctx);
-        },
-        [&](const op_build_list& op) {
-            auto list = std::make_shared<std::vector<anzu::block>>();
-            for (std::size_t i = 0; i != op.size; ++i) {
-                list->push_back(pop_back(ctx.memory));
-            }
-            ctx.memory.push_back(block{list});
-            program_advance(ctx);
         }
     }, op_code);
 }
