@@ -463,66 +463,6 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
     com.types.register_type(node.name, node.fields);
 }
 
-// TODO: This only works if the contained type has size 1, because lists are broken
-void compile_stmt(compiler& com, const node_for_stmt& node)
-{
-    const auto container_name = std::string{"_Container"};
-    const auto index_name = std::string{"_Index"};
-
-    // Push the container to the stack
-    const auto container_type = compile_expr_val(com, *node.container);
-    const auto m = match(container_type, generic_list_type());
-    compiler_assert(m.has_value(), node.token, "error, {} must be a list type\n", container_type);
-    const auto contained_type = m->at(0);
-
-    declare_variable_name(com, container_name, container_type);
-    save_variable(com, node.token, container_name); // Currently only lists are allowed in for stmts
-
-    // Push the counter to the stack
-    com.program.emplace_back(anzu::op_load_literal{
-        .value=make_int(0).data
-    });
-    declare_variable_name(com, index_name, int_type());
-    save_variable(com, node.token, index_name);
-
-    declare_variable_name(com, node.var, contained_type);
-
-    const auto begin_pos = append_op(com, op_loop_begin{});
-
-    load_variable(com, node.token, index_name);
-    load_variable(com, node.token, container_name);
-    call_builtin(com, "list_size");
-
-    const auto info = resolve_bin_op({
-        .op = std::string{tk_ne}, .lhs = int_type(), .rhs = int_type()
-    });
-    com.program.emplace_back(op_builtin_mem_op{
-        .name = std::format("{} {} {}", int_type(), std::string{tk_ne}, int_type()),
-        .ptr = info->operator_func
-    });
-    
-    const auto jump_pos = append_op(com, op_jump_if_false{}); // If size == index, jump to end
-
-    load_variable(com, node.token, container_name);
-    load_variable(com, node.token, index_name);
-    call_builtin(com, "list_at");
-    save_variable(com, node.token, node.var);
-
-    compile_stmt(com, *node.body);
-
-    // Increment the index
-    load_variable(com, node.token, index_name);
-    com.program.emplace_back(op_builtin_mem_op{
-        .name = "increment",
-        .ptr = +[](std::vector<block>& mem) { ++std::get<block_int>(mem.back()); }
-    });
-    save_variable(com, node.token, index_name);
-
-    const auto end_pos = append_op(com, op_loop_end{ .jump=begin_pos });
-
-    link_up_jumps(com, begin_pos, jump_pos, end_pos);
-}
-
 void compile_stmt(compiler& com, const node_break_stmt&)
 {
     com.program.emplace_back(anzu::op_break{});
