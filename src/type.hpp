@@ -81,9 +81,6 @@ auto is_ptr_type(const type_name& t) -> bool;
 // type with a single subtype.
 auto inner_type(const type_name& t) -> type_name;
 
-// Returns true if and only if the type is not a class type.
-auto it_type_fundamental(const type_name& t) -> bool;
-
 struct signature
 {
     struct arg

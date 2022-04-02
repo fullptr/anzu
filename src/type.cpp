@@ -146,9 +146,16 @@ type_store::type_store()
 {
 }
 
-auto type_store::is_valid(const type_name& t) const -> bool
+auto type_store::is_valid(const type_name& type) const -> bool
 {
-    return is_type_fundamental(t) || d_classes.contains(t);
+    return d_classes.contains(type)
+        || type == int_type()
+        || type == float_type()
+        || type == bool_type()
+        || type == str_type()
+        || type == null_type()
+        || is_list_type(type)
+        || is_ptr_type(type);
 }
 
 auto type_store::size_of(const type_name& t) const -> std::size_t
@@ -176,9 +183,6 @@ auto type_store::fields_of(const type_name& t) const -> type_fields
 {
     if (auto it = d_classes.find(t); it != d_classes.end()) {
         return it->second;
-    }
-    if (is_type_fundamental(t)) {
-        return {{ .name = "blk", .type = t }};
     }
     return {};
 }

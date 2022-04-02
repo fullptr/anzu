@@ -206,9 +206,7 @@ auto parse_name(tokenstream& tokens)
 
 auto parse_type(tokenstream& tokens) -> type_name
 {
-    if (tokens.peek(tk_list)) {
-        print("in tk_list\n");
-        tokens.consume_only(tk_list);
+    if (tokens.consume_maybe(tk_list)) {
         tokens.consume_only(tk_lt);
         const auto inner_type = parse_type(tokens);
         tokens.consume_only(tk_comma);
@@ -218,8 +216,7 @@ auto parse_type(tokenstream& tokens) -> type_name
             .inner_type = {inner_type}, .count=static_cast<std::size_t>(count)
         }};
     }
-    else if (tokens.peek(tk_ptr)) {
-        tokens.consume_only(tk_ptr);
+    if (tokens.consume_maybe(tk_ptr)) {
         tokens.consume_only(tk_lt);
         const auto inner_type = parse_type(tokens);
         tokens.consume_only(tk_gt);

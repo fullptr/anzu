@@ -9,5 +9,7 @@ fn foo(l: ptr<list<int, 5>>) -> null
     }
 }
 
+x := 5
+
 l := [1, 2, 3, 4, 5]
 foo(&l)
