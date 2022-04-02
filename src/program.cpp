@@ -24,8 +24,8 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_push_local_addr& op) {
             return std::format("PUSH_LOCAL_ADDR(+{}, {})", op.offset, op.size);
         },
-        [&](const op_modify_addr& op) {
-            return std::format("MODIFY_ADDR(+{}, {})", op.offset, op.new_size);
+        [&](const op_modify_ptr& op) {
+            return std::string{"MODIFY_PTR"};
         },
         [&](const op_load&) {
             return std::string{"LOAD"};
@@ -86,9 +86,6 @@ auto to_string(const op& op_code) -> std::string
         },
         [&](const op_builtin_mem_op& op) {
             return std::format("BUILTIN_MEM_OP({})", op.name);
-        },
-        [&](const op_build_list& op) {
-            return std::format("BUILD_LIST({})", op.size);
         }
     }, op_code);
 }

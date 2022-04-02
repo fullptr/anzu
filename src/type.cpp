@@ -18,6 +18,11 @@ auto to_string(const type_simple& type) -> std::string
     return type.name;
 }
 
+auto to_string(const type_list& type) -> std::string
+{
+    return std::format("{}[{}]", to_string(type.inner_type[0]), type.count);
+}
+
 auto to_string(const type_compound& type) -> std::string
 {
     const auto subtypes = format_comma_separated(type.subtypes);
@@ -37,6 +42,11 @@ auto hash(const type_name& type) -> std::size_t
 auto hash(const type_simple& type) -> std::size_t
 {
     return std::hash<std::string>{}(type.name);
+}
+
+auto hash(const type_list& type) -> std::size_t
+{
+    return hash(type.inner_type[0]) ^ std::hash<std::size_t>{}(type.count);
 }
 
 auto hash(const type_compound& type) -> std::size_t
@@ -83,23 +93,23 @@ auto generic_type(int id) -> type_name
     return {type_generic{ .id = id }};
 }
 
-auto concrete_list_type(const type_name& t) -> type_name
+auto concrete_list_type(const type_name& t, std::size_t size) -> type_name
 {
-    return {type_compound{
-        .name = std::string{tk_list}, .subtypes = { t }
+    return {type_list{
+        .inner_type = { t }, .count = size
     }};
 }
 
-auto generic_list_type() -> type_name
+auto generic_list_type(std::size_t size) -> type_name
 {
-    return {type_compound{
-        .name = std::string{tk_list}, .subtypes = { generic_type(0) }
+    return {type_list{
+        .inner_type = { generic_type(0) }, .count = size
     }};
 }
 
 auto is_list_type(const type_name& t) -> bool
 {
-    return std::holds_alternative<type_compound>(t) && std::get<type_compound>(t).name == tk_list;
+    return std::holds_alternative<type_list>(t);
 }
 
 auto concrete_ptr_type(const type_name& t) -> type_name
@@ -131,6 +141,9 @@ auto is_type_complete(const type_name& t) -> bool
     return std::visit(overloaded {
         [](const type_simple&) { return true; },
         [](const type_generic&) { return false; },
+        [](const type_list& t) {
+            return is_type_complete(t.inner_type[0]);
+        },
         [](const type_compound& t) {
             return std::all_of(begin(t.subtypes), end(t.subtypes), [](const auto& st) {
                 return is_type_complete(st);
@@ -146,8 +159,8 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == bool_type()
         || type == str_type()
         || type == null_type()
-        || match(type, generic_list_type())
-        || match(type, generic_ptr_type());
+        || is_list_type(type)
+        || is_ptr_type(type);
 }
 
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a
@@ -223,6 +236,9 @@ auto replace(type_name& ret, const match_result& matches) -> void
 {
     std::visit(overloaded {
         [&](type_simple&) {},
+        [&](type_list& type) {
+            replace(type.inner_type[0], matches);
+        },
         [&](type_generic& type) {
             if (auto it = matches.find(type.id); it != matches.end()) {
                 ret = it->second;
@@ -262,6 +278,11 @@ auto type_store::size_of(const type_name& t) const -> std::size_t
 {
     if (!is_type_complete(t)) {
         return 1; // Hack to make lists work (for fundamentals) for now. Should be 0 or exception
+    }
+
+    if (std::holds_alternative<type_list>(t)) {
+        const auto& list = std::get<type_list>(t);
+        return size_of(list.inner_type[0]) * list.count;
     }
 
     if (auto it = d_classes.find(t); it != d_classes.end()) {

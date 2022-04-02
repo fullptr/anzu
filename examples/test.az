@@ -1,3 +1,13 @@
 
 
-println(5.x)
+struct vec3
+{
+    x: int
+    y: int
+    z: int
+}
+
+l := [1, 2, 6, 5, 3, 4]
+
+println(size_of(l) / size_of(l[0]))
+

@@ -28,10 +28,8 @@ struct op_push_local_addr
     std::size_t size;
 };
 
-struct op_modify_addr
+struct op_modify_ptr
 {
-    std::size_t offset;
-    std::size_t new_size;
 };
 
 struct op_load
@@ -119,16 +117,11 @@ struct op_return
 {
 };
 
-struct op_build_list
-{
-    std::size_t size;
-};
-
 struct op : std::variant<
     op_load_literal,
     op_push_global_addr,
     op_push_local_addr,
-    op_modify_addr,
+    op_modify_ptr,
     op_load,
     op_save,
     op_pop,
@@ -145,8 +138,7 @@ struct op : std::variant<
     op_function_end,
     op_return,
     op_function_call,
-    op_builtin_call,
-    op_build_list
+    op_builtin_call
 >
 {};
 

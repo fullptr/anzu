@@ -104,6 +104,21 @@ auto declare_variable_name(compiler& com, const std::string& name, const type_na
     }
 }
 
+auto find_variable_type(const compiler& com, const token& tok, const std::string& name) -> type_name
+{
+    if (com.current_func && com.current_func->vars.info.contains(name)) {
+        const auto& info = com.current_func->vars.info.at(name);
+        return info.type;
+    }
+    
+    if (com.globals.info.contains(name)) {
+        const auto& info = com.globals.info.at(name);
+        return info.type;
+    }
+
+    compiler_error(tok, "could not find variable '{}'\n", name);
+}
+
 auto find_variable(compiler& com, const token& tok, const std::string& name) -> type_name
 {
     if (com.current_func && com.current_func->vars.info.contains(name)) {
@@ -146,20 +161,19 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
     return args_size;
 }
 
-auto call_builtin(compiler& com, const std::string& function_name) -> void
-{
-    const auto& func = anzu::fetch_builtin(function_name);
-    com.program.emplace_back(anzu::op_builtin_call{
-        .name=function_name, .ptr=func.ptr, .args_size=signature_args_size(com, func.sig)
-    });
-}
-
 auto find_function(const compiler& com, const std::string& function) -> const function_def*
 {
     if (const auto it = com.functions.find(function); it != com.functions.end()) {
         return &it->second;
     }
     return nullptr;
+}
+
+auto modify_ptr(compiler& com, std::size_t offset, std::size_t size) -> void
+{
+    com.program.emplace_back(op_load_literal{ .value={static_cast<int>(offset)} });
+    com.program.emplace_back(op_load_literal{ .value={static_cast<int>(size)} });
+    com.program.emplace_back(op_modify_ptr{});
 }
 
 // Given a type and field name, and assuming that the top of the stack at runtime is a pointer
@@ -184,7 +198,7 @@ auto compile_ptr_to_field(
     }
     
     compiler_assert(size != 0, tok, "type {} has no field '{}'\n", type, field_name);
-    com.program.emplace_back(op_modify_addr{ .offset=offset, .new_size=size });
+    modify_ptr(com, offset, size);
     return field_type;
 }
 
@@ -254,6 +268,78 @@ auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
     }
 }
 
+auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
+{
+    return std::visit(overloaded{
+        [&](const node_literal_expr& expr) { return expr.value.type; },
+        [&](const node_unary_op_expr& expr) {
+            const auto r = resolve_unary_op({
+                .op = expr.token.text,
+                .type=type_of_expr(com, *expr.expr)
+            });
+            return r->result_type;
+        },
+        [&](const node_binary_op_expr& expr) {
+            const auto r = resolve_binary_op({
+                .op = expr.token.text,
+                .lhs=type_of_expr(com, *expr.lhs),
+                .rhs=type_of_expr(com, *expr.rhs)
+            });
+            return r->result_type;
+        },
+        [&](const node_function_call_expr& expr) {
+            return com.functions.at(expr.function_name).sig.return_type;
+        },
+        [&](const node_list_expr& expr) {
+            return type_name{type_list{
+                .inner_type = type_of_expr(com, *expr.elements.front()),
+                .count = expr.elements.size()
+            }};
+        },
+        [&](const node_addrof_expr& expr) {
+            return concrete_ptr_type(type_of_expr(com, *expr.expr));
+        },
+        [&](const node_sizeof_expr& expr) {
+            return int_type();
+        },
+        [&](const node_variable_expr& expr) {
+            return find_variable_type(com, expr.token, expr.name);
+        },
+        [&](const node_field_expr& expr) {
+            const auto type = type_of_expr(com, *expr.expr);
+            for (const auto& field : com.types.fields_of(type)) {
+                if (field.name == expr.field_name) {
+                    return field.type;
+                }
+            }
+            return int_type();
+        },
+        [&](const node_arrow_expr& expr) {
+            const auto ptype = type_of_expr(com, *expr.expr);
+            compiler_assert(is_ptr_type(ptype), expr.token, "cannot use arrow operator on non-ptr type '{}'", ptype);
+            const auto type = inner_type(ptype);
+            for (const auto& field : com.types.fields_of(type)) {
+                if (field.name == expr.field_name) {
+                    return field.type;
+                }
+            }
+            return int_type();
+        },
+        [&](const node_deref_expr& expr) {
+            const auto ptype = type_of_expr(com, *expr.expr);
+            compiler_assert(is_ptr_type(ptype), expr.token, "cannot use deref operator on non-ptr type '{}'", ptype);
+            return inner_type(ptype);
+        },
+        [&](const node_subscript_expr& expr) {
+            const auto ltype = type_of_expr(com, *expr.expr);
+            if (!std::holds_alternative<type_list>(ltype)) {
+                compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
+            }
+            return std::get<type_list>(ltype).inner_type[0];
+        }
+    }, node);
+}
+
 auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name;
 auto compile_stmt(compiler& com, const node_stmt& root) -> void;
@@ -283,6 +369,33 @@ auto compile_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
     return inner_type(type);
 }
 
+auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
+{
+    const auto ltype = compile_expr_ptr(com, *expr.expr);
+    if (!std::holds_alternative<type_list>(ltype)) {
+        compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
+    }
+    const auto etype = std::get<type_list>(ltype).inner_type[0];
+    const auto etype_size = com.types.size_of(etype);
+
+    // Push the offset (index * size)
+    const auto itype = compile_expr_val(com, *expr.index);
+    compiler_assert(itype == int_type(), expr.token, "subscript argument must be an int, got '{}'", itype);
+
+    com.program.emplace_back(op_load_literal{ .value={static_cast<int>(etype_size)} });
+    const auto info = resolve_binary_op({ .op='*', .lhs=int_type(), .rhs=int_type() });
+    com.program.emplace_back(op_builtin_mem_op{
+        .name = "int * int",
+        .ptr = info->operator_func
+    });
+
+    // Push the size
+    com.program.emplace_back(op_load_literal{ .value={static_cast<int>(etype_size)} });
+
+    com.program.emplace_back(op_modify_ptr{});
+    return etype;
+}
+
 [[noreturn]] auto compile_expr_ptr(compiler& com, const auto& node) -> type_name
 {
     compiler_error(node.token, "cannot take address of a non-lvalue\n");
@@ -307,7 +420,7 @@ auto compile_expr_val(compiler& com, const node_binary_op_expr& node) -> type_na
     const auto rhs = compile_expr_val(com, *node.rhs);
     const auto op = node.token.text;
 
-    const auto info = resolve_bin_op({ .op=op, .lhs=lhs, .rhs=rhs });
+    const auto info = resolve_binary_op({ .op=op, .lhs=lhs, .rhs=rhs });
     compiler_assert(info.has_value(), node.token, "could not evaluate '{} {} {}'", lhs, op, rhs);
 
     com.program.emplace_back(op_builtin_mem_op{
@@ -382,20 +495,30 @@ auto compile_expr_val(compiler& com, const node_list_expr& node) -> type_name
 {
     compiler_assert(!node.elements.empty(), node.token, "currently do not support empty list literals");
 
-    auto element_view = node.elements | std::views::reverse;
-    const auto inner_type = compile_expr_val(com, *element_view.front());
-    for (const auto& element : element_view | std::views::drop(1)) {
+    const auto inner_type = compile_expr_val(com, *node.elements.front());
+    for (const auto& element : node.elements | std::views::drop(1)) {
         const auto element_type = compile_expr_val(com, *element);
         compiler_assert(element_type == inner_type, node.token, "list has mismatching element types");
     }
-    com.program.emplace_back(op_build_list{ .size = node.elements.size() });
-    return concrete_list_type(inner_type);
+    //com.program.emplace_back(op_build_list{ .size = node.elements.size() });
+    //return concrete_list_type(inner_type);
+    return type_name{type_list{ .inner_type={inner_type}, .count=node.elements.size() }};
 }
 
 auto compile_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, *node.expr);
     return concrete_ptr_type(type);
+}
+
+auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    auto size_of = com.types.size_of(type);
+    com.program.emplace_back(op_load_literal{
+        .value={ static_cast<block_int>(size_of) }
+    });
+    return int_type();
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case

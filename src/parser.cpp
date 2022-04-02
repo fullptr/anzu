@@ -120,6 +120,13 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
+    else if (tokens.peek(tk_size_of)) {
+        auto& expr = node->emplace<node_sizeof_expr>();
+        expr.token = tokens.consume();
+        tokens.consume_only(tk_lparen);
+        expr.expr = parse_expression(tokens);
+        tokens.consume_only(tk_rparen);
+    }
     else if (tokens.peek(tk_mul)) {
         auto& expr = node->emplace<anzu::node_deref_expr>();
         expr.token = tokens.consume();
@@ -139,17 +146,23 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.value = parse_literal(tokens);
     }
 
-    while (tokens.peek(tk_fullstop) || tokens.peek(tk_rarrow)) {
-        auto new_node = std::make_unique<anzu::node_expr>();
+    while (tokens.peek(tk_fullstop) || tokens.peek(tk_rarrow) || tokens.peek(tk_lbracket)) {
+        auto new_node = std::make_unique<node_expr>();
         if (tokens.peek(tk_fullstop)) {
-            auto& expr = new_node->emplace<anzu::node_field_expr>();
+            auto& expr = new_node->emplace<node_field_expr>();
+            expr.token = tokens.consume();
+            expr.field_name = tokens.consume().text;
+            expr.expr = std::move(node);
+        } else if (tokens.peek(tk_rarrow)) {
+            auto& expr = new_node->emplace<node_arrow_expr>();
             expr.token = tokens.consume();
             expr.field_name = tokens.consume().text;
             expr.expr = std::move(node);
         } else {
-            auto& expr = new_node->emplace<anzu::node_arrow_expr>();
+            auto& expr = new_node->emplace<node_subscript_expr>();
             expr.token = tokens.consume();
-            expr.field_name = tokens.consume().text;
+            expr.index = parse_expression(tokens);
+            tokens.consume_only(tk_rbracket);
             expr.expr = std::move(node);
         }
         node = std::move(new_node);
@@ -207,7 +220,7 @@ auto parse_type(tokenstream& tokens) -> type_name
             compound.subtypes.push_back(parse_type(tokens));
         });
         return ret;
-    }
+    } else 
     
     return { type_simple{ .name = type_name_text } };
 }
