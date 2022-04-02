@@ -72,23 +72,6 @@ x := null
 y := println(x)
 println(y)
 
-# For loops
-println("list test, 3 elements with a break after the second, should only see two")
-println("additionally, there is a while loop with its own break statement which should be fine")
-for elem in [1, 2, 3] {
-    println(elem)
-    if elem == 2 {
-        while true {
-            break # To make sure that this break is not affected by the for
-        }
-        break
-    }
-}
-
-new_list := [[1, 2, 3, 4]]
-for l in new_list {
-    list_push(l, 5)
-}
 println("new_list should have 5 elements:")
 println(new_list)
 
@@ -107,8 +90,10 @@ println(add3(1, 2, 3))
 
 fn print_one_to_ten() -> null
 {
-    for i in range(10) {
+    i := 0
+    while i < 10 {
         println(i)
+        i = i + 1
     }
 }
 

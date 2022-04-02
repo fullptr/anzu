@@ -139,15 +139,6 @@ struct node_struct_stmt
     anzu::token token;
 };
 
-struct node_for_stmt
-{
-    std::string   var;
-    node_expr_ptr container;
-    node_stmt_ptr body;
-
-    anzu::token token;
-};
-
 struct node_break_stmt
 {
     anzu::token token;
@@ -202,7 +193,6 @@ struct node_stmt : std::variant<
     node_while_stmt,
     node_if_stmt,
     node_struct_stmt,
-    node_for_stmt,
     node_break_stmt,
     node_continue_stmt,
     node_declaration_stmt,

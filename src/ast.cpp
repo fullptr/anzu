@@ -104,14 +104,6 @@ auto print_node(const node_stmt& root, int indent) -> void
                 print("{}  - {}: {}\n", spaces, field.name, field.type);
             }
         },
-        [&](const node_for_stmt& node) {
-            print("{}For:\n", spaces);
-            print("{}- Bind: {}\n",spaces, node.var);
-            print("{}- Container:\n",spaces);
-            print_node(*node.container, indent + 1);
-            print("{}- Body:\n",spaces);
-            print_node(*node.body, indent + 1);
-        },
         [&](const node_break_stmt& node) {
             print("{}Break\n", spaces);
         },
