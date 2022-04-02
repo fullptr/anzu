@@ -27,6 +27,9 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_modify_addr& op) {
             return std::format("MODIFY_ADDR(+{}, {})", op.offset, op.new_size);
         },
+        [&](const op_modify_ptr& op) {
+            return std::string{"MODIFY_PTR"};
+        },
         [&](const op_load&) {
             return std::string{"LOAD"};
         },

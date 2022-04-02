@@ -101,7 +101,15 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ptr.size = op.new_size;
             program_advance(ctx);
         },
-        [&](const op_load& op) {
+        [&](op_modify_ptr) {
+            const auto offset = std::get<block_int>(pop_back(ctx.memory));
+            const auto size = std::get<block_int>(pop_back(ctx.memory));
+            auto& ptr = std::get<block_ptr>(ctx.memory.back());
+            ptr.ptr += offset;
+            ptr.size = size;
+            program_advance(ctx);
+        },
+        [&](op_load) {
             const auto ptr_blk = pop_back(ctx.memory);
             const auto ptr = std::get<block_ptr>(ptr_blk);
             for (std::size_t i = 0; i != ptr.size; ++i) {
@@ -109,7 +117,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
             program_advance(ctx);
         },
-        [&](const op_save& op) {
+        [&](op_save) {
             const auto ptr_blk = pop_back(ctx.memory);
             const auto ptr = std::get<block_ptr>(ptr_blk);
             save_top_at(ctx, ptr.ptr, ptr.size);
