@@ -1,6 +1,14 @@
-y := 4
-l := [1, 2, 3, 4, 5]
 
-x := 5
-l[2] = 0
-println(l)
+
+struct vec3
+{
+    x: int
+    y: int
+    z: int
+}
+
+l := [vec3(1, 2, 3), vec3(1, 2, 3), vec3(1, 2, 3), vec3(1, 2, 3)]
+
+size := size_of(l) / size_of(l[0])
+
+0 < size

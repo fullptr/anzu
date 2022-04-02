@@ -515,9 +515,6 @@ auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
     auto size_of = com.types.size_of(type);
-    if (std::holds_alternative<type_list>(type)) {
-        size_of /= com.types.size_of(std::get<type_list>(type).inner_type[0]);
-    }
     com.program.emplace_back(op_load_literal{
         .value={ static_cast<block_int>(size_of) }
     });

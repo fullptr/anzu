@@ -58,7 +58,7 @@ auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binar
         } else if (desc.op == tk_mul) {
             return binary_op_info{ bin_op<block_int, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return binary_op_info{ int_division, type };
+            return binary_op_info{ int_division, float_type() };
         } else if (desc.op == tk_mod) {
             return binary_op_info{ bin_op<block_int, std::modulus>, type };
         } else if (desc.op == tk_lt) {
