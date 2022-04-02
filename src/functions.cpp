@@ -112,7 +112,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_print,
         .sig = {
             .args = {
-                { .name = "obj", .type = generic_type(0) }
+                { .name = "obj", .type = int_type() }
             },
             .return_type = null_type()
         }
@@ -122,7 +122,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .ptr = builtin_println,
         .sig = {
             .args = {
-                { .name = "obj", .type = generic_type(0) }
+                { .name = "obj", .type = int_type() }
             },
             .return_type = null_type()
         }

@@ -206,23 +206,24 @@ auto parse_name(tokenstream& tokens)
 
 auto parse_type(tokenstream& tokens) -> type_name
 {
-    if (tokens.consume_maybe(tk_lbracket)) {
-        const auto id = tokens.consume_int();
-        tokens.consume_only(tk_rbracket);
-        return { type_generic{ .id = id } };
+    if (tokens.consume_maybe(tk_list)) {
+        tokens.consume_only(tk_lt);
+        const auto inner_type = parse_type(tokens);
+        tokens.consume_only(tk_comma);
+        const auto count = tokens.consume_int();
+        tokens.consume_only(tk_gt);
+        return {type_list{
+            .inner_type = {inner_type}, .count=static_cast<std::size_t>(count)
+        }};
     }
-    const auto type_name_text = tokens.consume().text;
-    if (tokens.consume_maybe(tk_lt)) {
-        auto ret = type_name{};
-        auto& compound = ret.emplace<type_compound>();
-        compound.name = type_name_text;
-        tokens.consume_comma_separated_list(tk_gt, [&] {
-            compound.subtypes.push_back(parse_type(tokens));
-        });
-        return ret;
-    } else 
-    
-    return { type_simple{ .name = type_name_text } };
+    else if (tokens.consume_maybe(tk_ptr)) {
+        tokens.consume_only(tk_lt);
+        return {type_ptr{
+            .inner_type = { parse_type(tokens) }
+        }};
+        tokens.consume_only(tk_gt);
+    }
+    return {type_simple{.name=tokens.consume().text}};
 }
 
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr

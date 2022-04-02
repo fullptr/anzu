@@ -81,9 +81,6 @@ auto verify_real_type(const compiler& com, const token& tok, const type_name& t)
     if (!com.types.is_valid(t)) {
         compiler_error(tok, "{} is not a recognised type", t);
     }
-    if (!is_type_complete(t)) {
-        compiler_error(tok, "generic function definitions currently disallowed ({})", t);
-    }
 }
 
 template <typename T>

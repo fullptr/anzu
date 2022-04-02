@@ -28,17 +28,6 @@ auto to_string(const type_ptr& type) -> std::string
     return std::format("&{}", to_string(type.inner_type[0]));
 }
 
-auto to_string(const type_compound& type) -> std::string
-{
-    const auto subtypes = format_comma_separated(type.subtypes);
-    return std::format("{}<{}>", type.name, subtypes);
-}
-
-auto to_string(const type_generic& type) -> std::string
-{
-    return std::format("[{}]", type.id);
-}
-
 auto hash(const type_name& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
@@ -57,21 +46,6 @@ auto hash(const type_list& type) -> std::size_t
 auto hash(const type_ptr& type) -> std::size_t
 {
     return hash(type.inner_type[0]) ^ std::hash<std::size_t>{}(100);
-}
-
-
-auto hash(const type_compound& type) -> std::size_t
-{
-    auto hash_value = std::hash<std::string>{}(type.name);
-    for (const auto& subtype : type.subtypes) {
-        hash_value ^= hash(subtype);
-    }
-    return hash_value;
-}
-
-auto hash(const type_generic& type) -> std::size_t
-{
-    return std::hash<int>{}(type.id);
 }
 
 auto int_type()  -> type_name
@@ -99,16 +73,9 @@ auto null_type() -> type_name
     return {type_simple{ .name = std::string{tk_null} }};
 }
 
-auto generic_type(int id) -> type_name
-{
-    return {type_generic{ .id = id }};
-}
-
 auto concrete_list_type(const type_name& t, std::size_t size) -> type_name
 {
-    return {type_list{
-        .inner_type = { t }, .count = size
-    }};
+    return {type_list{ .inner_type = { t }, .count = size }};
 }
 
 auto is_list_type(const type_name& t) -> bool
@@ -118,38 +85,25 @@ auto is_list_type(const type_name& t) -> bool
 
 auto concrete_ptr_type(const type_name& t) -> type_name
 {
-    return {type_compound{
-        .name = std::string{tk_ptr}, .subtypes = { t }
-    }};
+    return {type_ptr{ .inner_type = { t } }};
 }
 
 auto is_ptr_type(const type_name& t) -> bool
 {
-    return std::holds_alternative<type_compound>(t) && std::get<type_compound>(t).name == tk_ptr;
+    return std::holds_alternative<type_ptr>(t);
 }
 
 auto inner_type(const type_name& t) -> type_name
 {
-    return std::get<type_compound>(t).subtypes.front();
-}
-
-auto is_type_complete(const type_name& t) -> bool
-{
-    return std::visit(overloaded {
-        [](const type_simple&) { return true; },
-        [](const type_generic&) { return false; },
-        [](const type_list& t) {
-            return is_type_complete(t.inner_type[0]);
-        },
-        [](const type_ptr& t) {
-            return is_type_complete(t.inner_type[0]);
-        },
-        [](const type_compound& t) {
-            return std::all_of(begin(t.subtypes), end(t.subtypes), [](const auto& st) {
-                return is_type_complete(st);
-            });
-        }
-    }, t);
+    if (is_list_type(t)) {
+        return std::get<type_list>(t).inner_type[0];
+    }
+    if (is_ptr_type(t)) {
+        return std::get<type_ptr>(t).inner_type[0];
+    }
+    print("OH NO MY TYPE\n");
+    std::exit(1);
+    return {};
 }
 
 auto is_type_fundamental(const type_name& type) -> bool
@@ -182,86 +136,6 @@ auto update(
     return true;
 }
 
-auto match(const type_name& concrete, const type_name& pattern) -> std::optional<match_result>
-{
-    // Pre-condition, concrete must be a complete type (non-generic and no generic subtypes)
-    if (!is_type_complete(concrete)) {
-        return std::nullopt;
-    }
-
-    // Check 1: Trivial case - pattern is generic, matches entire concrete type
-    if (const auto inner = std::get_if<type_generic>(&pattern)) {
-        return match_result{
-            { inner->id, concrete }
-        };
-    }
-
-    // At this point, neither 'concrete' nor 'pattern' are generic
-
-    // Check 2: Trivial case - equality implies match
-    if (concrete == pattern) {
-        return match_result{};
-    }
-
-    // If either are simple, there there is no match because:
-    //   - if both are simple, they are not equal (check 2)
-    //   - simple cannot match compound and vice versa
-    if (std::holds_alternative<type_simple>(pattern) || std::holds_alternative<type_simple>(concrete)) {
-        return std::nullopt; // No match
-    }
-
-    // At this point, both 'concrete' and 'pattern' are compound
-    const auto& p = std::get<type_compound>(pattern);
-    const auto& c = std::get<type_compound>(concrete);
-    if (p.name != c.name || p.subtypes.size() != c.subtypes.size()) {
-        return std::nullopt;
-    }
-
-    auto matches = match_result{};
-
-    // Loop through the subtypes and do pairwise matches. Any successful matches should be
-    // lifted into our match map. If an index is already in our map with a different type,
-    // the match fails and we return nullopt.
-    for (const auto& [ct, pt] : zip(c.subtypes, p.subtypes)) {
-        const auto submatch = match(ct, pt);
-        if (!submatch.has_value() || !update(matches, submatch.value())) {
-            return std::nullopt;
-        }
-    }
-
-    return matches;
-}
-
-auto replace(type_name& ret, const match_result& matches) -> void
-{
-    std::visit(overloaded {
-        [&](type_simple&) {},
-        [&](type_list& type) {
-            replace(type.inner_type[0], matches);
-        },
-        [&](type_ptr& type) {
-            replace(type.inner_type[0], matches);
-        },
-        [&](type_generic& type) {
-            if (auto it = matches.find(type.id); it != matches.end()) {
-                ret = it->second;
-            }
-        },
-        [&](type_compound& type) {
-            for (auto& subtype : type.subtypes) {
-                replace(subtype, matches);
-            }
-        }
-    }, ret);
-}
-
-auto bind_generics(const type_name& incomplete, const std::unordered_map<int, type_name>& matches) -> type_name
-{
-    auto ret_type = incomplete;
-    replace(ret_type, matches);
-    return ret_type;
-}
-
 auto to_string(const signature& sig) -> std::string
 {
     const auto proj = [](const auto& arg) { return arg.type; };
@@ -279,13 +153,12 @@ auto type_store::is_valid(const type_name& t) const -> bool
 
 auto type_store::size_of(const type_name& t) const -> std::size_t
 {
-    if (!is_type_complete(t)) {
-        return 1; // Hack to make lists work (for fundamentals) for now. Should be 0 or exception
-    }
-
     if (std::holds_alternative<type_list>(t)) {
         const auto& list = std::get<type_list>(t);
         return size_of(list.inner_type[0]) * list.count;
+    }
+    if (std::holds_alternative<type_ptr>(t)) {
+        return 1;
     }
 
     if (auto it = d_classes.find(t); it != d_classes.end()) {
