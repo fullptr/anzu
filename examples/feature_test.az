@@ -108,3 +108,28 @@ println(my_vec.x)
 println(my_vec.y)
 my_vec.x = 5
 println(my_vec.x)
+
+# Pointers
+ptr_value := 5
+ptr := &ptr_value
+
+fn hack() -> null {} # Needed otherwise the parser tries to parse "&ptr_value * ptr". Need semi-colons
+
+*ptr = 6
+println("ptr_value should now equal 6:")
+println(ptr_value)
+
+# Lists
+xl := [1, 2, 3, 4]
+xl[2] = 0
+println("Should see [1, 2, 0, 4]:")
+println(xl)
+println("Size of list is 4:")
+println(size_of(xl))
+
+xl2 := [vec2(1, 2), vec2(3, 4)]
+println("xl2 should have size 4 but length 2:")
+print("size: ")
+println(size_of(xl2))
+print("length: ")
+println(size_of(xl2) / size_of(xl2[0]))
