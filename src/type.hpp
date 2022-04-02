@@ -38,6 +38,7 @@ struct type_name : public std::variant<
     type_list,
     type_ptr>
 {
+    using variant::variant;
 };
 
 

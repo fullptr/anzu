@@ -112,9 +112,7 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == float_type()
         || type == bool_type()
         || type == str_type()
-        || type == null_type()
-        || is_list_type(type)
-        || is_ptr_type(type);
+        || type == null_type();
 }
 
 // Loads each key/value pair from src into dst. If the key already exists in dst and has a
@@ -154,34 +152,37 @@ auto type_store::add(const type_name& name, const type_fields& fields) -> bool
 auto type_store::contains(const type_name& type) const -> bool
 {
     return d_classes.contains(type)
-        || type == int_type()
-        || type == float_type()
-        || type == bool_type()
-        || type == str_type()
-        || type == null_type()
+        || is_type_fundamental(type)
         || is_list_type(type)
         || is_ptr_type(type);
 }
 
-auto type_store::size_of(const type_name& t) const -> std::size_t
+auto type_store::size_of(const type_name& type) const -> std::size_t
 {
-    if (std::holds_alternative<type_list>(t)) {
-        const auto& list = std::get<type_list>(t);
-        return size_of(list.inner_type[0]) * list.count;
+    if (!contains(type)) {
+        print("unknown type '{}'\n", type);
+        std::exit(1);
     }
-    if (std::holds_alternative<type_ptr>(t)) {
+
+    if (is_type_fundamental(type)) {
         return 1;
     }
-
-    if (auto it = d_classes.find(t); it != d_classes.end()) {
-        auto size = std::size_t{0};
-        for (const auto& field : it->second) {
-            size += size_of(field.type);
+    
+    return std::visit(overloaded{
+        [&](const type_simple& t) {
+            auto size = std::size_t{0};
+            for (const auto& field : fields_of(type)) {
+                size += size_of(field.type);
+            }
+            return size;
+        },
+        [&](const type_list& t) {
+            return size_of(t.inner_type[0]) * t.count;
+        },
+        [](const type_ptr&) {
+            return std::size_t{1};
         }
-        return size;
-    }
-
-    return 1; // By default, assume block size of 1 (should we have this?)
+    }, type);
 }
 
 auto type_store::fields_of(const type_name& t) const -> type_fields
