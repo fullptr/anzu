@@ -11,22 +11,6 @@
 namespace anzu {
 namespace {
 
-auto builtin_list_push(std::span<const block> args) -> block
-{
-    auto& list = std::get<block_list>(args[0]);
-    auto& obj = args[1];
-    list->push_back(obj);
-    return block{block_null{}};
-}
-
-auto builtin_list_pop(std::span<const block> args) -> block
-{
-    auto& list = std::get<block_list>(args[0]);
-    auto ret = list->back();
-    list->pop_back();
-    return ret;
-}
-
 auto builtin_list_size(std::span<const block> args) -> block
 {
     const auto& list = std::get<block_list>(args[0]);
@@ -125,27 +109,6 @@ auto builtin_range(std::span<const block> args) -> block
 auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
 {
     auto builtins = std::unordered_map<std::string, builtin>{};
-
-    builtins.emplace("list_push", builtin{
-        .ptr = builtin_list_push,
-        .sig = {
-            .args = {
-                { .name = "list_obj", .type = generic_list_type() },
-                { .name = "value",    .type = generic_type(0)  }
-            },
-            .return_type = null_type()
-        }
-    });
-
-    builtins.emplace("list_pop", builtin{
-        .ptr = builtin_list_pop,
-        .sig = {
-            .args = {
-                { .name = "list_obj", .type = generic_list_type() }
-            },
-            .return_type = generic_type(0)
-        }
-    });
 
     builtins.emplace("list_size", builtin{
         .ptr = builtin_list_size,

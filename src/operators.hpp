@@ -10,20 +10,20 @@ namespace anzu {
 
 using builtin_mem_op = std::function<void(std::vector<block>& memory)>;
 
-struct bin_op_description
+struct binary_op_description
 {
     std::string op;
     type_name   lhs;
     type_name   rhs;
 };
 
-struct bin_op_info
+struct binary_op_info
 {
     builtin_mem_op operator_func;
     type_name      result_type;
 };
 
-auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info>;
+auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binary_op_info>;
 
 struct unary_op_description
 {

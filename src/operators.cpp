@@ -39,7 +39,7 @@ auto unary_op(std::vector<block>& mem)
 
 }
 
-auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info>
+auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binary_op_info>
 {
     if (desc.lhs != desc.rhs) {
         return std::nullopt;
@@ -52,70 +52,70 @@ auto resolve_bin_op(const bin_op_description& desc) -> std::optional<bin_op_info
 
     if (type == int_type()) {
         if (desc.op == tk_add) {
-            return bin_op_info{ bin_op<block_int, std::plus>, type };
+            return binary_op_info{ bin_op<block_int, std::plus>, type };
         } else if (desc.op == tk_sub) {
-            return bin_op_info{ bin_op<block_int, std::minus>, type };
+            return binary_op_info{ bin_op<block_int, std::minus>, type };
         } else if (desc.op == tk_mul) {
-            return bin_op_info{ bin_op<block_int, std::multiplies>, type };
+            return binary_op_info{ bin_op<block_int, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return bin_op_info{ int_division, type };
+            return binary_op_info{ int_division, type };
         } else if (desc.op == tk_mod) {
-            return bin_op_info{ bin_op<block_int, std::modulus>, type };
+            return binary_op_info{ bin_op<block_int, std::modulus>, type };
         } else if (desc.op == tk_lt) {
-            return bin_op_info{ bin_op<block_int, std::less>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::less>, bool_type() };
         } else if (desc.op == tk_le) {
-            return bin_op_info{ bin_op<block_int, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::less_equal>, bool_type() };
         } else if (desc.op == tk_gt) {
-            return bin_op_info{ bin_op<block_int, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
-            return bin_op_info{ bin_op<block_int, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::greater_equal>, bool_type() };
         } else if (desc.op == tk_eq) {
-            return bin_op_info{ bin_op<block_int, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return bin_op_info{ bin_op<block_int, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == float_type()) {
         if (desc.op == tk_add) {
-            return bin_op_info{ bin_op<block_float, std::plus>, type };
+            return binary_op_info{ bin_op<block_float, std::plus>, type };
         } else if (desc.op == tk_sub) {
-            return bin_op_info{ bin_op<block_float, std::minus>, type };
+            return binary_op_info{ bin_op<block_float, std::minus>, type };
         } else if (desc.op == tk_mul) {
-            return bin_op_info{ bin_op<block_float, std::multiplies>, type };
+            return binary_op_info{ bin_op<block_float, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return bin_op_info{ bin_op<block_float, std::divides>, type };
+            return binary_op_info{ bin_op<block_float, std::divides>, type };
         } else if (desc.op == tk_lt) {
-            return bin_op_info{ bin_op<block_float, std::less>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::less>, bool_type() };
         } else if (desc.op == tk_le) {
-            return bin_op_info{ bin_op<block_float, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::less_equal>, bool_type() };
         } else if (desc.op == tk_gt) {
-            return bin_op_info{ bin_op<block_float, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
-            return bin_op_info{ bin_op<block_float, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::greater_equal>, bool_type() };
         } else if (desc.op == tk_eq) {
-            return bin_op_info{ bin_op<block_float, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return bin_op_info{ bin_op<block_float, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == bool_type()) {
         if (desc.op == tk_eq) {
-            return bin_op_info{ bin_op<block_bool, std::equal_to>, type };
+            return binary_op_info{ bin_op<block_bool, std::equal_to>, type };
         } else if (desc.op == tk_ne) {
-            return bin_op_info{ bin_op<block_bool, std::not_equal_to>, type };
+            return binary_op_info{ bin_op<block_bool, std::not_equal_to>, type };
         } else if (desc.op == tk_and) {
-            return bin_op_info{ bin_op<block_bool, std::logical_and>, type };
+            return binary_op_info{ bin_op<block_bool, std::logical_and>, type };
         } else if (desc.op == tk_or) {
-            return bin_op_info{ bin_op<block_bool, std::logical_or>, type };
+            return binary_op_info{ bin_op<block_bool, std::logical_or>, type };
         }
     }
     else if (type == str_type()) {
         if (desc.op == tk_add) {
-            return bin_op_info{ bin_op<block_str, std::plus>, type };
+            return binary_op_info{ bin_op<block_str, std::plus>, type };
         } else if (desc.op == tk_eq) {
-            return bin_op_info{ bin_op<block_str, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<block_str, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return bin_op_info{ bin_op<block_str, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<block_str, std::not_equal_to>, bool_type() };
         }
     }
 

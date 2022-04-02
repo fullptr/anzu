@@ -1,5 +1,9 @@
 
+struct vec2
+{
+    x: int
+    y: int
+}
 
-x := [1, 2, 3, 4]
-y := 5
-println(x)
+x := [1, 2, 3]
+println(size_of(&x))

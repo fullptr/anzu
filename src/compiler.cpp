@@ -104,6 +104,21 @@ auto declare_variable_name(compiler& com, const std::string& name, const type_na
     }
 }
 
+auto find_variable_type(const compiler& com, const token& tok, const std::string& name) -> type_name
+{
+    if (com.current_func && com.current_func->vars.info.contains(name)) {
+        const auto& info = com.current_func->vars.info.at(name);
+        return info.type;
+    }
+    
+    if (com.globals.info.contains(name)) {
+        const auto& info = com.globals.info.at(name);
+        return info.type;
+    }
+
+    compiler_error(tok, "could not find variable '{}'\n", name);
+}
+
 auto find_variable(compiler& com, const token& tok, const std::string& name) -> type_name
 {
     if (com.current_func && com.current_func->vars.info.contains(name)) {
@@ -254,6 +269,71 @@ auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
     }
 }
 
+auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
+{
+    return std::visit(overloaded{
+        [&](const node_literal_expr& expr) { return expr.value.type; },
+        [&](const node_unary_op_expr& expr) {
+            const auto r = resolve_unary_op({
+                .op = expr.token.text,
+                .type=type_of_expr(com, *expr.expr)
+            });
+            return r->result_type;
+        },
+        [&](const node_binary_op_expr& expr) {
+            const auto r = resolve_binary_op({
+                .op = expr.token.text,
+                .lhs=type_of_expr(com, *expr.lhs),
+                .rhs=type_of_expr(com, *expr.rhs)
+            });
+            return r->result_type;
+        },
+        [&](const node_function_call_expr& expr) {
+            return com.functions.at(expr.function_name).sig.return_type;
+        },
+        [&](const node_list_expr& expr) {
+            return type_name{type_list{
+                .inner_type = type_of_expr(com, *expr.elements.front()),
+                .count = expr.elements.size()
+            }};
+        },
+        [&](const node_addrof_expr& expr) {
+            return concrete_ptr_type(type_of_expr(com, *expr.expr));
+        },
+        [&](const node_sizeof_expr& expr) {
+            return int_type();
+        },
+        [&](const node_variable_expr& expr) {
+            return find_variable_type(com, expr.token, expr.name);
+        },
+        [&](const node_field_expr& expr) {
+            const auto type = type_of_expr(com, *expr.expr);
+            for (const auto& field : com.types.fields_of(type)) {
+                if (field.name == expr.field_name) {
+                    return field.type;
+                }
+            }
+            return int_type();
+        },
+        [&](const node_arrow_expr& expr) {
+            const auto ptype = type_of_expr(com, *expr.expr);
+            compiler_assert(is_ptr_type(ptype), expr.token, "cannot use arrow operator on non-ptr type '{}'", ptype);
+            const auto type = inner_type(ptype);
+            for (const auto& field : com.types.fields_of(type)) {
+                if (field.name == expr.field_name) {
+                    return field.type;
+                }
+            }
+            return int_type();
+        },
+        [&](const node_deref_expr& expr) {
+            const auto ptype = type_of_expr(com, *expr.expr);
+            compiler_assert(is_ptr_type(ptype), expr.token, "cannot use deref operator on non-ptr type '{}'", ptype);
+            return inner_type(ptype);
+        }
+    }, node);
+}
+
 auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name;
 auto compile_stmt(compiler& com, const node_stmt& root) -> void;
@@ -307,7 +387,7 @@ auto compile_expr_val(compiler& com, const node_binary_op_expr& node) -> type_na
     const auto rhs = compile_expr_val(com, *node.rhs);
     const auto op = node.token.text;
 
-    const auto info = resolve_bin_op({ .op=op, .lhs=lhs, .rhs=rhs });
+    const auto info = resolve_binary_op({ .op=op, .lhs=lhs, .rhs=rhs });
     compiler_assert(info.has_value(), node.token, "could not evaluate '{} {} {}'", lhs, op, rhs);
 
     com.program.emplace_back(op_builtin_mem_op{
@@ -396,6 +476,19 @@ auto compile_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, *node.expr);
     return concrete_ptr_type(type);
+}
+
+auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    auto size_of = com.types.size_of(type);
+    if (std::holds_alternative<type_list>(type)) {
+        size_of /= com.types.size_of(std::get<type_list>(type).inner_type[0]);
+    }
+    com.program.emplace_back(op_load_literal{
+        .value={ static_cast<block_int>(size_of) }
+    });
+    return int_type();
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case

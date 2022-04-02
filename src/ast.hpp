@@ -87,6 +87,13 @@ struct node_deref_expr
     anzu::token token;
 };
 
+struct node_sizeof_expr
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
 struct node_expr : std::variant<
     // Rvalue expressions
     node_literal_expr,
@@ -95,6 +102,7 @@ struct node_expr : std::variant<
     node_function_call_expr,
     node_list_expr,
     node_addrof_expr,
+    node_sizeof_expr,
 
     // Lvalue expressions
     node_variable_expr,

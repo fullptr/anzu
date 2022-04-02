@@ -64,6 +64,10 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_deref_expr& node) {
             print("{}Deref:\n", spaces);
             print_node(*node.expr, indent + 1);
+        },
+        [&](const node_sizeof_expr& node) {
+            print("{}SizeOf:\n", spaces);
+            print_node(*node.expr, indent + 1);
         }
     }, root);
 }

@@ -120,6 +120,13 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
+    else if (tokens.peek(tk_size_of)) {
+        auto& expr = node->emplace<node_sizeof_expr>();
+        expr.token = tokens.consume();
+        tokens.consume_only(tk_lparen);
+        expr.expr = parse_expression(tokens);
+        tokens.consume_only(tk_rparen);
+    }
     else if (tokens.peek(tk_mul)) {
         auto& expr = node->emplace<anzu::node_deref_expr>();
         expr.token = tokens.consume();
