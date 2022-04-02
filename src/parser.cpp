@@ -220,7 +220,7 @@ auto parse_type(tokenstream& tokens) -> type_name
             compound.subtypes.push_back(parse_type(tokens));
         });
         return ret;
-    }
+    } else 
     
     return { type_simple{ .name = type_name_text } };
 }
