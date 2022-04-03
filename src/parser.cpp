@@ -207,14 +207,12 @@ auto parse_name(tokenstream& tokens)
 auto parse_type(tokenstream& tokens) -> type_name
 {
     if (tokens.consume_maybe(tk_ampersand)) {
-        return {type_ptr{
-            .inner_type = { parse_type(tokens) }
-        }};
+        return {type_ptr{ .inner_type={parse_type(tokens)} }};
     }
     auto type = type_name{type_simple{.name=tokens.consume().text}};
     while (tokens.consume_maybe(tk_lbracket)) {
         auto new_type = type_name{type_list{
-            .inner_type = type, .count = static_cast<std::size_t>(tokens.consume_int())
+            .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_int())
         }};
         tokens.consume_only(tk_rbracket);
         type = new_type;
