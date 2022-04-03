@@ -38,7 +38,7 @@ tokenstream::tokenstream(const std::vector<token>& tokens)
 
 auto tokenstream::consume_maybe(std::string_view text) -> bool
 {
-    if (curr().text == text && is_consumable_type(curr().type)) {
+    if (valid() && curr().text == text && is_consumable_type(curr().type)) {
         consume();
         return true;
     }

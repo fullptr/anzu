@@ -277,7 +277,7 @@ auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(tk_if);
     stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
-    if (tokens.valid() && tokens.consume_maybe(tk_else)) {
+    if (tokens.consume_maybe(tk_else)) {
         stmt.else_body = parse_statement(tokens);
     }
     return node;
@@ -309,17 +309,6 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.name = parse_name(tokens);
     stmt.token = tokens.consume_only(tk_declare);
-    stmt.expr = parse_expression(tokens);
-    return node;
-}
-
-auto parse_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
-{
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_assignment_stmt>();
-
-    stmt.position = parse_expression(tokens);
-    stmt.token = tokens.consume_only(tk_assign);
     stmt.expr = parse_expression(tokens);
     return node;
 }
