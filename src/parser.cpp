@@ -30,7 +30,7 @@ auto to_int(std::string_view token) -> block_int
     }
     return result;
 }
-   
+
 auto to_float(std::string_view token) -> block_float
 {
     auto result = block_float{};
