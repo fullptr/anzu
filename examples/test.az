@@ -1,15 +1,11 @@
 
 
-fn foo(l: ptr<list<int, 5>>) -> null
+fn increment(p: &int) -> null
 {
-    idx := 0
-    while idx != 5 {
-        println((*l)[idx])
-        idx = idx + 1
-    }
+    *p = *p + 1
 }
 
 x := 5
+increment(&x)
 
-l := [1, 2, 3, 4, 5]
-foo(&l)
+println(x)

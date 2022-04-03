@@ -25,7 +25,7 @@ auto to_string(const type_list& type) -> std::string
 
 auto to_string(const type_ptr& type) -> std::string
 {
-    return std::format("{}<{}>", tk_ptr, to_string(*type.inner_type));
+    return std::format("&{}", to_string(*type.inner_type));
 }
 
 auto hash(const type_name& type) -> std::size_t
@@ -45,7 +45,7 @@ auto hash(const type_list& type) -> std::size_t
 
 auto hash(const type_ptr& type) -> std::size_t
 {
-    return hash(*type.inner_type) ^ std::hash<std::size_t>{}(100);
+    return hash(*type.inner_type) ^ std::hash<std::string_view>{}(tk_ptr);
 }
 
 auto int_type()  -> type_name

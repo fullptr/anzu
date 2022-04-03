@@ -380,7 +380,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     compiler_assert(itype == int_type(), expr.token, "subscript argument must be an int, got '{}'", itype);
 
     com.program.emplace_back(op_load_literal{ .value={static_cast<int>(etype_size)} });
-    const auto info = resolve_binary_op({ .op='*', .lhs=int_type(), .rhs=int_type() });
+    const auto info = resolve_binary_op({ .op="*", .lhs=int_type(), .rhs=int_type() });
     com.program.emplace_back(op_builtin_mem_op{
         .name = "int * int",
         .ptr = info->operator_func
