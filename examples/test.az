@@ -1,8 +1,13 @@
 
+struct vec2
+{
+    x: int
+    y: int
+}
 
 struct span
 {
-    p: &int
+    p: &vec2
     size: int
 }
 
@@ -15,8 +20,8 @@ fn print_list(s: span) -> null
     }
 }
 
-l := [1, 2, 3, 4, 5]
+l := [vec2(1, 2), vec2(3, 4), vec2(5, 6)]
 
-my_span := span(&l[0], 5)
+my_span := span(&l[0], 3)
 
 print_list(my_span)
