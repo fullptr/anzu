@@ -1,15 +1,30 @@
 
-
-fn foo(l: ptr<list<int, 5>>) -> null
+struct vec2
 {
-    idx := 0
-    while idx != 5 {
-        println((*l)[idx])
-        idx = idx + 1
-    }
+    x: int
+    y: int
 }
 
-x := 5
+struct span
+{
+    p: &vec2
+    size: int
+}
 
-l := [1, 2, 3, 4, 5]
-foo(&l)
+fn print_list(s: span) -> null
+{
+    idx := 0
+    while idx != s.size {
+        println(*(s.p + idx))
+        idx = idx + 1
+    }
+    *(s.p + 1) = vec2(10, 20)
+}
+
+l := [vec2(1, 2), vec2(3, 4), vec2(5, 6)]
+
+my_span := span(&l[0], 3)
+
+print_list(my_span)
+println(l)
+

@@ -30,7 +30,7 @@ auto to_int(std::string_view token) -> block_int
     }
     return result;
 }
-   
+
 auto to_float(std::string_view token) -> block_float
 {
     auto result = block_float{};
@@ -206,25 +206,18 @@ auto parse_name(tokenstream& tokens)
 
 auto parse_type(tokenstream& tokens) -> type_name
 {
-    if (tokens.consume_maybe(tk_list)) {
-        tokens.consume_only(tk_lt);
-        const auto inner_type = parse_type(tokens);
-        tokens.consume_only(tk_comma);
-        const auto count = tokens.consume_int();
-        tokens.consume_only(tk_gt);
-        return {type_list{
-            .inner_type = {inner_type}, .count=static_cast<std::size_t>(count)
-        }};
+    if (tokens.consume_maybe(tk_ampersand)) {
+        return {type_ptr{ .inner_type={parse_type(tokens)} }};
     }
-    if (tokens.consume_maybe(tk_ptr)) {
-        tokens.consume_only(tk_lt);
-        const auto inner_type = parse_type(tokens);
-        tokens.consume_only(tk_gt);
-        return {type_ptr{
-            .inner_type = { inner_type }
+    auto type = type_name{type_simple{.name=tokens.consume().text}};
+    while (tokens.consume_maybe(tk_lbracket)) {
+        auto new_type = type_name{type_list{
+            .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_int())
         }};
+        tokens.consume_only(tk_rbracket);
+        type = new_type;
     }
-    return {type_simple{.name=tokens.consume().text}};
+    return type;
 }
 
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
@@ -235,7 +228,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(tk_function);
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
-    tokens.consume_comma_separated_list(tk_rparen, [&] {
+    tokens.consume_comma_separated_list(tk_rparen, [&]{
         auto arg = signature::arg{};
         arg.name = parse_name(tokens);
         tokens.consume_only(tk_colon);

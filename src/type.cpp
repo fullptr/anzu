@@ -20,12 +20,12 @@ auto to_string(const type_simple& type) -> std::string
 
 auto to_string(const type_list& type) -> std::string
 {
-    return std::format("{}<{}, {}>", tk_list, to_string(*type.inner_type), type.count);
+    return std::format("{}[{}]", to_string(*type.inner_type), type.count);
 }
 
 auto to_string(const type_ptr& type) -> std::string
 {
-    return std::format("{}<{}>", tk_ptr, to_string(*type.inner_type));
+    return std::format("&{}", to_string(*type.inner_type));
 }
 
 auto hash(const type_name& type) -> std::size_t
@@ -45,7 +45,8 @@ auto hash(const type_list& type) -> std::size_t
 
 auto hash(const type_ptr& type) -> std::size_t
 {
-    return hash(*type.inner_type) ^ std::hash<std::size_t>{}(100);
+    static const auto ptr_offset = std::hash<std::string_view>{}("ptr_offset");
+    return hash(*type.inner_type) ^ ptr_offset;
 }
 
 auto int_type()  -> type_name

@@ -277,11 +277,14 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return r->result_type;
         },
         [&](const node_binary_op_expr& expr) {
-            const auto r = resolve_binary_op({
-                .op = expr.token.text,
-                .lhs=type_of_expr(com, *expr.lhs),
-                .rhs=type_of_expr(com, *expr.rhs)
-            });
+            const auto r = resolve_binary_op(
+                com.types,
+                {
+                    .op = expr.token.text,
+                    .lhs=type_of_expr(com, *expr.lhs),
+                    .rhs=type_of_expr(com, *expr.rhs)
+                }
+            );
             return r->result_type;
         },
         [&](const node_function_call_expr& expr) {
@@ -380,7 +383,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     compiler_assert(itype == int_type(), expr.token, "subscript argument must be an int, got '{}'", itype);
 
     com.program.emplace_back(op_load_literal{ .value={static_cast<int>(etype_size)} });
-    const auto info = resolve_binary_op({ .op='*', .lhs=int_type(), .rhs=int_type() });
+    const auto info = resolve_binary_op(com.types, { .op="*", .lhs=int_type(), .rhs=int_type() });
     com.program.emplace_back(op_builtin_mem_op{
         .name = "int * int",
         .ptr = info->operator_func
@@ -417,7 +420,7 @@ auto compile_expr_val(compiler& com, const node_binary_op_expr& node) -> type_na
     const auto rhs = compile_expr_val(com, *node.rhs);
     const auto op = node.token.text;
 
-    const auto info = resolve_binary_op({ .op=op, .lhs=lhs, .rhs=rhs });
+    const auto info = resolve_binary_op(com.types, { .op=op, .lhs=lhs, .rhs=rhs });
     compiler_assert(info.has_value(), node.token, "could not evaluate '{} {} {}'", lhs, op, rhs);
 
     com.program.emplace_back(op_builtin_mem_op{

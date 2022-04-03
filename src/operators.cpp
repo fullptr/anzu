@@ -29,6 +29,16 @@ auto int_division(std::vector<block>& mem) -> void
     mem.back().emplace<block_float>(static_cast<block_float>(lhs) / rhs);
 }
 
+auto ptr_addition(std::size_t obj_size)
+{
+    return [=](std::vector<block>& mem) {
+        const auto rhs = get_back<block_int>(mem, 0);
+        auto& lhs = get_back<block_ptr>(mem, 1);
+        mem.pop_back();
+        lhs.ptr += rhs * obj_size;
+    };
+}
+
 template <typename Type, template <typename> typename Op>
 auto unary_op(std::vector<block>& mem)
 {
@@ -39,8 +49,16 @@ auto unary_op(std::vector<block>& mem)
 
 }
 
-auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binary_op_info>
+auto resolve_binary_op(
+    const type_store& types, const binary_op_description& desc
+)
+    -> std::optional<binary_op_info>
 {
+    if (is_ptr_type(desc.lhs) && desc.rhs == int_type()) {
+        const auto elem_size = types.size_of(inner_type(desc.lhs));
+        return binary_op_info{ ptr_addition(elem_size), desc.lhs };
+    }
+
     if (desc.lhs != desc.rhs) {
         return std::nullopt;
     }
