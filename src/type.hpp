@@ -1,5 +1,6 @@
 #pragma once
 #include "vocabulary.hpp"
+#include "utility/value_ptr.hpp"
 
 #include <string>
 #include <variant>
@@ -22,14 +23,14 @@ struct type_simple
 
 struct type_list
 {
-    std::vector<type_name> inner_type; // Should be a value_ptr
-    std::size_t            count;
+    value_ptr<type_name> inner_type;
+    std::size_t          count;
     auto operator==(const type_list&) const -> bool = default;
 };
 
 struct type_ptr
 {
-    std::vector<type_name> inner_type; // Should be a value_ptr
+    value_ptr<type_name> inner_type;
     auto operator==(const type_ptr&) const -> bool = default;
 };
 
@@ -109,7 +110,6 @@ public:
 
     auto size_of(const type_name& t) const -> std::size_t;
     auto fields_of(const type_name& t) const -> type_fields;
-
 };
 
 }
