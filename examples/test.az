@@ -1,11 +1,9 @@
 
 
-fn increment(p: &int) -> null
+fn pr(p: &int[5]) -> null
 {
-    *p = *p + 1
+    println((*p)[1])
 }
 
-x := 5
-increment(&x)
-
-println(x)
+l := [[1, 2, 3], [4, 5, 6]]
+pr(&l)
