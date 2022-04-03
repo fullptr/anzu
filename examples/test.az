@@ -1,9 +1,22 @@
 
 
-fn pr(p: &int[5]) -> null
+struct span
 {
-    println((*p)[1])
+    p: &int
+    size: int
+}
+
+fn print_list(s: span) -> null
+{
+    idx := 0
+    while idx != s.size {
+        println(*(s.p + idx))
+        idx = idx + 1
+    }
 }
 
 l := [1, 2, 3, 4, 5]
-pr(&l)
+
+my_span := span(&l[0], 5)
+
+print_list(my_span)

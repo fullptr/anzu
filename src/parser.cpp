@@ -228,7 +228,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(tk_function);
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
-    tokens.consume_comma_separated_list(tk_rparen, [&] {
+    tokens.consume_comma_separated_list(tk_rparen, [&]{
         auto arg = signature::arg{};
         arg.name = parse_name(tokens);
         tokens.consume_only(tk_colon);

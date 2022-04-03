@@ -123,16 +123,16 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
             program_advance(ctx);
         },
-        [&](const op_if& op) {
+        [&](op_if) {
             program_advance(ctx);
         },
-        [&](const op_if_end& op) {
+        [&](op_if_end) {
             program_advance(ctx);
         },
         [&](const op_else& op) {
             program_jump_to(ctx, op.jump);
         },
-        [&](const op_loop_begin& op) {
+        [&](op_loop_begin) {
             program_advance(ctx);
         },
         [&](const op_loop_end& op) {
@@ -155,14 +155,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_function& op) {
             program_jump_to(ctx, op.jump);
         },
-        [&](const op_function_end& op) {
-            const auto null_return = make_null();
-            for (const auto& block : null_return.data) {
-                ctx.memory.push_back(block);
-            }
+        [&](op_function_end) {
+            ctx.memory.push_back(block_null{});
             pop_frame(ctx);
         },
-        [&](const op_return& op) {
+        [&](op_return) {
             pop_frame(ctx);
         },
         [&](const op_function_call& op) {
