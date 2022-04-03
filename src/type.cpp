@@ -45,7 +45,8 @@ auto hash(const type_list& type) -> std::size_t
 
 auto hash(const type_ptr& type) -> std::size_t
 {
-    return hash(*type.inner_type) ^ std::hash<std::string_view>{}(tk_ptr);
+    static const auto ptr_offset = std::hash<std::string_view>{}("ptr_offset");
+    return hash(*type.inner_type) ^ ptr_offset;
 }
 
 auto int_type()  -> type_name
