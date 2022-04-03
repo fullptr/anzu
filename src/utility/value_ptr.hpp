@@ -9,15 +9,9 @@ class value_ptr
     std::unique_ptr<T> d_value;
 
 public:
-    value_ptr(T* value)
-        : d_value(std::unique_ptr<T>(value))
-    {
-    }
-
-    value_ptr(const value_ptr& other)
-        : d_value(std::make_unique<T>(*other))
-    {
-    }
+    value_ptr(T* value) : d_value(std::unique_ptr<T>(value)) {}
+    value_ptr(const value_ptr& other) : d_value(std::make_unique<T>(*other)) {}
+    value_ptr(const T& val) : d_value(std::make_unique<T>(val)) {}
 
     value_ptr& operator=(const value_ptr& other)
     {
@@ -25,30 +19,24 @@ public:
         return *this;
     }
 
-    value_ptr(const T& val)
-        : d_value(std::make_unique<T>(val))
-    {
-    }
-
-    value_ptr& operator=(value_ptr&& other)
+    auto operator=(value_ptr&& other) -> value_ptr&
     {
         d_value = std::move(other.d_value);
-        other.d_value.reset();
         return *this;
     }
 
-    T& operator*() { return *d_value; }
-    const T& operator*() const { return *d_value; }
+    auto operator*() -> T& { return *d_value; }
+    auto operator*() const -> const T& { return *d_value; }
 
-    T* operator->() { return d_value.get(); }
-    const T* operator->() const { return d_value.get(); }
+    auto operator->() -> T* { return d_value.get(); }
+    auto operator->() const -> const T* { return d_value.get(); }
 
-    T* get() { return d_value.get(); }
-    const T* get() const { return d_value.get(); }
+    auto get() -> T* { return d_value.get(); }
+    auto get() const -> const T* { return d_value.get(); }
 
     void reset() { d_value = nullptr; }
 
-    bool operator==(const value_ptr& other) const
+    auto operator==(const value_ptr& other) const -> bool
     {
         return *d_value == *other.d_value;
     }

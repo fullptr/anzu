@@ -110,7 +110,6 @@ public:
 
     auto size_of(const type_name& t) const -> std::size_t;
     auto fields_of(const type_name& t) const -> type_fields;
-
 };
 
 }
