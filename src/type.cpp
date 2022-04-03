@@ -20,12 +20,12 @@ auto to_string(const type_simple& type) -> std::string
 
 auto to_string(const type_list& type) -> std::string
 {
-    return std::format("{}[{}]", to_string(*type.inner_type), type.count);
+    return std::format("{}<{}, {}>", tk_list, to_string(*type.inner_type), type.count);
 }
 
 auto to_string(const type_ptr& type) -> std::string
 {
-    return std::format("&{}", to_string(*type.inner_type));
+    return std::format("{}<{}>", tk_ptr, to_string(*type.inner_type));
 }
 
 auto hash(const type_name& type) -> std::size_t
