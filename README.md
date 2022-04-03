@@ -95,13 +95,14 @@ Common Modules
 -- object.hpp      : Definition of an object in anzu
 -- type.hpp        : Definition of a type in anzu
 -- vocabulary.hpp  : Definitions of keywords and symbols
--- views.hpp       : A collection of some helper views not in C++20
 
 Utility Modules (in src/utility)
--- print.hpp       : Wrapper for std::format, similar to {fmt}
--- peekstream.hpp  : A data structure used in the lexer
 -- overloaded.hpp  : A helper class to make std::visit simpler
+-- peekstream.hpp  : A data structure used in the lexer
+-- print.hpp       : Wrapper for std::format, similar to {fmt}
 -- score_timer.hpp : An RAII class for timing a block of code
+-- value_ptr.hpp   : A value-semantic smart pointer
+-- views.hpp       : A collection of some helper views not in C++20
 ```
 
 # Upcoming Features
