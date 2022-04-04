@@ -1,3 +1,4 @@
 l := [1, 2, 3]
 
-x := size_of(l) / size_of(l[0])
+l[1u] = 5
+println(l)

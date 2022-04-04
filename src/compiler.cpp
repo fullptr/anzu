@@ -462,7 +462,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     else if (const auto function_def = find_function(com, node.function_name)) {
 
         const auto return_size = com.types.size_of(function_def->sig.return_type);
-
+        static constexpr auto payload_size = std::size_t{3};
         com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // base ptr
         com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // prog ptr
         com.program.emplace_back(op_load_literal{ .value={block_uint{return_size}} });
@@ -476,7 +476,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         com.program.emplace_back(anzu::op_function_call{
             .name=node.function_name,
             .ptr=function_def->ptr + 1, // Jump into the function
-            .args_size=signature_args_size(com, function_def->sig)
+            .args_size=signature_args_size(com, function_def->sig) + payload_size
         });
         return function_def->sig.return_type;
     }

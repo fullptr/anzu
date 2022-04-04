@@ -17,26 +17,11 @@ auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
     }
 }
 
-template <typename T>
-auto pop_back(std::vector<T>& vec) -> T
+auto pop_back(std::vector<block>& vec) -> block
 {
     const auto back = vec.back();
     vec.pop_back();
     return back;   
-}
-
-auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> void
-{
-    runtime_assert(idx + size <= ctx.memory.size(), "tried to access invalid memory address {}", idx);
-    if (idx == ctx.memory.size() - size) {
-        return;
-    }
-    for (std::size_t i = 0; i != size; ++i) {
-        ctx.memory[idx + i] = ctx.memory[ctx.memory.size() - size + i];
-    }
-    for (std::size_t i = 0; i != size; ++i) {
-        ctx.memory.pop_back();
-    }
 }
 
 // Cleans up the variables used in the current frame and removes the frame
@@ -95,9 +80,14 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ++ctx.prog_ptr;
         },
         [&](op_save) {
-            const auto ptr_blk = pop_back(ctx.memory);
-            const auto ptr = std::get<block_ptr>(ptr_blk);
-            save_top_at(ctx, ptr.ptr, ptr.size);
+            const auto ptr = pop_back(ctx.memory);
+            const auto [idx, size] = std::get<block_ptr>(ptr);
+            runtime_assert(idx + size <= ctx.memory.size(), "tried to access invalid memory address {}", idx);
+            if (idx + size < ctx.memory.size()) {
+                for (const auto i : std::views::iota(idx, idx + size) | std::views::reverse) {
+                    ctx.memory[i] = pop_back(ctx.memory);
+                }
+            }
             ++ctx.prog_ptr;
         },
         [&](const op_pop& op) {
@@ -146,14 +136,12 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             pop_frame(ctx);
         },
         [&](const op_function_call& op) {
-            ++ctx.prog_ptr; // Position after function call
-
             // Store the old base_ptr and prog_ptr so that they can be restored at the end of
             // the function. Note that the return size is stored at new_base_ptr + 2 but and has
             // already been written in.
-            const auto new_base_ptr = ctx.memory.size() - op.args_size - 3;
+            const auto new_base_ptr = ctx.memory.size() - op.args_size;
             ctx.memory[new_base_ptr] = block_uint{ctx.base_ptr};  
-            ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr};
+            ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr + 1}; // Pos after function call
             ctx.base_ptr = new_base_ptr;
             
             ctx.prog_ptr = op.ptr; // Jump into the function
