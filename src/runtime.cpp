@@ -96,8 +96,8 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx);
         },
         [&](op_modify_ptr) {
-            const auto size = std::get<block_int>(pop_back(ctx.memory));
-            const auto offset = std::get<block_int>(pop_back(ctx.memory));
+            const auto size = std::get<block_uint>(pop_back(ctx.memory));
+            const auto offset = std::get<block_uint>(pop_back(ctx.memory));
             auto& ptr = std::get<block_ptr>(ctx.memory.back());
             ptr.ptr += offset;
             ptr.size = size;
