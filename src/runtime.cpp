@@ -25,16 +25,6 @@ auto pop_back(std::vector<T>& vec) -> T
     return back;   
 }
 
-auto program_advance(runtime_context& ctx) -> void
-{
-    ctx.prog_ptr += 1;
-}
-
-auto program_jump_to(runtime_context& ctx, std::size_t idx) -> void
-{
-    ctx.prog_ptr = idx;
-}
-
 auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> void
 {
     runtime_assert(idx + size <= ctx.memory.size(), "tried to access invalid memory address {}", idx);
@@ -74,19 +64,19 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             for (const auto& block : op.value) {
                 ctx.memory.push_back(block);
             }
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](const op_push_global_addr& op) {
             const auto idx = op.position;
             const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
             ctx.memory.push_back(ptr);
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](const op_push_local_addr& op) {
             const auto idx = ctx.base_ptr + op.offset;
             const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
             ctx.memory.push_back(ptr);
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](op_modify_ptr) {
             const auto size = std::get<block_uint>(pop_back(ctx.memory));
@@ -94,7 +84,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             auto& ptr = std::get<block_ptr>(ctx.memory.back());
             ptr.ptr += offset;
             ptr.size = size;
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](op_load) {
             const auto ptr_blk = pop_back(ctx.memory);
@@ -102,51 +92,51 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             for (std::size_t i = 0; i != ptr.size; ++i) {
                 ctx.memory.push_back(ctx.memory[ptr.ptr + i]);
             }
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](op_save) {
             const auto ptr_blk = pop_back(ctx.memory);
             const auto ptr = std::get<block_ptr>(ptr_blk);
             save_top_at(ctx, ptr.ptr, ptr.size);
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](const op_pop& op) {
             for (std::size_t i = 0; i != op.size; ++i) {
                 ctx.memory.pop_back();
             }
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](op_if) {
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](op_if_end) {
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](const op_else& op) {
-            program_jump_to(ctx, op.jump);
+            ctx.prog_ptr = op.jump;
         },
         [&](op_loop_begin) {
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](const op_loop_end& op) {
-            program_jump_to(ctx, op.jump);
+            ctx.prog_ptr = op.jump;
         },
         [&](const op_break& op) {
-            program_jump_to(ctx, op.jump);
+            ctx.prog_ptr = op.jump;
         },
         [&](const op_continue& op) {
-            program_jump_to(ctx, op.jump);
+            ctx.prog_ptr = op.jump;
         },
         [&](const op_jump_if_false& op) {
             if (std::get<block_bool>(ctx.memory.back())) {
-                program_advance(ctx);
+                ++ctx.prog_ptr;
             } else {
-                program_jump_to(ctx, op.jump);
+                ctx.prog_ptr = op.jump;
             }
             ctx.memory.pop_back();
         },
         [&](const op_function& op) {
-            program_jump_to(ctx, op.jump);
+            ctx.prog_ptr = op.jump;
         },
         [&](op_function_end) {
             ctx.memory.push_back(block_null{});
@@ -156,7 +146,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             pop_frame(ctx);
         },
         [&](const op_function_call& op) {
-            program_advance(ctx); // Position after function call
+            ++ctx.prog_ptr; // Position after function call
 
             // Store the old base_ptr and prog_ptr so that they can be restored at the end of
             // the function. Note that the return size is stored at new_base_ptr + 2 but and has
@@ -166,7 +156,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr};
             ctx.base_ptr = new_base_ptr;
             
-            program_jump_to(ctx, op.ptr); // Jump into the function
+            ctx.prog_ptr = op.ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {
             auto args = std::vector<anzu::block>(op.args_size);
@@ -175,11 +165,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
 
             ctx.memory.push_back(op.ptr(args));
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         },
         [&](const op_builtin_mem_op& op) {
             op.ptr(ctx.memory);
-            program_advance(ctx);
+            ++ctx.prog_ptr;
         }
     }, op_code);
 }
