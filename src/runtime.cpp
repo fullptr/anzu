@@ -27,17 +27,17 @@ auto pop_back(std::vector<T>& vec) -> T
 
 auto program_advance(runtime_context& ctx) -> void
 {
-    ctx.frames.back().program_ptr += 1;
+    ctx.prog_ptr += 1;
 }
 
 auto program_jump_to(runtime_context& ctx, std::size_t idx) -> void
 {
-    ctx.frames.back().program_ptr = idx;
+    ctx.prog_ptr = idx;
 }
 
 auto program_ptr(const runtime_context& ctx) -> std::size_t
 {
-    return ctx.frames.back().program_ptr;
+    return ctx.prog_ptr;
 }
 
 auto base_ptr(const runtime_context& ctx) -> std::size_t
@@ -65,6 +65,7 @@ auto pop_frame(runtime_context& ctx) -> void
 {
     const auto return_size = ctx.frames.back().return_size;
     const auto prev_base_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr]);
+    const auto prev_prog_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr + 1]);
 
     for (std::size_t i = 0; i != return_size; ++i) {
         ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
@@ -74,6 +75,7 @@ auto pop_frame(runtime_context& ctx) -> void
     }
     ctx.frames.pop_back();
     ctx.base_ptr = prev_base_ptr;
+    ctx.prog_ptr = prev_prog_ptr;
 }
 
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
@@ -168,8 +170,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx); // Position after function call
 
             // Store the old base_ptr at the new one for recovery later
-            const auto new_base_ptr = ctx.memory.size() - op.args_size - 1;
-            ctx.memory[new_base_ptr] = block_uint{ctx.base_ptr};      
+            const auto new_base_ptr = ctx.memory.size() - op.args_size - 2;
+            ctx.memory[new_base_ptr] = block_uint{ctx.base_ptr};  
+            ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr};   
             ctx.base_ptr = new_base_ptr;
             
             ctx.frames.emplace_back();

@@ -461,7 +461,8 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     // Otherwise, it may be a custom function.
     else if (const auto function_def = find_function(com, node.function_name)) {
         // Test pushing an int to the start of the stack, will use this for the old base ptr.
-        com.program.emplace_back(op_load_literal{ .value={block_uint{0}} });   
+        com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // base ptr
+        com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // prog ptr
         
         // Push the args to the stack
         std::vector<type_name> param_types;
@@ -634,7 +635,8 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
-    declare_variable_name(com, "_Old_prog_ptr", uint_type()); // Store the old program ptr at the base
+    declare_variable_name(com, "_Old_base_ptr", uint_type()); // Store the old base ptr
+    declare_variable_name(com, "_Old_prog_ptr", uint_type()); // Store the old program ptr
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, arg.name, arg.type);
     }
