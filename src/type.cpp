@@ -54,6 +54,11 @@ auto int_type()  -> type_name
     return {type_simple{ .name = std::string{tk_int} }};
 }
 
+auto uint_type() -> type_name
+{
+    return {type_simple{ .name = std::string{tk_uint} }};
+}
+
 auto float_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_float} }};

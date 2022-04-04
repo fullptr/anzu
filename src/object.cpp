@@ -23,6 +23,7 @@ auto to_string(const block& blk) -> std::string
         [](const block_str& v) { return std::format("'{}'", v); },
         [](block_ptr ptr) { return std::format("[{:x}:{}]", ptr.ptr, ptr.size); },
         [](block_null) { return std::string{"null"}; },
+        [](block_uint val) { return std::format("{}u", val); },
         [](auto&& val) { return std::format("{}", val); }
     }, blk);
 }
@@ -35,6 +36,11 @@ auto to_string(const object& object) -> std::string
 auto make_int(block_int val) -> object
 {
     return { .data = { block_int{val} }, .type = int_type() };
+}
+
+auto make_uint(block_uint val) -> object
+{
+    return { .data = { block_uint{val} }, .type = uint_type() };
 }
 
 auto make_float(block_float val) -> object
