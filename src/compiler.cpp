@@ -463,6 +463,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         // Test pushing an int to the start of the stack, will use this for the old base ptr.
         com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // base ptr
         com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // prog ptr
+        com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // return size
         
         // Push the args to the stack
         std::vector<type_name> param_types;
@@ -637,6 +638,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
     declare_variable_name(com, "_Old_base_ptr", uint_type()); // Store the old base ptr
     declare_variable_name(com, "_Old_prog_ptr", uint_type()); // Store the old program ptr
+    declare_variable_name(com, "_Return_size", uint_type()); // Store the return size
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, arg.name, arg.type);
     }

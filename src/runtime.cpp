@@ -63,9 +63,9 @@ auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> voi
 // pointers to return back to the previous scope.
 auto pop_frame(runtime_context& ctx) -> void
 {
-    const auto return_size = ctx.frames.back().return_size;
     const auto prev_base_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr]);
     const auto prev_prog_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr + 1]);
+    const auto return_size = std::get<block_uint>(ctx.memory[ctx.base_ptr + 2]);
 
     for (std::size_t i = 0; i != return_size; ++i) {
         ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
@@ -170,9 +170,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx); // Position after function call
 
             // Store the old base_ptr at the new one for recovery later
-            const auto new_base_ptr = ctx.memory.size() - op.args_size - 2;
+            const auto new_base_ptr = ctx.memory.size() - op.args_size - 3;
             ctx.memory[new_base_ptr] = block_uint{ctx.base_ptr};  
-            ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr};   
+            ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr};
+            ctx.memory[new_base_ptr + 2] = block_uint{op.return_size};
             ctx.base_ptr = new_base_ptr;
             
             ctx.frames.emplace_back();
