@@ -14,7 +14,7 @@ namespace {
 auto builtin_str_size(std::span<const block> args) -> block
 {
     const auto& str = std::get<block_str>(args[0]);
-    return block{static_cast<int>(str.size())};
+    return block{block_uint{str.size()}};
 }
 
 auto builtin_str_at(std::span<const block> args) -> block

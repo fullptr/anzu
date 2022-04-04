@@ -1,3 +1,2 @@
 
-x := 0u - 1u
-println(x)
+x := 0u + 1
