@@ -87,7 +87,6 @@ struct op_function_call
     std::string name;
     std::size_t ptr;
     std::size_t args_size;
-    std::size_t return_size;
 };
 
 struct op_builtin_call

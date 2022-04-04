@@ -460,10 +460,12 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
     // Otherwise, it may be a custom function.
     else if (const auto function_def = find_function(com, node.function_name)) {
-        // Test pushing an int to the start of the stack, will use this for the old base ptr.
+
+        const auto return_size = com.types.size_of(function_def->sig.return_type);
+
         com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // base ptr
         com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // prog ptr
-        com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // return size
+        com.program.emplace_back(op_load_literal{ .value={block_uint{return_size}} });
         
         // Push the args to the stack
         std::vector<type_name> param_types;
@@ -474,8 +476,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         com.program.emplace_back(anzu::op_function_call{
             .name=node.function_name,
             .ptr=function_def->ptr + 1, // Jump into the function
-            .args_size=signature_args_size(com, function_def->sig),
-            .return_size=com.types.size_of(function_def->sig.return_type)
+            .args_size=signature_args_size(com, function_def->sig)
         });
         return function_def->sig.return_type;
     }

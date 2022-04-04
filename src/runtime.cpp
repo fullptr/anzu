@@ -73,7 +73,6 @@ auto pop_frame(runtime_context& ctx) -> void
     while (ctx.memory.size() > ctx.base_ptr + return_size) {
         ctx.memory.pop_back();
     }
-    ctx.frames.pop_back();
     ctx.base_ptr = prev_base_ptr;
     ctx.prog_ptr = prev_prog_ptr;
 }
@@ -169,15 +168,14 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_function_call& op) {
             program_advance(ctx); // Position after function call
 
-            // Store the old base_ptr at the new one for recovery later
+            // Store the old base_ptr and prog_ptr so that they can be restored at the end of
+            // the function. Note that the return size is stored at new_base_ptr + 2 but and has
+            // already been written in.
             const auto new_base_ptr = ctx.memory.size() - op.args_size - 3;
             ctx.memory[new_base_ptr] = block_uint{ctx.base_ptr};  
             ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr};
-            ctx.memory[new_base_ptr + 2] = block_uint{op.return_size};
             ctx.base_ptr = new_base_ptr;
             
-            ctx.frames.emplace_back();
-            ctx.frames.back().return_size = op.return_size;
             program_jump_to(ctx, op.ptr); // Jump into the function
         },
         [&](const op_builtin_call& op) {
@@ -201,7 +199,6 @@ auto run_program(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
-    ctx.frames.emplace_back();
     while (program_ptr(ctx) < program.size()) {
         apply_op(ctx, program[program_ptr(ctx)]);
     }
@@ -212,7 +209,6 @@ auto run_program_debug(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
-    ctx.frames.emplace_back();
     while (program_ptr(ctx) < program.size()) {
         const auto& op = program[program_ptr(ctx)];
         anzu::print("{:>4} - {}\n", program_ptr(ctx), op);
