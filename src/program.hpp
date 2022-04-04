@@ -13,7 +13,7 @@ namespace anzu {
 
 struct op_load_literal
 {
-    std::vector<block> value;
+    block blk;
 };
 
 struct op_push_global_addr

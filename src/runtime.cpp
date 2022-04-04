@@ -46,9 +46,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
         [&](const op_load_literal& op) {
-            for (const auto& block : op.value) {
-                ctx.memory.push_back(block);
-            }
+            ctx.memory.push_back(op.blk);
             ++ctx.prog_ptr;
         },
         [&](const op_push_global_addr& op) {
@@ -143,7 +141,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory[new_base_ptr] = block_uint{ctx.base_ptr};  
             ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr + 1}; // Pos after function call
             ctx.base_ptr = new_base_ptr;
-            
             ctx.prog_ptr = op.ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {

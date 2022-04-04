@@ -168,8 +168,8 @@ auto find_function(const compiler& com, const std::string& function) -> const fu
 
 auto modify_ptr(compiler& com, std::size_t offset, std::size_t size) -> void
 {
-    com.program.emplace_back(op_load_literal{ .value={block_uint{offset}} });
-    com.program.emplace_back(op_load_literal{ .value={block_uint{size}} });
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{offset} });
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{size} });
     com.program.emplace_back(op_modify_ptr{});
 }
 
@@ -382,7 +382,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     const auto itype = compile_expr_val(com, *expr.index);
     compiler_assert(itype == uint_type(), expr.token, "subscript argument must be a 'uint', got '{}'", itype);
 
-    com.program.emplace_back(op_load_literal{ .value={block_uint{etype_size}} });
+    com.program.emplace_back(op_load_literal{ .blk={block_uint{etype_size}} });
     const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
     com.program.emplace_back(op_builtin_mem_op{
         .name = "uint * uint",
@@ -390,7 +390,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     });
 
     // Push the size
-    com.program.emplace_back(op_load_literal{ .value={block_uint{etype_size}} });
+    com.program.emplace_back(op_load_literal{ .blk={block_uint{etype_size}} });
 
     com.program.emplace_back(op_modify_ptr{});
     return etype;
@@ -410,7 +410,9 @@ auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name
 
 auto compile_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
-    com.program.emplace_back(anzu::op_load_literal{ .value=node.value.data });
+    for (const auto& blk : node.value.data) {
+        com.program.emplace_back(anzu::op_load_literal{ .blk=blk });
+    }
     return node.value.type;
 }
 
@@ -460,12 +462,11 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
     // Otherwise, it may be a custom function.
     else if (const auto function_def = find_function(com, node.function_name)) {
-
-        const auto return_size = com.types.size_of(function_def->sig.return_type);
         static constexpr auto payload_size = std::size_t{3};
-        com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // base ptr
-        com.program.emplace_back(op_load_literal{ .value={block_uint{0}} }); // prog ptr
-        com.program.emplace_back(op_load_literal{ .value={block_uint{return_size}} });
+        const auto return_size = com.types.size_of(function_def->sig.return_type);
+        com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // base ptr
+        com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // prog ptr
+        com.program.emplace_back(op_load_literal{ .blk=block_uint{return_size} });
         
         // Push the args to the stack
         std::vector<type_name> param_types;
@@ -528,7 +529,7 @@ auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
     const auto size = com.types.size_of(type);
-    com.program.emplace_back(op_load_literal{ .value={block_uint{size}} });
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{size} });
     return uint_type();
 }
 
