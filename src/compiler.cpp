@@ -380,12 +380,12 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
 
     // Push the offset (index * size)
     const auto itype = compile_expr_val(com, *expr.index);
-    compiler_assert(itype == int_type(), expr.token, "subscript argument must be an int, got '{}'", itype);
+    compiler_assert(itype == uint_type(), expr.token, "subscript argument must be a 'uint', got '{}'", itype);
 
     com.program.emplace_back(op_load_literal{ .value={block_uint{etype_size}} });
-    const auto info = resolve_binary_op(com.types, { .op="*", .lhs=int_type(), .rhs=int_type() });
+    const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
     com.program.emplace_back(op_builtin_mem_op{
-        .name = "int * int",
+        .name = "uint * uint",
         .ptr = info->operator_func
     });
 

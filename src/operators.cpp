@@ -40,7 +40,7 @@ auto uint_division(std::vector<block>& mem) -> void
 auto ptr_addition(std::size_t obj_size)
 {
     return [=](std::vector<block>& mem) {
-        const auto rhs = get_back<block_int>(mem, 0);
+        const auto rhs = get_back<block_uint>(mem, 0);
         auto& lhs = get_back<block_ptr>(mem, 1);
         mem.pop_back();
         lhs.ptr += rhs * obj_size;
