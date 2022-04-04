@@ -20,7 +20,7 @@ auto builtin_str_size(std::span<const block> args) -> block
 auto builtin_str_at(std::span<const block> args) -> block
 {
     const auto& str = std::get<block_str>(args[0]);
-    const auto& idx = std::get<block_int>(args[1]);
+    const auto& idx = std::get<block_uint>(args[1]);
     return block{block_str{str.at(idx)}};
 }
 
@@ -93,7 +93,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
             .args = {
                 { .name = "string", .type = str_type() }
             },
-            .return_type = int_type()
+            .return_type = uint_type()
         }
     });
 
@@ -102,7 +102,7 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .sig = {
             .args = {
                 { .name = "string", .type = str_type() },
-                { .name = "index",  .type = int_type() }
+                { .name = "index",  .type = uint_type() }
             },
             .return_type = str_type()
         }

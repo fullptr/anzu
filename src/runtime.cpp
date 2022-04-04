@@ -42,7 +42,7 @@ auto program_ptr(const runtime_context& ctx) -> std::size_t
 
 auto base_ptr(const runtime_context& ctx) -> std::size_t
 {
-    return ctx.frames.back().base_ptr;
+    return ctx.base_ptr;
 }
 
 auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> void
@@ -64,14 +64,16 @@ auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> voi
 auto pop_frame(runtime_context& ctx) -> void
 {
     const auto return_size = ctx.frames.back().return_size;
+    const auto prev_base_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr]);
 
     for (std::size_t i = 0; i != return_size; ++i) {
-        ctx.memory[base_ptr(ctx) + i] = ctx.memory[ctx.memory.size() - return_size + i];
+        ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
     }
-    while (ctx.memory.size() > base_ptr(ctx) + return_size) {
+    while (ctx.memory.size() > ctx.base_ptr + return_size) {
         ctx.memory.pop_back();
     }
     ctx.frames.pop_back();
+    ctx.base_ptr = prev_base_ptr;
 }
 
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
@@ -90,7 +92,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx);
         },
         [&](const op_push_local_addr& op) {
-            const auto idx = base_ptr(ctx) + op.offset;
+            const auto idx = ctx.base_ptr + op.offset;
             const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
             ctx.memory.push_back(ptr);
             program_advance(ctx);
@@ -166,10 +168,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx); // Position after function call
 
             // Store the old base_ptr at the new one for recovery later
-            ctx.memory[ctx.memory.size() - op.args_size - 1] = base_ptr(ctx);          
+            const auto new_base_ptr = ctx.memory.size() - op.args_size - 1;
+            ctx.memory[new_base_ptr] = block_uint{ctx.base_ptr};      
+            ctx.base_ptr = new_base_ptr;
             
             ctx.frames.emplace_back();
-            ctx.frames.back().base_ptr = ctx.memory.size() - op.args_size - 1;
             ctx.frames.back().return_size = op.return_size;
             program_jump_to(ctx, op.ptr); // Jump into the function
         },

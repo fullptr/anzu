@@ -9,7 +9,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/src/Debug/anzu.exe",
-            "args": ["${workspaceFolder}/examples/feature_test.az", "run"],
+            "args": ["${workspaceFolder}/examples/aoc2015-1.az", "run"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
