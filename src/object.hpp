@@ -10,8 +10,12 @@
 
 namespace anzu {
 
+// Want these to be equivalent since we want uints available in the runtime but we also want
+// to use it as indexes into C++ vectors which use size_t.
+static_assert(sizeof(std::uint64_t) == sizeof(std::size_t));
 
-using block_int   = int;
+using block_int   = std::int64_t;
+using block_uint  = std::uint64_t;
 using block_float = double;
 using block_bool  = bool;
 using block_str   = std::string;
@@ -25,6 +29,7 @@ struct block_ptr
 
 using block = std::variant<
     block_int,
+    block_uint,
     block_float,
     block_bool,
     block_str,
