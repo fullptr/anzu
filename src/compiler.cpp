@@ -637,9 +637,9 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
-    declare_variable_name(com, "_Old_base_ptr", uint_type()); // Store the old base ptr
-    declare_variable_name(com, "_Old_prog_ptr", uint_type()); // Store the old program ptr
-    declare_variable_name(com, "_Return_size", uint_type()); // Store the return size
+    declare_variable_name(com, "# old_base_ptr", uint_type()); // Store the old base ptr
+    declare_variable_name(com, "# old_prog_ptr", uint_type()); // Store the old program ptr
+    declare_variable_name(com, "# return_size", uint_type());  // Store the return size
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, arg.name, arg.type);
     }
