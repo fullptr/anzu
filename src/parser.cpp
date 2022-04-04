@@ -16,7 +16,7 @@ template <typename... Args>
 [[noreturn]] void parser_error(const token& tok, std::string_view msg, Args&&... args)
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
+    print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
     std::exit(1);
 }
 
@@ -25,7 +25,19 @@ auto to_int(std::string_view token) -> block_int
     auto result = block_int{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
-        anzu::print("type error: cannot convert '{}' to int\n", token);
+        print("type error: cannot convert '{}' to int\n", token);
+        std::exit(1);
+    }
+    return result;
+}
+
+auto to_uint(std::string_view token) -> block_uint
+{
+    token.remove_suffix(1); // Strip 'u'
+    auto result = block_uint{};
+    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
+    if (ec != std::errc{}) {
+        print("type error: cannot convert '{}' to uint\n", token);
         std::exit(1);
     }
     return result;
@@ -36,7 +48,7 @@ auto to_float(std::string_view token) -> block_float
     auto result = block_float{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
-        anzu::print("type error: cannot convert '{}' to int\n", token);
+        print("type error: cannot convert '{}' to float\n", token);
         std::exit(1);
     }
     return result;
@@ -49,6 +61,9 @@ auto parse_literal(tokenstream& tokens) -> object
 {
     if (tokens.curr().type == token_type::integer) {
         return make_int(to_int(tokens.consume().text));
+    }
+    if (tokens.curr().type == token_type::uinteger) {
+        return make_uint(to_uint(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::floating) {
         return make_float(to_float(tokens.consume().text));
@@ -83,8 +98,8 @@ static const auto bin_ops_table = precedence_table();
 
 auto parse_function_call(tokenstream& tokens) -> node_expr_ptr
 {
-    auto node = std::make_unique<anzu::node_expr>();
-    auto& out = node->emplace<anzu::node_function_call_expr>();
+    auto node = std::make_unique<node_expr>();
+    auto& out = node->emplace<node_function_call_expr>();
     out.token = tokens.consume();
 
     out.function_name = out.token.text;
@@ -97,14 +112,14 @@ auto parse_function_call(tokenstream& tokens) -> node_expr_ptr
 
 auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
 {
-    auto node = std::make_unique<anzu::node_expr>();
+    auto node = std::make_unique<node_expr>();
     
     if (tokens.consume_maybe(tk_lparen)) {
         node = parse_expression(tokens);
         tokens.consume_only(tk_rparen);
     }
     else if (tokens.peek(tk_lbracket)) {
-        auto& expr = node->emplace<anzu::node_list_expr>();
+        auto& expr = node->emplace<node_list_expr>();
         expr.token = tokens.consume();
         tokens.consume_comma_separated_list(tk_rbracket, [&] {
             expr.elements.push_back(parse_expression(tokens));
@@ -116,7 +131,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.expr = parse_single_factor(tokens);
     }
     else if (tokens.peek(tk_ampersand)) {
-        auto& expr = node->emplace<anzu::node_addrof_expr>();
+        auto& expr = node->emplace<node_addrof_expr>();
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
@@ -128,7 +143,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         tokens.consume_only(tk_rparen);
     }
     else if (tokens.peek(tk_mul)) {
-        auto& expr = node->emplace<anzu::node_deref_expr>();
+        auto& expr = node->emplace<node_deref_expr>();
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
@@ -136,12 +151,12 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         node = parse_function_call(tokens);
     }
     else if (tokens.curr().type == token_type::name) {
-        auto& expr = node->emplace<anzu::node_variable_expr>();
+        auto& expr = node->emplace<node_variable_expr>();
         expr.token = tokens.consume();
         expr.name = expr.token.text;
     }
     else {
-        auto& expr = node->emplace<anzu::node_literal_expr>();
+        auto& expr = node->emplace<node_literal_expr>();
         expr.token = tokens.curr();
         expr.value = parse_literal(tokens);
     }
@@ -180,8 +195,8 @@ auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr
 
     auto factor = parse_compound_factor(tokens, level - 1);
     while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().text)) {
-        auto node = std::make_unique<anzu::node_expr>();
-        auto& expr = node->emplace<anzu::node_binary_op_expr>();
+        auto node = std::make_unique<node_expr>();
+        auto& expr = node->emplace<node_binary_op_expr>();
         expr.lhs = std::move(factor);
         expr.token = tokens.consume();
         expr.rhs = parse_compound_factor(tokens, level - 1);
@@ -222,8 +237,8 @@ auto parse_type(tokenstream& tokens) -> type_name
 
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_function_def_stmt>();
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_function_def_stmt>();
 
     stmt.token = tokens.consume_only(tk_function);
     stmt.name = parse_name(tokens);
@@ -243,16 +258,16 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_return_stmt>();
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_return_stmt>();
     
     stmt.token = tokens.consume_only(tk_return);
-    if (!anzu::is_sentinel(tokens.curr().text)) {
+    if (!is_sentinel(tokens.curr().text)) {
         stmt.return_value = parse_expression(tokens);
     } else {
-        stmt.return_value = std::make_unique<anzu::node_expr>();
-        auto& ret_expr = stmt.return_value->emplace<anzu::node_literal_expr>();
-        ret_expr.value = anzu::make_null();
+        stmt.return_value = std::make_unique<node_expr>();
+        auto& ret_expr = stmt.return_value->emplace<node_literal_expr>();
+        ret_expr.value = make_null();
         ret_expr.token = stmt.token;
     }
     return node;
@@ -260,8 +275,8 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_while_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_while_stmt>();
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_while_stmt>();
 
     stmt.token = tokens.consume_only(tk_while);
     stmt.condition = parse_expression(tokens);
@@ -271,13 +286,13 @@ auto parse_while_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_if_stmt>();
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_if_stmt>();
 
     stmt.token = tokens.consume_only(tk_if);
     stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
-    if (tokens.valid() && tokens.consume_maybe(tk_else)) {
+    if (tokens.consume_maybe(tk_else)) {
         stmt.else_body = parse_statement(tokens);
     }
     return node;
@@ -285,8 +300,8 @@ auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_struct_stmt>();
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_struct_stmt>();
 
     stmt.token = tokens.consume_only(tk_struct);
     stmt.name = make_type(parse_name(tokens));
@@ -304,8 +319,8 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_declaration_stmt>();
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_declaration_stmt>();
 
     stmt.name = parse_name(tokens);
     stmt.token = tokens.consume_only(tk_declare);
@@ -313,21 +328,10 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
-auto parse_assignment_stmt(tokenstream& tokens) -> node_stmt_ptr
-{
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_assignment_stmt>();
-
-    stmt.position = parse_expression(tokens);
-    stmt.token = tokens.consume_only(tk_assign);
-    stmt.expr = parse_expression(tokens);
-    return node;
-}
-
 auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<anzu::node_stmt>();
-    auto& stmt = node->emplace<anzu::node_sequence_stmt>();
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_sequence_stmt>();
     
     stmt.token = tokens.consume_only(tk_lbrace);
     while (!tokens.consume_maybe(tk_rbrace)) {
@@ -348,9 +352,6 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek(tk_if)) {
         return parse_if_stmt(tokens);
     }
-    if (tokens.peek(tk_struct)) {
-        return parse_struct_stmt(tokens);
-    }
     if (tokens.peek(tk_break)) {
         return std::make_unique<node_stmt>(node_break_stmt{ tokens.consume() });
     }
@@ -364,21 +365,19 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         return parse_braced_statement_list(tokens);
     }
 
+    auto node = std::make_unique<node_stmt>();
     auto expr = parse_expression(tokens);
     if (tokens.peek(tk_assign)) {
-        auto node = std::make_unique<anzu::node_stmt>();
-        auto& stmt = node->emplace<anzu::node_assignment_stmt>();
+        auto& stmt = node->emplace<node_assignment_stmt>();
         stmt.token = tokens.consume();
         stmt.position = std::move(expr);
         stmt.expr = parse_expression(tokens);
-        return node;
     } else {
-        auto node = std::make_unique<anzu::node_stmt>();
-        auto& stmt = node->emplace<anzu::node_expression_stmt>();
+        auto& stmt = node->emplace<node_expression_stmt>();
         stmt.token = std::visit([](auto&& n) { return n.token; }, *expr);
         stmt.expr = std::move(expr);
-        return node;
     }
+    return node;
 }
 
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
@@ -386,17 +385,20 @@ auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek(tk_function)) {
         return parse_function_def_stmt(tokens);
     }
+    if (tokens.peek(tk_struct)) {
+        return parse_struct_stmt(tokens);
+    }
     return parse_statement(tokens);
 }
 
 }
 
-auto parse(const std::vector<anzu::token>& tokens) -> node_stmt_ptr
+auto parse(const std::vector<token>& tokens) -> node_stmt_ptr
 {
     auto stream = tokenstream{tokens};
 
-    auto root = std::make_unique<anzu::node_stmt>();
-    auto& seq = root->emplace<anzu::node_sequence_stmt>();
+    auto root = std::make_unique<node_stmt>();
+    auto& seq = root->emplace<node_sequence_stmt>();
     while (stream.valid()) {
         seq.sequence.push_back(parse_top_level_statement(stream));
     }

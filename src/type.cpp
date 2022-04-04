@@ -54,6 +54,11 @@ auto int_type()  -> type_name
     return {type_simple{ .name = std::string{tk_int} }};
 }
 
+auto uint_type() -> type_name
+{
+    return {type_simple{ .name = std::string{tk_uint} }};
+}
+
 auto float_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_float} }};
@@ -110,6 +115,7 @@ auto inner_type(const type_name& t) -> type_name
 auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == int_type()
+        || type == uint_type()
         || type == float_type()
         || type == bool_type()
         || type == str_type()

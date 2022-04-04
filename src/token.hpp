@@ -14,6 +14,7 @@ enum class token_type
     symbol,
     name,
     integer,
+    uinteger,
     floating,
     string
 };
@@ -35,7 +36,8 @@ public:
     tokenstream(const std::vector<token>& tokens);
     auto consume_maybe(std::string_view text) -> bool;
     auto consume_only(std::string_view text) -> token;
-    auto consume_int() -> int;
+    auto consume_int() -> std::int64_t;
+    auto consume_uint() -> std::uint64_t;
 
     template <typename Func>
     auto consume_comma_separated_list(std::string_view sentinel, Func&& callback) -> void

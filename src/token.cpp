@@ -14,13 +14,14 @@ auto is_consumable_type(token_type type) -> bool
 auto to_string(token_type type) -> std::string
 {
     switch (type) {
-        break; case token_type::keyword:   { return "keyword"; };
-        break; case token_type::symbol:    { return "symbol"; };
-        break; case token_type::name:      { return "name"; };
-        break; case token_type::integer:   { return "integer"; };
+        break; case token_type::keyword:  { return "keyword"; };
+        break; case token_type::symbol:   { return "symbol"; };
+        break; case token_type::name:     { return "name"; };
+        break; case token_type::integer:  { return "integer"; };
+        break; case token_type::uinteger: { return "uinteger"; };
         break; case token_type::floating: { return "float"; };
-        break; case token_type::string:    { return "string"; };
-        break; default:                    { return "UNKNOWN"; };
+        break; case token_type::string:   { return "string"; };
+        break; default:                   { return "UNKNOWN"; };
     }
 }
 
@@ -38,7 +39,7 @@ tokenstream::tokenstream(const std::vector<token>& tokens)
 
 auto tokenstream::consume_maybe(std::string_view text) -> bool
 {
-    if (curr().text == text && is_consumable_type(curr().type)) {
+    if (valid() && curr().text == text && is_consumable_type(curr().type)) {
         consume();
         return true;
     }
@@ -59,18 +60,32 @@ auto tokenstream::consume_only(std::string_view text) -> token
     return consume();
 }
 
-auto tokenstream::consume_int() -> int
+auto tokenstream::consume_int() -> std::int64_t
 {
     if (!valid()) {
-        anzu::print("[ERROR] (EOF) expected a number\n");
+        anzu::print("[ERROR] (EOF) expected an int\n");
         std::exit(1);
     }
     if (curr().type != token_type::integer) {
         const auto [tok_text, line, col, type] = curr();
-        anzu::print("[ERROR] ({}:{}) expected a number, got '{}\n", line, col, tok_text);
+        anzu::print("[ERROR] ({}:{}) expected an int, got '{}\n", line, col, tok_text);
         std::exit(1);
     }
-    return std::stoi(consume().text);
+    return std::stoll(consume().text);
+}
+
+auto tokenstream::consume_uint() -> std::uint64_t
+{
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected a uint\n");
+        std::exit(1);
+    }
+    if (curr().type != token_type::uinteger) {
+        const auto [tok_text, line, col, type] = curr();
+        anzu::print("[ERROR] ({}:{}) expected a uint, got '{}\n", line, col, tok_text);
+        std::exit(1);
+    }
+    return std::stoull(consume().text);
 }
 
 auto tokenstream::peek(std::string_view text) -> bool
