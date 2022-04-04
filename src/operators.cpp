@@ -62,7 +62,7 @@ auto resolve_binary_op(
 )
     -> std::optional<binary_op_info>
 {
-    if (is_ptr_type(desc.lhs) && desc.rhs == int_type()) {
+    if (is_ptr_type(desc.lhs) && desc.rhs == uint_type()) {
         const auto elem_size = types.size_of(inner_type(desc.lhs));
         return binary_op_info{ ptr_addition(elem_size), desc.lhs };
     }

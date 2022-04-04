@@ -166,7 +166,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             program_advance(ctx); // Position after function call
 
             ctx.frames.emplace_back();
-            ctx.frames.back().base_ptr = ctx.memory.size() - op.args_size;
+            ctx.frames.back().base_ptr = ctx.memory.size() - op.args_size - 1;
             ctx.frames.back().return_size = op.return_size;
             program_jump_to(ctx, op.ptr); // Jump into the function
         },

@@ -300,7 +300,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return concrete_ptr_type(type_of_expr(com, *expr.expr));
         },
         [&](const node_sizeof_expr& expr) {
-            return int_type();
+            return uint_type();
         },
         [&](const node_variable_expr& expr) {
             return find_variable_type(com, expr.token, expr.name);
@@ -446,23 +446,28 @@ auto compile_expr_val(compiler& com, const node_unary_op_expr& node) -> type_nam
 
 auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> type_name
 {
-    // Push the args to the stack
-    std::vector<type_name> param_types;
-    for (const auto& arg : node.args) {
-        param_types.emplace_back(compile_expr_val(com, *arg));
-    }
-
     // If this is the name of a simple type, then this is a constructor call, so
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
     if (const auto type = make_type(node.function_name); com.types.contains(type)) {
         const auto sig = make_constructor_sig(com, type);
+        std::vector<type_name> param_types;
+        for (const auto& arg : node.args) {
+            param_types.emplace_back(compile_expr_val(com, *arg));
+        }
         verify_sig(node.token, sig, param_types);
         return type;
     }
-
     // Otherwise, it may be a custom function.
     else if (const auto function_def = find_function(com, node.function_name)) {
+        // Test pushing an int to the start of the stack, will use this for the old base ptr.
+        com.program.emplace_back(op_load_literal{ .value={block_uint{0}} });   
+        
+        // Push the args to the stack
+        std::vector<type_name> param_types;
+        for (const auto& arg : node.args) {
+            param_types.emplace_back(compile_expr_val(com, *arg));
+        }
         verify_sig(node.token, function_def->sig, param_types);
         com.program.emplace_back(anzu::op_function_call{
             .name=node.function_name,
@@ -474,6 +479,13 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
 
     // Otherwise, it must be a builtin function.
+
+    // Push the args to the stack
+    std::vector<type_name> param_types;
+    for (const auto& arg : node.args) {
+        param_types.emplace_back(compile_expr_val(com, *arg));
+    }
+
     const auto& builtin = anzu::fetch_builtin(node.function_name);
 
     // TODO: Make this more generic, but we need to fill in the types before
@@ -514,7 +526,7 @@ auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
     const auto type = type_of_expr(com, *node.expr);
     const auto size = com.types.size_of(type);
     com.program.emplace_back(op_load_literal{ .value={block_uint{size}} });
-    return int_type();
+    return uint_type();
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -622,6 +634,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
+    declare_variable_name(com, "_Old_prog_ptr", uint_type()); // Store the old program ptr at the base
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, arg.name, arg.type);
     }
