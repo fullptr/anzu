@@ -14,6 +14,7 @@ enum class token_type
     symbol,
     name,
     integer,
+    uinteger,
     floating,
     string
 };

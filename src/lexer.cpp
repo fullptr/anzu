@@ -20,6 +20,16 @@ auto is_int(std::string_view token) -> bool
     return std::ranges::all_of(token, [](char c) { return std::isdigit(c); });
 }
 
+auto is_uint(std::string_view token) -> bool
+{
+    const auto has_suffix = token.ends_with("u");
+    if (!has_suffix) {
+        return false;
+    }
+    token.remove_suffix(1);
+    return is_int(token);
+}
+
 auto is_float(std::string_view token) -> bool
 {
     return std::ranges::all_of(token, [](char c) { return std::isdigit(c) || c == '.'; })
@@ -87,6 +97,9 @@ auto parse_token(line_iterator& iter) -> std::string
     while (iter.valid() && (is_alphanumeric(iter) || (is_digit && iter.curr() == '.'))) {
         return_value += iter.consume();
     }
+    if (is_digit && iter.valid() && iter.curr() == 'u') { // For unsigned
+        return_value += iter.consume();
+    }
     return return_value;
 };
 
@@ -121,6 +134,9 @@ auto lex_line(
                 }
                 else if (is_int(token)) {
                     push_token(token, col, token_type::integer);
+                }
+                else if (is_uint(token)) {
+                    push_token(token, col, token_type::uinteger);
                 }
                 else if (is_float(token)) {
                     push_token(token, col, token_type::floating);

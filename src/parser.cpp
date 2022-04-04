@@ -31,12 +31,24 @@ auto to_int(std::string_view token) -> block_int
     return result;
 }
 
+auto to_uint(std::string_view token) -> block_uint
+{
+    token.remove_suffix(1); // Strip 'u'
+    auto result = block_uint{};
+    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
+    if (ec != std::errc{}) {
+        print("type error: cannot convert '{}' to uint\n", token);
+        std::exit(1);
+    }
+    return result;
+}
+
 auto to_float(std::string_view token) -> block_float
 {
     auto result = block_float{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
-        print("type error: cannot convert '{}' to int\n", token);
+        print("type error: cannot convert '{}' to float\n", token);
         std::exit(1);
     }
     return result;
@@ -49,6 +61,9 @@ auto parse_literal(tokenstream& tokens) -> object
 {
     if (tokens.curr().type == token_type::integer) {
         return make_int(to_int(tokens.consume().text));
+    }
+    if (tokens.curr().type == token_type::uinteger) {
+        return make_uint(to_uint(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::floating) {
         return make_float(to_float(tokens.consume().text));
