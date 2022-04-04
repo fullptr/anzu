@@ -165,6 +165,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_function_call& op) {
             program_advance(ctx); // Position after function call
 
+            // Store the old base_ptr at the new one for recovery later
+            ctx.memory[ctx.memory.size() - op.args_size - 1] = base_ptr(ctx);          
+            
             ctx.frames.emplace_back();
             ctx.frames.back().base_ptr = ctx.memory.size() - op.args_size - 1;
             ctx.frames.back().return_size = op.return_size;

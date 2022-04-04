@@ -11,8 +11,4 @@ fn fibb(n: int) -> int
     return fibb(n - 1) + fibb(n - 2)
 }
 
-i := 0
-while i != 10 {
-    println(fibb(i))
-    i = i + 1
-}
+println(fibb(5))
