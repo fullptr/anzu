@@ -35,16 +35,6 @@ auto program_jump_to(runtime_context& ctx, std::size_t idx) -> void
     ctx.prog_ptr = idx;
 }
 
-auto program_ptr(const runtime_context& ctx) -> std::size_t
-{
-    return ctx.prog_ptr;
-}
-
-auto base_ptr(const runtime_context& ctx) -> std::size_t
-{
-    return ctx.base_ptr;
-}
-
 auto save_top_at(runtime_context& ctx, std::size_t idx, std::size_t size) -> void
 {
     runtime_assert(idx + size <= ctx.memory.size(), "tried to access invalid memory address {}", idx);
@@ -199,8 +189,8 @@ auto run_program(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
-    while (program_ptr(ctx) < program.size()) {
-        apply_op(ctx, program[program_ptr(ctx)]);
+    while (ctx.prog_ptr < program.size()) {
+        apply_op(ctx, program[ctx.prog_ptr]);
     }
 }
 
@@ -209,10 +199,10 @@ auto run_program_debug(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
-    while (program_ptr(ctx) < program.size()) {
-        const auto& op = program[program_ptr(ctx)];
-        anzu::print("{:>4} - {}\n", program_ptr(ctx), op);
-        apply_op(ctx, program[program_ptr(ctx)]);
+    while (ctx.prog_ptr < program.size()) {
+        const auto& op = program[ctx.prog_ptr];
+        anzu::print("{:>4} - {}\n", ctx.prog_ptr, op);
+        apply_op(ctx, program[ctx.prog_ptr]);
         anzu::print("Memory: {}\n", format_comma_separated(ctx.memory));
     }
 }
