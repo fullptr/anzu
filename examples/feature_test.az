@@ -121,7 +121,7 @@ println(p_value)
 
 # Lists
 xl := [1, 2, 3, 4]
-xl[2] = 0
+xl[2u] = 0
 println("Should see [1, 2, 0, 4]:")
 println(xl)
 println("Size of list is 4:")
@@ -138,21 +138,21 @@ println(size_of(xl2) / size_of(xl2[0]))
 struct span
 {
     p: &vec2
-    size: int
+    size: uint
 }
 
 fn test_ptr_arithmetic(s: span) -> null
 {
-    idx := 0
+    idx := 0u
     while idx != s.size {
         println(*(s.p + idx))
-        idx = idx + 1
+        idx = idx + 1u
     }
-    *(s.p + 1) = vec2(10, 20)
+    *(s.p + 1u) = vec2(10, 20)
 }
 
 list_of_vec2s := [vec2(1, 2), vec2(3, 4), vec2(5, 6)]
-my_span := span(&list_of_vec2s[0], 3)
+my_span := span(&list_of_vec2s[0u], 3u)
 
 test_ptr_arithmetic(my_span)
 println(list_of_vec2s)

@@ -168,8 +168,8 @@ auto find_function(const compiler& com, const std::string& function) -> const fu
 
 auto modify_ptr(compiler& com, std::size_t offset, std::size_t size) -> void
 {
-    com.program.emplace_back(op_load_literal{ .value={block_uint{offset}} });
-    com.program.emplace_back(op_load_literal{ .value={block_uint{size}} });
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{offset} });
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{size} });
     com.program.emplace_back(op_modify_ptr{});
 }
 
@@ -300,7 +300,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return concrete_ptr_type(type_of_expr(com, *expr.expr));
         },
         [&](const node_sizeof_expr& expr) {
-            return int_type();
+            return uint_type();
         },
         [&](const node_variable_expr& expr) {
             return find_variable_type(com, expr.token, expr.name);
@@ -382,7 +382,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     const auto itype = compile_expr_val(com, *expr.index);
     compiler_assert(itype == uint_type(), expr.token, "subscript argument must be a 'uint', got '{}'", itype);
 
-    com.program.emplace_back(op_load_literal{ .value={block_uint{etype_size}} });
+    com.program.emplace_back(op_load_literal{ .blk={block_uint{etype_size}} });
     const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
     com.program.emplace_back(op_builtin_mem_op{
         .name = "uint * uint",
@@ -390,7 +390,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     });
 
     // Push the size
-    com.program.emplace_back(op_load_literal{ .value={block_uint{etype_size}} });
+    com.program.emplace_back(op_load_literal{ .blk={block_uint{etype_size}} });
 
     com.program.emplace_back(op_modify_ptr{});
     return etype;
@@ -410,7 +410,9 @@ auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name
 
 auto compile_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
-    com.program.emplace_back(anzu::op_load_literal{ .value=node.value.data });
+    for (const auto& blk : node.value.data) {
+        com.program.emplace_back(anzu::op_load_literal{ .blk=blk });
+    }
     return node.value.type;
 }
 
@@ -446,34 +448,48 @@ auto compile_expr_val(compiler& com, const node_unary_op_expr& node) -> type_nam
 
 auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> type_name
 {
+    // If this is the name of a simple type, then this is a constructor call, so
+    // there is currently nothing to do since the arguments are already pushed to
+    // the stack.
+    if (const auto type = make_type(node.function_name); com.types.contains(type)) {
+        const auto sig = make_constructor_sig(com, type);
+        std::vector<type_name> param_types;
+        for (const auto& arg : node.args) {
+            param_types.emplace_back(compile_expr_val(com, *arg));
+        }
+        verify_sig(node.token, sig, param_types);
+        return type;
+    }
+    // Otherwise, it may be a custom function.
+    else if (const auto function_def = find_function(com, node.function_name)) {
+        static constexpr auto payload_size = std::size_t{3};
+        const auto return_size = com.types.size_of(function_def->sig.return_type);
+        com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // base ptr
+        com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // prog ptr
+        com.program.emplace_back(op_load_literal{ .blk=block_uint{return_size} });
+        
+        // Push the args to the stack
+        std::vector<type_name> param_types;
+        for (const auto& arg : node.args) {
+            param_types.emplace_back(compile_expr_val(com, *arg));
+        }
+        verify_sig(node.token, function_def->sig, param_types);
+        com.program.emplace_back(anzu::op_function_call{
+            .name=node.function_name,
+            .ptr=function_def->ptr + 1, // Jump into the function
+            .args_size=signature_args_size(com, function_def->sig) + payload_size
+        });
+        return function_def->sig.return_type;
+    }
+
+    // Otherwise, it must be a builtin function.
+
     // Push the args to the stack
     std::vector<type_name> param_types;
     for (const auto& arg : node.args) {
         param_types.emplace_back(compile_expr_val(com, *arg));
     }
 
-    // If this is the name of a simple type, then this is a constructor call, so
-    // there is currently nothing to do since the arguments are already pushed to
-    // the stack.
-    if (const auto type = make_type(node.function_name); com.types.contains(type)) {
-        const auto sig = make_constructor_sig(com, type);
-        verify_sig(node.token, sig, param_types);
-        return type;
-    }
-
-    // Otherwise, it may be a custom function.
-    else if (const auto function_def = find_function(com, node.function_name)) {
-        verify_sig(node.token, function_def->sig, param_types);
-        com.program.emplace_back(anzu::op_function_call{
-            .name=node.function_name,
-            .ptr=function_def->ptr + 1, // Jump into the function
-            .args_size=signature_args_size(com, function_def->sig),
-            .return_size=com.types.size_of(function_def->sig.return_type)
-        });
-        return function_def->sig.return_type;
-    }
-
-    // Otherwise, it must be a builtin function.
     const auto& builtin = anzu::fetch_builtin(node.function_name);
 
     // TODO: Make this more generic, but we need to fill in the types before
@@ -513,8 +529,8 @@ auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
     const auto size = com.types.size_of(type);
-    com.program.emplace_back(op_load_literal{ .value={block_uint{size}} });
-    return int_type();
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{size} });
+    return uint_type();
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -622,6 +638,9 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
+    declare_variable_name(com, "# old_base_ptr", uint_type()); // Store the old base ptr
+    declare_variable_name(com, "# old_prog_ptr", uint_type()); // Store the old program ptr
+    declare_variable_name(com, "# return_size", uint_type());  // Store the return size
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, arg.name, arg.type);
     }

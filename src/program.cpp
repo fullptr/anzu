@@ -16,7 +16,7 @@ auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
         [&](const op_load_literal& op) {
-            return std::format("LOAD_LITERAL({})", format_comma_separated(op.value));
+            return std::format("LOAD_LITERAL({})", op.blk);
         },
         [&](const op_push_global_addr& op) {
             return std::format("PUSH_GLOBAL_ADDR({}, {})", op.position, op.size);
