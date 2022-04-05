@@ -24,8 +24,8 @@ auto pop_back(std::vector<block>& vec) -> block
     return back;   
 }
 
-// Cleans up the variables used in the current frame and removes the frame
-// pointers to return back to the previous scope.
+// Copies the return value into the correct place, cleans up all extra blocks, and
+// resets the program and base pointers back to their previous values.
 auto pop_frame(runtime_context& ctx) -> void
 {
     const auto prev_base_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr]);
@@ -35,7 +35,7 @@ auto pop_frame(runtime_context& ctx) -> void
     for (std::size_t i = 0; i != return_size; ++i) {
         ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
     }
-    while (ctx.memory.size() > ctx.base_ptr + return_size) {
+    for (std::size_t i = 0; i != ctx.memory.size() - ctx.base_ptr - return_size; ++i) {
         ctx.memory.pop_back();
     }
     ctx.base_ptr = prev_base_ptr;
@@ -78,8 +78,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ++ctx.prog_ptr;
         },
         [&](op_save) {
-            const auto ptr = pop_back(ctx.memory);
-            const auto [idx, size] = std::get<block_ptr>(ptr);
+            const auto [idx, size] = std::get<block_ptr>(pop_back(ctx.memory));
             runtime_assert(idx + size <= ctx.memory.size(), "tried to access invalid memory address {}", idx);
             if (idx + size < ctx.memory.size()) {
                 for (const auto i : std::views::iota(idx, idx + size) | std::views::reverse) {
