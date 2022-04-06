@@ -150,7 +150,7 @@ struct node_if_stmt
 
 struct node_struct_stmt
 {
-    type_name   name;
+    std::string name;
     type_fields fields;
 
     anzu::token token;

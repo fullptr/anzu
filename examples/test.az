@@ -1,9 +1,19 @@
 
 
 
-while true {
-    x := 5
-    break
+fn adder(x: int, y: int) -> null
+{
+    println("called adder for int!")
 }
 
-y := "b"
+fn adder(x: float, y: float) -> null
+{
+    println("called adder for float!")
+}
+
+x := 5
+adder(x, x)
+
+y := 2.0
+z := 5.6
+adder(y, z)

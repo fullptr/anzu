@@ -244,7 +244,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
-        auto arg = signature::arg{};
+        auto arg = function_arg{};
         arg.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
         arg.type = parse_type(tokens);
@@ -304,7 +304,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_struct_stmt>();
 
     stmt.token = tokens.consume_only(tk_struct);
-    stmt.name = make_type(parse_name(tokens));
+    stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lbrace);
     while (!tokens.consume_maybe(tk_rbrace)) {
         stmt.fields.emplace_back();
