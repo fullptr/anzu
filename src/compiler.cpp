@@ -37,6 +37,7 @@ struct var_info
 {
     std::size_t location;
     type_name   type;
+    std::size_t type_size;
 };
 
 class var_locations
@@ -50,19 +51,9 @@ public:
         d_scopes.emplace_back();
     }
 
-    auto contains(const std::string& name) -> bool
-    {
-        for (const auto& scope : d_scopes | std::views::reverse) {
-            if (scope.contains(name)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
     {
-        const auto [iter, success] = d_scopes.back().emplace(name, var_info{d_next, type});
+        const auto [iter, success] = d_scopes.back().emplace(name, var_info{d_next, type, type_size});
         if (success) {
             d_next += type_size;
         }
@@ -71,14 +62,29 @@ public:
 
     auto find(const std::string& name) const -> std::optional<var_info>
     {
-        if (const auto it = d_scopes.back().find(name); it != d_scopes.back().end()) {
-            return it->second;
+        for (const auto& scope : d_scopes | std::views::reverse) {
+            if (const auto it = scope.find(name); it != scope.end()) {
+                return it->second;
+            }
         }
         return std::nullopt;
     }
 
-    auto push_scope() -> void {}
-    auto pop_scope() -> void {}
+    auto push_scope() -> void
+    {
+        d_scopes.emplace_back();
+    }
+
+    auto pop_scope() -> std::size_t // Returns the size of the scope just popped
+    {
+        auto scope_size = std::size_t{0};
+        for (const auto& [name, info] : d_scopes.back()) {
+            scope_size += info.type_size;
+        }
+        d_scopes.pop_back();
+        d_next -= scope_size;
+        return scope_size;
+    }
 };
 
 struct function_def
@@ -166,7 +172,7 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
         }
     }
 
-    auto& globals = com.current_func->vars;
+    auto& globals = com.globals;
     if (const auto info = globals.find(name); info.has_value()) {
         com.program.emplace_back(op_push_global_addr{
             .position=info->location, .size=com.types.size_of(info->type)
@@ -588,7 +594,8 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
-    current_vars(com).pop_scope();
+    const auto scope_size = current_vars(com).pop_scope();
+    com.program.emplace_back(op_pop{scope_size});
 }
 
 void compile_stmt(compiler& com, const node_while_stmt& node)

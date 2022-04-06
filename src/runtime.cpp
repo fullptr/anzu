@@ -35,7 +35,7 @@ auto pop_frame(runtime_context& ctx) -> void
     for (std::size_t i = 0; i != return_size; ++i) {
         ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
     }
-    for (std::size_t i = 0; i != ctx.memory.size() - ctx.base_ptr - return_size; ++i) {
+    while (ctx.memory.size() > ctx.base_ptr + return_size) {
         ctx.memory.pop_back();
     }
     ctx.base_ptr = prev_base_ptr;
