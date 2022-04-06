@@ -694,7 +694,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         }
     }
     
-    std::get<anzu::op_function>(com.program[begin_pos]).jump = com.program.size() + 1;
+    std::get<anzu::op_function>(com.program[begin_pos]).jump = com.program.size();
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)
