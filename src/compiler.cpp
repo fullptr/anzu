@@ -39,10 +39,16 @@ struct var_info
     type_name   type;
 };
 
-struct var_locations
+class var_locations
 {
-    std::unordered_map<std::string, var_info> info;
-    std::size_t next = 0;
+    std::unordered_map<std::string, var_info> d_info;
+    std::size_t d_next = 0;
+
+public:
+    auto contains(const std::string& name) -> bool
+    {
+        return d_info.contains(name);
+    }
 };
 
 struct function_def
@@ -617,7 +623,7 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
-    if (current_vars(com).info.contains(node.name)) {
+    if (current_vars(com).contains(node.name)) {
         compiler_error(node.token, "redeclaration of variable '{}'", node.name);
     }
     declare_variable_name(com, node.name, type);
