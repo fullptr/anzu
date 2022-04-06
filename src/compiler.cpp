@@ -41,18 +41,28 @@ struct var_info
 
 class var_locations
 {
-    std::unordered_map<std::string, var_info> d_info;
+    std::vector<std::unordered_map<std::string, var_info>> d_scopes;
     std::size_t d_next = 0;
 
 public:
+    var_locations()
+    {
+        d_scopes.emplace_back();
+    }
+
     auto contains(const std::string& name) -> bool
     {
-        return d_info.contains(name);
+        for (const auto& scope : d_scopes | std::views::reverse) {
+            if (scope.contains(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
     {
-        const auto [iter, success] = d_info.emplace(name, var_info{d_next, type});
+        const auto [iter, success] = d_scopes.back().emplace(name, var_info{d_next, type});
         if (success) {
             d_next += type_size;
         }
@@ -61,7 +71,7 @@ public:
 
     auto find(const std::string& name) const -> std::optional<var_info>
     {
-        if (const auto it = d_info.find(name); it != d_info.end()) {
+        if (const auto it = d_scopes.back().find(name); it != d_scopes.back().end()) {
             return it->second;
         }
         return std::nullopt;
@@ -673,7 +683,18 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, node.token, arg.name, arg.type);
     }
-    compile_stmt(com, *node.body);
+
+    // Rather than recursing, we explicitly fetch the sequence statement and manually
+    // evaluate here. This is because sequence statements usually create a new scope which
+    // we do not want here because globals and locals are handled separately anyway. This is
+    // a bit of a hack and we may want to introduce a scope_stmt into the ast to deal with
+    // this instead.
+    if (!std::holds_alternative<node_sequence_stmt>(*node.body)) {
+        compiler_error(node.token, "body of a function must be a sequence statement");
+    }
+    for (const auto& stmt : std::get<node_sequence_stmt>(*node.body).sequence) {
+        compile_stmt(com, *stmt);
+    }
     com.current_func.reset();
 
     const auto end_pos = append_op(com, op_function_end{});
