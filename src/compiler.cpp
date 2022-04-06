@@ -66,6 +66,9 @@ public:
         }
         return std::nullopt;
     }
+
+    auto push_scope() -> void {}
+    auto pop_scope() -> void {}
 };
 
 struct function_def
@@ -571,9 +574,11 @@ auto compile_expr_val(compiler& com, const auto& node) -> type_name
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
+    current_vars(com).push_scope();
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
+    current_vars(com).pop_scope();
 }
 
 void compile_stmt(compiler& com, const node_while_stmt& node)
