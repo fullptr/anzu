@@ -123,6 +123,7 @@ struct compiler
 
     using function_hash = decltype([](const function_key& f) { return hash(f); });
     std::unordered_map<function_key, function_val, function_hash> functions;
+    std::unordered_set<std::string> function_names;
 
     var_locations globals;
     std::optional<current_function> current_func;
@@ -652,7 +653,14 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
 
 void compile_stmt(compiler& com, const node_struct_stmt& node)
 {
-    compiler_assert(!com.types.contains(node.name), node.token, "type {} already defined", node.name);
+    compiler_assert(
+        !com.types.contains(make_type(node.name)),
+        node.token, "type '{}' already defined", node.name
+    );
+    compiler_assert(
+        !com.function_names.contains(node.name),
+        node.token, "type '{}' already defined", node.name
+    );
 
     for (const auto& field : node.fields) {
         compiler_assert(
@@ -663,7 +671,7 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
         );
     }
 
-    com.types.add(node.name, node.fields);
+    com.types.add(make_type(node.name), node.fields);
 }
 
 void compile_stmt(compiler& com, const node_break_stmt&)
@@ -693,6 +701,11 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
 
 void compile_stmt(compiler& com, const node_function_def_stmt& node)
 {
+    if (com.types.contains(make_type(node.name))) {
+        compiler_error(node.token, "'{}' cannot be a function name, it is a type def", node.name);
+    }
+    com.function_names.insert(node.name);
+
     auto key = function_key{};
     key.name = node.name;
     key.args.reserve(node.sig.args.size());
