@@ -87,7 +87,23 @@ public:
     }
 };
 
-struct function_def
+struct function_key
+{
+    std::string            name;
+    std::vector<type_name> args;
+    auto operator==(const function_key&) const -> bool = default;
+};
+
+auto hash(const function_key& f) -> std::size_t
+{
+    auto hash_value = std::hash<std::string>{}(f.name);
+    for (const auto& arg : f.args) {
+        hash_value ^= hash(arg);
+    }
+    return hash_value;
+}
+
+struct function_val
 {
     signature   sig;
     std::size_t ptr;
@@ -105,7 +121,8 @@ struct compiler
 {
     anzu::program program;
 
-    std::unordered_map<std::string, function_def> functions;
+    using function_hash = decltype([](const function_key& f) { return hash(f); });
+    std::unordered_map<function_key, function_val, function_hash> functions;
 
     var_locations globals;
     std::optional<current_function> current_func;
@@ -202,14 +219,6 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
         args_size += com.types.size_of(arg.type);
     }
     return args_size;
-}
-
-auto find_function(const compiler& com, const std::string& function) -> const function_def*
-{
-    if (const auto it = com.functions.find(function); it != com.functions.end()) {
-        return &it->second;
-    }
-    return nullptr;
 }
 
 auto modify_ptr(compiler& com, std::size_t offset, std::size_t size) -> void
@@ -325,7 +334,13 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return r->result_type;
         },
         [&](const node_function_call_expr& expr) {
-            return com.functions.at(expr.function_name).sig.return_type;
+            auto key = function_key{};
+            key.name = expr.function_name;
+            key.args.reserve(expr.args.size());
+            for (const auto& arg : expr.args) {
+                key.args.push_back(type_of_expr(com, *arg));
+            }
+            return com.functions.at(key).sig.return_type;
         },
         [&](const node_list_expr& expr) {
             return type_name{type_list{
@@ -497,10 +512,19 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         verify_sig(node.token, sig, param_types);
         return type;
     }
+
     // Otherwise, it may be a custom function.
-    else if (const auto function_def = find_function(com, node.function_name)) {
+    auto key = function_key{};
+    key.name = node.function_name;
+    key.args.reserve(node.args.size());
+    for (const auto& arg : node.args) {
+        key.args.push_back(type_of_expr(com, *arg));
+    }
+    
+    if (auto it = com.functions.find(key); it != com.functions.end()) {
+        const auto& [sig, ptr] = it->second;
         static constexpr auto payload_size = std::size_t{3};
-        const auto return_size = com.types.size_of(function_def->sig.return_type);
+        const auto return_size = com.types.size_of(sig.return_type);
         com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // base ptr
         com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // prog ptr
         com.program.emplace_back(op_load_literal{ .blk=block_uint{return_size} });
@@ -510,13 +534,13 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         for (const auto& arg : node.args) {
             param_types.emplace_back(compile_expr_val(com, *arg));
         }
-        verify_sig(node.token, function_def->sig, param_types);
+        verify_sig(node.token, sig, param_types);
         com.program.emplace_back(anzu::op_function_call{
             .name=node.function_name,
-            .ptr=function_def->ptr + 1, // Jump into the function
-            .args_size=signature_args_size(com, function_def->sig) + payload_size
+            .ptr=ptr + 1, // Jump into the function
+            .args_size=signature_args_size(com, sig) + payload_size
         });
-        return function_def->sig.return_type;
+        return sig.return_type;
     }
 
     // Otherwise, it must be a builtin function.
@@ -665,13 +689,17 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
 
 void compile_stmt(compiler& com, const node_function_def_stmt& node)
 {
+    auto key = function_key{};
+    key.name = node.name;
+    key.args.reserve(node.sig.args.size());
     for (const auto& arg : node.sig.args) {
         verify_real_type(com, node.token, arg.type);
+        key.args.push_back(arg.type);
     }
     verify_real_type(com, node.token, node.sig.return_type);
 
     const auto begin_pos = append_op(com, op_function{ .name=node.name });
-    com.functions[node.name] = { .sig=node.sig, .ptr=begin_pos };
+    com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
     declare_variable_name(com, node.token, "# old_base_ptr", uint_type()); // Store the old base ptr
