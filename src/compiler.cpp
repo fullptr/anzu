@@ -690,18 +690,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, node.token, arg.name, arg.type);
     }
-
-    // Rather than recursing, we explicitly fetch the sequence statement and manually
-    // evaluate here. This is because sequence statements usually create a new scope which
-    // we do not want here because globals and locals are handled separately anyway. This is
-    // a bit of a hack and we may want to introduce a scope_stmt into the ast to deal with
-    // this instead.
-    if (!std::holds_alternative<node_sequence_stmt>(*node.body)) {
-        compiler_error(node.token, "body of a function must be a sequence statement");
-    }
-    for (const auto& stmt : std::get<node_sequence_stmt>(*node.body).sequence) {
-        compile_stmt(com, *stmt);
-    }
+    compile_stmt(com, *node.body);
     com.current_func.reset();
 
     const auto end_pos = append_op(com, op_function_end{});

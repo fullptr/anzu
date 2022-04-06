@@ -1,8 +1,8 @@
 
-x := "hello"
 
-fn foo(x: int) -> int[6] {
+fn foo() -> int[6] {
+    x := 1
     return [1, 2, 3, 4, 5, 6]
 }
 
-foo(5)
+foo()
