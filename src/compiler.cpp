@@ -671,7 +671,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     verify_real_type(com, node.token, node.sig.return_type);
 
     const auto begin_pos = append_op(com, op_function{ .name=node.name });
-    com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
+    com.functions[node.name] = { .sig=node.sig, .ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
     declare_variable_name(com, node.token, "# old_base_ptr", uint_type()); // Store the old base ptr

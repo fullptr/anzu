@@ -84,17 +84,18 @@ auto is_ptr_type(const type_name& t) -> bool;
 // type with a single subtype.
 auto inner_type(const type_name& t) -> type_name;
 
+struct function_arg
+{
+    std::string name;
+    type_name   type;
+    auto operator==(const function_arg&) const -> bool = default;
+};
+using function_args = std::vector<function_arg>;
+
 struct signature
 {
-    struct arg
-    {
-        std::string name;
-        type_name   type;
-        auto operator==(const arg&) const -> bool = default;
-    };
-
-    std::vector<arg> args;
-    type_name        return_type;
+    function_args args;
+    type_name     return_type;
     auto operator==(const signature&) const -> bool = default;
 };
 
