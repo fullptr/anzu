@@ -70,9 +70,6 @@ auto to_string(const op& op_code) -> std::string
             const auto jump_str = std::format("JUMP -> {}", op.jump);
             return std::format(FORMAT2, func_str, jump_str);
         },
-        [&](const op_function_end& op) {
-            return std::string{"FUNCTION_END"};
-        },
         [&](const op_return& op) {
             return std::string{"RETURN"};
         },
