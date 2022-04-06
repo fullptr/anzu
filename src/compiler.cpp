@@ -544,28 +544,32 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
 
     // Otherwise, it must be a builtin function.
+    if (is_builtin(node.function_name)) {
+        // Push the args to the stack
+        std::vector<type_name> param_types;
+        for (const auto& arg : node.args) {
+            param_types.emplace_back(compile_expr_val(com, *arg));
+        }
 
-    // Push the args to the stack
-    std::vector<type_name> param_types;
-    for (const auto& arg : node.args) {
-        param_types.emplace_back(compile_expr_val(com, *arg));
+        const auto& builtin = anzu::fetch_builtin(node.function_name);
+
+        // TODO: Make this more generic, but we need to fill in the types before
+        // calling here, so that we can pass in the correct block count
+        auto sig = builtin.sig;
+        if (node.function_name == "print" || node.function_name == "println") {
+            sig.args[0].type = param_types[0];
+        }
+
+        com.program.emplace_back(anzu::op_builtin_call{
+            .name=node.function_name,
+            .ptr=builtin.ptr,
+            .args_size=signature_args_size(com, sig)
+        });
+        return sig.return_type;
     }
 
-    const auto& builtin = anzu::fetch_builtin(node.function_name);
-
-    // TODO: Make this more generic, but we need to fill in the types before
-    // calling here, so that we can pass in the correct block count
-    auto sig = builtin.sig;
-    if (node.function_name == "print" || node.function_name == "println") {
-        sig.args[0].type = param_types[0];
-    }
-
-    com.program.emplace_back(anzu::op_builtin_call{
-        .name=node.function_name,
-        .ptr=builtin.ptr,
-        .args_size=signature_args_size(com, sig)
-    });
-    return sig.return_type;
+    const auto function_str = std::format("{}({})", node.function_name, format_comma_separated(key.args));
+    compiler_error(node.token, "could not find function '{}'", function_str);
 }
 
 auto compile_expr_val(compiler& com, const node_list_expr& node) -> type_name

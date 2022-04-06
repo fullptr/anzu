@@ -15,4 +15,4 @@ x := 5
 adder(x, x)
 
 y := 2.0
-adder(y, y)
+adder(y, y, y)
