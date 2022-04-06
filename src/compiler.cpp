@@ -103,14 +103,16 @@ auto declare_variable_name(compiler& com, const std::string& name, const type_na
 
 auto find_variable_type(const compiler& com, const token& tok, const std::string& name) -> type_name
 {
-    if (com.current_func && com.current_func->vars.info.contains(name)) {
-        const auto& info = com.current_func->vars.info.at(name);
-        return info.type;
+    if (com.current_func) {
+        auto& locals = com.current_func->vars;
+        if (const auto it = locals.info.find(name); it != locals.info.end()) {
+            return it->second.type;
+        }
     }
     
-    if (com.globals.info.contains(name)) {
-        const auto& info = com.globals.info.at(name);
-        return info.type;
+    auto& globals = com.globals;
+    if (const auto it = globals.info.find(name); it != globals.info.end()) {
+        return it->second.type;
     }
 
     compiler_error(tok, "could not find variable '{}'\n", name);
@@ -118,16 +120,20 @@ auto find_variable_type(const compiler& com, const token& tok, const std::string
 
 auto find_variable(compiler& com, const token& tok, const std::string& name) -> type_name
 {
-    if (com.current_func && com.current_func->vars.info.contains(name)) {
-        const auto& info = com.current_func->vars.info.at(name);
-        com.program.emplace_back(op_push_local_addr{
-            .offset=info.location, .size=com.types.size_of(info.type)
-        });
-        return info.type;
+    if (com.current_func) {
+        auto& locals = com.current_func->vars;
+        if (const auto it = locals.info.find(name); it != locals.info.end()) {
+            const auto& info = it->second;
+            com.program.emplace_back(op_push_local_addr{
+                .offset=info.location, .size=com.types.size_of(info.type)
+            });
+            return info.type;
+        }
     }
-    
-    if (com.globals.info.contains(name)) {
-        const auto& info = com.globals.info.at(name);
+
+    auto& globals = com.current_func->vars;
+    if (const auto it = globals.info.find(name); it != globals.info.end()) {
+        const auto& info = it->second;
         com.program.emplace_back(op_push_global_addr{
             .position=info.location, .size=com.types.size_of(info.type)
         });
