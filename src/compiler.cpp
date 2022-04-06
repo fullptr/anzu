@@ -290,25 +290,16 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
     return sig;
 }
 
-auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
+auto function_ends_with_return(const node_function_def_stmt& node) -> bool
 {
-    if (node.sig.return_type == null_type() || std::holds_alternative<node_return_stmt>(*node.body)) {
-        return;
-    }
-
-    const auto bad_function = [&]() {
-        compiler_error(node.token, "function '{}' does not end in a return statement\n", node.name);
-    };
-
     if (std::holds_alternative<node_sequence_stmt>(*node.body)) {
         const auto& seq = std::get<node_sequence_stmt>(*node.body).sequence;
         if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
-            bad_function();
+            return false;
         }
+        return true;
     }
-    else {
-        bad_function();
-    }
+    return std::holds_alternative<node_return_stmt>(*node.body);
 }
 
 auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
@@ -678,7 +669,6 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         verify_real_type(com, node.token, arg.type);
     }
     verify_real_type(com, node.token, node.sig.return_type);
-    check_function_ends_with_return(node);
 
     const auto begin_pos = append_op(com, op_function{ .name=node.name });
     com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
@@ -693,9 +683,18 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     compile_stmt(com, *node.body);
     com.current_func.reset();
 
-    const auto end_pos = append_op(com, op_function_end{});
-
-    std::get<anzu::op_function>(com.program[begin_pos]).jump = end_pos + 1;
+    if (!function_ends_with_return(node)) {
+        // A function returning null does not need a final return statement, and in this case
+        // we manually add a return value of null here.
+        if (node.sig.return_type == null_type()) {
+            com.program.emplace_back(op_load_literal{block_null{}});
+            com.program.emplace_back(op_return{});
+        } else {
+            compiler_error(node.token, "function '{}' does not end in a return statement", node.name);
+        }
+    }
+    
+    std::get<anzu::op_function>(com.program[begin_pos]).jump = com.program.size() + 1;
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)
