@@ -24,24 +24,6 @@ auto pop_back(std::vector<block>& vec) -> block
     return back;   
 }
 
-// Copies the return value into the correct place, cleans up all extra blocks, and
-// resets the program and base pointers back to their previous values.
-auto pop_frame(runtime_context& ctx) -> void
-{
-    const auto prev_base_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr]);
-    const auto prev_prog_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr + 1]);
-    const auto return_size = std::get<block_uint>(ctx.memory[ctx.base_ptr + 2]);
-
-    for (std::size_t i = 0; i != return_size; ++i) {
-        ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
-    }
-    for (std::size_t i = 0; i != ctx.memory.size() - ctx.base_ptr - return_size; ++i) {
-        ctx.memory.pop_back();
-    }
-    ctx.base_ptr = prev_base_ptr;
-    ctx.prog_ptr = prev_prog_ptr;
-}
-
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
@@ -125,12 +107,19 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_function& op) {
             ctx.prog_ptr = op.jump;
         },
-        [&](op_function_end) {
-            ctx.memory.push_back(block_null{});
-            pop_frame(ctx);
-        },
         [&](op_return) {
-            pop_frame(ctx);
+            const auto prev_base_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr]);
+            const auto prev_prog_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr + 1]);
+            const auto return_size = std::get<block_uint>(ctx.memory[ctx.base_ptr + 2]);
+
+            for (std::size_t i = 0; i != return_size; ++i) {
+                ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
+            }
+            while (ctx.memory.size() > ctx.base_ptr + return_size) {
+                ctx.memory.pop_back();
+            }
+            ctx.base_ptr = prev_base_ptr;
+            ctx.prog_ptr = prev_prog_ptr;
         },
         [&](const op_function_call& op) {
             // Store the old base_ptr and prog_ptr so that they can be restored at the end of

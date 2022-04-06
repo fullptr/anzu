@@ -1,20 +1,5 @@
 # anzu
-An interpreted programming language written in C++. This is just me playing around with language design, it will be unsafe and inconsistent. Who knows, maybe I'll eventually make it good!
-
-This started out a stack based language like Forth. Meaning that users would have direct access to a stack where they could push values and operations to perform actions. For example, printing the sum of 4 and 5 would be written as
-
-```
-4 5 + .
-```
-First, 4 and 5 are pushed to the stack, then `+` pops two elements off, adds them and pushes the return value, then `.` prints to the console. I could do a lot with this, and implemented basic control flow via `if`, `elif`, `else`, `while`, `break`, `continue` and `end`, as well as functions. This had the benefit of being relatively simple to implement since it didn't require an abstract syntax tree.
-
-The parser would then turn the code into a vector of op codes which somewhat resemble a bytecode that could potentially be turned into assembly code in the future.
-
-I have since added an AST on top of this and disallowed direct stack access from the code, allowing for syntax that looks similar to python. All of this translates back down to the same stack-based-op-code approach under the hood, which I have since found out is exactly how python works, which is quite cool. The above example now looks much more familiar:
-
-```
-print(4 + 5)
-```
+An interpreted programming language written in C++. This started out as a stack-based language like Forth, it then took a route similar to Python with structures programming and duck-typing, and now I am drifting towards it being more simiar to C with a lot of "compile-time" checks including static typing.
 
 ## Features so far
 * Supports `ints`, `bools`, `null` and `string-literals`.
@@ -105,24 +90,20 @@ Utility Modules (in src/utility)
 -- views.hpp       : A collection of some helper views not in C++20
 ```
 
-# Upcoming Features
-* Explicit typing in declarations.
-* Const keyword.
-* Scopes.
-* Member functions so we can write `my_list.size()` rather than `list_size(my_list)`.
-* Function overloading based on the call signature.
-* Replace `int` with `int32`, `int64` as well as promotion/narrowing builtins.
-* Add `float32` and `float64`, with promotion/narrowing builtins (and to/from ints).
-* Add `uint32` and `uint64`, similar to the above.
-* Removal of objects and types from the runtime, should run on arrays of bytes.
-* Native compilation.
-* References (like C++, no pointers).
-* Less restriction on return statements in functions.
-* Typed function pointers.
-* Variants and a basic match statement.
-* Replacing the binary operation op codes with calls to builtin functions.
-* Filesystem support.
-* A better C++ API for implementing custom functions in C++.
+# TODO
+## Focus
+* Function overloading
+* Member Functions
+* Constructors
+* Const
+* Dynamic Allocation
 
-# Known Bugs
-* Generic types don't place nicely with the compiler, need to employ similar techniques that type check generic functions. Function scopes will also need to store the generic types of the inputs so they can be matched against the concrete types it is called with.
+## Low Priority
+* Making the bytecode a true bytecode that can be saved to a file and read back in, with the compiler and runtime becoming separate programs
+* References
+* Less restriction on return statements in functions
+* Function pointers
+* Variants and match statement
+* Enums
+* Filesystem support
+* A better C++ API for implementing custom functions in C++

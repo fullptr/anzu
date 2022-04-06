@@ -37,12 +37,54 @@ struct var_info
 {
     std::size_t location;
     type_name   type;
+    std::size_t type_size;
 };
 
-struct var_locations
+class var_locations
 {
-    std::unordered_map<std::string, var_info> info;
-    std::size_t next = 0;
+    std::vector<std::unordered_map<std::string, var_info>> d_scopes;
+    std::size_t d_next = 0;
+
+public:
+    var_locations()
+    {
+        d_scopes.emplace_back();
+    }
+
+    auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
+    {
+        const auto [_, success] = d_scopes.back().emplace(name, var_info{d_next, type, type_size});
+        if (success) {
+            d_next += type_size;
+        }
+        return success;
+    }
+
+    auto find(const std::string& name) const -> std::optional<var_info>
+    {
+        for (const auto& scope : d_scopes | std::views::reverse) {
+            if (const auto it = scope.find(name); it != scope.end()) {
+                return it->second;
+            }
+        }
+        return std::nullopt;
+    }
+
+    auto push_scope() -> void
+    {
+        d_scopes.emplace_back();
+    }
+
+    auto pop_scope() -> std::size_t // Returns the size of the scope just popped
+    {
+        auto scope_size = std::size_t{0};
+        for (const auto& [name, info] : d_scopes.back()) {
+            scope_size += info.type_size;
+        }
+        d_scopes.pop_back();
+        d_next -= scope_size;
+        return scope_size;
+    }
 };
 
 struct function_def
@@ -91,26 +133,28 @@ auto append_op(compiler& com, T&& op) -> std::size_t
 }
 
 // Registers the given name in the current scope
-auto declare_variable_name(compiler& com, const std::string& name, const type_name& type) -> void
+auto declare_variable_name(
+    compiler& com, const token& tok, const std::string& name, const type_name& type
+)
+    -> void
 {
     auto& vars = current_vars(com);
     const auto type_size = com.types.size_of(type);
-    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type});
-    if (success) { // If not successful, then the name already existed, so dont increase
-        vars.next += type_size;
-    }
+    vars.declare(name, type, com.types.size_of(type));
 }
 
 auto find_variable_type(const compiler& com, const token& tok, const std::string& name) -> type_name
 {
-    if (com.current_func && com.current_func->vars.info.contains(name)) {
-        const auto& info = com.current_func->vars.info.at(name);
-        return info.type;
+    if (com.current_func) {
+        auto& locals = com.current_func->vars;
+        if (const auto info = locals.find(name); info.has_value()) {
+            return info->type;
+        }
     }
     
-    if (com.globals.info.contains(name)) {
-        const auto& info = com.globals.info.at(name);
-        return info.type;
+    auto& globals = com.globals;
+    if (const auto info = globals.find(name); info.has_value()) {
+        return info->type;
     }
 
     compiler_error(tok, "could not find variable '{}'\n", name);
@@ -118,20 +162,22 @@ auto find_variable_type(const compiler& com, const token& tok, const std::string
 
 auto find_variable(compiler& com, const token& tok, const std::string& name) -> type_name
 {
-    if (com.current_func && com.current_func->vars.info.contains(name)) {
-        const auto& info = com.current_func->vars.info.at(name);
-        com.program.emplace_back(op_push_local_addr{
-            .offset=info.location, .size=com.types.size_of(info.type)
-        });
-        return info.type;
+    if (com.current_func) {
+        auto& locals = com.current_func->vars;
+        if (const auto info = locals.find(name); info.has_value()) {
+            com.program.emplace_back(op_push_local_addr{
+                .offset=info->location, .size=info->type_size
+            });
+            return info->type;
+        }
     }
-    
-    if (com.globals.info.contains(name)) {
-        const auto& info = com.globals.info.at(name);
+
+    auto& globals = com.globals;
+    if (const auto info = globals.find(name); info.has_value()) {
         com.program.emplace_back(op_push_global_addr{
-            .position=info.location, .size=com.types.size_of(info.type)
+            .position=info->location, .size=info->type_size
         });
-        return info.type;
+        return info->type;
     }
 
     compiler_error(tok, "could not find variable '{}'\n", name);
@@ -244,25 +290,16 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
     return sig;
 }
 
-auto check_function_ends_with_return(const node_function_def_stmt& node) -> void
+auto function_ends_with_return(const node_function_def_stmt& node) -> bool
 {
-    if (node.sig.return_type == null_type() || std::holds_alternative<node_return_stmt>(*node.body)) {
-        return;
-    }
-
-    const auto bad_function = [&]() {
-        compiler_error(node.token, "function '{}' does not end in a return statement\n", node.name);
-    };
-
     if (std::holds_alternative<node_sequence_stmt>(*node.body)) {
         const auto& seq = std::get<node_sequence_stmt>(*node.body).sequence;
         if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
-            bad_function();
+            return false;
         }
+        return true;
     }
-    else {
-        bad_function();
-    }
+    return std::holds_alternative<node_return_stmt>(*node.body);
 }
 
 auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
@@ -544,9 +581,12 @@ auto compile_expr_val(compiler& com, const auto& node) -> type_name
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
+    current_vars(com).push_scope();
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
+    const auto scope_size = current_vars(com).pop_scope();
+    com.program.emplace_back(op_pop{scope_size});
 }
 
 void compile_stmt(compiler& com, const node_while_stmt& node)
@@ -611,10 +651,7 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
-    if (current_vars(com).info.contains(node.name)) {
-        compiler_error(node.token, "redeclaration of variable '{}'", node.name);
-    }
-    declare_variable_name(com, node.name, type);
+    declare_variable_name(com, node.token, node.name, type);
     save_variable(com, node.token, node.name);
 }
 
@@ -632,24 +669,32 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         verify_real_type(com, node.token, arg.type);
     }
     verify_real_type(com, node.token, node.sig.return_type);
-    check_function_ends_with_return(node);
 
     const auto begin_pos = append_op(com, op_function{ .name=node.name });
     com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
-    declare_variable_name(com, "# old_base_ptr", uint_type()); // Store the old base ptr
-    declare_variable_name(com, "# old_prog_ptr", uint_type()); // Store the old program ptr
-    declare_variable_name(com, "# return_size", uint_type());  // Store the return size
+    declare_variable_name(com, node.token, "# old_base_ptr", uint_type()); // Store the old base ptr
+    declare_variable_name(com, node.token, "# old_prog_ptr", uint_type()); // Store the old program ptr
+    declare_variable_name(com, node.token, "# return_size", uint_type());  // Store the return size
     for (const auto& arg : node.sig.args) {
-        declare_variable_name(com, arg.name, arg.type);
+        declare_variable_name(com, node.token, arg.name, arg.type);
     }
     compile_stmt(com, *node.body);
     com.current_func.reset();
 
-    const auto end_pos = append_op(com, op_function_end{});
-
-    std::get<anzu::op_function>(com.program[begin_pos]).jump = end_pos + 1;
+    if (!function_ends_with_return(node)) {
+        // A function returning null does not need a final return statement, and in this case
+        // we manually add a return value of null here.
+        if (node.sig.return_type == null_type()) {
+            com.program.emplace_back(op_load_literal{block_null{}});
+            com.program.emplace_back(op_return{});
+        } else {
+            compiler_error(node.token, "function '{}' does not end in a return statement", node.name);
+        }
+    }
+    
+    std::get<anzu::op_function>(com.program[begin_pos]).jump = com.program.size();
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)

@@ -108,10 +108,6 @@ struct op_function
     std::size_t jump;
 };
 
-struct op_function_end
-{
-};
-
 struct op_return
 {
 };
@@ -134,7 +130,6 @@ struct op : std::variant<
     op_jump_if_false,
     op_builtin_mem_op,
     op_function,
-    op_function_end,
     op_return,
     op_function_call,
     op_builtin_call
