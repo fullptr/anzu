@@ -49,6 +49,19 @@ public:
     {
         return d_info.contains(name);
     }
+
+    auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
+    {
+        const auto [iter, success] = d_info.emplace(name, var_info{d_next, type});
+        if (success) {
+            d_next += type_size;
+        }
+        return success;
+    }
+
+    auto find(const std::string& name) const { return d_info.find(name); }
+    auto begin() const { return d_info.begin(); }
+    auto end() const { return d_info.end(); }
 };
 
 struct function_def
@@ -97,27 +110,27 @@ auto append_op(compiler& com, T&& op) -> std::size_t
 }
 
 // Registers the given name in the current scope
-auto declare_variable_name(compiler& com, const std::string& name, const type_name& type) -> void
+auto declare_variable_name(
+    compiler& com, const token& tok, const std::string& name, const type_name& type
+)
+    -> void
 {
     auto& vars = current_vars(com);
     const auto type_size = com.types.size_of(type);
-    const auto [iter, success] = vars.info.emplace(name, var_info{vars.next, type});
-    if (success) { // If not successful, then the name already existed, so dont increase
-        vars.next += type_size;
-    }
+    vars.declare(name, type, com.types.size_of(type));
 }
 
 auto find_variable_type(const compiler& com, const token& tok, const std::string& name) -> type_name
 {
     if (com.current_func) {
         auto& locals = com.current_func->vars;
-        if (const auto it = locals.info.find(name); it != locals.info.end()) {
+        if (const auto it = locals.find(name); it != locals.end()) {
             return it->second.type;
         }
     }
     
     auto& globals = com.globals;
-    if (const auto it = globals.info.find(name); it != globals.info.end()) {
+    if (const auto it = globals.find(name); it != globals.end()) {
         return it->second.type;
     }
 
@@ -128,7 +141,7 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
 {
     if (com.current_func) {
         auto& locals = com.current_func->vars;
-        if (const auto it = locals.info.find(name); it != locals.info.end()) {
+        if (const auto it = locals.find(name); it != locals.end()) {
             const auto& info = it->second;
             com.program.emplace_back(op_push_local_addr{
                 .offset=info.location, .size=com.types.size_of(info.type)
@@ -138,7 +151,7 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
     }
 
     auto& globals = com.current_func->vars;
-    if (const auto it = globals.info.find(name); it != globals.info.end()) {
+    if (const auto it = globals.find(name); it != globals.end()) {
         const auto& info = it->second;
         com.program.emplace_back(op_push_global_addr{
             .position=info.location, .size=com.types.size_of(info.type)
@@ -623,10 +636,7 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
-    if (current_vars(com).contains(node.name)) {
-        compiler_error(node.token, "redeclaration of variable '{}'", node.name);
-    }
-    declare_variable_name(com, node.name, type);
+    declare_variable_name(com, node.token, node.name, type);
     save_variable(com, node.token, node.name);
 }
 
@@ -650,11 +660,11 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.functions[node.name] = { .sig=node.sig ,.ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
-    declare_variable_name(com, "# old_base_ptr", uint_type()); // Store the old base ptr
-    declare_variable_name(com, "# old_prog_ptr", uint_type()); // Store the old program ptr
-    declare_variable_name(com, "# return_size", uint_type());  // Store the return size
+    declare_variable_name(com, node.token, "# old_base_ptr", uint_type()); // Store the old base ptr
+    declare_variable_name(com, node.token, "# old_prog_ptr", uint_type()); // Store the old program ptr
+    declare_variable_name(com, node.token, "# return_size", uint_type());  // Store the return size
     for (const auto& arg : node.sig.args) {
-        declare_variable_name(com, arg.name, arg.type);
+        declare_variable_name(com, node.token, arg.name, arg.type);
     }
     compile_stmt(com, *node.body);
     com.current_func.reset();
