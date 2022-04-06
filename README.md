@@ -92,7 +92,6 @@ Utility Modules (in src/utility)
 
 # TODO
 ## Focus
-* Scopes
 * Function overloading
 * Member Functions
 * Constructors
