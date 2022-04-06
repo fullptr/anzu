@@ -343,6 +343,10 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
+    if (tokens.peek(tk_function) || tokens.peek(tk_struct)) {
+        parser_error(tokens.curr(), "functions and structs can only be declared in the global scope");
+    }
+
     if (tokens.peek(tk_return)) {
         return parse_return_stmt(tokens);
     }
