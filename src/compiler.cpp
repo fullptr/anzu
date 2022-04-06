@@ -53,7 +53,7 @@ public:
 
     auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
     {
-        const auto [iter, success] = d_scopes.back().emplace(name, var_info{d_next, type, type_size});
+        const auto [_, success] = d_scopes.back().emplace(name, var_info{d_next, type, type_size});
         if (success) {
             d_next += type_size;
         }
@@ -166,7 +166,7 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
         auto& locals = com.current_func->vars;
         if (const auto info = locals.find(name); info.has_value()) {
             com.program.emplace_back(op_push_local_addr{
-                .offset=info->location, .size=com.types.size_of(info->type)
+                .offset=info->location, .size=info->type_size
             });
             return info->type;
         }
@@ -175,7 +175,7 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
     auto& globals = com.globals;
     if (const auto info = globals.find(name); info.has_value()) {
         com.program.emplace_back(op_push_global_addr{
-            .position=info->location, .size=com.types.size_of(info->type)
+            .position=info->location, .size=info->type_size
         });
         return info->type;
     }
