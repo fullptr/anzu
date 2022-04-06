@@ -59,9 +59,13 @@ public:
         return success;
     }
 
-    auto find(const std::string& name) const { return d_info.find(name); }
-    auto begin() const { return d_info.begin(); }
-    auto end() const { return d_info.end(); }
+    auto find(const std::string& name) const -> std::optional<var_info>
+    {
+        if (const auto it = d_info.find(name); it != d_info.end()) {
+            return it->second;
+        }
+        return std::nullopt;
+    }
 };
 
 struct function_def
@@ -124,14 +128,14 @@ auto find_variable_type(const compiler& com, const token& tok, const std::string
 {
     if (com.current_func) {
         auto& locals = com.current_func->vars;
-        if (const auto it = locals.find(name); it != locals.end()) {
-            return it->second.type;
+        if (const auto info = locals.find(name); info.has_value()) {
+            return info->type;
         }
     }
     
     auto& globals = com.globals;
-    if (const auto it = globals.find(name); it != globals.end()) {
-        return it->second.type;
+    if (const auto info = globals.find(name); info.has_value()) {
+        return info->type;
     }
 
     compiler_error(tok, "could not find variable '{}'\n", name);
@@ -141,22 +145,20 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
 {
     if (com.current_func) {
         auto& locals = com.current_func->vars;
-        if (const auto it = locals.find(name); it != locals.end()) {
-            const auto& info = it->second;
+        if (const auto info = locals.find(name); info.has_value()) {
             com.program.emplace_back(op_push_local_addr{
-                .offset=info.location, .size=com.types.size_of(info.type)
+                .offset=info->location, .size=com.types.size_of(info->type)
             });
-            return info.type;
+            return info->type;
         }
     }
 
     auto& globals = com.current_func->vars;
-    if (const auto it = globals.find(name); it != globals.end()) {
-        const auto& info = it->second;
+    if (const auto info = globals.find(name); info.has_value()) {
         com.program.emplace_back(op_push_global_addr{
-            .position=info.location, .size=com.types.size_of(info.type)
+            .position=info->location, .size=com.types.size_of(info->type)
         });
-        return info.type;
+        return info->type;
     }
 
     compiler_error(tok, "could not find variable '{}'\n", name);
