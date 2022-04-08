@@ -66,6 +66,15 @@ struct node_function_call_expr
     anzu::token token;
 };
 
+struct node_member_function_call_expr
+{
+    node_expr_ptr              expr;
+    std::string                function_name;
+    std::vector<node_expr_ptr> args;
+
+    anzu::token token;
+};
+
 struct node_list_expr
 {
     std::vector<node_expr_ptr> elements;

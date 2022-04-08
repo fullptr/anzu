@@ -573,6 +573,11 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     compiler_error(node.token, "could not find function '{}'", function_str);
 }
 
+auto compile_expr_val(compiler& com, const node_member_function_call_expr& node) -> type_name
+{
+    return int_type();
+}
+
 auto compile_expr_val(compiler& com, const node_list_expr& node) -> type_name
 {
     compiler_assert(!node.elements.empty(), node.token, "currently do not support empty list literals");

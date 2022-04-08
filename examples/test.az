@@ -11,9 +11,11 @@ fn adder(x: float, y: float) -> null
     println("called adder for float!")
 }
 
-x := 5
-adder(x, x)
+class vec2
+{
+    x: float
+    y: float
+}
 
-y := 2.0
-z := 5.6
-adder(y, z)
+v := vec(2.0, 3.0)
+l := v.size()
