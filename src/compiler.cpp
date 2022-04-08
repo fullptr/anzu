@@ -352,7 +352,12 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             for (const auto& arg : expr.args) {
                 key.args.push_back(type_of_expr(com, *arg));
             }
-            return com.functions.at(key).sig.return_type;
+            const auto it = com.functions.find(key);
+            if (it == com.functions.end()) {
+                const auto function_str = std::format("{}({})", key.name, format_comma_separated(key.args));
+                compiler_error(expr.token, "could not find function '{}'", function_str);
+            }
+            return it->second.sig.return_type;
         },
         [&](const node_list_expr& expr) {
             return type_name{type_list{
@@ -423,7 +428,7 @@ auto compile_expr_ptr(compiler& com, const node_arrow_expr& node) -> type_name
 {
     const auto type = compile_expr_val(com, *node.expr); // Push the address
     compiler_assert(is_ptr_type(type), node.token, "cannot use arrow operator on non-ptr type '{}'", type);
-    return compile_ptr_to_field(com, node.token, type, node.field_name);
+    return compile_ptr_to_field(com, node.token, inner_type(type), node.field_name);
 }
 
 auto compile_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
