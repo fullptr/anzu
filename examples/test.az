@@ -1,5 +1,8 @@
 
-
+fn square(x: float) -> float
+{
+    return x * x
+}
 
 struct vec2
 {
@@ -8,13 +11,11 @@ struct vec2
 
     fn length(self: &vec2) -> float
     {
-        return sqrt(self->x * self->x + self->y * self->y)
+        x_squared := square(self->x)
+        y_squared := square(self->y)
+        return sqrt(x_squared + y_squared)
     }
 }
 
 v := vec2(3.0, 4.0)
 println(v.length())
-
-p := &v
-
-println(p->x)
