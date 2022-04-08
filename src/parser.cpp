@@ -256,6 +256,27 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_member_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_member_function_def_stmt>();
+
+    stmt.token = tokens.consume_only(tk_function);
+    stmt.name = parse_name(tokens);
+    tokens.consume_only(tk_lparen);
+    tokens.consume_comma_separated_list(tk_rparen, [&]{
+        auto arg = function_arg{};
+        arg.name = parse_name(tokens);
+        tokens.consume_only(tk_colon);
+        arg.type = parse_type(tokens);
+        stmt.sig.args.push_back(arg);
+    });    
+    tokens.consume_only(tk_rarrow);
+    stmt.sig.return_type = parse_type(tokens);
+    stmt.body = parse_statement(tokens);
+    return node;
+}
+
 auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_unique<node_stmt>();
@@ -308,7 +329,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
     tokens.consume_only(tk_lbrace);
     while (!tokens.consume_maybe(tk_rbrace)) {
         if (tokens.peek(tk_function)) {
-            stmt.functions.emplace_back(parse_function_def_stmt(tokens));
+            stmt.functions.emplace_back(parse_member_function_def_stmt(tokens));
         } else {
             stmt.fields.emplace_back();
             auto& f = stmt.fields.back();

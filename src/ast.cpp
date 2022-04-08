@@ -155,6 +155,14 @@ auto print_node(const node_stmt& root, int indent) -> void
             print(") -> {}\n", node.sig.return_type);
             print_node(*node.body, indent + 1);
         },
+        [&](const node_member_function_def_stmt& node) {
+            print("{}MemberFunction: {} (", spaces, node.name);
+            print_comma_separated(node.sig.args, [](const auto& arg) {
+                return std::format("{}: {}", arg.name, arg.type);
+            });
+            print(") -> {}\n", node.sig.return_type);
+            print_node(*node.body, indent + 1);
+        },
         [&](const node_expression_stmt& node) {
             print("{}Expression:\n", spaces);
             print_node(*node.expr, indent + 1);
