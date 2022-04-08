@@ -6,15 +6,14 @@ struct vec2
     x: float
     y: float
 
-    fn length2(self: &vec2) -> float
+    fn length(self: &vec2) -> float
     {
-        return self->x * self->x + self->y * self->y
-        return 1.0
+        return sqrt(self->x * self->x + self->y * self->y)
     }
 }
 
 v := vec2(3.0, 4.0)
-println(v.length2())
+println(v.length())
 
 p := &v
 

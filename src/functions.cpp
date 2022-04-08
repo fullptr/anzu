@@ -11,17 +11,23 @@
 namespace anzu {
 namespace {
 
+auto builtin_sqrt(std::span<const block> args) -> block
+{
+    const auto& val = std::get<block_float>(args[0]);
+    return block_float{std::sqrt(val)};
+}
+
 auto builtin_str_size(std::span<const block> args) -> block
 {
     const auto& str = std::get<block_str>(args[0]);
-    return block{block_uint{str.size()}};
+    return block_uint{str.size()};
 }
 
 auto builtin_str_at(std::span<const block> args) -> block
 {
     const auto& str = std::get<block_str>(args[0]);
     const auto& idx = std::get<block_uint>(args[1]);
-    return block{block_str{str.at(idx)}};
+    return block_str{str.at(idx)};
 }
 
 auto builtin_print(std::span<const block> args) -> block
@@ -86,6 +92,16 @@ auto builtin_input(std::span<const block> args) -> block
 auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
 {
     auto builtins = std::unordered_map<std::string, builtin>{};
+
+    builtins.emplace("sqrt", builtin{
+        .ptr = builtin_sqrt,
+        .sig = {
+            .args = {
+                { .name = "val", .type = float_type() }
+            },
+            .return_type = float_type()
+        }
+    });
 
     builtins.emplace("str_size", builtin{
         .ptr = builtin_str_size,
