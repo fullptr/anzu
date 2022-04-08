@@ -80,7 +80,7 @@ auto parse_literal(tokenstream& tokens) -> object
     if (tokens.consume_maybe(tk_null)) {
         return make_null();
     }
-    parser_error(tokens.curr(), "failed to parse literal");
+    parser_error(tokens.curr(), "failed to parse literal ({})", tokens.curr().text);
 };
 
 auto precedence_table()
@@ -308,7 +308,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
     tokens.consume_only(tk_lbrace);
     while (!tokens.consume_maybe(tk_rbrace)) {
         if (tokens.peek(tk_function)) {
-
+            stmt.functions.emplace_back(parse_function_def_stmt(tokens));
         } else {
             stmt.fields.emplace_back();
             auto& f = stmt.fields.back();
