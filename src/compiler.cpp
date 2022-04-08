@@ -753,7 +753,15 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
+    compiler_assert(node.sig.args.size() >= 1, node.token, "member functions must have at least one arg");
+
     const auto qualified_name = std::format("{}::{}", node.struct_name, node.function_name);
+
+    const auto expected = concrete_ptr_type(make_type(node.struct_name));
+    const auto actual = node.sig.args.front().type;
+    if (actual != expected) {
+        compiler_error(node.token, "first arg to member function should be '{}', got '{}'", expected, actual);
+    }
 
     auto key = function_key{};
     key.name = qualified_name;
