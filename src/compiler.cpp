@@ -343,6 +343,16 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             }
             return com.functions.at(key).sig.return_type;
         },
+        [&](const node_member_function_call_expr& expr) {
+            auto key = function_key{};
+            key.name = expr.function_name;
+            key.args.reserve(expr.args.size() + 1);
+            key.args.push_back(concrete_ptr_type(type_of_expr(com, *expr.expr)));
+            for (const auto& arg : expr.args) {
+                key.args.push_back(type_of_expr(com, *arg));
+            }
+            return com.functions.at(key).sig.return_type;
+        },
         [&](const node_list_expr& expr) {
             return type_name{type_list{
                 .inner_type = type_of_expr(com, *expr.elements.front()),
@@ -575,7 +585,42 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
 
 auto compile_expr_val(compiler& com, const node_member_function_call_expr& node) -> type_name
 {
-    return int_type();
+    const auto obj_type = type_of_expr(com, *node.expr);
+    const auto qualified_function_name = std::format("{}::{}", obj_type, node.function_name);
+
+    auto key = function_key{};
+    key.name = qualified_function_name;
+    key.args.reserve(node.args.size() + 1);
+    key.args.push_back(concrete_ptr_type(obj_type));
+    for (const auto& arg : node.args) {
+        key.args.push_back(type_of_expr(com, *arg));
+    }
+    
+    const auto it = com.functions.find(key);
+    if (it == com.functions.end()) {
+        compiler_error(node.token, "could not find function '{}'", qualified_function_name);
+    }
+    
+    const auto& [sig, ptr] = it->second;
+    static constexpr auto payload_size = std::size_t{3};
+    const auto return_size = com.types.size_of(sig.return_type);
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // base ptr
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // prog ptr
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{return_size} });
+    
+    // Push the args to the stack
+    std::vector<type_name> param_types;
+    param_types.emplace_back(compile_expr_ptr(com, *node.expr));
+    for (const auto& arg : node.args) {
+        param_types.emplace_back(compile_expr_val(com, *arg));
+    }
+    verify_sig(node.token, sig, param_types);
+    com.program.emplace_back(anzu::op_function_call{
+        .name=node.function_name,
+        .ptr=ptr + 1, // Jump into the function
+        .args_size=signature_args_size(com, sig) + payload_size
+    });
+    return sig.return_type;
 }
 
 auto compile_expr_val(compiler& com, const node_list_expr& node) -> type_name

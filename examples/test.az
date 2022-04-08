@@ -8,6 +8,9 @@ struct vec2
 
     fn length(self: &vec2) -> int
     {
-        return 1
+        return 9001
     }
 }
+
+v := vec2(1, 2)
+println(v.length())
