@@ -164,10 +164,22 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     while (tokens.peek(tk_fullstop) || tokens.peek(tk_rarrow) || tokens.peek(tk_lbracket)) {
         auto new_node = std::make_unique<node_expr>();
         if (tokens.peek(tk_fullstop)) {
-            auto& expr = new_node->emplace<node_field_expr>();
-            expr.token = tokens.consume();
-            expr.field_name = tokens.consume().text;
-            expr.expr = std::move(node);
+            const auto tok = tokens.consume();
+            if (tokens.peek_next(tk_lparen)) {
+                auto& expr = new_node->emplace<node_member_function_call_expr>();
+                expr.token = tok;
+                expr.function_name = tokens.consume().text;
+                tokens.consume_only(tk_lparen);
+                tokens.consume_comma_separated_list(tk_rparen, [&] {
+                    expr.args.push_back(parse_expression(tokens));
+                });
+                expr.expr = std::move(node);
+            } else {
+                auto& expr = new_node->emplace<node_field_expr>();
+                expr.token = tok;
+                expr.field_name = tokens.consume().text;
+                expr.expr = std::move(node);
+            }
         } else if (tokens.peek(tk_rarrow)) {
             auto& expr = new_node->emplace<node_arrow_expr>();
             expr.token = tokens.consume();

@@ -117,6 +117,7 @@ struct node_expr : std::variant<
     node_unary_op_expr,
     node_binary_op_expr,
     node_function_call_expr,
+    node_member_function_call_expr,
     node_list_expr,
     node_addrof_expr,
     node_sizeof_expr,
