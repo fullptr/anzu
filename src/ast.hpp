@@ -66,6 +66,15 @@ struct node_function_call_expr
     anzu::token token;
 };
 
+struct node_member_function_call_expr
+{
+    node_expr_ptr              expr;
+    std::string                function_name;
+    std::vector<node_expr_ptr> args;
+
+    anzu::token token;
+};
+
 struct node_list_expr
 {
     std::vector<node_expr_ptr> elements;
@@ -108,6 +117,7 @@ struct node_expr : std::variant<
     node_unary_op_expr,
     node_binary_op_expr,
     node_function_call_expr,
+    node_member_function_call_expr,
     node_list_expr,
     node_addrof_expr,
     node_sizeof_expr,
@@ -150,8 +160,9 @@ struct node_if_stmt
 
 struct node_struct_stmt
 {
-    std::string name;
-    type_fields fields;
+    std::string                name;
+    type_fields                fields;
+    std::vector<node_stmt_ptr> functions;
 
     anzu::token token;
 };
@@ -191,6 +202,16 @@ struct node_function_def_stmt
     anzu::token token;
 };
 
+struct node_member_function_def_stmt
+{
+    std::string   struct_name;
+    std::string   function_name;
+    signature     sig;
+    node_stmt_ptr body;
+
+    anzu::token token;
+};
+
 struct node_expression_stmt
 {
     node_expr_ptr expr;
@@ -214,6 +235,7 @@ struct node_stmt : std::variant<
     node_continue_stmt,
     node_declaration_stmt,
     node_assignment_stmt,
+    node_member_function_def_stmt,
     node_function_def_stmt,
     node_expression_stmt,
     node_return_stmt>

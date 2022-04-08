@@ -1,19 +1,21 @@
 
-
-
-fn adder(x: int, y: int) -> null
+fn square(x: float) -> float
 {
-    println("called adder for int!")
+    return x * x
 }
 
-fn adder(x: float, y: float) -> null
+struct vec2
 {
-    println("called adder for float!")
+    x: float
+    y: float
+
+    fn length(self: &vec2) -> float
+    {
+        x_squared := square(self->x)
+        y_squared := square(self->y)
+        return sqrt(x_squared + y_squared)
+    }
 }
 
-x := 5
-adder(x, x)
-
-y := 2.0
-z := 5.6
-adder(y, z)
+v := vec2(3.0, 4.0)
+println(v.length())

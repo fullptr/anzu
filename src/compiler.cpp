@@ -300,16 +300,16 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
     return sig;
 }
 
-auto function_ends_with_return(const node_function_def_stmt& node) -> bool
+auto function_ends_with_return(const node_stmt& node) -> bool
 {
-    if (std::holds_alternative<node_sequence_stmt>(*node.body)) {
-        const auto& seq = std::get<node_sequence_stmt>(*node.body).sequence;
+    if (std::holds_alternative<node_sequence_stmt>(node)) {
+        const auto& seq = std::get<node_sequence_stmt>(node).sequence;
         if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
             return false;
         }
         return true;
     }
-    return std::holds_alternative<node_return_stmt>(*node.body);
+    return std::holds_alternative<node_return_stmt>(node);
 }
 
 auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
@@ -342,6 +342,22 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                 key.args.push_back(type_of_expr(com, *arg));
             }
             return com.functions.at(key).sig.return_type;
+        },
+        [&](const node_member_function_call_expr& expr) {
+            const auto obj_type = type_of_expr(com, *expr.expr);
+            auto key = function_key{};
+            key.name = std::format("{}::{}", obj_type, expr.function_name);
+            key.args.reserve(expr.args.size() + 1);
+            key.args.push_back(concrete_ptr_type(obj_type));
+            for (const auto& arg : expr.args) {
+                key.args.push_back(type_of_expr(com, *arg));
+            }
+            const auto it = com.functions.find(key);
+            if (it == com.functions.end()) {
+                const auto function_str = std::format("{}({})", key.name, format_comma_separated(key.args));
+                compiler_error(expr.token, "could not find function '{}'", function_str);
+            }
+            return it->second.sig.return_type;
         },
         [&](const node_list_expr& expr) {
             return type_name{type_list{
@@ -412,7 +428,7 @@ auto compile_expr_ptr(compiler& com, const node_arrow_expr& node) -> type_name
 {
     const auto type = compile_expr_val(com, *node.expr); // Push the address
     compiler_assert(is_ptr_type(type), node.token, "cannot use arrow operator on non-ptr type '{}'", type);
-    return compile_ptr_to_field(com, node.token, type, node.field_name);
+    return compile_ptr_to_field(com, node.token, inner_type(type), node.field_name);
 }
 
 auto compile_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
@@ -573,6 +589,47 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     compiler_error(node.token, "could not find function '{}'", function_str);
 }
 
+auto compile_expr_val(compiler& com, const node_member_function_call_expr& node) -> type_name
+{
+    const auto obj_type = type_of_expr(com, *node.expr);
+    const auto qualified_function_name = std::format("{}::{}", obj_type, node.function_name);
+
+    auto key = function_key{};
+    key.name = qualified_function_name;
+    key.args.reserve(node.args.size() + 1);
+    key.args.push_back(concrete_ptr_type(obj_type));
+    for (const auto& arg : node.args) {
+        key.args.push_back(type_of_expr(com, *arg));
+    }
+    
+    const auto it = com.functions.find(key);
+    if (it == com.functions.end()) {
+        compiler_error(node.token, "could not find function '{}'", qualified_function_name);
+    }
+    
+    const auto& [sig, ptr] = it->second;
+    static constexpr auto payload_size = std::size_t{3};
+    const auto return_size = com.types.size_of(sig.return_type);
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // base ptr
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // prog ptr
+    com.program.emplace_back(op_load_literal{ .blk=block_uint{return_size} });
+    
+    // Push the args to the stack
+    std::vector<type_name> param_types;
+    compile_expr_ptr(com, *node.expr);
+    param_types.emplace_back(concrete_ptr_type(obj_type));
+    for (const auto& arg : node.args) {
+        param_types.emplace_back(compile_expr_val(com, *arg));
+    }
+    verify_sig(node.token, sig, param_types);
+    com.program.emplace_back(anzu::op_function_call{
+        .name=node.function_name,
+        .ptr=ptr + 1, // Jump into the function
+        .args_size=signature_args_size(com, sig) + payload_size
+    });
+    return sig.return_type;
+}
+
 auto compile_expr_val(compiler& com, const node_list_expr& node) -> type_name
 {
     compiler_assert(!node.elements.empty(), node.token, "currently do not support empty list literals");
@@ -672,6 +729,10 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
     }
 
     com.types.add(make_type(node.name), node.fields);
+
+    for (const auto& function : node.functions) {
+        compile_stmt(com, *function);
+    }
 }
 
 void compile_stmt(compiler& com, const node_break_stmt&)
@@ -728,7 +789,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     compile_stmt(com, *node.body);
     com.current_func.reset();
 
-    if (!function_ends_with_return(node)) {
+    if (!function_ends_with_return(*node.body)) {
         // A function returning null does not need a final return statement, and in this case
         // we manually add a return value of null here.
         if (node.sig.return_type == null_type()) {
@@ -736,6 +797,54 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
             com.program.emplace_back(op_return{});
         } else {
             compiler_error(node.token, "function '{}' does not end in a return statement", node.name);
+        }
+    }
+    
+    std::get<anzu::op_function>(com.program[begin_pos]).jump = com.program.size();
+}
+
+void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
+{
+    compiler_assert(node.sig.args.size() >= 1, node.token, "member functions must have at least one arg");
+
+    const auto qualified_name = std::format("{}::{}", node.struct_name, node.function_name);
+
+    const auto expected = concrete_ptr_type(make_type(node.struct_name));
+    const auto actual = node.sig.args.front().type;
+    if (actual != expected) {
+        compiler_error(node.token, "first arg to member function should be '{}', got '{}'", expected, actual);
+    }
+
+    auto key = function_key{};
+    key.name = qualified_name;
+    key.args.reserve(node.sig.args.size());
+    for (const auto& arg : node.sig.args) {
+        verify_real_type(com, node.token, arg.type);
+        key.args.push_back(arg.type);
+    }
+    verify_real_type(com, node.token, node.sig.return_type);
+
+    const auto begin_pos = append_op(com, op_function{ .name=qualified_name });
+    com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
+
+    com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
+    declare_variable_name(com, node.token, "# old_base_ptr", uint_type()); // Store the old base ptr
+    declare_variable_name(com, node.token, "# old_prog_ptr", uint_type()); // Store the old program ptr
+    declare_variable_name(com, node.token, "# return_size", uint_type());  // Store the return size
+    for (const auto& arg : node.sig.args) {
+        declare_variable_name(com, node.token, arg.name, arg.type);
+    }
+    compile_stmt(com, *node.body);
+    com.current_func.reset();
+
+    if (!function_ends_with_return(*node.body)) {
+        // A function returning null does not need a final return statement, and in this case
+        // we manually add a return value of null here.
+        if (node.sig.return_type == null_type()) {
+            com.program.emplace_back(op_load_literal{block_null{}});
+            com.program.emplace_back(op_return{});
+        } else {
+            compiler_error(node.token, "function '{}' does not end in a return statement", qualified_name);
         }
     }
     

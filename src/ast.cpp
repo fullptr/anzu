@@ -50,6 +50,15 @@ auto print_node(const node_expr& root, int indent) -> void
                 print_node(*arg, indent + 1);
             }
         },
+        [&](const node_member_function_call_expr& node) {
+            print("{}MemberFunctionCall: {}\n", spaces, node.function_name);
+            print("{}- Object:\n", spaces);
+            print_node(*node.expr, indent + 1);
+            print("{}- Args:\n", spaces);
+            for (const auto& arg : node.args) {
+                print_node(*arg, indent + 1);
+            }
+        },
         [&](const node_list_expr& node) {
             print("{}List:\n", spaces);
             print("{}- Elements:\n", spaces);
@@ -114,6 +123,10 @@ auto print_node(const node_stmt& root, int indent) -> void
             for (const auto& field : node.fields) {
                 print("{}  - {}: {}\n", spaces, field.name, field.type);
             }
+            print("{}- MemberFunctions:\n", spaces);
+            for (const auto& function : node.functions) {
+                print_node(*function, indent + 1);
+            }
         },
         [&](const node_break_stmt& node) {
             print("{}Break\n", spaces);
@@ -136,6 +149,14 @@ auto print_node(const node_stmt& root, int indent) -> void
         },
         [&](const node_function_def_stmt& node) {
             print("{}Function: {} (", spaces, node.name);
+            print_comma_separated(node.sig.args, [](const auto& arg) {
+                return std::format("{}: {}", arg.name, arg.type);
+            });
+            print(") -> {}\n", node.sig.return_type);
+            print_node(*node.body, indent + 1);
+        },
+        [&](const node_member_function_def_stmt& node) {
+            print("{}MemberFunction: {}::{} (", spaces, node.struct_name, node.function_name);
             print_comma_separated(node.sig.args, [](const auto& arg) {
                 return std::format("{}: {}", arg.name, arg.type);
             });

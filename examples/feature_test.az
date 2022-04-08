@@ -156,3 +156,28 @@ my_span := span(&list_of_vec2s[0u], 3u)
 
 test_ptr_arithmetic(my_span)
 println(list_of_vec2s)
+
+# Member functions
+fn square(x: float) -> float
+{
+    return x * x
+}
+
+struct vec3
+{
+    x: float
+    y: float
+    z: float
+
+    fn length(self: &vec3) -> float
+    {
+        x_squared := square(self->x)
+        y_squared := square(self->y)
+        z_squared := square(self->z)
+        return sqrt(x_squared + y_squared + z_squared)
+    }
+}
+
+v := vec3(3.0, 4.0, 5.0)
+println("length of vec3(3.0, 4.0, 5.0):")
+println(v.length())

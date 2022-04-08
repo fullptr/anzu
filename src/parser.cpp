@@ -80,7 +80,7 @@ auto parse_literal(tokenstream& tokens) -> object
     if (tokens.consume_maybe(tk_null)) {
         return make_null();
     }
-    parser_error(tokens.curr(), "failed to parse literal");
+    parser_error(tokens.curr(), "failed to parse literal ({})", tokens.curr().text);
 };
 
 auto precedence_table()
@@ -164,10 +164,22 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     while (tokens.peek(tk_fullstop) || tokens.peek(tk_rarrow) || tokens.peek(tk_lbracket)) {
         auto new_node = std::make_unique<node_expr>();
         if (tokens.peek(tk_fullstop)) {
-            auto& expr = new_node->emplace<node_field_expr>();
-            expr.token = tokens.consume();
-            expr.field_name = tokens.consume().text;
-            expr.expr = std::move(node);
+            const auto tok = tokens.consume();
+            if (tokens.peek_next(tk_lparen)) {
+                auto& expr = new_node->emplace<node_member_function_call_expr>();
+                expr.token = tok;
+                expr.function_name = tokens.consume().text;
+                tokens.consume_only(tk_lparen);
+                tokens.consume_comma_separated_list(tk_rparen, [&] {
+                    expr.args.push_back(parse_expression(tokens));
+                });
+                expr.expr = std::move(node);
+            } else {
+                auto& expr = new_node->emplace<node_field_expr>();
+                expr.token = tok;
+                expr.field_name = tokens.consume().text;
+                expr.expr = std::move(node);
+            }
         } else if (tokens.peek(tk_rarrow)) {
             auto& expr = new_node->emplace<node_arrow_expr>();
             expr.token = tokens.consume();
@@ -256,6 +268,31 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_member_function_def_stmt(
+    const std::string& struct_name, tokenstream& tokens
+)
+    -> node_stmt_ptr
+{
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_member_function_def_stmt>();
+
+    stmt.token = tokens.consume_only(tk_function);
+    stmt.struct_name = struct_name;
+    stmt.function_name = parse_name(tokens);
+    tokens.consume_only(tk_lparen);
+    tokens.consume_comma_separated_list(tk_rparen, [&]{
+        auto arg = function_arg{};
+        arg.name = parse_name(tokens);
+        tokens.consume_only(tk_colon);
+        arg.type = parse_type(tokens);
+        stmt.sig.args.push_back(arg);
+    });    
+    tokens.consume_only(tk_rarrow);
+    stmt.sig.return_type = parse_type(tokens);
+    stmt.body = parse_statement(tokens);
+    return node;
+}
+
 auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_unique<node_stmt>();
@@ -307,11 +344,15 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lbrace);
     while (!tokens.consume_maybe(tk_rbrace)) {
-        stmt.fields.emplace_back();
-        auto& f = stmt.fields.back();
-        f.name = parse_name(tokens);
-        tokens.consume_only(tk_colon);
-        f.type = parse_type(tokens);
+        if (tokens.peek(tk_function)) {
+            stmt.functions.emplace_back(parse_member_function_def_stmt(stmt.name, tokens));
+        } else {
+            stmt.fields.emplace_back();
+            auto& f = stmt.fields.back();
+            f.name = parse_name(tokens);
+            tokens.consume_only(tk_colon);
+            f.type = parse_type(tokens);
+        }
     }
 
     return node;
