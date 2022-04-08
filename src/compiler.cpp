@@ -344,10 +344,11 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return com.functions.at(key).sig.return_type;
         },
         [&](const node_member_function_call_expr& expr) {
+            const auto obj_type = type_of_expr(com, *expr.expr);
             auto key = function_key{};
-            key.name = expr.function_name;
+            key.name = std::format("{}::{}", obj_type, expr.function_name);
             key.args.reserve(expr.args.size() + 1);
-            key.args.push_back(concrete_ptr_type(type_of_expr(com, *expr.expr)));
+            key.args.push_back(concrete_ptr_type(obj_type));
             for (const auto& arg : expr.args) {
                 key.args.push_back(type_of_expr(com, *arg));
             }
@@ -610,7 +611,8 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
     
     // Push the args to the stack
     std::vector<type_name> param_types;
-    param_types.emplace_back(compile_expr_ptr(com, *node.expr));
+    compile_expr_ptr(com, *node.expr);
+    param_types.emplace_back(concrete_ptr_type(obj_type));
     for (const auto& arg : node.args) {
         param_types.emplace_back(compile_expr_val(com, *arg));
     }

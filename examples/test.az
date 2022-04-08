@@ -13,4 +13,4 @@ struct vec2
 }
 
 v := vec2(1, 2)
-v.length()
+println(v.length())
