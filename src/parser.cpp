@@ -307,11 +307,15 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lbrace);
     while (!tokens.consume_maybe(tk_rbrace)) {
-        stmt.fields.emplace_back();
-        auto& f = stmt.fields.back();
-        f.name = parse_name(tokens);
-        tokens.consume_only(tk_colon);
-        f.type = parse_type(tokens);
+        if (tokens.peek(tk_function)) {
+
+        } else {
+            stmt.fields.emplace_back();
+            auto& f = stmt.fields.back();
+            f.name = parse_name(tokens);
+            tokens.consume_only(tk_colon);
+            f.type = parse_type(tokens);
+        }
     }
 
     return node;

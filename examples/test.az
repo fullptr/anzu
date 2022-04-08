@@ -1,21 +1,13 @@
 
 
 
-fn adder(x: int, y: int) -> null
-{
-    println("called adder for int!")
-}
-
-fn adder(x: float, y: float) -> null
-{
-    println("called adder for float!")
-}
-
 class vec2
 {
-    x: float
-    y: float
-}
+    x: int
+    y: int
 
-v := vec(2.0, 3.0)
-l := v.size()
+    fn length(self: &vec2) -> int
+    {
+        return 1
+    }
+}

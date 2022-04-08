@@ -123,6 +123,10 @@ auto print_node(const node_stmt& root, int indent) -> void
             for (const auto& field : node.fields) {
                 print("{}  - {}: {}\n", spaces, field.name, field.type);
             }
+            print("{}- MemberFunctions:\n", spaces);
+            for (const auto& function : node.functions) {
+                print_node(*function, indent + 1);
+            }
         },
         [&](const node_break_stmt& node) {
             print("{}Break\n", spaces);
