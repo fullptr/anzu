@@ -300,16 +300,16 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
     return sig;
 }
 
-auto function_ends_with_return(const node_function_def_stmt& node) -> bool
+auto function_ends_with_return(const node_stmt& node) -> bool
 {
-    if (std::holds_alternative<node_sequence_stmt>(*node.body)) {
-        const auto& seq = std::get<node_sequence_stmt>(*node.body).sequence;
+    if (std::holds_alternative<node_sequence_stmt>(node)) {
+        const auto& seq = std::get<node_sequence_stmt>(node).sequence;
         if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
             return false;
         }
         return true;
     }
-    return std::holds_alternative<node_return_stmt>(*node.body);
+    return std::holds_alternative<node_return_stmt>(node);
 }
 
 auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
@@ -737,7 +737,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     compile_stmt(com, *node.body);
     com.current_func.reset();
 
-    if (!function_ends_with_return(node)) {
+    if (!function_ends_with_return(*node.body)) {
         // A function returning null does not need a final return statement, and in this case
         // we manually add a return value of null here.
         if (node.sig.return_type == null_type()) {
@@ -753,13 +753,10 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
-    if (com.types.contains(make_type(node.name))) {
-        compiler_error(node.token, "'{}' cannot be a function name, it is a type def", node.name);
-    }
-    com.function_names.insert(node.name);
+    const auto qualified_name = std::format("{}::{}", node.struct_name, node.function_name);
 
     auto key = function_key{};
-    key.name = node.name;
+    key.name = qualified_name;
     key.args.reserve(node.sig.args.size());
     for (const auto& arg : node.sig.args) {
         verify_real_type(com, node.token, arg.type);
@@ -767,7 +764,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     }
     verify_real_type(com, node.token, node.sig.return_type);
 
-    const auto begin_pos = append_op(com, op_function{ .name=node.name });
+    const auto begin_pos = append_op(com, op_function{ .name=qualified_name });
     com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
@@ -780,16 +777,16 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     compile_stmt(com, *node.body);
     com.current_func.reset();
 
-    //if (!function_ends_with_return(node)) {
-    //    // A function returning null does not need a final return statement, and in this case
-    //    // we manually add a return value of null here.
-    //    if (node.sig.return_type == null_type()) {
-    //        com.program.emplace_back(op_load_literal{block_null{}});
-    //        com.program.emplace_back(op_return{});
-    //    } else {
-    //        compiler_error(node.token, "function '{}' does not end in a return statement", node.name);
-    //    }
-    //}
+    if (!function_ends_with_return(*node.body)) {
+        // A function returning null does not need a final return statement, and in this case
+        // we manually add a return value of null here.
+        if (node.sig.return_type == null_type()) {
+            com.program.emplace_back(op_load_literal{block_null{}});
+            com.program.emplace_back(op_return{});
+        } else {
+            compiler_error(node.token, "function '{}' does not end in a return statement", qualified_name);
+        }
+    }
     
     std::get<anzu::op_function>(com.program[begin_pos]).jump = com.program.size();
 }

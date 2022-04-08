@@ -203,7 +203,8 @@ struct node_function_def_stmt
 
 struct node_member_function_def_stmt
 {
-    std::string   name;
+    std::string   struct_name;
+    std::string   function_name;
     signature     sig;
     node_stmt_ptr body;
 

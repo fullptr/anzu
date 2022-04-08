@@ -156,7 +156,7 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.body, indent + 1);
         },
         [&](const node_member_function_def_stmt& node) {
-            print("{}MemberFunction: {} (", spaces, node.name);
+            print("{}MemberFunction: {}::{} (", spaces, node.struct_name, node.function_name);
             print_comma_separated(node.sig.args, [](const auto& arg) {
                 return std::format("{}: {}", arg.name, arg.type);
             });
