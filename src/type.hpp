@@ -64,6 +64,7 @@ auto hash(const type_simple& type) -> std::size_t;
 
 auto int_type() -> type_name;
 auto uint_type() -> type_name;
+auto char_type() -> type_name;
 auto float_type() -> type_name;
 auto bool_type() -> type_name;
 auto str_type() -> type_name;

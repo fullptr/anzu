@@ -14,14 +14,15 @@ auto is_consumable_type(token_type type) -> bool
 auto to_string(token_type type) -> std::string
 {
     switch (type) {
-        break; case token_type::keyword:  { return "keyword"; };
-        break; case token_type::symbol:   { return "symbol"; };
-        break; case token_type::name:     { return "name"; };
-        break; case token_type::integer:  { return "integer"; };
-        break; case token_type::uinteger: { return "uinteger"; };
-        break; case token_type::floating: { return "float"; };
-        break; case token_type::string:   { return "string"; };
-        break; default:                   { return "UNKNOWN"; };
+        break; case token_type::keyword:   { return "keyword"; };
+        break; case token_type::symbol:    { return "symbol"; };
+        break; case token_type::name:      { return "name"; };
+        break; case token_type::integer:   { return "integer"; };
+        break; case token_type::uinteger:  { return "uinteger"; };
+        break; case token_type::character: { return "character"; };
+        break; case token_type::floating:  { return "float"; };
+        break; case token_type::string:    { return "string"; };
+        break; default:                    { return "UNKNOWN"; };
     }
 }
 
