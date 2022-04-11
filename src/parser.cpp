@@ -68,6 +68,13 @@ auto parse_literal(tokenstream& tokens) -> object
     if (tokens.curr().type == token_type::floating) {
         return make_float(to_float(tokens.consume().text));
     }
+    if (tokens.curr().type == token_type::character) {
+        const auto c = tokens.consume().text;
+        if (c.size() != 1) {
+            parser_error(tokens.curr(), "failed to parse char ({})", c);
+        }
+        return make_char(std::bit_cast<block_byte>(c.front()));
+    }
     if (tokens.curr().type == token_type::string) {
         return make_str(tokens.consume().text);
     }

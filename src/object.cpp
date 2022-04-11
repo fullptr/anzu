@@ -41,7 +41,12 @@ auto make_int(block_int val) -> object
 
 auto make_uint(block_uint val) -> object
 {
-    return { .data = { block_uint{val} }, .type = uint_type() };
+    return { .data = { val }, .type = uint_type() };
+}
+
+auto make_char(block_byte val) -> object
+{
+    return { .data = { val }, .type = char_type() };
 }
 
 auto make_float(block_float val) -> object

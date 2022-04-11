@@ -50,6 +50,7 @@ auto to_string(const object& object) -> std::string;
 
 auto make_int(block_int val) -> object;
 auto make_uint(block_uint val) -> object;
+auto make_char(block_byte val) -> object;
 auto make_float(block_float val) -> object;
 auto make_bool(block_bool val) -> object;
 auto make_str(const block_str& val) -> object;
