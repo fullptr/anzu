@@ -20,6 +20,7 @@ auto format_error(const std::string& str) -> void
 auto to_string(const block& blk) -> std::string
 {
     return std::visit(overloaded {
+        [](block_byte byte) { return std::format("{:x}", static_cast<unsigned char>(byte)); },
         [](const block_str& v) { return std::format("'{}'", v); },
         [](block_ptr ptr) { return std::format("[{:x}:{}]", ptr.ptr, ptr.size); },
         [](block_null) { return std::string{"null"}; },

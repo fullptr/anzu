@@ -19,7 +19,7 @@ void print_usage()
     anzu::print("    run   - runs the program\n");
 }
 
-int main(int argc, char** argv)
+auto main(const int argc, const char* argv[]) -> int
 {
     if (argc != 3) {
         print_usage();
