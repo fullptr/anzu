@@ -19,21 +19,10 @@ auto builtin_sqrt(std::span<const block> args) -> block
 
 auto builtin_print(std::span<const block> args) -> block
 {
-    const auto to_string = [](const block& blk) {
-        return std::visit(overloaded{
-            [](const block_str& blk) {
-                return std::format("{}", format_special_chars(blk));
-            },
-            [&](const auto&) {
-                return std::format("{}", blk);
-            }
-        }, blk);
-    };
-
     if (args.size() > 1) {
         auto out = std::format("{{{}", to_string(args.front()));
         for (const auto& arg : args | std::views::drop(1)) {
-            out += std::format(", {}", to_string(arg));
+            out += std::format(", {}", arg);
         }
         print("{}}}", out);
     } else {
@@ -44,24 +33,13 @@ auto builtin_print(std::span<const block> args) -> block
 
 auto builtin_println(std::span<const block> args) -> block
 {
-    const auto to_string = [](const block& blk) {
-        return std::visit(overloaded{
-            [](const block_str& blk) {
-                return std::format("{}", format_special_chars(blk));
-            },
-            [&](const auto&) {
-                return std::format("{}", blk);
-            }
-        }, blk);
-    };
-
     if (args.size() == 0) {
         print("Empty println call!\n");
     }
     else if (args.size() > 1) {
         auto out = std::format("{{{}", to_string(args.front()));
         for (const auto& arg : args | std::views::drop(1)) {
-            out += std::format(", {}", to_string(arg));
+            out += std::format(", {}", arg);
         }
         print("{}}}\n", out);
     } else {
@@ -74,13 +52,6 @@ auto builtin_put(std::span<const block> args) -> block
 {
     anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
     return block{block_null{}};
-}
-
-auto builtin_input(std::span<const block> args) -> block
-{
-    std::string in;
-    std::cin >> in;
-    return block{in};
 }
 
 }
@@ -126,14 +97,6 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
                 { .name = "c", .type = char_type() }
             },
             .return_type = null_type()
-        }
-    });
-
-    builtins.emplace("input", builtin{
-        .ptr = builtin_input,
-        .sig = {
-            .args = {},
-            .return_type = str_type()
         }
     });
 

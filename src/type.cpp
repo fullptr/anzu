@@ -129,7 +129,6 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == char_type()
         || type == float_type()
         || type == bool_type()
-        || type == str_type()
         || type == null_type();
 }
 

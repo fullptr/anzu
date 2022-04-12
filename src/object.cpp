@@ -21,7 +21,6 @@ auto to_string(const block& blk) -> std::string
 {
     return std::visit(overloaded {
         [](block_byte byte) { return std::format("{:x}", static_cast<unsigned char>(byte)); },
-        [](const block_str& v) { return std::format("'{}'", v); },
         [](block_ptr ptr) { return std::format("[{:x}:{}]", ptr.ptr, ptr.size); },
         [](block_null) { return std::string{"null"}; },
         [](block_uint val) { return std::format("{}u", val); },
@@ -57,16 +56,6 @@ auto make_float(block_float val) -> object
 auto make_bool(block_bool val) -> object
 {
     return { .data = { block_bool{val} }, .type = bool_type() };
-}
-
-auto make_str(const block_str& val) -> object
-{
-    auto data = std::vector<block>{};
-    data.reserve(val.size());
-    for (char c : val) {
-        data.push_back(std::bit_cast<std::byte>(c));
-    }
-    return { .data = data, .type = str_literal_type(val.size()) };
 }
 
 auto make_null() -> object

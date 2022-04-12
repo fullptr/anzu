@@ -1,6 +1,11 @@
 
 x := "hello world"
 
+struct string
+{
+    
+}
+
 fn p(ptr: &char, size: uint) -> null
 {
     idx := 0u
