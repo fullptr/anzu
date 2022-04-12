@@ -61,7 +61,12 @@ auto make_bool(block_bool val) -> object
 
 auto make_str(const block_str& val) -> object
 {
-    return { .data = { block_str{val} }, .type = str_type() };
+    auto data = std::vector<block>{};
+    data.reserve(val.size());
+    for (char c : val) {
+        data.push_back(std::bit_cast<std::byte>(c));
+    }
+    return { .data = data, .type = str_literal_type(val.size()) };
 }
 
 auto make_null() -> object

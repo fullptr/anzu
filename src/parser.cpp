@@ -20,6 +20,14 @@ template <typename... Args>
     std::exit(1);
 }
 
+template <typename... Args>
+[[noreturn]] void parser_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
+{
+    if (!cond) {
+        parser_error(tok, msg, std::forward<Args>(args)...);
+    }
+}
+
 auto to_int(std::string_view token) -> block_int
 {
     auto result = block_int{};
@@ -70,9 +78,7 @@ auto parse_literal(tokenstream& tokens) -> object
     }
     if (tokens.curr().type == token_type::character) {
         const auto c = tokens.consume().text;
-        if (c.size() != 1) {
-            parser_error(tokens.curr(), "failed to parse char ({})", c);
-        }
+        parser_assert(c.size() == 1, tokens.curr(), "failed to parse char ({})", c);
         return make_char(std::bit_cast<block_byte>(c.front()));
     }
     if (tokens.curr().type == token_type::string) {

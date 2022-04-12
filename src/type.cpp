@@ -84,6 +84,11 @@ auto null_type() -> type_name
     return {type_simple{ .name = std::string{tk_null} }};
 }
 
+auto str_literal_type(std::size_t length) -> type_name
+{
+    return {type_list{ .inner_type = make_type(std::string{tk_char}), .count=length }};
+}
+
 auto concrete_list_type(const type_name& t, std::size_t size) -> type_name
 {
     return {type_list{ .inner_type = { t }, .count = size }};
