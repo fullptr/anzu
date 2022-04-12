@@ -17,19 +17,6 @@ auto builtin_sqrt(std::span<const block> args) -> block
     return block_float{std::sqrt(val)};
 }
 
-auto builtin_str_size(std::span<const block> args) -> block
-{
-    const auto& str = std::get<block_str>(args[0]);
-    return block_uint{str.size()};
-}
-
-auto builtin_str_at(std::span<const block> args) -> block
-{
-    const auto& str = std::get<block_str>(args[0]);
-    const auto& idx = std::get<block_uint>(args[1]);
-    return block_str{str.at(idx)};
-}
-
 auto builtin_print(std::span<const block> args) -> block
 {
     const auto to_string = [](const block& blk) {
@@ -68,7 +55,10 @@ auto builtin_println(std::span<const block> args) -> block
         }, blk);
     };
 
-    if (args.size() > 1) {
+    if (args.size() == 0) {
+        print("Hempry println call!\n");
+    }
+    else if (args.size() > 1) {
         auto out = std::format("{{{}", to_string(args.front()));
         for (const auto& arg : args | std::views::drop(1)) {
             out += std::format(", {}", to_string(arg));
@@ -100,27 +90,6 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
                 { .name = "val", .type = float_type() }
             },
             .return_type = float_type()
-        }
-    });
-
-    builtins.emplace("str_size", builtin{
-        .ptr = builtin_str_size,
-        .sig = {
-            .args = {
-                { .name = "string", .type = str_type() }
-            },
-            .return_type = uint_type()
-        }
-    });
-
-    builtins.emplace("str_at", builtin{
-        .ptr = builtin_str_at,
-        .sig = {
-            .args = {
-                { .name = "string", .type = str_type() },
-                { .name = "index",  .type = uint_type() }
-            },
-            .return_type = str_type()
         }
     });
 
