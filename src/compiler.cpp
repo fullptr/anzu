@@ -341,7 +341,11 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             for (const auto& arg : expr.args) {
                 key.args.push_back(type_of_expr(com, *arg));
             }
-            return com.functions.at(key).sig.return_type;
+            auto it = com.functions.find(key);
+            if (it == com.functions.end()) {
+                compiler_error(expr.token, "could not find function '{}'", key.name);
+            }
+            return it->second.sig.return_type;
         },
         [&](const node_member_function_call_expr& expr) {
             const auto obj_type = type_of_expr(com, *expr.expr);

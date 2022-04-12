@@ -56,7 +56,7 @@ auto builtin_println(std::span<const block> args) -> block
     };
 
     if (args.size() == 0) {
-        print("Hempry println call!\n");
+        print("Empty println call!\n");
     }
     else if (args.size() > 1) {
         auto out = std::format("{{{}", to_string(args.front()));
@@ -67,6 +67,12 @@ auto builtin_println(std::span<const block> args) -> block
     } else {
         print("{}\n", to_string(args[0]));
     }
+    return block{block_null{}};
+}
+
+auto builtin_put(std::span<const block> args) -> block
+{
+    anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
     return block{block_null{}};
 }
 
@@ -108,6 +114,16 @@ auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
         .sig = {
             .args = {
                 { .name = "obj", .type = int_type() }
+            },
+            .return_type = null_type()
+        }
+    });
+
+    builtins.emplace("put", builtin{
+        .ptr = builtin_put,
+        .sig = {
+            .args = {
+                { .name = "c", .type = char_type() }
             },
             .return_type = null_type()
         }

@@ -55,7 +55,7 @@ auto tokenstream::consume_only(std::string_view text) -> token
     }
     if (curr().text != text || !is_consumable_type(curr().type)) {
         const auto [tok_text, line, col, type] = curr();
-        anzu::print("[ERROR] ({}:{}) expected '{}', got '{}\n", line, col, text, tok_text);
+        anzu::print("[ERROR] ({}:{}) expected '{}', got '{}'\n", line, col, text, tok_text);
         std::exit(1);
     }
     return consume();
