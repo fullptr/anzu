@@ -97,7 +97,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = op.jump;
         },
         [&](const op_jump_if_false& op) {
-            if (std::get<block_bool>(ctx.memory.back())) {
+            if (std::get<block_byte>(ctx.memory.back()) == block_byte{1}) {
                 ++ctx.prog_ptr;
             } else {
                 ctx.prog_ptr = op.jump;

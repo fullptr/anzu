@@ -52,9 +52,10 @@ auto make_float(block_float val) -> object
     return { .data = { block_float{val} }, .type = float_type() };
 }
 
-auto make_bool(block_bool val) -> object
+auto make_bool(bool val) -> object
 {
-    return { .data = { block_bool{val} }, .type = bool_type() };
+    const auto v = val ? block_byte{1} : block_byte{0};
+    return { .data = { v }, .type = bool_type() };
 }
 
 auto make_null() -> object

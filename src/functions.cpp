@@ -43,6 +43,18 @@ auto builtin_println_char(std::span<const block> args) -> block
     return block{block_byte{0}};
 }
 
+auto builtin_print_bool(std::span<const block> args) -> block
+{
+    print("{}", std::get<block_byte>(args[0]) == block_byte{1});
+    return block{block_byte{0}};
+}
+
+auto builtin_println_bool(std::span<const block> args) -> block
+{
+    print("{}\n", std::get<block_byte>(args[0]) == block_byte{1});
+    return block{block_byte{0}};
+}
+
 auto builtin_print_null(std::span<const block> args) -> block
 {
     print("null");
@@ -110,11 +122,11 @@ auto construct_builtin_map() -> builtin_map
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_print<block_bool>, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print_bool, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_println<block_bool>, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println_bool, .return_type = null_type() }
     );
 
     builtins.emplace(
