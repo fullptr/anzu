@@ -81,6 +81,15 @@ auto parse_literal(tokenstream& tokens) -> object
         parser_assert(c.size() == 1, tokens.curr(), "failed to parse char ({})", c);
         return make_char(std::bit_cast<block_byte>(c.front()));
     }
+    if (tokens.curr().type == token_type::string) {
+        auto ret = object{};
+        for (char c : tokens.curr().text) {
+            ret.data.push_back(static_cast<block_byte>(c));
+        }
+        ret.type = concrete_list_type(char_type(), tokens.curr().text.size());
+        tokens.consume();
+        return ret;
+    }
     if (tokens.consume_maybe(tk_true)) {
         return make_bool(true);
     }

@@ -56,63 +56,43 @@ auto builtin_put(std::span<const block> args) -> block
 
 }
 
-auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
+auto construct_builtin_map() -> builtin_map
 {
-    auto builtins = std::unordered_map<std::string, builtin>{};
+    auto builtins = builtin_map{};
 
-    builtins.emplace("sqrt", builtin{
-        .ptr = builtin_sqrt,
-        .sig = {
-            .args = {
-                { .name = "val", .type = float_type() }
-            },
-            .return_type = float_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "sqrt", .args = { float_type() } },
+        builtin_val{ .ptr = builtin_sqrt, .return_type = float_type() }
+    );
 
-    builtins.emplace("print", builtin{
-        .ptr = builtin_print,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = int_type() }
-            },
-            .return_type = null_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { int_type() } },
+        builtin_val{ .ptr = builtin_print, .return_type = null_type() }
+    );
 
-    builtins.emplace("println", builtin{
-        .ptr = builtin_println,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = int_type() }
-            },
-            .return_type = null_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { int_type() } },
+        builtin_val{ .ptr = builtin_println, .return_type = null_type() }
+    );
 
-    builtins.emplace("put", builtin{
-        .ptr = builtin_put,
-        .sig = {
-            .args = {
-                { .name = "c", .type = char_type() }
-            },
-            .return_type = null_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "put", .args = { char_type() } },
+        builtin_val{ .ptr = builtin_put, .return_type = null_type() }
+    );
 
     return builtins;
 }
 
-static const std::unordered_map<std::string, builtin> builtins = construct_builtin_map();
+static const auto builtins = construct_builtin_map();
 
-auto is_builtin(const std::string& name) -> bool
+auto is_builtin(const std::string& name, const std::vector<type_name>& args) -> bool
 {
-    return builtins.contains(name);
+    return builtins.contains({name, args});
 }
 
-auto fetch_builtin(const std::string& name) -> const builtin&
+auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) -> const builtin_val&
 {
-    auto it = builtins.find(name);
+    auto it = builtins.find({name, args});
     if (it == builtins.end()) {
         anzu::print("builtin error: could not find function '{}'\n", name);
         std::exit(1);
