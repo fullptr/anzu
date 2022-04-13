@@ -1,22 +1,4 @@
 
-x := "hello world"
+x := ""
 
-struct string
-{
-    
-}
-
-fn p(ptr: &char, size: uint) -> null
-{
-    idx := 0u
-    while idx < size {
-        put(*(ptr + idx))
-        idx = idx + 1u
-    }
-}
-
-p(&x[0u], size_of(x))
-
-println(false)
-println('c')
-println(4.5)
+println(x)

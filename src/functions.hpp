@@ -9,7 +9,7 @@
 
 namespace anzu {
 
-using builtin_function = block(*)(std::span<const block>);
+using builtin_function = std::function<block(std::span<const block>)>;
 
 struct builtin_key
 {
@@ -37,6 +37,6 @@ using builtin_hash = decltype([](const builtin_key& x) { return hash(x); });
 using builtin_map = std::unordered_map<builtin_key, builtin_val, builtin_hash>;
 
 auto is_builtin(const std::string& name, const std::vector<type_name>& args) -> bool;
-auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) -> const builtin_val&;
+auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) -> builtin_val;
     
 }
