@@ -32,6 +32,11 @@ auto to_string(const object& object) -> std::string
     return std::format("{}({})", object.type, format_comma_separated(object.data));
 }
 
+auto make_i32(std::int32_t val) -> object
+{
+    return { .data = to_bytes(val), .type = i32_type() };
+}
+
 auto make_int(std::int64_t val) -> object
 {
     return { .data = { block_int{val} }, .type = int_type() };

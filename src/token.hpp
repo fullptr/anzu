@@ -17,6 +17,7 @@ enum class token_type
     uinteger,
     character,
     floating,
+    i32,
     string
 };
 

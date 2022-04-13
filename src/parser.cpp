@@ -39,6 +39,18 @@ auto to_int(std::string_view token) -> block_int
     return result;
 }
 
+auto to_i32(std::string_view token) -> std::int32_t
+{
+    token.remove_suffix(tk_i32.size());
+    auto result = std::int32_t{};
+    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
+    if (ec != std::errc{}) {
+        print("type error: cannot convert '{}' to '{}'\n", token, tk_i32);
+        std::exit(1);
+    }
+    return result;
+}
+
 auto to_uint(std::string_view token) -> block_uint
 {
     token.remove_suffix(1); // Strip 'u'
@@ -67,6 +79,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
+    if (tokens.curr().type == token_type::i32) {
+        return make_i32(to_i32(tokens.consume().text));
+    }
     if (tokens.curr().type == token_type::integer) {
         return make_int(to_int(tokens.consume().text));
     }

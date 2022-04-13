@@ -67,6 +67,26 @@ auto builtin_println_null(std::span<const block> args) -> block
     return block{block_byte{0}};
 }
 
+auto builtin_print_i32(std::span<const block> args) -> block
+{
+    auto bytes = std::array<std::byte, 4>();
+    for (std::size_t i = 0; i != 4; ++i) {
+        bytes[i] = std::get<std::byte>(args[i]);
+    }
+    print("{}", std::bit_cast<std::int32_t>(bytes));
+    return block{block_byte{0}};
+}
+
+auto builtin_println_i32(std::span<const block> args) -> block
+{
+    auto bytes = std::array<std::byte, 4>();
+    for (std::size_t i = 0; i != 4; ++i) {
+        bytes[i] = std::get<std::byte>(args[i]);
+    }
+    print("{}\n", std::bit_cast<std::int32_t>(bytes));
+    return block{block_byte{0}};
+}
+
 auto builtin_put(std::span<const block> args) -> block
 {
     anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
@@ -136,6 +156,15 @@ auto construct_builtin_map() -> builtin_map
     builtins.emplace(
         builtin_key{ .name = "println", .args = { null_type() } },
         builtin_val{ .ptr = builtin_println_null, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { i32_type() } },
+        builtin_val{ .ptr = builtin_print_i32, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { i32_type() } },
+        builtin_val{ .ptr = builtin_println_i32, .return_type = null_type() }
     );
 
     builtins.emplace(
