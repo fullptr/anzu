@@ -341,7 +341,11 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             for (const auto& arg : expr.args) {
                 key.args.push_back(type_of_expr(com, *arg));
             }
-            return com.functions.at(key).sig.return_type;
+            auto it = com.functions.find(key);
+            if (it == com.functions.end()) {
+                compiler_error(expr.token, "could not find function '{}'", key.name);
+            }
+            return it->second.sig.return_type;
         },
         [&](const node_member_function_call_expr& expr) {
             const auto obj_type = type_of_expr(com, *expr.expr);
@@ -561,28 +565,23 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
 
     // Otherwise, it must be a builtin function.
-    if (is_builtin(node.function_name)) {
-        // Push the args to the stack
-        std::vector<type_name> param_types;
-        for (const auto& arg : node.args) {
-            param_types.emplace_back(compile_expr_val(com, *arg));
-        }
+    // Push the args to the stack
+    auto param_types = std::vector<type_name>{};
+    auto args_size = std::size_t{0};
+    for (const auto& arg : node.args) {
+        param_types.emplace_back(compile_expr_val(com, *arg));
+        args_size += com.types.size_of(param_types.back());
+    }
 
-        const auto& builtin = anzu::fetch_builtin(node.function_name);
-
-        // TODO: Make this more generic, but we need to fill in the types before
-        // calling here, so that we can pass in the correct block count
-        auto sig = builtin.sig;
-        if (node.function_name == "print" || node.function_name == "println") {
-            sig.args[0].type = param_types[0];
-        }
+    if (is_builtin(node.function_name, param_types)) {
+        const auto& builtin = anzu::fetch_builtin(node.function_name, param_types);
 
         com.program.emplace_back(anzu::op_builtin_call{
             .name=node.function_name,
             .ptr=builtin.ptr,
-            .args_size=signature_args_size(com, sig)
+            .args_size=args_size
         });
-        return sig.return_type;
+        return builtin.return_type;
     }
 
     const auto function_str = std::format("{}({})", node.function_name, format_comma_separated(key.args));

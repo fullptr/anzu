@@ -59,6 +59,11 @@ auto uint_type() -> type_name
     return {type_simple{ .name = std::string{tk_uint} }};
 }
 
+auto char_type() -> type_name
+{
+    return {type_simple{ .name = std::string{tk_char} }};
+}
+
 auto float_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_float} }};
@@ -77,6 +82,11 @@ auto str_type()  -> type_name
 auto null_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_null} }};
+}
+
+auto str_literal_type(std::size_t length) -> type_name
+{
+    return {type_list{ .inner_type = make_type(std::string{tk_char}), .count=length }};
 }
 
 auto concrete_list_type(const type_name& t, std::size_t size) -> type_name
@@ -116,9 +126,9 @@ auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == int_type()
         || type == uint_type()
+        || type == char_type()
         || type == float_type()
         || type == bool_type()
-        || type == str_type()
         || type == null_type();
 }
 

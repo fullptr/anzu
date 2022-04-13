@@ -14,11 +14,11 @@ namespace anzu {
 // to use it as indexes into C++ vectors which use size_t.
 static_assert(sizeof(std::uint64_t) == sizeof(std::size_t));
 
+using block_byte  = std::byte;
 using block_int   = std::int64_t;
 using block_uint  = std::uint64_t;
 using block_float = double;
 using block_bool  = bool;
-using block_str   = std::string;
 using block_null  = std::monostate;
 
 struct block_ptr
@@ -28,11 +28,11 @@ struct block_ptr
 };
 
 using block = std::variant<
+    block_byte,
     block_int,
     block_uint,
     block_float,
     block_bool,
-    block_str,
     block_ptr,
     block_null
 >;
@@ -48,9 +48,9 @@ auto to_string(const object& object) -> std::string;
 
 auto make_int(block_int val) -> object;
 auto make_uint(block_uint val) -> object;
+auto make_char(block_byte val) -> object;
 auto make_float(block_float val) -> object;
 auto make_bool(block_bool val) -> object;
-auto make_str(const block_str& val) -> object;
 auto make_null() -> object;
 
 // Should be elsewhere

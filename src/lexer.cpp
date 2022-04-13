@@ -120,6 +120,13 @@ auto lex_line(
             const auto literal = parse_string_literal(lineno, iter);
             push_token(literal, col, token_type::string);
         }
+        else if (iter.consume_maybe('\'')) {
+            const auto c = iter.consume();
+            if (!iter.consume_maybe('\'')) {
+                lexer_error(lineno, col, "EOF reached before closing character literal");
+            }
+            push_token(std::string{c}, col, token_type::character);
+        }
         else if (iter.consume_maybe('#')) {
             return;
         }

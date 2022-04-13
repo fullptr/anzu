@@ -12,4 +12,6 @@ while i < 1000 {
     i = i + 1
 }
 
+x := "hello"
+
 println(count)

@@ -64,10 +64,12 @@ auto hash(const type_simple& type) -> std::size_t;
 
 auto int_type() -> type_name;
 auto uint_type() -> type_name;
+auto char_type() -> type_name;
 auto float_type() -> type_name;
 auto bool_type() -> type_name;
 auto str_type() -> type_name;
 auto null_type() -> type_name;
+auto str_literal_type(std::size_t length) -> type_name;
 
 inline auto make_type(const std::string& name) -> type_name
 {

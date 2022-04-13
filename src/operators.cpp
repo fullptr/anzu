@@ -160,13 +160,11 @@ auto resolve_binary_op(
             return binary_op_info{ bin_op<block_bool, std::logical_or>, type };
         }
     }
-    else if (type == str_type()) {
-        if (desc.op == tk_add) {
-            return binary_op_info{ bin_op<block_str, std::plus>, type };
-        } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op<block_str, std::equal_to>, bool_type() };
+    else if (type == char_type()) {
+        if (desc.op == tk_eq) {
+            return binary_op_info{ bin_op<block_byte, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op<block_str, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<block_byte, std::not_equal_to>, bool_type() };
         }
     }
 

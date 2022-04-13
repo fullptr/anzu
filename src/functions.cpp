@@ -17,156 +17,165 @@ auto builtin_sqrt(std::span<const block> args) -> block
     return block_float{std::sqrt(val)};
 }
 
-auto builtin_str_size(std::span<const block> args) -> block
-{
-    const auto& str = std::get<block_str>(args[0]);
-    return block_uint{str.size()};
-}
-
-auto builtin_str_at(std::span<const block> args) -> block
-{
-    const auto& str = std::get<block_str>(args[0]);
-    const auto& idx = std::get<block_uint>(args[1]);
-    return block_str{str.at(idx)};
-}
-
+template <typename T>
 auto builtin_print(std::span<const block> args) -> block
 {
-    const auto to_string = [](const block& blk) {
-        return std::visit(overloaded{
-            [](const block_str& blk) {
-                return std::format("{}", format_special_chars(blk));
-            },
-            [&](const auto&) {
-                return std::format("{}", blk);
-            }
-        }, blk);
-    };
-
-    if (args.size() > 1) {
-        auto out = std::format("{{{}", to_string(args.front()));
-        for (const auto& arg : args | std::views::drop(1)) {
-            out += std::format(", {}", to_string(arg));
-        }
-        print("{}}}", out);
-    } else {
-        print("{}", to_string(args[0]));
-    }
+    print("{}", std::get<T>(args[0]));
     return block{block_null{}};
 }
 
+template <typename T>
 auto builtin_println(std::span<const block> args) -> block
 {
-    const auto to_string = [](const block& blk) {
-        return std::visit(overloaded{
-            [](const block_str& blk) {
-                return std::format("{}", format_special_chars(blk));
-            },
-            [&](const auto&) {
-                return std::format("{}", blk);
-            }
-        }, blk);
-    };
-
-    if (args.size() > 1) {
-        auto out = std::format("{{{}", to_string(args.front()));
-        for (const auto& arg : args | std::views::drop(1)) {
-            out += std::format(", {}", to_string(arg));
-        }
-        print("{}}}\n", out);
-    } else {
-        print("{}\n", to_string(args[0]));
-    }
+    print("{}\n", std::get<T>(args[0]));
     return block{block_null{}};
 }
 
-auto builtin_input(std::span<const block> args) -> block
+auto builtin_print_char(std::span<const block> args) -> block
 {
-    std::string in;
-    std::cin >> in;
-    return block{in};
+    print("{}", static_cast<char>(std::get<block_byte>(args[0])));
+    return block{block_null{}};
+}
+
+auto builtin_println_char(std::span<const block> args) -> block
+{
+    print("{}\n", static_cast<char>(std::get<block_byte>(args[0])));
+    return block{block_null{}};
+}
+
+auto builtin_print_null(std::span<const block> args) -> block
+{
+    print("null");
+    return block{block_null{}};
+}
+
+auto builtin_println_null(std::span<const block> args) -> block
+{
+    print("null\n");
+    return block{block_null{}};
+}
+
+auto builtin_put(std::span<const block> args) -> block
+{
+    anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
+    return block{block_null{}};
 }
 
 }
 
-auto construct_builtin_map() -> std::unordered_map<std::string, builtin>
+auto construct_builtin_map() -> builtin_map
 {
-    auto builtins = std::unordered_map<std::string, builtin>{};
+    auto builtins = builtin_map{};
 
-    builtins.emplace("sqrt", builtin{
-        .ptr = builtin_sqrt,
-        .sig = {
-            .args = {
-                { .name = "val", .type = float_type() }
-            },
-            .return_type = float_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "sqrt", .args = { float_type() } },
+        builtin_val{ .ptr = builtin_sqrt, .return_type = float_type() }
+    );
 
-    builtins.emplace("str_size", builtin{
-        .ptr = builtin_str_size,
-        .sig = {
-            .args = {
-                { .name = "string", .type = str_type() }
-            },
-            .return_type = uint_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { int_type() } },
+        builtin_val{ .ptr = builtin_print<block_int>, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { int_type() } },
+        builtin_val{ .ptr = builtin_println<block_int>, .return_type = null_type() }
+    );
 
-    builtins.emplace("str_at", builtin{
-        .ptr = builtin_str_at,
-        .sig = {
-            .args = {
-                { .name = "string", .type = str_type() },
-                { .name = "index",  .type = uint_type() }
-            },
-            .return_type = str_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { uint_type() } },
+        builtin_val{ .ptr = builtin_print<block_uint>, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { uint_type() } },
+        builtin_val{ .ptr = builtin_println<block_uint>, .return_type = null_type() }
+    );
 
-    builtins.emplace("print", builtin{
-        .ptr = builtin_print,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = int_type() }
-            },
-            .return_type = null_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { char_type() } },
+        builtin_val{ .ptr = builtin_print_char, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { char_type() } },
+        builtin_val{ .ptr = builtin_println_char, .return_type = null_type() }
+    );
 
-    builtins.emplace("println", builtin{
-        .ptr = builtin_println,
-        .sig = {
-            .args = {
-                { .name = "obj", .type = int_type() }
-            },
-            .return_type = null_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { float_type() } },
+        builtin_val{ .ptr = builtin_print<block_float>, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { float_type() } },
+        builtin_val{ .ptr = builtin_println<block_float>, .return_type = null_type() }
+    );
 
-    builtins.emplace("input", builtin{
-        .ptr = builtin_input,
-        .sig = {
-            .args = {},
-            .return_type = str_type()
-        }
-    });
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { bool_type() } },
+        builtin_val{ .ptr = builtin_print<block_bool>, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { bool_type() } },
+        builtin_val{ .ptr = builtin_println<block_bool>, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { null_type() } },
+        builtin_val{ .ptr = builtin_print_null, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { null_type() } },
+        builtin_val{ .ptr = builtin_println_null, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "put", .args = { char_type() } },
+        builtin_val{ .ptr = builtin_put, .return_type = null_type() }
+    );
 
     return builtins;
 }
 
-static const std::unordered_map<std::string, builtin> builtins = construct_builtin_map();
+static const auto builtins = construct_builtin_map();
 
-auto is_builtin(const std::string& name) -> bool
+auto is_builtin(const std::string& name, const std::vector<type_name>& args) -> bool
 {
-    return builtins.contains(name);
+    // Hack, generalise later
+    if (name.starts_with("print") &&
+        args.size() == 1 &&
+        std::holds_alternative<type_list>(args[0]) &&
+        inner_type(args[0]) == char_type()
+    ) {
+        return true;
+    }
+    return builtins.contains({name, args});
 }
 
-auto fetch_builtin(const std::string& name) -> const builtin&
+auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) -> builtin_val
 {
-    auto it = builtins.find(name);
+    // Hack, generalise later
+    if (name.starts_with("print") &&
+        args.size() == 1 &&
+        std::holds_alternative<type_list>(args[0]) &&
+        inner_type(args[0]) == char_type()
+    ) {
+        const auto newline = name == "println";
+        const auto length = std::get<type_list>(args[0]).count;
+        return builtin_val{
+            .ptr = [=](std::span<const block> data) -> block {
+                for (const auto& datum : data) {
+                    print("{}", static_cast<char>(std::get<block_byte>(datum)));
+                }
+                if (newline) {
+                    print("\n");
+                }
+                return block{block_null{}};
+            },
+            .return_type = null_type()
+        };
+    }
+
+    auto it = builtins.find({name, args});
     if (it == builtins.end()) {
-        anzu::print("builtin error: could not find function '{}'\n", name);
+        anzu::print("builtin error: could not find function '{}({})'\n", name, format_comma_separated(args));
         std::exit(1);
     }
     return it->second;

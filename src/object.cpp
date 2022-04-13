@@ -20,7 +20,7 @@ auto format_error(const std::string& str) -> void
 auto to_string(const block& blk) -> std::string
 {
     return std::visit(overloaded {
-        [](const block_str& v) { return std::format("'{}'", v); },
+        [](block_byte byte) { return std::format("{:x}", static_cast<unsigned char>(byte)); },
         [](block_ptr ptr) { return std::format("[{:x}:{}]", ptr.ptr, ptr.size); },
         [](block_null) { return std::string{"null"}; },
         [](block_uint val) { return std::format("{}u", val); },
@@ -40,7 +40,12 @@ auto make_int(block_int val) -> object
 
 auto make_uint(block_uint val) -> object
 {
-    return { .data = { block_uint{val} }, .type = uint_type() };
+    return { .data = { val }, .type = uint_type() };
+}
+
+auto make_char(block_byte val) -> object
+{
+    return { .data = { val }, .type = char_type() };
 }
 
 auto make_float(block_float val) -> object
@@ -51,11 +56,6 @@ auto make_float(block_float val) -> object
 auto make_bool(block_bool val) -> object
 {
     return { .data = { block_bool{val} }, .type = bool_type() };
-}
-
-auto make_str(const block_str& val) -> object
-{
-    return { .data = { block_str{val} }, .type = str_type() };
 }
 
 auto make_null() -> object
