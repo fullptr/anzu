@@ -17,27 +17,29 @@ auto builtin_sqrt(std::span<const block> args) -> block
     return block_float{std::sqrt(val)};
 }
 
-auto builtin_print_int(std::span<const block> args) -> block
+template <typename T>
+auto builtin_print(std::span<const block> args) -> block
 {
-    print("{}", std::get<block_int>(args[0]));
+    print("{}", std::get<T>(args[0]));
     return block{block_null{}};
 }
 
-auto builtin_println_int(std::span<const block> args) -> block
+template <typename T>
+auto builtin_println(std::span<const block> args) -> block
 {
-    print("{}\n", std::get<block_int>(args[0]));
+    print("{}\n", std::get<T>(args[0]));
     return block{block_null{}};
 }
 
-auto builtin_print_bool(std::span<const block> args) -> block
+auto builtin_print_char(std::span<const block> args) -> block
 {
-    print("{}", std::get<block_bool>(args[0]));
+    print("{}", static_cast<char>(std::get<block_byte>(args[0])));
     return block{block_null{}};
 }
 
-auto builtin_println_bool(std::span<const block> args) -> block
+auto builtin_println_char(std::span<const block> args) -> block
 {
-    print("{}\n", std::get<block_bool>(args[0]));
+    print("{}\n", static_cast<char>(std::get<block_byte>(args[0])));
     return block{block_null{}};
 }
 
@@ -60,22 +62,47 @@ auto construct_builtin_map() -> builtin_map
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { int_type() } },
-        builtin_val{ .ptr = builtin_print_int, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<block_uint>, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { int_type() } },
+        builtin_val{ .ptr = builtin_println<block_int>, .return_type = null_type() }
     );
 
     builtins.emplace(
-        builtin_key{ .name = "println", .args = { int_type() } },
-        builtin_val{ .ptr = builtin_println_int, .return_type = null_type() }
+        builtin_key{ .name = "print", .args = { uint_type() } },
+        builtin_val{ .ptr = builtin_print<block_uint>, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { uint_type() } },
+        builtin_val{ .ptr = builtin_println<block_uint>, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { char_type() } },
+        builtin_val{ .ptr = builtin_print_char, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { char_type() } },
+        builtin_val{ .ptr = builtin_println_char, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { float_type() } },
+        builtin_val{ .ptr = builtin_print<block_float>, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { float_type() } },
+        builtin_val{ .ptr = builtin_println<block_float>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_print_bool, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<block_bool>, .return_type = null_type() }
     );
-
     builtins.emplace(
         builtin_key{ .name = "println", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_println_bool, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<block_bool>, .return_type = null_type() }
     );
 
     builtins.emplace(

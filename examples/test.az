@@ -18,3 +18,5 @@ fn p(ptr: &char, size: uint) -> null
 p(&x[0u], size_of(x))
 
 println(false)
+println('c')
+println(4.5)
