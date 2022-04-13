@@ -17,34 +17,27 @@ auto builtin_sqrt(std::span<const block> args) -> block
     return block_float{std::sqrt(val)};
 }
 
-auto builtin_print(std::span<const block> args) -> block
+auto builtin_print_int(std::span<const block> args) -> block
 {
-    if (args.size() > 1) {
-        auto out = std::format("{{{}", to_string(args.front()));
-        for (const auto& arg : args | std::views::drop(1)) {
-            out += std::format(", {}", arg);
-        }
-        print("{}}}", out);
-    } else {
-        print("{}", to_string(args[0]));
-    }
+    print("{}", std::get<block_int>(args[0]));
     return block{block_null{}};
 }
 
-auto builtin_println(std::span<const block> args) -> block
+auto builtin_println_int(std::span<const block> args) -> block
 {
-    if (args.size() == 0) {
-        print("Empty println call!\n");
-    }
-    else if (args.size() > 1) {
-        auto out = std::format("{{{}", to_string(args.front()));
-        for (const auto& arg : args | std::views::drop(1)) {
-            out += std::format(", {}", arg);
-        }
-        print("{}}}\n", out);
-    } else {
-        print("{}\n", to_string(args[0]));
-    }
+    print("{}\n", std::get<block_int>(args[0]));
+    return block{block_null{}};
+}
+
+auto builtin_print_bool(std::span<const block> args) -> block
+{
+    print("{}", std::get<block_bool>(args[0]));
+    return block{block_null{}};
+}
+
+auto builtin_println_bool(std::span<const block> args) -> block
+{
+    print("{}\n", std::get<block_bool>(args[0]));
     return block{block_null{}};
 }
 
@@ -67,12 +60,22 @@ auto construct_builtin_map() -> builtin_map
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { int_type() } },
-        builtin_val{ .ptr = builtin_print, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print_int, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "println", .args = { int_type() } },
-        builtin_val{ .ptr = builtin_println, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println_int, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { bool_type() } },
+        builtin_val{ .ptr = builtin_print_bool, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { bool_type() } },
+        builtin_val{ .ptr = builtin_println_bool, .return_type = null_type() }
     );
 
     builtins.emplace(
