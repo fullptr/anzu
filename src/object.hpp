@@ -19,7 +19,6 @@ using block_int   = std::int64_t;
 using block_uint  = std::uint64_t;
 using block_float = double;
 using block_bool  = bool;
-using block_null  = std::monostate;
 
 struct block_ptr
 {
@@ -33,8 +32,7 @@ using block = std::variant<
     block_uint,
     block_float,
     block_bool,
-    block_ptr,
-    block_null
+    block_ptr
 >;
 
 struct object

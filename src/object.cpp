@@ -22,7 +22,6 @@ auto to_string(const block& blk) -> std::string
     return std::visit(overloaded {
         [](block_byte byte) { return std::format("{:x}", static_cast<unsigned char>(byte)); },
         [](block_ptr ptr) { return std::format("[{:x}:{}]", ptr.ptr, ptr.size); },
-        [](block_null) { return std::string{"null"}; },
         [](block_uint val) { return std::format("{}u", val); },
         [](auto&& val) { return std::format("{}", val); }
     }, blk);
@@ -60,7 +59,7 @@ auto make_bool(block_bool val) -> object
 
 auto make_null() -> object
 {
-    return { .data = { block_null{} }, .type = null_type() };
+    return { .data = { block_byte{0} }, .type = null_type() };
 }
 
 auto format_special_chars(const std::string& str) -> std::string

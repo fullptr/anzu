@@ -21,44 +21,44 @@ template <typename T>
 auto builtin_print(std::span<const block> args) -> block
 {
     print("{}", std::get<T>(args[0]));
-    return block{block_null{}};
+    return block{block_byte{0}};
 }
 
 template <typename T>
 auto builtin_println(std::span<const block> args) -> block
 {
     print("{}\n", std::get<T>(args[0]));
-    return block{block_null{}};
+    return block{block_byte{0}};
 }
 
 auto builtin_print_char(std::span<const block> args) -> block
 {
     print("{}", static_cast<char>(std::get<block_byte>(args[0])));
-    return block{block_null{}};
+    return block{block_byte{0}};
 }
 
 auto builtin_println_char(std::span<const block> args) -> block
 {
     print("{}\n", static_cast<char>(std::get<block_byte>(args[0])));
-    return block{block_null{}};
+    return block{block_byte{0}};
 }
 
 auto builtin_print_null(std::span<const block> args) -> block
 {
     print("null");
-    return block{block_null{}};
+    return block{block_byte{0}};
 }
 
 auto builtin_println_null(std::span<const block> args) -> block
 {
     print("null\n");
-    return block{block_null{}};
+    return block{block_byte{0}};
 }
 
 auto builtin_put(std::span<const block> args) -> block
 {
     anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
-    return block{block_null{}};
+    return block{block_byte{0}};
 }
 
 }
@@ -167,7 +167,7 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
                 if (newline) {
                     print("\n");
                 }
-                return block{block_null{}};
+                return block{block_byte{0}};
             },
             .return_type = null_type()
         };
