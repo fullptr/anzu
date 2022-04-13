@@ -18,7 +18,21 @@ auto bin_op(std::vector<block>& mem) -> void
     const auto rhs = get_back<Type>(mem, 0);
     const auto lhs = get_back<Type>(mem, 1);
     mem.pop_back();
-    mem.back().emplace<decltype(op(lhs, rhs))>(op(lhs, rhs));
+    if constexpr (std::is_same_v<bool, decltype(op(lhs, rhs))>) {
+        mem.back().emplace<block_byte>(static_cast<block_byte>(op(lhs, rhs)));
+    } else {
+        mem.back().emplace<decltype(op(lhs, rhs))>(op(lhs, rhs));
+    }
+}
+
+template <typename Type, template <typename> typename Op>
+auto bin_op_bytes(std::vector<block>& mem) -> void
+{
+    const auto op = Op<Type>{};
+    const auto rhs = static_cast<Type>(get_back<block_byte>(mem, 0));
+    const auto lhs = static_cast<Type>(get_back<block_byte>(mem, 1));
+    mem.pop_back();
+    mem.back().emplace<block_byte>(static_cast<block_byte>(op(lhs, rhs)));
 }
 
 auto int_division(std::vector<block>& mem) -> void
@@ -53,6 +67,12 @@ auto unary_op(std::vector<block>& mem)
     const auto op = Op<Type>{};
     auto& obj = get_back<Type>(mem, 0);
     obj = op(obj);
+}
+
+auto bool_negate(std::vector<block>& mem)
+{
+    auto& top = get_back<block_byte>(mem, 0);
+    top = (top == block_byte{1}) ? block_byte{0} : block_byte{1};
 }
 
 }
@@ -151,13 +171,13 @@ auto resolve_binary_op(
     }
     else if (type == bool_type()) {
         if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op<block_bool, std::equal_to>, type };
+            return binary_op_info{ bin_op_bytes<bool, std::equal_to>, type };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op<block_bool, std::not_equal_to>, type };
+            return binary_op_info{ bin_op_bytes<bool, std::not_equal_to>, type };
         } else if (desc.op == tk_and) {
-            return binary_op_info{ bin_op<block_bool, std::logical_and>, type };
+            return binary_op_info{ bin_op_bytes<bool, std::logical_and>, type };
         } else if (desc.op == tk_or) {
-            return binary_op_info{ bin_op<block_bool, std::logical_or>, type };
+            return binary_op_info{ bin_op_bytes<bool, std::logical_or>, type };
         }
     }
     else if (type == char_type()) {
@@ -186,7 +206,7 @@ auto resolve_unary_op(const unary_op_description& desc) -> std::optional<unary_o
     }
     if (type == bool_type()) {
         if (desc.op == tk_bang) {
-            return unary_op_info{ unary_op<block_bool, std::logical_not>, type };
+            return unary_op_info{ bool_negate, type };
         }
     }
     return std::nullopt;
