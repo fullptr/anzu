@@ -18,17 +18,19 @@ auto pop_n(std::vector<block>& mem, std::size_t n) -> void
 }
 
 template <typename Type, template <typename> typename Op>
-auto bin_op(std::vector<block>& mem) -> void
+auto bin_op()
 {
-    const auto op = Op<Type>{};
-    const auto rhs = get_back<Type>(mem, 0);
-    const auto lhs = get_back<Type>(mem, 1);
-    mem.pop_back();
-    if constexpr (std::is_same_v<bool, decltype(op(lhs, rhs))>) {
-        mem.back().emplace<block_byte>(static_cast<block_byte>(op(lhs, rhs)));
-    } else {
-        mem.back().emplace<decltype(op(lhs, rhs))>(op(lhs, rhs));
-    }
+    return [=](std::vector<block>& mem) {
+        const auto op = Op<Type>{};
+        const auto rhs = get_back<Type>(mem, 0);
+        const auto lhs = get_back<Type>(mem, 1);
+        mem.pop_back();
+        if constexpr (std::is_same_v<bool, decltype(op(lhs, rhs))>) {
+            mem.back().emplace<block_byte>(static_cast<block_byte>(op(lhs, rhs)));
+        } else {
+            mem.back().emplace<decltype(op(lhs, rhs))>(op(lhs, rhs));
+        }
+    };
 }
 
 template <typename Type, template <typename> typename Op>
@@ -150,63 +152,63 @@ auto resolve_binary_op(
 
     if (type == int_type()) {
         if (desc.op == tk_add) {
-            return binary_op_info{ bin_op<block_int, std::plus>, type };
+            return binary_op_info{ bin_op<block_int, std::plus>(), type };
         } else if (desc.op == tk_sub) {
-            return binary_op_info{ bin_op<block_int, std::minus>, type };
+            return binary_op_info{ bin_op<block_int, std::minus>(), type };
         } else if (desc.op == tk_mul) {
-            return binary_op_info{ bin_op<block_int, std::multiplies>, type };
+            return binary_op_info{ bin_op<block_int, std::multiplies>(), type };
         } else if (desc.op == tk_div) {
             return binary_op_info{ int_division, float_type() };
         } else if (desc.op == tk_mod) {
-            return binary_op_info{ bin_op<block_int, std::modulus>, type };
+            return binary_op_info{ bin_op<block_int, std::modulus>(), type };
         } else if (desc.op == tk_lt) {
-            return binary_op_info{ bin_op<block_int, std::less>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::less>(), bool_type() };
         } else if (desc.op == tk_le) {
-            return binary_op_info{ bin_op<block_int, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::less_equal>(), bool_type() };
         } else if (desc.op == tk_gt) {
-            return binary_op_info{ bin_op<block_int, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::greater>(), bool_type() };
         } else if (desc.op == tk_ge) {
-            return binary_op_info{ bin_op<block_int, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_int, std::greater_equal>(), bool_type() };
         }
     }
     else if (type == uint_type()) {
         if (desc.op == tk_add) {
-            return binary_op_info{ bin_op<block_uint, std::plus>, type };
+            return binary_op_info{ bin_op<block_uint, std::plus>(), type };
         } else if (desc.op == tk_sub) {
-            return binary_op_info{ bin_op<block_uint, std::minus>, type };
+            return binary_op_info{ bin_op<block_uint, std::minus>(), type };
         } else if (desc.op == tk_mul) {
-            return binary_op_info{ bin_op<block_uint, std::multiplies>, type };
+            return binary_op_info{ bin_op<block_uint, std::multiplies>(), type };
         } else if (desc.op == tk_div) {
             return binary_op_info{ uint_division, float_type() };
         } else if (desc.op == tk_mod) {
-            return binary_op_info{ bin_op<block_uint, std::modulus>, type };
+            return binary_op_info{ bin_op<block_uint, std::modulus>(), type };
         } else if (desc.op == tk_lt) {
-            return binary_op_info{ bin_op<block_uint, std::less>, bool_type() };
+            return binary_op_info{ bin_op<block_uint, std::less>(), bool_type() };
         } else if (desc.op == tk_le) {
-            return binary_op_info{ bin_op<block_uint, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_uint, std::less_equal>(), bool_type() };
         } else if (desc.op == tk_gt) {
-            return binary_op_info{ bin_op<block_uint, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<block_uint, std::greater>(), bool_type() };
         } else if (desc.op == tk_ge) {
-            return binary_op_info{ bin_op<block_uint, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_uint, std::greater_equal>(), bool_type() };
         }
     }
     else if (type == float_type()) {
         if (desc.op == tk_add) {
-            return binary_op_info{ bin_op<block_float, std::plus>, type };
+            return binary_op_info{ bin_op<block_float, std::plus>(), type };
         } else if (desc.op == tk_sub) {
-            return binary_op_info{ bin_op<block_float, std::minus>, type };
+            return binary_op_info{ bin_op<block_float, std::minus>(), type };
         } else if (desc.op == tk_mul) {
-            return binary_op_info{ bin_op<block_float, std::multiplies>, type };
+            return binary_op_info{ bin_op<block_float, std::multiplies>(), type };
         } else if (desc.op == tk_div) {
-            return binary_op_info{ bin_op<block_float, std::divides>, type };
+            return binary_op_info{ bin_op<block_float, std::divides>(), type };
         } else if (desc.op == tk_lt) {
-            return binary_op_info{ bin_op<block_float, std::less>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::less>(), bool_type() };
         } else if (desc.op == tk_le) {
-            return binary_op_info{ bin_op<block_float, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::less_equal>(), bool_type() };
         } else if (desc.op == tk_gt) {
-            return binary_op_info{ bin_op<block_float, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::greater>(), bool_type() };
         } else if (desc.op == tk_ge) {
-            return binary_op_info{ bin_op<block_float, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<block_float, std::greater_equal>(), bool_type() };
         }
     }
     else if (type == bool_type()) {
