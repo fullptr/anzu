@@ -1,5 +1,6 @@
 #include "operators.hpp"
 
+#include <algorithm>
 #include <functional>
 
 namespace anzu {
@@ -9,6 +10,11 @@ template <typename T>
 auto get_back(std::vector<block>& mem, std::size_t index) -> T&
 {
     return std::get<std::remove_cvref_t<T>>(mem[mem.size() - index - 1]);
+}
+
+auto pop_n(std::vector<block>& mem, std::size_t n) -> void
+{
+    mem.resize(mem.size() - n);
 }
 
 template <typename Type, template <typename> typename Op>
@@ -61,6 +67,45 @@ auto ptr_addition(std::size_t obj_size)
     };
 }
 
+// TODO: use memcmp here when we have just bytes
+auto eq_comparison(std::size_t bytes)
+{
+    return [=](std::vector<block>& mem) {
+        auto lhs_bytes = std::vector<block_byte>{};
+        for (std::size_t i = 0; i != bytes; ++i) {
+            lhs_bytes.push_back(std::get<block_byte>(mem[mem.size() - (2 * bytes) + i]));
+        }
+
+        auto rhs_bytes = std::vector<block_byte>{};
+        for (std::size_t i = 0; i != bytes; ++i) {
+            rhs_bytes.push_back(std::get<block_byte>(mem[mem.size() - bytes + i]));
+        }
+
+        const auto result = lhs_bytes == rhs_bytes;
+        pop_n(mem, 2 * bytes);
+        mem.push_back(block_byte{result});
+    };
+}
+
+auto ne_comparison(std::size_t bytes)
+{
+    return [=](std::vector<block>& mem) {
+        auto lhs_bytes = std::vector<block_byte>{};
+        for (std::size_t i = 0; i != bytes; ++i) {
+            lhs_bytes.push_back(std::get<block_byte>(mem[mem.size() - (2 * bytes) + i]));
+        }
+
+        auto rhs_bytes = std::vector<block_byte>{};
+        for (std::size_t i = 0; i != bytes; ++i) {
+            rhs_bytes.push_back(std::get<block_byte>(mem[mem.size() - bytes + i]));
+        }
+
+        const auto result = lhs_bytes != rhs_bytes;
+        pop_n(mem, 2 * bytes);
+        mem.push_back(block_byte{result});
+    };
+}
+
 template <typename Type, template <typename> typename Op>
 auto unary_op(std::vector<block>& mem)
 {
@@ -90,7 +135,14 @@ auto resolve_binary_op(
     if (desc.lhs != desc.rhs) {
         return std::nullopt;
     }
+
     const auto& type = desc.lhs;
+
+    if (desc.op == tk_eq) {
+        return binary_op_info{ eq_comparison(types.size_of(type)), bool_type() };
+    } else if (desc.op == tk_ne) {
+        return binary_op_info{ ne_comparison(types.size_of(type)), bool_type() };
+    }
     
     if (is_list_type(type)) { // No support for having these in bin ops.
         return std::nullopt;
@@ -115,10 +167,6 @@ auto resolve_binary_op(
             return binary_op_info{ bin_op<block_int, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
             return binary_op_info{ bin_op<block_int, std::greater_equal>, bool_type() };
-        } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op<block_int, std::equal_to>, bool_type() };
-        } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op<block_int, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == uint_type()) {
@@ -140,10 +188,6 @@ auto resolve_binary_op(
             return binary_op_info{ bin_op<block_uint, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
             return binary_op_info{ bin_op<block_uint, std::greater_equal>, bool_type() };
-        } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op<block_uint, std::equal_to>, bool_type() };
-        } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op<block_uint, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == float_type()) {
@@ -163,28 +207,13 @@ auto resolve_binary_op(
             return binary_op_info{ bin_op<block_float, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
             return binary_op_info{ bin_op<block_float, std::greater_equal>, bool_type() };
-        } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op<block_float, std::equal_to>, bool_type() };
-        } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op<block_float, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == bool_type()) {
-        if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op_bytes<bool, std::equal_to>, type };
-        } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op_bytes<bool, std::not_equal_to>, type };
-        } else if (desc.op == tk_and) {
+        if (desc.op == tk_and) {
             return binary_op_info{ bin_op_bytes<bool, std::logical_and>, type };
         } else if (desc.op == tk_or) {
             return binary_op_info{ bin_op_bytes<bool, std::logical_or>, type };
-        }
-    }
-    else if (type == char_type()) {
-        if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op<block_byte, std::equal_to>, bool_type() };
-        } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op<block_byte, std::not_equal_to>, bool_type() };
         }
     }
 
