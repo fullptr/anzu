@@ -15,7 +15,6 @@ namespace anzu {
 static_assert(sizeof(std::uint64_t) == sizeof(std::size_t));
 
 using block_byte  = std::byte;
-using block_int   = std::int64_t;
 using block_uint  = std::uint64_t;
 using block_float = double;
 
@@ -27,7 +26,6 @@ struct block_ptr
 
 using block = std::variant<
     block_byte,
-    block_int,
     block_uint,
     block_float,
     block_ptr

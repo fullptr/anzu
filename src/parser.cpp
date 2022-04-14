@@ -28,17 +28,6 @@ template <typename... Args>
     }
 }
 
-auto to_int(std::string_view token) -> block_int
-{
-    auto result = block_int{};
-    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
-    if (ec != std::errc{}) {
-        print("type error: cannot convert '{}' to int\n", token);
-        std::exit(1);
-    }
-    return result;
-}
-
 auto to_i32(std::string_view token) -> std::int32_t
 {
     token.remove_suffix(tk_i32.size());

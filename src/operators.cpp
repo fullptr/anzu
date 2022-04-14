@@ -66,14 +66,6 @@ auto bin_op_bytes_sized(std::vector<block>& mem) -> void
     }
 }
 
-auto int_division(std::vector<block>& mem) -> void
-{
-    const auto rhs = get_back<block_int>(mem, 0);
-    const auto lhs = get_back<block_int>(mem, 1);
-    mem.pop_back();
-    mem.back().emplace<block_float>(static_cast<block_float>(lhs) / rhs);
-}
-
 auto uint_division(std::vector<block>& mem) -> void
 {
     const auto rhs = get_back<block_uint>(mem, 0);
