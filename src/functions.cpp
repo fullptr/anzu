@@ -11,86 +11,86 @@
 namespace anzu {
 namespace {
 
-auto builtin_sqrt(std::span<const block> args) -> block
+auto builtin_sqrt(std::span<const block> args) -> std::vector<block>
 {
     const auto& val = std::get<block_float>(args[0]);
-    return block_float{std::sqrt(val)};
+    return {block_float{std::sqrt(val)}};
 }
 
 template <typename T>
-auto builtin_print(std::span<const block> args) -> block
+auto builtin_print(std::span<const block> args) -> std::vector<block>
 {
     print("{}", std::get<T>(args[0]));
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
 template <typename T>
-auto builtin_println(std::span<const block> args) -> block
+auto builtin_println(std::span<const block> args) -> std::vector<block>
 {
     print("{}\n", std::get<T>(args[0]));
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_print_char(std::span<const block> args) -> block
+auto builtin_print_char(std::span<const block> args) -> std::vector<block>
 {
     print("{}", static_cast<char>(std::get<block_byte>(args[0])));
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_println_char(std::span<const block> args) -> block
+auto builtin_println_char(std::span<const block> args) -> std::vector<block>
 {
     print("{}\n", static_cast<char>(std::get<block_byte>(args[0])));
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_print_bool(std::span<const block> args) -> block
+auto builtin_print_bool(std::span<const block> args) -> std::vector<block>
 {
     print("{}", std::get<block_byte>(args[0]) == block_byte{1});
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_println_bool(std::span<const block> args) -> block
+auto builtin_println_bool(std::span<const block> args) -> std::vector<block>
 {
     print("{}\n", std::get<block_byte>(args[0]) == block_byte{1});
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_print_null(std::span<const block> args) -> block
+auto builtin_print_null(std::span<const block> args) -> std::vector<block>
 {
     print("null");
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_println_null(std::span<const block> args) -> block
+auto builtin_println_null(std::span<const block> args) -> std::vector<block>
 {
     print("null\n");
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_print_i32(std::span<const block> args) -> block
+auto builtin_print_i32(std::span<const block> args) -> std::vector<block>
 {
     auto bytes = std::array<std::byte, 4>();
     for (std::size_t i = 0; i != 4; ++i) {
         bytes[i] = std::get<std::byte>(args[i]);
     }
     print("{}", std::bit_cast<std::int32_t>(bytes));
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_println_i32(std::span<const block> args) -> block
+auto builtin_println_i32(std::span<const block> args) -> std::vector<block>
 {
     auto bytes = std::array<std::byte, 4>();
     for (std::size_t i = 0; i != 4; ++i) {
         bytes[i] = std::get<std::byte>(args[i]);
     }
     print("{}\n", std::bit_cast<std::int32_t>(bytes));
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
-auto builtin_put(std::span<const block> args) -> block
+auto builtin_put(std::span<const block> args) -> std::vector<block>
 {
     anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
-    return block{block_byte{0}};
+    return {block{block_byte{0}}};
 }
 
 }
@@ -201,14 +201,14 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
         const auto newline = name == "println";
         const auto length = std::get<type_list>(args[0]).count;
         return builtin_val{
-            .ptr = [=](std::span<const block> data) -> block {
+            .ptr = [=](std::span<const block> data) -> std::vector<block> {
                 for (const auto& datum : data) {
                     print("{}", static_cast<char>(std::get<block_byte>(datum)));
                 }
                 if (newline) {
                     print("\n");
                 }
-                return block{block_byte{0}};
+                return {block{block_byte{0}}};
             },
             .return_type = null_type()
         };

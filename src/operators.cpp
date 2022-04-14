@@ -1,4 +1,5 @@
 #include "operators.hpp"
+#include "object.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -41,6 +42,28 @@ auto bin_op_bytes(std::vector<block>& mem) -> void
     const auto lhs = static_cast<Type>(get_back<block_byte>(mem, 1));
     mem.pop_back();
     mem.back().emplace<block_byte>(static_cast<block_byte>(op(lhs, rhs)));
+}
+
+template <typename Type, template <typename> typename Op>
+auto bin_op_bytes_sized(std::vector<block>& mem) -> void
+{
+    const auto op = Op<Type>{};
+    auto lhs_bytes = std::vector<block>{};
+    for (std::size_t i = 0; i != sizeof(Type); ++i) {
+        lhs_bytes.push_back(mem[mem.size() - (2 * sizeof(Type)) + i]);
+    }
+    const auto lhs = from_bytes<Type>(lhs_bytes);
+    auto rhs_bytes = std::vector<block>{};
+    for (std::size_t i = 0; i != sizeof(Type); ++i) {
+        rhs_bytes.push_back(mem[mem.size() - sizeof(Type) + i]);
+    }
+    const auto rhs = from_bytes<Type>(rhs_bytes);
+    pop_n(mem, 2 * sizeof(Type));
+    const auto ret = op(lhs, rhs);
+    const auto ret_bytes = std::bit_cast<std::array<std::byte, sizeof(ret)>>(ret);
+    for (const auto& b : ret_bytes) {
+        mem.push_back(b);
+    }
 }
 
 auto int_division(std::vector<block>& mem) -> void
@@ -148,6 +171,12 @@ auto resolve_binary_op(
     
     if (is_list_type(type)) { // No support for having these in bin ops.
         return std::nullopt;
+    }
+
+    if (type == i32_type()) {
+        if (desc.op == tk_add) {
+            return binary_op_info{ bin_op_bytes_sized<std::int32_t, std::plus>, type };
+        } 
     }
 
     if (type == int_type()) {
