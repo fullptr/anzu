@@ -53,7 +53,9 @@ auto to_i32(std::string_view token) -> std::int32_t
 
 auto to_i64(std::string_view token) -> std::int64_t
 {
-    token.remove_suffix(tk_i64.size());
+    if (token.ends_with(tk_i64)) {
+        token.remove_suffix(tk_i64.size());
+    }
     auto result = std::int64_t{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
@@ -96,9 +98,6 @@ auto parse_literal(tokenstream& tokens) -> object
     }
     if (tokens.curr().type == token_type::i64) {
         return make_i64(to_i64(tokens.consume().text));
-    }
-    if (tokens.curr().type == token_type::integer) {
-        return make_int(to_int(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::uinteger) {
         return make_uint(to_uint(tokens.consume().text));
@@ -288,7 +287,7 @@ auto parse_type(tokenstream& tokens) -> type_name
     auto type = type_name{type_simple{.name=tokens.consume().text}};
     while (tokens.consume_maybe(tk_lbracket)) {
         auto new_type = type_name{type_list{
-            .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_int())
+            .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_i64())
         }};
         tokens.consume_only(tk_rbracket);
         type = new_type;

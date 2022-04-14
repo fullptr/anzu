@@ -24,7 +24,6 @@ constexpr auto tk_size_of   = sv{"size_of"};
 // Builtin Types
 constexpr auto tk_i32       = sv{"i32"};
 constexpr auto tk_i64       = sv{"i64"};
-constexpr auto tk_int       = sv{"int"};
 constexpr auto tk_uint      = sv{"uint"};
 constexpr auto tk_char      = sv{"char"};
 constexpr auto tk_float     = sv{"float"};

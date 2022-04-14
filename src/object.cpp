@@ -42,11 +42,6 @@ auto make_i64(std::int64_t val) -> object
     return { .data = to_bytes(val), .type = i64_type() };
 }
 
-auto make_int(std::int64_t val) -> object
-{
-    return { .data = { block_int{val} }, .type = int_type() };
-}
-
 auto make_uint(std::uint64_t val) -> object
 {
     return { .data = { val }, .type = uint_type() };

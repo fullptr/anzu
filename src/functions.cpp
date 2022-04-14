@@ -125,15 +125,6 @@ auto construct_builtin_map() -> builtin_map
     );
 
     builtins.emplace(
-        builtin_key{ .name = "print", .args = { int_type() } },
-        builtin_val{ .ptr = builtin_print<block_int>, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { int_type() } },
-        builtin_val{ .ptr = builtin_println<block_int>, .return_type = null_type() }
-    );
-
-    builtins.emplace(
         builtin_key{ .name = "print", .args = { uint_type() } },
         builtin_val{ .ptr = builtin_print<block_uint>, .return_type = null_type() }
     );

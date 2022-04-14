@@ -155,9 +155,6 @@ auto lex_line(
                 if (is_keyword(token)) {
                     push_token(token, col, token_type::keyword);
                 }
-                else if (is_int(token)) {
-                    push_token(token, col, token_type::integer);
-                }
                 else if (is_i32(token)) {
                     push_token(token, col, token_type::i32);
                 }

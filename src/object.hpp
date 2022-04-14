@@ -44,7 +44,6 @@ auto to_string(const object& object) -> std::string;
 
 auto make_i32(std::int32_t val) -> object;
 auto make_i64(std::int64_t val) -> object;
-auto make_int(std::int64_t val) -> object;
 auto make_uint(std::uint64_t val) -> object;
 auto make_char(char val) -> object;
 auto make_float(double val) -> object;

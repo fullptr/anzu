@@ -49,11 +49,6 @@ auto hash(const type_ptr& type) -> std::size_t
     return hash(*type.inner_type) ^ ptr_offset;
 }
 
-auto int_type()  -> type_name
-{
-    return {type_simple{ .name = std::string{tk_int} }};
-}
-
 auto i32_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_i32} }};
@@ -134,8 +129,7 @@ auto inner_type(const type_name& t) -> type_name
 
 auto is_type_fundamental(const type_name& type) -> bool
 {
-    return type == int_type()
-        || type == i32_type()
+    return type == i32_type()
         || type == i64_type()
         || type == uint_type()
         || type == char_type()

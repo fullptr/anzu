@@ -13,7 +13,6 @@ enum class token_type
     keyword,
     symbol,
     name,
-    integer,
     uinteger,
     character,
     floating,
@@ -39,7 +38,7 @@ public:
     tokenstream(const std::vector<token>& tokens);
     auto consume_maybe(std::string_view text) -> bool;
     auto consume_only(std::string_view text) -> token;
-    auto consume_int() -> std::int64_t;
+    auto consume_i64() -> std::int64_t;
     auto consume_uint() -> std::uint64_t;
 
     template <typename Func>

@@ -393,7 +393,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                     return field.type;
                 }
             }
-            return int_type();
+            return i64_type();
         },
         [&](const node_arrow_expr& expr) {
             const auto ptype = type_of_expr(com, *expr.expr);
@@ -404,7 +404,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                     return field.type;
                 }
             }
-            return int_type();
+            return i64_type();
         },
         [&](const node_deref_expr& expr) {
             const auto ptype = type_of_expr(com, *expr.expr);
