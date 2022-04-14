@@ -1,4 +1,5 @@
 
 x := 12367i32
+y := 34574i32
 
-println(x)
+println(x + y)
