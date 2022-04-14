@@ -11,7 +11,7 @@ auto is_keyword(std::string_view token) -> bool
         tk_break, tk_continue, tk_else, tk_false, tk_for, tk_if,
         tk_in, tk_null, tk_true, tk_while, tk_int, tk_float, tk_bool,
         tk_str, tk_function, tk_return, tk_struct, tk_size_of, tk_uint,
-        tk_char, tk_i32
+        tk_char, tk_i32, tk_i64
     };
     return tokens.contains(token);
 }

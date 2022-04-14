@@ -59,6 +59,11 @@ auto i32_type() -> type_name
     return {type_simple{ .name = std::string{tk_i32} }};
 }
 
+auto i64_type() -> type_name
+{
+    return {type_simple{ .name = std::string{tk_i64} }};
+}
+
 auto uint_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_uint} }};
@@ -131,6 +136,7 @@ auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == int_type()
         || type == i32_type()
+        || type == i64_type()
         || type == uint_type()
         || type == char_type()
         || type == float_type()
@@ -182,7 +188,6 @@ auto type_store::contains(const type_name& type) const -> bool
 
 auto type_store::size_of(const type_name& type) const -> std::size_t
 {
-    print("looking up type {}\n", type);
     if (!contains(type)) {
         print("unknown type '{}'\n", type);
         std::exit(1);
@@ -190,6 +195,10 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
 
     if (type == i32_type()) {
         return 4;
+    }
+
+    if (type == i64_type()) {
+        return 8;
     }
 
     if (is_type_fundamental(type)) {

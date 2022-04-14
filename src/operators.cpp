@@ -195,6 +195,28 @@ auto resolve_binary_op(
         }
     }
 
+    if (type == i64_type()) {
+        if (desc.op == tk_add) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::plus>, type };
+        } else if (desc.op == tk_sub) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::minus>, type };
+        } else if (desc.op == tk_mul) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::multiplies>, type };
+        } else if (desc.op == tk_div) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::divides>, type };
+        } else if (desc.op == tk_mod) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::modulus>, type };
+        } else if (desc.op == tk_lt) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::less>, bool_type() };
+        } else if (desc.op == tk_le) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::less_equal>, bool_type() };
+        } else if (desc.op == tk_gt) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::greater>, bool_type() };
+        } else if (desc.op == tk_ge) {
+            return binary_op_info{ bin_op_bytes_sized<std::int64_t, std::greater_equal>, bool_type() };
+        }
+    }
+
     if (type == int_type()) {
         if (desc.op == tk_add) {
             return binary_op_info{ bin_op<block_int, std::plus>(), type };

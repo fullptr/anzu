@@ -28,6 +28,14 @@ auto is_i32(std::string_view token) -> bool
     return is_int(token);
 }
 
+auto is_i64(std::string_view token) -> bool
+{
+    if (token.ends_with(tk_i64)) {
+        token.remove_suffix(tk_i64.size());
+    }
+    return is_int(token);
+}
+
 auto is_uint(std::string_view token) -> bool
 {
     const auto has_suffix = token.ends_with("u");
@@ -152,6 +160,9 @@ auto lex_line(
                 }
                 else if (is_i32(token)) {
                     push_token(token, col, token_type::i32);
+                }
+                else if (is_i64(token)) {
+                    push_token(token, col, token_type::i64);
                 }
                 else if (is_uint(token)) {
                     push_token(token, col, token_type::uinteger);

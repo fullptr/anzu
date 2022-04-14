@@ -18,6 +18,7 @@ enum class token_type
     character,
     floating,
     i32,
+    i64,
     string
 };
 

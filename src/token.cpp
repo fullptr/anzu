@@ -23,6 +23,7 @@ auto to_string(token_type type) -> std::string
         break; case token_type::floating:  { return "float"; };
         break; case token_type::string:    { return "string"; };
         break; case token_type::i32:       { return "i32"; };
+        break; case token_type::i64:       { return "i64"; };
         break; default:                    { return "UNKNOWN"; };
     }
 }
