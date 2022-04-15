@@ -1,23 +1,5 @@
 
-struct vec2
-{
-    x: i64
-    y: i64
-}
 
-fn println(v: vec2) -> null
-{
-    print("vec2 = {")
-    print(v.x)
-    print(", ")
-    print(v.y)
-    println("}")
-}
+fn foo() -> null {}
 
-xl2 := [vec2(1, 2), vec2(3, 4)]
-println("xl2 should have size 32 but length 2:")
-print("size: ")
-println(size_of(xl2))
-println(size_of(xl2[0]))
-print("length: ")
-println(size_of(xl2) / size_of(xl2[0]))
+foo()

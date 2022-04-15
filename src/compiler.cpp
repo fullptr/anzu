@@ -223,7 +223,9 @@ auto load_variable(compiler& com, const token& tok, const std::string& name) -> 
 
 auto signature_args_size(const compiler& com, const signature& sig) -> std::size_t
 {
-    auto args_size = std::size_t{0};
+    // Initial function payload. 3 uints that store the old base ptr, old prog ptr
+    // and the return size in bytes.
+    auto args_size = 3 * sizeof(std::uint64_t);
     for (const auto& arg : sig.args) {
         args_size += com.types.size_of(arg.type);
     }
@@ -559,7 +561,6 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     
     if (auto it = com.functions.find(key); it != com.functions.end()) {
         const auto& [sig, ptr] = it->second;
-        static constexpr auto payload_size = std::size_t{3};
         const auto return_size = com.types.size_of(sig.return_type);
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
@@ -574,7 +575,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         com.program.emplace_back(anzu::op_function_call{
             .name=node.function_name,
             .ptr=ptr + 1, // Jump into the function
-            .args_size=signature_args_size(com, sig) + payload_size
+            .args_size=signature_args_size(com, sig)
         });
         return sig.return_type;
     }
@@ -622,7 +623,6 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
     }
     
     const auto& [sig, ptr] = it->second;
-    static constexpr auto payload_size = std::size_t{3};
     const auto return_size = com.types.size_of(sig.return_type);
     push_literal(com, std::uint64_t{0}); // base ptr
     push_literal(com, std::uint64_t{0}); // prog ptr
@@ -639,7 +639,7 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
     com.program.emplace_back(anzu::op_function_call{
         .name=node.function_name,
         .ptr=ptr + 1, // Jump into the function
-        .args_size=signature_args_size(com, sig) + payload_size
+        .args_size=signature_args_size(com, sig)
     });
     return sig.return_type;
 }

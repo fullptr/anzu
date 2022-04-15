@@ -47,7 +47,6 @@ auto write_u64(runtime_context& ctx, std::size_t ptr, std::uint64_t value) -> vo
 {
     auto bytes = to_bytes(value);
     for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
-        bytes[i] = std::get<std::byte>(ctx.memory[ptr + i]);
         ctx.memory[ptr + i] = bytes[i]; 
     }
 }
@@ -98,6 +97,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_save) {
             const auto size = pop_u64(ctx);
             const auto ptr = pop_u64(ctx);
+            print("size = {}, ptr = {}\n", size, ptr);
             runtime_assert(ptr + size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
             if (ptr + size < ctx.memory.size()) {
                 for (const auto i : std::views::iota(ptr, ptr + size) | std::views::reverse) {
@@ -148,7 +148,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             const auto prev_base_ptr = read_u64(ctx, ctx.base_ptr);
             const auto prev_prog_ptr = read_u64(ctx, ctx.base_ptr + sizeof(std::uint64_t));
             const auto return_size = read_u64(ctx, ctx.base_ptr + 2*sizeof(std::uint64_t));
-
+            
             for (std::size_t i = 0; i != return_size; ++i) {
                 ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
             }
@@ -165,6 +165,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             const auto new_base_ptr = ctx.memory.size() - op.args_size;
             write_u64(ctx, new_base_ptr, ctx.base_ptr);
             write_u64(ctx, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr + 1); // Pos after function call
+            
             ctx.base_ptr = new_base_ptr;
             ctx.prog_ptr = op.ptr; // Jump into the function
         },
