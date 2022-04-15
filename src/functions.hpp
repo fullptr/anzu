@@ -9,7 +9,7 @@
 
 namespace anzu {
 
-using builtin_function = std::function<std::vector<std::byte>(std::span<const std::byte>)>;
+using builtin_function = std::function<void(std::vector<std::byte>&)>;
 
 struct builtin_key
 {

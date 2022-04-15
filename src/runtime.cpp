@@ -164,16 +164,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = op.ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            auto args = std::vector<std::byte>(op.args_size);
-            for (auto& arg : args | std::views::reverse) {
-                arg = ctx.memory.back();
-                ctx.memory.pop_back();
-            }
-
-            const auto ret = op.ptr(args);
-            for (const auto& b : ret) {
-                ctx.memory.push_back(b);
-            }
+            op.ptr(ctx.memory);
             ++ctx.prog_ptr;
         },
         [&](const op_builtin_mem_op& op) {

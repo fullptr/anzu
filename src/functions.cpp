@@ -12,134 +12,134 @@
 namespace anzu {
 namespace {
 
-auto builtin_sqrt(std::span<const std::byte> args) -> std::vector<std::byte>
+static constexpr auto SIZE32 = sizeof(std::uint32_t);
+static constexpr auto SIZE64 = sizeof(std::uint64_t);
+
+auto builtin_sqrt(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, sizeof(std::uint64_t)>();
-    std::memcpy(bytes.data(), args.data(), sizeof(std::uint64_t));
+    auto bytes = std::array<std::byte, SIZE64>();
+    std::memcpy(bytes.data(), mem.data(), SIZE64);
+
     const auto val = std::sqrt(std::bit_cast<double>(bytes));
-    return to_bytes(val);
+    bytes = std::bit_cast<std::array<std::byte, SIZE64>>(val);
+
+    std::memcpy(mem.data(), bytes.data(), SIZE64);
 }
 
-auto builtin_print_char(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_print_char(std::vector<std::byte>& mem) -> void
 {
-    print("{}", static_cast<char>(args[0]));
-    return std::vector{std::byte{0}};
+    print("{}", static_cast<char>(mem.back()));
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_char(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_println_char(std::vector<std::byte>& mem) -> void
 {
-    print("{}\n", static_cast<char>(args[0]));
-    return std::vector{std::byte{0}};
+    print("{}\n", static_cast<char>(mem.back()));
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_bool(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_print_bool(std::vector<std::byte>& mem) -> void
 {
-    print("{}", args[0] == std::byte{1});
-    return std::vector{std::byte{0}};
+    print("{}", mem.back() == std::byte{1});
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_bool(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_println_bool(std::vector<std::byte>& mem) -> void
 {
-    print("{}\n", args[0] == std::byte{1});
-    return std::vector{std::byte{0}};
+    print("{}\n", mem.back() == std::byte{1});
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_null(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_print_null(std::vector<std::byte>& mem) -> void
 {
     print("null");
-    return std::vector{std::byte{0}};
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_null(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_println_null(std::vector<std::byte>& mem) -> void
 {
     print("null\n");
-    return std::vector{std::byte{0}};
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_i32(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_print_i32(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 4>();
-    for (std::size_t i = 0; i != 4; ++i) {
-        bytes[i] = args[i];
-    }
+    auto bytes = std::array<std::byte, SIZE32>();
+    std::memcpy(bytes.data(), mem.data(), SIZE32);
     print("{}", std::bit_cast<std::int32_t>(bytes));
-    return std::vector{std::byte{0}};
+
+    mem.resize(mem.size() - SIZE32);
+    mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_println_i32(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_println_i32(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 4>();
-    for (std::size_t i = 0; i != 4; ++i) {
-        bytes[i] = args[i];
-    }
+    auto bytes = std::array<std::byte, SIZE32>();
+    std::memcpy(bytes.data(), mem.data(), SIZE32);
     print("{}\n", std::bit_cast<std::int32_t>(bytes));
-    return std::vector{std::byte{0}};
+
+    mem.resize(mem.size() - SIZE32);
+    mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_print_i64(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_print_i64(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = args[i];
-    }
+    auto bytes = std::array<std::byte, SIZE64>();
+    std::memcpy(bytes.data(), mem.data(), SIZE64);
     print("{}", std::bit_cast<std::int64_t>(bytes));
-    return std::vector{std::byte{0}};
+
+    mem.resize(mem.size() - SIZE64);
+    mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_println_i64(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_println_i64(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = args[i];
-    }
+    auto bytes = std::array<std::byte, SIZE64>();
+    std::memcpy(bytes.data(), mem.data(), SIZE64);
     print("{}\n", std::bit_cast<std::int64_t>(bytes));
-    return std::vector{std::byte{0}};
+
+    mem.resize(mem.size() - SIZE64);
+    mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_print_u64(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_print_u64(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = args[i];
-    }
+    auto bytes = std::array<std::byte, SIZE64>();
+    std::memcpy(bytes.data(), mem.data(), SIZE64);
     print("{}", std::bit_cast<std::uint64_t>(bytes));
-    return std::vector{std::byte{0}};
+
+    mem.resize(mem.size() - SIZE64);
+    mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_println_u64(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_println_u64(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = args[i];
-    }
+    auto bytes = std::array<std::byte, SIZE64>();
+    std::memcpy(bytes.data(), mem.data(), SIZE64);
     print("{}\n", std::bit_cast<std::uint64_t>(bytes));
-    return std::vector{std::byte{0}};
+
+    mem.resize(mem.size() - SIZE64);
+    mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_print_f64(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_print_f64(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = args[i];
-    }
+    auto bytes = std::array<std::byte, SIZE64>();
+    std::memcpy(bytes.data(), mem.data(), SIZE64);
     print("{}", std::bit_cast<double>(bytes));
-    return std::vector{std::byte{0}};
+
+    mem.resize(mem.size() - SIZE64);
+    mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_println_f64(std::span<const std::byte> args) -> std::vector<std::byte>
+auto builtin_println_f64(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = args[i];
-    }
+    auto bytes = std::array<std::byte, SIZE64>();
+    std::memcpy(bytes.data(), mem.data(), SIZE64);
     print("{}\n", std::bit_cast<double>(bytes));
-    return std::vector{std::byte{0}};
-}
 
-auto builtin_put(std::span<const std::byte> args) -> std::vector<std::byte>
-{
-    anzu::print("{}", static_cast<char>(args[0]));
-    return std::vector{std::byte{0}};
+    mem.resize(mem.size() - SIZE64);
+    mem.push_back(std::byte{0}); // returns null
 }
 
 }
@@ -214,11 +214,6 @@ auto construct_builtin_map() -> builtin_map
     builtins.emplace(
         builtin_key{ .name = "println", .args = { i64_type() } },
         builtin_val{ .ptr = builtin_println_i64, .return_type = null_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "put", .args = { char_type() } },
-        builtin_val{ .ptr = builtin_put, .return_type = null_type() }
     );
 
     return builtins;
