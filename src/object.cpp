@@ -24,22 +24,26 @@ auto to_string(const object& object) -> std::string
 
 auto make_i32(std::int32_t val) -> object
 {
-    return { .data = to_bytes(val), .type = i32_type() };
+    const auto bytes = as_bytes(val);
+    return { .data = {bytes.begin(), bytes.end()}, .type = i32_type() };
 }
 
 auto make_i64(std::int64_t val) -> object
 {
-    return { .data = to_bytes(val), .type = i64_type() };
+    const auto bytes = as_bytes(val);
+    return { .data = {bytes.begin(), bytes.end()}, .type = i64_type() };
 }
 
 auto make_u64(std::uint64_t val) -> object
 {
-    return { .data = to_bytes(val), .type = u64_type() };
+    const auto bytes = as_bytes(val);
+    return { .data = {bytes.begin(), bytes.end()}, .type = u64_type() };
 }
 
 auto make_f64(double val) -> object
 {
-    return { .data = to_bytes(val), .type = f64_type() };
+    const auto bytes = as_bytes(val);
+    return { .data = {bytes.begin(), bytes.end()}, .type = f64_type() };
 }
 
 auto make_char(char val) -> object

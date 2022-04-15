@@ -24,12 +24,6 @@ auto to_type_name() -> type_name
 }
 
 template <typename T>
-auto as_bytes(const T& value) -> std::array<std::byte, sizeof(T)>
-{
-    return std::bit_cast<std::array<std::byte, sizeof(T)>>(value);
-}
-
-template <typename T>
 auto push_value(std::vector<std::byte>& mem, const T& value) -> void
 {
     for (const auto& b : as_bytes(value)) {
@@ -133,6 +127,7 @@ auto resolve_numerical_binary_op(std::string_view op) -> std::optional<binary_op
             return binary_op_info{ bin_op<T, std::modulus>, to_type_name<T>() };
         }
     }
+    return std::nullopt;
 }
 
 }
@@ -182,7 +177,6 @@ auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binar
             return op.value();
         }
     }
-
     return std::nullopt;
 }
 

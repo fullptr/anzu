@@ -134,7 +134,8 @@ struct compiler
 template <typename T>
 auto push_literal(compiler& com, const T& value) -> void
 {
-    com.program.emplace_back(op_load_bytes{to_bytes(value)});
+    const auto bytes = as_bytes(value);
+    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
 }
 
 auto current_vars(compiler& com) -> var_locations&
