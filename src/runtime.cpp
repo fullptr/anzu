@@ -32,13 +32,13 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ++ctx.prog_ptr;
         },
         [&](const op_push_global_addr& op) {
-            ctx.memory.push_back(op.position);
-            ctx.memory.push_back(op.size);
+            ctx.memory.push_back(block_uint{op.position});
+            ctx.memory.push_back(block_uint{op.size});
             ++ctx.prog_ptr;
         },
         [&](const op_push_local_addr& op) {
-            ctx.memory.push_back(ctx.base_ptr + op.offset);
-            ctx.memory.push_back(op.size);
+            ctx.memory.push_back(block_uint{ctx.base_ptr + op.offset});
+            ctx.memory.push_back(block_uint{op.size});
             ++ctx.prog_ptr;
         },
         [&](op_modify_ptr) {
