@@ -51,9 +51,9 @@ auto make_char(char val) -> object
     return { .data = { static_cast<std::byte>(val) }, .type = char_type() };
 }
 
-auto make_float(double val) -> object
+auto make_f64(double val) -> object
 {
-    return { .data = { block_float{val} }, .type = float_type() };
+    return { .data = to_bytes(val), .type = f64_type() };
 }
 
 auto make_bool(bool val) -> object

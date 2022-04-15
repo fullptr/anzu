@@ -26,7 +26,7 @@ constexpr auto tk_i32       = sv{"i32"};
 constexpr auto tk_i64       = sv{"i64"};
 constexpr auto tk_uint      = sv{"uint"};
 constexpr auto tk_char      = sv{"char"};
-constexpr auto tk_float     = sv{"float"};
+constexpr auto tk_f64       = sv{"f64"};
 constexpr auto tk_bool      = sv{"bool"};
 constexpr auto tk_str       = sv{"str"};
 

@@ -135,9 +135,10 @@ println("Size of list is 4:")
 println(size_of(xl))
 
 xl2 := [vec2(1, 2), vec2(3, 4)]
-println("xl2 should have size 4 but length 2:")
+println("xl2 should have size 32 but length 2:")
 print("size: ")
 println(size_of(xl2))
+println(size_of(xl2[0]))
 print("length: ")
 println(size_of(xl2) / size_of(xl2[0]))
 
@@ -164,18 +165,18 @@ my_span := span(&list_of_vec2s[0u], 3u)
 test_ptr_arithmetic(my_span)
 
 # Member functions
-fn square(x: float) -> float
+fn square(x: f64) -> f64
 {
     return x * x
 }
 
 struct vec3
 {
-    x: float
-    y: float
-    z: float
+    x: f64
+    y: f64
+    z: f64
 
-    fn length(self: &vec3) -> float
+    fn length(self: &vec3) -> f64
     {
         x_squared := square(self->x)
         y_squared := square(self->y)

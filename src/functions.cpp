@@ -13,8 +13,12 @@ namespace {
 
 auto builtin_sqrt(std::span<const block> args) -> std::vector<block>
 {
-    const auto& val = std::get<block_float>(args[0]);
-    return {block_float{std::sqrt(val)}};
+    auto bytes = std::array<std::byte, 8>();
+    for (std::size_t i = 0; i != 8; ++i) {
+        bytes[i] = std::get<std::byte>(args[i]);
+    }
+    const auto val = std::sqrt(std::bit_cast<double>(bytes));
+    return to_bytes(val);
 }
 
 template <typename T>
@@ -107,6 +111,26 @@ auto builtin_println_i64(std::span<const block> args) -> std::vector<block>
     return {block{block_byte{0}}};
 }
 
+auto builtin_print_f64(std::span<const block> args) -> std::vector<block>
+{
+    auto bytes = std::array<std::byte, 8>();
+    for (std::size_t i = 0; i != 8; ++i) {
+        bytes[i] = std::get<std::byte>(args[i]);
+    }
+    print("{}", std::bit_cast<double>(bytes));
+    return {block{block_byte{0}}};
+}
+
+auto builtin_println_f64(std::span<const block> args) -> std::vector<block>
+{
+    auto bytes = std::array<std::byte, 8>();
+    for (std::size_t i = 0; i != 8; ++i) {
+        bytes[i] = std::get<std::byte>(args[i]);
+    }
+    print("{}\n", std::bit_cast<double>(bytes));
+    return {block{block_byte{0}}};
+}
+
 auto builtin_put(std::span<const block> args) -> std::vector<block>
 {
     anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
@@ -120,8 +144,8 @@ auto construct_builtin_map() -> builtin_map
     auto builtins = builtin_map{};
 
     builtins.emplace(
-        builtin_key{ .name = "sqrt", .args = { float_type() } },
-        builtin_val{ .ptr = builtin_sqrt, .return_type = float_type() }
+        builtin_key{ .name = "sqrt", .args = { f64_type() } },
+        builtin_val{ .ptr = builtin_sqrt, .return_type = f64_type() }
     );
 
     builtins.emplace(
@@ -143,12 +167,12 @@ auto construct_builtin_map() -> builtin_map
     );
 
     builtins.emplace(
-        builtin_key{ .name = "print", .args = { float_type() } },
-        builtin_val{ .ptr = builtin_print<block_float>, .return_type = null_type() }
+        builtin_key{ .name = "print", .args = { f64_type() } },
+        builtin_val{ .ptr = builtin_print_f64, .return_type = null_type() }
     );
     builtins.emplace(
-        builtin_key{ .name = "println", .args = { float_type() } },
-        builtin_val{ .ptr = builtin_println<block_float>, .return_type = null_type() }
+        builtin_key{ .name = "println", .args = { f64_type() } },
+        builtin_val{ .ptr = builtin_println_f64, .return_type = null_type() }
     );
 
     builtins.emplace(

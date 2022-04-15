@@ -66,9 +66,9 @@ auto to_uint(std::string_view token) -> block_uint
     return result;
 }
 
-auto to_float(std::string_view token) -> block_float
+auto to_f64(std::string_view token) -> double
 {
-    auto result = block_float{};
+    auto result = double{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
         print("type error: cannot convert '{}' to float\n", token);
@@ -91,8 +91,8 @@ auto parse_literal(tokenstream& tokens) -> object
     if (tokens.curr().type == token_type::uinteger) {
         return make_uint(to_uint(tokens.consume().text));
     }
-    if (tokens.curr().type == token_type::floating) {
-        return make_float(to_float(tokens.consume().text));
+    if (tokens.curr().type == token_type::f64) {
+        return make_f64(to_f64(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::character) {
         const auto c = tokens.consume().text;
