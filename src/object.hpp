@@ -16,11 +16,7 @@ static_assert(sizeof(std::uint64_t) == sizeof(std::size_t));
 
 using block_byte  = std::byte;
 using block_uint  = std::uint64_t;
-
-using block = std::variant<
-    block_byte,
-    block_uint
->;
+using block = std::variant<block_byte, block_uint>;
 
 struct object
 {
