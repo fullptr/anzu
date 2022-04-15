@@ -56,15 +56,37 @@ auto bin_op_bytes(std::vector<block>& mem) -> void
     }
 }
 
+// TODO: Dedeup this, also appears in runtime
+auto push_u64(std::vector<block>& mem, std::uint64_t value) -> void
+{
+    for (const auto& b : std::bit_cast<std::array<std::byte, sizeof(std::uint64_t)>>(value)) {
+        mem.push_back(b);
+    }
+}
+
+// TODO: Dedeup this, also appears in runtime
+auto pop_u64(std::vector<block>& mem) -> std::uint64_t
+{
+    auto bytes = std::array<std::byte, sizeof(std::uint64_t)>{};
+    for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
+        bytes[i] = std::get<std::byte>(mem[mem.size() - sizeof(std::uint64_t) + i]);
+    }
+    for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
+        mem.pop_back();
+    }
+    return std::bit_cast<std::uint64_t>(bytes);
+}
+
 // Top of stack: [ptr], [size], [offset]
 // offset is popped, size stays the same, ptr is modified
 auto ptr_addition(std::vector<block>& mem)
 {
-    const auto offset = get_back<block_uint>(mem, 0);
-    const auto size = get_back<block_uint>(mem, 1);
-    auto& ptr = get_back<block_uint>(mem, 2);
-    mem.pop_back();
-    ptr += offset * size;
+    const auto offset = pop_u64(mem);
+    const auto size = pop_u64(mem);
+    const auto ptr = pop_u64(mem);
+
+    push_u64(mem, ptr + offset * size);
+    push_u64(mem, size);
 }
 
 // TODO: use memcmp here when we have just bytes
@@ -141,7 +163,7 @@ auto bool_negate(std::vector<block>& mem)
 
 auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binary_op_info>
 {
-    if (is_ptr_type(desc.lhs) && desc.rhs == uint_type()) {
+    if (is_ptr_type(desc.lhs) && desc.rhs == u64_type()) {
         return binary_op_info{ ptr_addition, desc.lhs };
     }
 
@@ -205,29 +227,29 @@ auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binar
             return binary_op_info{ bin_op_bytes<std::int64_t, std::not_equal_to>, bool_type() };
         }
     }
-    else if (type == uint_type()) {
+    else if (type == u64_type()) {
         if (desc.op == tk_add) {
-            return binary_op_info{ bin_op<block_uint, std::plus>(), type };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::plus>, type };
         } else if (desc.op == tk_sub) {
-            return binary_op_info{ bin_op<block_uint, std::minus>(), type };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::minus>, type };
         } else if (desc.op == tk_mul) {
-            return binary_op_info{ bin_op<block_uint, std::multiplies>(), type };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return binary_op_info{ bin_op<block_uint, std::divides>(), type };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::divides>, type };
         } else if (desc.op == tk_mod) {
-            return binary_op_info{ bin_op<block_uint, std::modulus>(), type };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::modulus>, type };
         } else if (desc.op == tk_lt) {
-            return binary_op_info{ bin_op<block_uint, std::less>(), bool_type() };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::less>, bool_type() };
         } else if (desc.op == tk_le) {
-            return binary_op_info{ bin_op<block_uint, std::less_equal>(), bool_type() };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::less_equal>, bool_type() };
         } else if (desc.op == tk_gt) {
-            return binary_op_info{ bin_op<block_uint, std::greater>(), bool_type() };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
-            return binary_op_info{ bin_op<block_uint, std::greater_equal>(), bool_type() };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::greater_equal>, bool_type() };
         } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op<block_uint, std::equal_to>(), bool_type() };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op<block_uint, std::not_equal_to>(), bool_type() };
+            return binary_op_info{ bin_op_bytes<std::uint64_t, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == f64_type()) {

@@ -64,9 +64,9 @@ auto hash(const type_simple& type) -> std::size_t;
 
 auto i32_type() -> type_name;
 auto i64_type() -> type_name;
-auto uint_type() -> type_name;
-auto char_type() -> type_name;
+auto u64_type() -> type_name;
 auto f64_type() -> type_name;
+auto char_type() -> type_name;
 auto bool_type() -> type_name;
 auto null_type() -> type_name;
 auto str_literal_type(std::size_t length) -> type_name;

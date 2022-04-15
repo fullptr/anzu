@@ -36,7 +36,7 @@ auto is_i64(std::string_view token) -> bool
     return is_int(token);
 }
 
-auto is_uint(std::string_view token) -> bool
+auto is_u64(std::string_view token) -> bool
 {
     const auto has_suffix = token.ends_with("u");
     if (!has_suffix) {
@@ -164,8 +164,8 @@ auto lex_line(
                 else if (is_i64(token)) {
                     push_token(token, col, token_type::i64);
                 }
-                else if (is_uint(token)) {
-                    push_token(token, col, token_type::uinteger);
+                else if (is_u64(token)) {
+                    push_token(token, col, token_type::u64);
                 }
                 else if (is_f64(token)) {
                     push_token(token, col, token_type::f64);

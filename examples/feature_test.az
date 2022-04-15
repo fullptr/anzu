@@ -146,7 +146,7 @@ println(size_of(xl2) / size_of(xl2[0]))
 struct span
 {
     p: &vec2
-    size: uint
+    size: u64
 }
 
 fn test_ptr_arithmetic(s: span) -> null

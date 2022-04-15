@@ -13,10 +13,10 @@ enum class token_type
     keyword,
     symbol,
     name,
-    uinteger,
     character,
     i32,
     i64,
+    u64,
     f64,
     string
 };
@@ -39,7 +39,7 @@ public:
     auto consume_maybe(std::string_view text) -> bool;
     auto consume_only(std::string_view text) -> token;
     auto consume_i64() -> std::int64_t;
-    auto consume_uint() -> std::uint64_t;
+    auto consume_u64() -> std::uint64_t;
 
     template <typename Func>
     auto consume_comma_separated_list(std::string_view sentinel, Func&& callback) -> void

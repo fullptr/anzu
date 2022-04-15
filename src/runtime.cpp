@@ -24,6 +24,42 @@ auto pop_back(std::vector<block>& vec) -> block
     return back;   
 }
 
+auto push_u64(runtime_context& ctx, std::uint64_t value) -> void
+{
+    for (const auto& b : std::bit_cast<std::array<std::byte, sizeof(std::uint64_t)>>(value)) {
+        ctx.memory.push_back(b);
+    }
+}
+
+auto pop_u64(runtime_context& ctx) -> std::uint64_t
+{
+    auto bytes = std::array<std::byte, sizeof(std::uint64_t)>{};
+    for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
+        bytes[i] = std::get<std::byte>(ctx.memory[ctx.memory.size() - sizeof(std::uint64_t) + i]);
+    }
+    for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
+        ctx.memory.pop_back();
+    }
+    return std::bit_cast<std::uint64_t>(bytes);
+}
+
+auto write_u64(runtime_context& ctx, std::size_t ptr, std::uint64_t value) -> void
+{
+    auto bytes = to_bytes(value);
+    for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
+        ctx.memory[ptr + i] = bytes[i]; 
+    }
+}
+
+auto read_u64(runtime_context& ctx, std::size_t ptr) -> std::uint64_t
+{
+    auto bytes = std::array<std::byte, sizeof(std::uint64_t)>{};
+    for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
+        bytes[i] = std::get<std::byte>(ctx.memory[ptr + i]);
+    }
+    return std::bit_cast<std::uint64_t>(bytes);
+}
+
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
@@ -32,35 +68,35 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ++ctx.prog_ptr;
         },
         [&](const op_push_global_addr& op) {
-            ctx.memory.push_back(block_uint{op.position});
-            ctx.memory.push_back(block_uint{op.size});
+            push_u64(ctx, op.position);
+            push_u64(ctx, op.size);
             ++ctx.prog_ptr;
         },
         [&](const op_push_local_addr& op) {
-            ctx.memory.push_back(block_uint{ctx.base_ptr + op.offset});
-            ctx.memory.push_back(block_uint{op.size});
+            push_u64(ctx, ctx.base_ptr + op.offset);
+            push_u64(ctx, op.size);
             ++ctx.prog_ptr;
         },
         [&](op_modify_ptr) {
-            const auto new_size = std::get<block_uint>(pop_back(ctx.memory));
-            const auto offset = std::get<block_uint>(pop_back(ctx.memory));
-            pop_back(ctx.memory); // Old size
-            auto& ptr = std::get<block_uint>(ctx.memory.back());
-            ptr += offset;
-            ctx.memory.push_back(new_size);
+            const auto new_size = pop_u64(ctx);
+            const auto offset = pop_u64(ctx);
+            pop_u64(ctx); // Old size
+            const auto ptr = pop_u64(ctx);
+            push_u64(ctx, ptr + offset);
+            push_u64(ctx, new_size);
             ++ctx.prog_ptr;
         },
         [&](op_load) {
-            const auto size = std::get<block_uint>(pop_back(ctx.memory));
-            const auto ptr = std::get<block_uint>(pop_back(ctx.memory));
+            const auto size = pop_u64(ctx);
+            const auto ptr = pop_u64(ctx);
             for (std::size_t i = 0; i != size; ++i) {
                 ctx.memory.push_back(ctx.memory[ptr + i]);
             }
             ++ctx.prog_ptr;
         },
         [&](op_save) {
-            const auto size = std::get<block_uint>(pop_back(ctx.memory));
-            const auto ptr = std::get<block_uint>(pop_back(ctx.memory));
+            const auto size = pop_u64(ctx);
+            const auto ptr = pop_u64(ctx);
             runtime_assert(ptr + size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
             if (ptr + size < ctx.memory.size()) {
                 for (const auto i : std::views::iota(ptr, ptr + size) | std::views::reverse) {
@@ -108,10 +144,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = op.jump;
         },
         [&](op_return) {
-            const auto prev_base_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr]);
-            const auto prev_prog_ptr = std::get<block_uint>(ctx.memory[ctx.base_ptr + 1]);
-            const auto return_size = std::get<block_uint>(ctx.memory[ctx.base_ptr + 2]);
-
+            const auto prev_base_ptr = read_u64(ctx, ctx.base_ptr);
+            const auto prev_prog_ptr = read_u64(ctx, ctx.base_ptr + sizeof(std::uint64_t));
+            const auto return_size = read_u64(ctx, ctx.base_ptr + 2*sizeof(std::uint64_t));
+            
             for (std::size_t i = 0; i != return_size; ++i) {
                 ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
             }
@@ -126,8 +162,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             // the function. Note that the return size is stored at new_base_ptr + 2 but and has
             // already been written in.
             const auto new_base_ptr = ctx.memory.size() - op.args_size;
-            ctx.memory[new_base_ptr] = block_uint{ctx.base_ptr};  
-            ctx.memory[new_base_ptr + 1] = block_uint{ctx.prog_ptr + 1}; // Pos after function call
+            write_u64(ctx, new_base_ptr, ctx.base_ptr);
+            write_u64(ctx, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr + 1); // Pos after function call
+            
             ctx.base_ptr = new_base_ptr;
             ctx.prog_ptr = op.ptr; // Jump into the function
         },

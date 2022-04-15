@@ -59,9 +59,9 @@ auto i64_type() -> type_name
     return {type_simple{ .name = std::string{tk_i64} }};
 }
 
-auto uint_type() -> type_name
+auto u64_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_uint} }};
+    return {type_simple{ .name = std::string{tk_u64} }};
 }
 
 auto char_type() -> type_name
@@ -126,9 +126,9 @@ auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == i32_type()
         || type == i64_type()
-        || type == uint_type()
-        || type == char_type()
+        || type == u64_type()
         || type == f64_type()
+        || type == char_type()
         || type == bool_type()
         || type == null_type();
 }
@@ -183,14 +183,14 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
     }
 
     if (is_ptr_type(type)) {
-        return 2; // Two unsigned int blocks, ptr and size
+        return 16; // Two unsigned ints, ptr and size
     }
 
     if (type == i32_type()) {
         return 4;
     }
 
-    if (type == i64_type() || type == f64_type()) {
+    if (type == i64_type() || type == f64_type() || type == u64_type()) {
         return 8;
     }
 

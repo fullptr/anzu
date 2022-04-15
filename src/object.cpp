@@ -20,8 +20,7 @@ auto format_error(const std::string& str) -> void
 auto to_string(const block& blk) -> std::string
 {
     return std::visit(overloaded {
-        [](block_byte byte) { return std::format("{:x}", static_cast<unsigned char>(byte)); },
-        [](block_uint val) { return std::format("{}u", val); },
+        [](block_byte byte) { return std::format("{:X}", static_cast<unsigned char>(byte)); },
         [](auto&& val) { return std::format("{}", val); }
     }, blk);
 }
@@ -41,19 +40,19 @@ auto make_i64(std::int64_t val) -> object
     return { .data = to_bytes(val), .type = i64_type() };
 }
 
-auto make_uint(std::uint64_t val) -> object
+auto make_u64(std::uint64_t val) -> object
 {
-    return { .data = { val }, .type = uint_type() };
-}
-
-auto make_char(char val) -> object
-{
-    return { .data = { static_cast<std::byte>(val) }, .type = char_type() };
+    return { .data = to_bytes(val), .type = u64_type() };
 }
 
 auto make_f64(double val) -> object
 {
     return { .data = to_bytes(val), .type = f64_type() };
+}
+
+auto make_char(char val) -> object
+{
+    return { .data = { static_cast<std::byte>(val) }, .type = char_type() };
 }
 
 auto make_bool(bool val) -> object

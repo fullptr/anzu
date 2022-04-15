@@ -131,6 +131,14 @@ struct compiler
     type_store types;
 };
 
+template <typename T>
+auto push_literal(compiler& com, const T& value) -> void
+{
+    for (const auto& b : to_bytes(value)) {
+        com.program.emplace_back(op_load_literal{ .blk=b });
+    }
+}
+
 auto current_vars(compiler& com) -> var_locations&
 {
     return com.current_func ? com.current_func->vars : com.globals;
@@ -215,7 +223,9 @@ auto load_variable(compiler& com, const token& tok, const std::string& name) -> 
 
 auto signature_args_size(const compiler& com, const signature& sig) -> std::size_t
 {
-    auto args_size = std::size_t{0};
+    // Initial function payload. 3 uints that store the old base ptr, old prog ptr
+    // and the return size in bytes.
+    auto args_size = 3 * sizeof(std::uint64_t);
     for (const auto& arg : sig.args) {
         args_size += com.types.size_of(arg.type);
     }
@@ -224,8 +234,8 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
 
 auto modify_ptr(compiler& com, std::size_t offset, std::size_t size) -> void
 {
-    com.program.emplace_back(op_load_literal{ .blk=block_uint{offset} });
-    com.program.emplace_back(op_load_literal{ .blk=block_uint{size} });
+    push_literal(com, offset);
+    push_literal(com, size);
     com.program.emplace_back(op_modify_ptr{});
 }
 
@@ -381,7 +391,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return concrete_ptr_type(type_of_expr(com, *expr.expr));
         },
         [&](const node_sizeof_expr& expr) {
-            return uint_type();
+            return u64_type();
         },
         [&](const node_variable_expr& expr) {
             return find_variable_type(com, expr.token, expr.name);
@@ -461,9 +471,9 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
 
     // Push the offset (index * size)
     const auto itype = compile_expr_val(com, *expr.index);
-    compiler_assert(itype == uint_type(), expr.token, "subscript argument must be a 'uint', got '{}'", itype);
+    compiler_assert(itype == u64_type(), expr.token, "subscript argument must be a 'u64', got '{}'", itype);
 
-    com.program.emplace_back(op_load_literal{ .blk={block_uint{etype_size}} });
+    push_literal(com, etype_size);
     const auto info = resolve_binary_op({ .op="*", .lhs=itype, .rhs=itype });
     com.program.emplace_back(op_builtin_mem_op{
         .name = "uint * uint",
@@ -471,8 +481,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     });
 
     // Push the size
-    com.program.emplace_back(op_load_literal{ .blk={block_uint{etype_size}} });
-
+    push_literal(com, etype_size);
     com.program.emplace_back(op_modify_ptr{});
     return etype;
 }
@@ -552,11 +561,10 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     
     if (auto it = com.functions.find(key); it != com.functions.end()) {
         const auto& [sig, ptr] = it->second;
-        static constexpr auto payload_size = std::size_t{3};
         const auto return_size = com.types.size_of(sig.return_type);
-        com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // base ptr
-        com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // prog ptr
-        com.program.emplace_back(op_load_literal{ .blk=block_uint{return_size} });
+        push_literal(com, std::uint64_t{0}); // base ptr
+        push_literal(com, std::uint64_t{0}); // prog ptr
+        push_literal(com, return_size);
         
         // Push the args to the stack
         std::vector<type_name> param_types;
@@ -567,7 +575,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         com.program.emplace_back(anzu::op_function_call{
             .name=node.function_name,
             .ptr=ptr + 1, // Jump into the function
-            .args_size=signature_args_size(com, sig) + payload_size
+            .args_size=signature_args_size(com, sig)
         });
         return sig.return_type;
     }
@@ -615,11 +623,10 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
     }
     
     const auto& [sig, ptr] = it->second;
-    static constexpr auto payload_size = std::size_t{3};
     const auto return_size = com.types.size_of(sig.return_type);
-    com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // base ptr
-    com.program.emplace_back(op_load_literal{ .blk=block_uint{0} }); // prog ptr
-    com.program.emplace_back(op_load_literal{ .blk=block_uint{return_size} });
+    push_literal(com, std::uint64_t{0}); // base ptr
+    push_literal(com, std::uint64_t{0}); // prog ptr
+    push_literal(com, return_size);
     
     // Push the args to the stack
     std::vector<type_name> param_types;
@@ -632,7 +639,7 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
     com.program.emplace_back(anzu::op_function_call{
         .name=node.function_name,
         .ptr=ptr + 1, // Jump into the function
-        .args_size=signature_args_size(com, sig) + payload_size
+        .args_size=signature_args_size(com, sig)
     });
     return sig.return_type;
 }
@@ -659,8 +666,8 @@ auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
     const auto size = com.types.size_of(type);
-    com.program.emplace_back(op_load_literal{ .blk=block_uint{size} });
-    return uint_type();
+    push_literal(com, size);
+    return u64_type();
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -787,9 +794,9 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
-    declare_variable_name(com, node.token, "# old_base_ptr", uint_type()); // Store the old base ptr
-    declare_variable_name(com, node.token, "# old_prog_ptr", uint_type()); // Store the old program ptr
-    declare_variable_name(com, node.token, "# return_size", uint_type());  // Store the return size
+    declare_variable_name(com, node.token, "# old_base_ptr", u64_type()); // Store the old base ptr
+    declare_variable_name(com, node.token, "# old_prog_ptr", u64_type()); // Store the old program ptr
+    declare_variable_name(com, node.token, "# return_size", u64_type());  // Store the return size
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, node.token, arg.name, arg.type);
     }
@@ -835,9 +842,9 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
-    declare_variable_name(com, node.token, "# old_base_ptr", uint_type()); // Store the old base ptr
-    declare_variable_name(com, node.token, "# old_prog_ptr", uint_type()); // Store the old program ptr
-    declare_variable_name(com, node.token, "# return_size", uint_type());  // Store the return size
+    declare_variable_name(com, node.token, "# old_base_ptr", u64_type()); // Store the old base ptr
+    declare_variable_name(com, node.token, "# old_prog_ptr", u64_type()); // Store the old program ptr
+    declare_variable_name(com, node.token, "# return_size", u64_type());  // Store the return size
     for (const auto& arg : node.sig.args) {
         declare_variable_name(com, node.token, arg.name, arg.type);
     }
