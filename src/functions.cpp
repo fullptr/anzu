@@ -3,158 +3,70 @@
 #include "runtime.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
+#include "utility/memory.hpp"
 
 #include <unordered_map>
 #include <string>
 #include <functional>
+#include <utility>
 
 namespace anzu {
 namespace {
 
-auto builtin_sqrt(std::span<const block> args) -> std::vector<block>
+auto builtin_sqrt(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    const auto val = std::sqrt(std::bit_cast<double>(bytes));
-    return to_bytes(val);
+    auto val = pop_value<double>(mem);
+    push_value(mem, std::sqrt(val));
 }
 
-template <typename T>
-auto builtin_print(std::span<const block> args) -> std::vector<block>
+auto builtin_print_char(std::vector<std::byte>& mem) -> void
 {
-    print("{}", std::get<T>(args[0]));
-    return {block{block_byte{0}}};
+    print("{}", static_cast<char>(mem.back()));
+    mem.back() = std::byte{0}; // returns null
 }
 
-template <typename T>
-auto builtin_println(std::span<const block> args) -> std::vector<block>
+auto builtin_println_char(std::vector<std::byte>& mem) -> void
 {
-    print("{}\n", std::get<T>(args[0]));
-    return {block{block_byte{0}}};
+    print("{}\n", static_cast<char>(mem.back()));
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_char(std::span<const block> args) -> std::vector<block>
+auto builtin_print_bool(std::vector<std::byte>& mem) -> void
 {
-    print("{}", static_cast<char>(std::get<block_byte>(args[0])));
-    return {block{block_byte{0}}};
+    print("{}", mem.back() == std::byte{1});
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_char(std::span<const block> args) -> std::vector<block>
+auto builtin_println_bool(std::vector<std::byte>& mem) -> void
 {
-    print("{}\n", static_cast<char>(std::get<block_byte>(args[0])));
-    return {block{block_byte{0}}};
+    print("{}\n", mem.back() == std::byte{1});
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_bool(std::span<const block> args) -> std::vector<block>
-{
-    print("{}", std::get<block_byte>(args[0]) == block_byte{1});
-    return {block{block_byte{0}}};
-}
-
-auto builtin_println_bool(std::span<const block> args) -> std::vector<block>
-{
-    print("{}\n", std::get<block_byte>(args[0]) == block_byte{1});
-    return {block{block_byte{0}}};
-}
-
-auto builtin_print_null(std::span<const block> args) -> std::vector<block>
+auto builtin_print_null(std::vector<std::byte>& mem) -> void
 {
     print("null");
-    return {block{block_byte{0}}};
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_null(std::span<const block> args) -> std::vector<block>
+auto builtin_println_null(std::vector<std::byte>& mem) -> void
 {
     print("null\n");
-    return {block{block_byte{0}}};
+    mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_i32(std::span<const block> args) -> std::vector<block>
+template <typename T>
+auto builtin_print(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 4>();
-    for (std::size_t i = 0; i != 4; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    print("{}", std::bit_cast<std::int32_t>(bytes));
-    return {block{block_byte{0}}};
+    print("{}", pop_value<T>(mem));
+    mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_println_i32(std::span<const block> args) -> std::vector<block>
+template <typename T>
+auto builtin_println(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, 4>();
-    for (std::size_t i = 0; i != 4; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    print("{}\n", std::bit_cast<std::int32_t>(bytes));
-    return {block{block_byte{0}}};
-}
-
-auto builtin_print_i64(std::span<const block> args) -> std::vector<block>
-{
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    print("{}", std::bit_cast<std::int64_t>(bytes));
-    return {block{block_byte{0}}};
-}
-
-auto builtin_println_i64(std::span<const block> args) -> std::vector<block>
-{
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    print("{}\n", std::bit_cast<std::int64_t>(bytes));
-    return {block{block_byte{0}}};
-}
-
-auto builtin_print_u64(std::span<const block> args) -> std::vector<block>
-{
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    print("{}", std::bit_cast<std::uint64_t>(bytes));
-    return {block{block_byte{0}}};
-}
-
-auto builtin_println_u64(std::span<const block> args) -> std::vector<block>
-{
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    print("{}\n", std::bit_cast<std::uint64_t>(bytes));
-    return {block{block_byte{0}}};
-}
-
-auto builtin_print_f64(std::span<const block> args) -> std::vector<block>
-{
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    print("{}", std::bit_cast<double>(bytes));
-    return {block{block_byte{0}}};
-}
-
-auto builtin_println_f64(std::span<const block> args) -> std::vector<block>
-{
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
-    print("{}\n", std::bit_cast<double>(bytes));
-    return {block{block_byte{0}}};
-}
-
-auto builtin_put(std::span<const block> args) -> std::vector<block>
-{
-    anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
-    return {block{block_byte{0}}};
+    print("{}\n", pop_value<T>(mem));
+    mem.push_back(std::byte{0}); // returns null
 }
 
 }
@@ -170,70 +82,65 @@ auto construct_builtin_map() -> builtin_map
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { u64_type() } },
-        builtin_val{ .ptr = builtin_print_u64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<std::uint64_t>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { u64_type() } },
-        builtin_val{ .ptr = builtin_println_u64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<std::uint64_t>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { char_type() } },
-        builtin_val{ .ptr = builtin_print_char, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<char>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { char_type() } },
-        builtin_val{ .ptr = builtin_println_char, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<char>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { f64_type() } },
-        builtin_val{ .ptr = builtin_print_f64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<double>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { f64_type() } },
-        builtin_val{ .ptr = builtin_println_f64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<double>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_print_bool, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<bool>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_println_bool, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<bool>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { null_type() } },
-        builtin_val{ .ptr = builtin_print_null, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<std::byte>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { null_type() } },
-        builtin_val{ .ptr = builtin_println_null, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<std::byte>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { i32_type() } },
-        builtin_val{ .ptr = builtin_print_i32, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<std::int32_t>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { i32_type() } },
-        builtin_val{ .ptr = builtin_println_i32, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<std::int32_t>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { i64_type() } },
-        builtin_val{ .ptr = builtin_print_i64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<std::int64_t>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { i64_type() } },
-        builtin_val{ .ptr = builtin_println_i64, .return_type = null_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "put", .args = { char_type() } },
-        builtin_val{ .ptr = builtin_put, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<std::int64_t>, .return_type = null_type() }
     );
 
     return builtins;
@@ -265,14 +172,17 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
         const auto newline = name == "println";
         const auto length = std::get<type_list>(args[0]).count;
         return builtin_val{
-            .ptr = [=](std::span<const block> data) -> std::vector<block> {
-                for (const auto& datum : data) {
-                    print("{}", static_cast<char>(std::get<block_byte>(datum)));
+            .ptr = [=](std::vector<std::byte>& mem) -> void {
+                auto it = mem.end();
+                std::advance(it, -1 * length);
+                for (; it != mem.end(); ++it) {
+                    print("{}", static_cast<char>(*it));
                 }
                 if (newline) {
                     print("\n");
                 }
-                return {block{block_byte{0}}};
+                pop_n(mem, length);
+                mem.push_back(std::byte{0}); // Return null
             },
             .return_type = null_type()
         };

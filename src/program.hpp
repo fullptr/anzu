@@ -6,14 +6,15 @@
 #include <variant>
 #include <format>
 #include <vector>
+#include <utility>
 #include <string>
 #include <string_view>
 
 namespace anzu {
 
-struct op_load_literal
+struct op_load_bytes
 {
-    block blk;
+    std::vector<std::byte> bytes;
 };
 
 struct op_push_global_addr
@@ -113,7 +114,7 @@ struct op_return
 };
 
 struct op : std::variant<
-    op_load_literal,
+    op_load_bytes,
     op_push_global_addr,
     op_push_local_addr,
     op_modify_ptr,

@@ -14,16 +14,12 @@ namespace anzu {
 // to use it as indexes into C++ vectors which use size_t.
 static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 
-using block_byte  = std::byte;
-using block = std::variant<block_byte>;
-
 struct object
 {
-    std::vector<block> data;
-    anzu::type_name    type;
+    std::vector<std::byte> data;
+    anzu::type_name        type;
 };
 
-auto to_string(const block& blk) -> std::string;
 auto to_string(const object& object) -> std::string;
 
 auto make_i32(std::int32_t val) -> object;
@@ -38,34 +34,17 @@ auto make_null() -> object;
 auto format_special_chars(const std::string& str) -> std::string;
 
 template <typename T>
-inline auto to_bytes(const T& val) -> std::vector<block>
+inline auto as_bytes(const T& val) -> std::array<std::byte, sizeof(T)>
 {
-    auto ret = std::vector<block>{};
-    for (const auto b : std::bit_cast<std::array<std::byte, sizeof(T)>>(val)) {
-        ret.push_back(b);
-    }
-    return ret;
-}
-
-template <typename T>
-inline auto from_bytes(const std::vector<block>& val) -> T
-{
-    if (val.size() != sizeof(T)) {
-        print("oh no, size = {}\n", val.size());
-        std::exit(1);
-    }
-    auto bytes = std::array<std::byte, sizeof(T)>{};
-    for (std::size_t i = 0; i != sizeof(T); ++i) {
-        bytes[i] = std::get<std::byte>(val[i]);
-    }
-    return std::bit_cast<T>(bytes);
+    return std::bit_cast<std::array<std::byte, sizeof(T)>>(val);
 }
 
 }
 
-template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
-    auto format(const anzu::block& blk, auto& ctx) {
-        return std::formatter<std::string>::format(anzu::to_string(blk), ctx);
+template <> struct std::formatter<std::byte> : std::formatter<std::string> {
+    auto format(std::byte b, auto& ctx) {
+        const auto str = std::format("{:X}", static_cast<unsigned char>(b));
+        return std::formatter<std::string>::format(str, ctx);
     }
 };
 
