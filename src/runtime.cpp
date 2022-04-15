@@ -1,4 +1,5 @@
 #include "runtime.hpp"
+#include "object.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 #include "utility/scope_timer.hpp"
@@ -17,7 +18,7 @@ auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
     }
 }
 
-auto pop_back(std::vector<block>& vec) -> block
+auto pop_back(std::vector<std::byte>& vec) -> std::byte
 {
     const auto back = vec.back();
     vec.pop_back();
@@ -35,7 +36,7 @@ auto pop_u64(runtime_context& ctx) -> std::uint64_t
 {
     auto bytes = std::array<std::byte, sizeof(std::uint64_t)>{};
     for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
-        bytes[i] = std::get<std::byte>(ctx.memory[ctx.memory.size() - sizeof(std::uint64_t) + i]);
+        bytes[i] = ctx.memory[ctx.memory.size() - sizeof(std::uint64_t) + i];
     }
     for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
         ctx.memory.pop_back();
@@ -55,7 +56,7 @@ auto read_u64(runtime_context& ctx, std::size_t ptr) -> std::uint64_t
 {
     auto bytes = std::array<std::byte, sizeof(std::uint64_t)>{};
     for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
-        bytes[i] = std::get<std::byte>(ctx.memory[ptr + i]);
+        bytes[i] = ctx.memory[ptr + i];
     }
     return std::bit_cast<std::uint64_t>(bytes);
 }
@@ -133,7 +134,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = op.jump;
         },
         [&](const op_jump_if_false& op) {
-            if (std::get<block_byte>(ctx.memory.back()) == block_byte{1}) {
+            if (ctx.memory.back() == std::byte{1}) {
                 ++ctx.prog_ptr;
             } else {
                 ctx.prog_ptr = op.jump;
@@ -169,7 +170,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = op.ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            auto args = std::vector<anzu::block>(op.args_size);
+            auto args = std::vector<std::byte>(op.args_size);
             for (auto& arg : args | std::views::reverse) {
                 arg = pop_back(ctx.memory);
             }

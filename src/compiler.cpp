@@ -807,7 +807,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         // A function returning null does not need a final return statement, and in this case
         // we manually add a return value of null here.
         if (node.sig.return_type == null_type()) {
-            com.program.emplace_back(op_load_literal{block_byte{0}});
+            com.program.emplace_back(op_load_literal{std::byte{0}});
             com.program.emplace_back(op_return{});
         } else {
             compiler_error(node.token, "function '{}' does not end in a return statement", node.name);
@@ -855,7 +855,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
         // A function returning null does not need a final return statement, and in this case
         // we manually add a return value of null here.
         if (node.sig.return_type == null_type()) {
-            com.program.emplace_back(op_load_literal{block_byte{0}});
+            com.program.emplace_back(op_load_literal{std::byte{0}});
             com.program.emplace_back(op_return{});
         } else {
             compiler_error(node.token, "function '{}' does not end in a return statement", qualified_name);

@@ -8,42 +8,26 @@ namespace anzu {
 namespace {
 
 template <typename T>
-auto get_back(std::vector<block>& mem, std::size_t index) -> T&
+auto get_back(std::vector<std::byte>& mem, std::size_t index) -> T&
 {
     return std::get<std::remove_cvref_t<T>>(mem[mem.size() - index - 1]);
 }
 
-auto pop_n(std::vector<block>& mem, std::size_t n) -> void
+auto pop_n(std::vector<std::byte>& mem, std::size_t n) -> void
 {
     mem.resize(mem.size() - n);
 }
 
 template <typename Type, template <typename> typename Op>
-auto bin_op()
-{
-    return [=](std::vector<block>& mem) {
-        const auto op = Op<Type>{};
-        const auto rhs = get_back<Type>(mem, 0);
-        const auto lhs = get_back<Type>(mem, 1);
-        mem.pop_back();
-        if constexpr (std::is_same_v<bool, decltype(op(lhs, rhs))>) {
-            mem.back().emplace<block_byte>(static_cast<block_byte>(op(lhs, rhs)));
-        } else {
-            mem.back().emplace<decltype(op(lhs, rhs))>(op(lhs, rhs));
-        }
-    };
-}
-
-template <typename Type, template <typename> typename Op>
-auto bin_op_bytes(std::vector<block>& mem) -> void
+auto bin_op_bytes(std::vector<std::byte>& mem) -> void
 {
     const auto op = Op<Type>{};
-    auto lhs_bytes = std::vector<block>{};
+    auto lhs_bytes = std::vector<std::byte>{};
     for (std::size_t i = 0; i != sizeof(Type); ++i) {
         lhs_bytes.push_back(mem[mem.size() - (2 * sizeof(Type)) + i]);
     }
     const auto lhs = from_bytes<Type>(lhs_bytes);
-    auto rhs_bytes = std::vector<block>{};
+    auto rhs_bytes = std::vector<std::byte>{};
     for (std::size_t i = 0; i != sizeof(Type); ++i) {
         rhs_bytes.push_back(mem[mem.size() - sizeof(Type) + i]);
     }
@@ -57,7 +41,7 @@ auto bin_op_bytes(std::vector<block>& mem) -> void
 }
 
 // TODO: Dedeup this, also appears in runtime
-auto push_u64(std::vector<block>& mem, std::uint64_t value) -> void
+auto push_u64(std::vector<std::byte>& mem, std::uint64_t value) -> void
 {
     for (const auto& b : std::bit_cast<std::array<std::byte, sizeof(std::uint64_t)>>(value)) {
         mem.push_back(b);
@@ -65,11 +49,11 @@ auto push_u64(std::vector<block>& mem, std::uint64_t value) -> void
 }
 
 // TODO: Dedeup this, also appears in runtime
-auto pop_u64(std::vector<block>& mem) -> std::uint64_t
+auto pop_u64(std::vector<std::byte>& mem) -> std::uint64_t
 {
     auto bytes = std::array<std::byte, sizeof(std::uint64_t)>{};
     for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
-        bytes[i] = std::get<std::byte>(mem[mem.size() - sizeof(std::uint64_t) + i]);
+        bytes[i] = mem[mem.size() - sizeof(std::uint64_t) + i];
     }
     for (std::size_t i = 0; i != sizeof(std::uint64_t); ++i) {
         mem.pop_back();
@@ -79,7 +63,7 @@ auto pop_u64(std::vector<block>& mem) -> std::uint64_t
 
 // Top of stack: [ptr], [size], [offset]
 // offset is popped, size stays the same, ptr is modified
-auto ptr_addition(std::vector<block>& mem)
+auto ptr_addition(std::vector<std::byte>& mem)
 {
     const auto offset = pop_u64(mem);
     const auto size = pop_u64(mem);
@@ -89,58 +73,11 @@ auto ptr_addition(std::vector<block>& mem)
     push_u64(mem, size);
 }
 
-// TODO: use memcmp here when we have just bytes
-auto eq_comparison(std::size_t bytes)
-{
-    return [=](std::vector<block>& mem) {
-        auto lhs_bytes = std::vector<block_byte>{};
-        for (std::size_t i = 0; i != bytes; ++i) {
-            lhs_bytes.push_back(std::get<block_byte>(mem[mem.size() - (2 * bytes) + i]));
-        }
-
-        auto rhs_bytes = std::vector<block_byte>{};
-        for (std::size_t i = 0; i != bytes; ++i) {
-            rhs_bytes.push_back(std::get<block_byte>(mem[mem.size() - bytes + i]));
-        }
-
-        const auto result = lhs_bytes == rhs_bytes;
-        pop_n(mem, 2 * bytes);
-        mem.push_back(block_byte{result});
-    };
-}
-
-auto ne_comparison(std::size_t bytes)
-{
-    return [=](std::vector<block>& mem) {
-        auto lhs_bytes = std::vector<block_byte>{};
-        for (std::size_t i = 0; i != bytes; ++i) {
-            lhs_bytes.push_back(std::get<block_byte>(mem[mem.size() - (2 * bytes) + i]));
-        }
-
-        auto rhs_bytes = std::vector<block_byte>{};
-        for (std::size_t i = 0; i != bytes; ++i) {
-            rhs_bytes.push_back(std::get<block_byte>(mem[mem.size() - bytes + i]));
-        }
-
-        const auto result = lhs_bytes != rhs_bytes;
-        pop_n(mem, 2 * bytes);
-        mem.push_back(block_byte{result});
-    };
-}
-
 template <typename Type, template <typename> typename Op>
-auto unary_op(std::vector<block>& mem)
+auto unary_op_sized(std::vector<std::byte>& mem)
 {
     const auto op = Op<Type>{};
-    auto& obj = get_back<Type>(mem, 0);
-    obj = op(obj);
-}
-
-template <typename Type, template <typename> typename Op>
-auto unary_op_sized(std::vector<block>& mem)
-{
-    const auto op = Op<Type>{};
-    auto obj_bytes = std::vector<block>{};
+    auto obj_bytes = std::vector<std::byte>{};
     for (std::size_t i = 0; i != sizeof(Type); ++i) {
         obj_bytes.push_back(mem[mem.size() - (2 * sizeof(Type)) + i]);
     }
@@ -153,10 +90,10 @@ auto unary_op_sized(std::vector<block>& mem)
     }
 }
 
-auto bool_negate(std::vector<block>& mem)
+auto bool_negate(std::vector<std::byte>& mem)
 {
-    auto& top = get_back<block_byte>(mem, 0);
-    top = (top == block_byte{1}) ? block_byte{0} : block_byte{1};
+    auto& top = mem.back();
+    top = (top == std::byte{1}) ? std::byte{0} : std::byte{1};
 }
 
 }

@@ -7,154 +7,139 @@
 #include <unordered_map>
 #include <string>
 #include <functional>
+#include <utility>
 
 namespace anzu {
 namespace {
 
-auto builtin_sqrt(std::span<const block> args) -> std::vector<block>
+auto builtin_sqrt(std::span<const std::byte> args) -> std::vector<std::byte>
 {
-    auto bytes = std::array<std::byte, 8>();
-    for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
-    }
+    auto bytes = std::array<std::byte, sizeof(std::uint64_t)>();
+    std::memcpy(bytes.data(), args.data(), sizeof(std::uint64_t));
     const auto val = std::sqrt(std::bit_cast<double>(bytes));
     return to_bytes(val);
 }
 
-template <typename T>
-auto builtin_print(std::span<const block> args) -> std::vector<block>
+auto builtin_print_char(std::span<const std::byte> args) -> std::vector<std::byte>
 {
-    print("{}", std::get<T>(args[0]));
-    return {block{block_byte{0}}};
+    print("{}", static_cast<char>(args[0]));
+    return std::vector{std::byte{0}};
 }
 
-template <typename T>
-auto builtin_println(std::span<const block> args) -> std::vector<block>
+auto builtin_println_char(std::span<const std::byte> args) -> std::vector<std::byte>
 {
-    print("{}\n", std::get<T>(args[0]));
-    return {block{block_byte{0}}};
+    print("{}\n", static_cast<char>(args[0]));
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_print_char(std::span<const block> args) -> std::vector<block>
+auto builtin_print_bool(std::span<const std::byte> args) -> std::vector<std::byte>
 {
-    print("{}", static_cast<char>(std::get<block_byte>(args[0])));
-    return {block{block_byte{0}}};
+    print("{}", args[0] == std::byte{1});
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_println_char(std::span<const block> args) -> std::vector<block>
+auto builtin_println_bool(std::span<const std::byte> args) -> std::vector<std::byte>
 {
-    print("{}\n", static_cast<char>(std::get<block_byte>(args[0])));
-    return {block{block_byte{0}}};
+    print("{}\n", args[0] == std::byte{1});
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_print_bool(std::span<const block> args) -> std::vector<block>
-{
-    print("{}", std::get<block_byte>(args[0]) == block_byte{1});
-    return {block{block_byte{0}}};
-}
-
-auto builtin_println_bool(std::span<const block> args) -> std::vector<block>
-{
-    print("{}\n", std::get<block_byte>(args[0]) == block_byte{1});
-    return {block{block_byte{0}}};
-}
-
-auto builtin_print_null(std::span<const block> args) -> std::vector<block>
+auto builtin_print_null(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     print("null");
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_println_null(std::span<const block> args) -> std::vector<block>
+auto builtin_println_null(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     print("null\n");
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_print_i32(std::span<const block> args) -> std::vector<block>
+auto builtin_print_i32(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     auto bytes = std::array<std::byte, 4>();
     for (std::size_t i = 0; i != 4; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
+        bytes[i] = args[i];
     }
     print("{}", std::bit_cast<std::int32_t>(bytes));
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_println_i32(std::span<const block> args) -> std::vector<block>
+auto builtin_println_i32(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     auto bytes = std::array<std::byte, 4>();
     for (std::size_t i = 0; i != 4; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
+        bytes[i] = args[i];
     }
     print("{}\n", std::bit_cast<std::int32_t>(bytes));
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_print_i64(std::span<const block> args) -> std::vector<block>
+auto builtin_print_i64(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     auto bytes = std::array<std::byte, 8>();
     for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
+        bytes[i] = args[i];
     }
     print("{}", std::bit_cast<std::int64_t>(bytes));
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_println_i64(std::span<const block> args) -> std::vector<block>
+auto builtin_println_i64(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     auto bytes = std::array<std::byte, 8>();
     for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
+        bytes[i] = args[i];
     }
     print("{}\n", std::bit_cast<std::int64_t>(bytes));
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_print_u64(std::span<const block> args) -> std::vector<block>
+auto builtin_print_u64(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     auto bytes = std::array<std::byte, 8>();
     for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
+        bytes[i] = args[i];
     }
     print("{}", std::bit_cast<std::uint64_t>(bytes));
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_println_u64(std::span<const block> args) -> std::vector<block>
+auto builtin_println_u64(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     auto bytes = std::array<std::byte, 8>();
     for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
+        bytes[i] = args[i];
     }
     print("{}\n", std::bit_cast<std::uint64_t>(bytes));
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_print_f64(std::span<const block> args) -> std::vector<block>
+auto builtin_print_f64(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     auto bytes = std::array<std::byte, 8>();
     for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
+        bytes[i] = args[i];
     }
     print("{}", std::bit_cast<double>(bytes));
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_println_f64(std::span<const block> args) -> std::vector<block>
+auto builtin_println_f64(std::span<const std::byte> args) -> std::vector<std::byte>
 {
     auto bytes = std::array<std::byte, 8>();
     for (std::size_t i = 0; i != 8; ++i) {
-        bytes[i] = std::get<std::byte>(args[i]);
+        bytes[i] = args[i];
     }
     print("{}\n", std::bit_cast<double>(bytes));
-    return {block{block_byte{0}}};
+    return std::vector{std::byte{0}};
 }
 
-auto builtin_put(std::span<const block> args) -> std::vector<block>
+auto builtin_put(std::span<const std::byte> args) -> std::vector<std::byte>
 {
-    anzu::print("{}", static_cast<char>(std::get<block_byte>(args[0])));
-    return {block{block_byte{0}}};
+    anzu::print("{}", static_cast<char>(args[0]));
+    return std::vector{std::byte{0}};
 }
 
 }
@@ -265,14 +250,14 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
         const auto newline = name == "println";
         const auto length = std::get<type_list>(args[0]).count;
         return builtin_val{
-            .ptr = [=](std::span<const block> data) -> std::vector<block> {
+            .ptr = [=](std::span<const std::byte> data) -> std::vector<std::byte> {
                 for (const auto& datum : data) {
-                    print("{}", static_cast<char>(std::get<block_byte>(datum)));
+                    print("{}", static_cast<char>(datum));
                 }
                 if (newline) {
                     print("\n");
                 }
-                return {block{block_byte{0}}};
+                return std::vector{std::byte{0}};
             },
             .return_type = null_type()
         };

@@ -6,6 +6,7 @@
 #include <variant>
 #include <format>
 #include <vector>
+#include <utility>
 #include <string>
 #include <string_view>
 
@@ -13,7 +14,7 @@ namespace anzu {
 
 struct op_load_literal
 {
-    block blk;
+    std::byte blk;
 };
 
 struct op_push_global_addr

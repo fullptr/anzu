@@ -8,7 +8,7 @@
 
 namespace anzu {
 
-using builtin_mem_op = std::function<void(std::vector<block>& memory)>;
+using builtin_mem_op = std::function<void(std::vector<std::byte>& memory)>;
 
 struct binary_op_description
 {

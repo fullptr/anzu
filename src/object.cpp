@@ -17,14 +17,6 @@ auto format_error(const std::string& str) -> void
 
 }
 
-auto to_string(const block& blk) -> std::string
-{
-    return std::visit(overloaded {
-        [](block_byte byte) { return std::format("{:X}", static_cast<unsigned char>(byte)); },
-        [](auto&& val) { return std::format("{}", val); }
-    }, blk);
-}
-
 auto to_string(const object& object) -> std::string
 {
     return std::format("{}({})", object.type, format_comma_separated(object.data));
@@ -57,13 +49,13 @@ auto make_char(char val) -> object
 
 auto make_bool(bool val) -> object
 {
-    const auto v = val ? block_byte{1} : block_byte{0};
+    const auto v = val ? std::byte{1} : std::byte{0};
     return { .data = { v }, .type = bool_type() };
 }
 
 auto make_null() -> object
 {
-    return { .data = { block_byte{0} }, .type = null_type() };
+    return { .data = { std::byte{0} }, .type = null_type() };
 }
 
 auto format_special_chars(const std::string& str) -> std::string

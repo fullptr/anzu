@@ -1,8 +1,8 @@
 #pragma once
-#include "object.hpp"
 #include "program.hpp"
 
 #include <vector>
+#include <utility>
 
 namespace anzu {
 
@@ -10,7 +10,7 @@ struct runtime_context
 {
     std::size_t prog_ptr = 0;
     std::size_t base_ptr = 0;
-    std::vector<block> memory;
+    std::vector<std::byte> memory;
 };
 
 auto run_program(const program& prog) -> void;

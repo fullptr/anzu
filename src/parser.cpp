@@ -106,7 +106,7 @@ auto parse_literal(tokenstream& tokens) -> object
     if (tokens.curr().type == token_type::string) {
         auto ret = object{};
         for (char c : tokens.curr().text) {
-            ret.data.push_back(static_cast<block_byte>(c));
+            ret.data.push_back(static_cast<std::byte>(c));
         }
         ret.type = concrete_list_type(char_type(), tokens.curr().text.size());
         tokens.consume();
