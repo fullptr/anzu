@@ -134,9 +134,7 @@ struct compiler
 template <typename T>
 auto push_literal(compiler& com, const T& value) -> void
 {
-    for (const auto& b : to_bytes(value)) {
-        com.program.emplace_back(op_load_literal{ .blk=b });
-    }
+    com.program.emplace_back(op_load_bytes{to_bytes(value)});
 }
 
 auto current_vars(compiler& com) -> var_locations&
@@ -496,13 +494,9 @@ auto compile_expr_ptr(compiler& com, const node_expr& node) -> type_name
     return std::visit([&](const auto& expr) { return compile_expr_ptr(com, expr); }, node);
 }
 
-
-
 auto compile_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
-    for (const auto& blk : node.value.data) {
-        com.program.emplace_back(anzu::op_load_literal{ .blk=blk });
-    }
+    com.program.emplace_back(op_load_bytes{node.value.data});
     return node.value.type;
 }
 
@@ -807,7 +801,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         // A function returning null does not need a final return statement, and in this case
         // we manually add a return value of null here.
         if (node.sig.return_type == null_type()) {
-            com.program.emplace_back(op_load_literal{std::byte{0}});
+            com.program.emplace_back(op_load_bytes{{std::byte{0}}});
             com.program.emplace_back(op_return{});
         } else {
             compiler_error(node.token, "function '{}' does not end in a return statement", node.name);
@@ -855,7 +849,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
         // A function returning null does not need a final return statement, and in this case
         // we manually add a return value of null here.
         if (node.sig.return_type == null_type()) {
-            com.program.emplace_back(op_load_literal{std::byte{0}});
+            com.program.emplace_back(op_load_bytes{{std::byte{0}}});
             com.program.emplace_back(op_return{});
         } else {
             compiler_error(node.token, "function '{}' does not end in a return statement", qualified_name);

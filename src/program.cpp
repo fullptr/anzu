@@ -15,8 +15,8 @@ constexpr auto FORMAT3 = std::string_view{"{:<30} {:<20} {}"};
 auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
-        [&](const op_load_literal& op) {
-            return std::format("LOAD_LITERAL({})", op.blk);
+        [&](const op_load_bytes& op) {
+            return std::format("LOAD_BYTES({})", format_comma_separated(op.bytes));
         },
         [&](const op_push_global_addr& op) {
             return std::format("PUSH_GLOBAL_ADDR({}, {})", op.position, op.size);

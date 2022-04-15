@@ -35,30 +35,31 @@ auto push_u64(std::vector<std::byte>& mem, std::uint64_t value) -> void
 
 auto pop_u64(std::vector<std::byte>& mem) -> std::uint64_t
 {
-    auto bytes = std::array<std::byte, SIZE64>{};
-    std::memcpy(bytes.data(), mem.data() + mem.size() - SIZE64, SIZE64);
+    auto ret = std::uint64_t{};
+    std::memcpy(&ret, mem.data() + mem.size() - SIZE64, SIZE64);
     pop_n<SIZE64>(mem);
-    return std::bit_cast<std::uint64_t>(bytes);
+    return ret;
 }
 
 auto write_u64(std::vector<std::byte>& mem, std::size_t ptr, std::uint64_t value) -> void
 {
-    const auto bytes = std::bit_cast<std::array<std::byte, SIZE64>>(value);
-    std::memcpy(mem.data() + ptr, bytes.data(), SIZE64);
+    std::memcpy(&mem[ptr], &value, SIZE64);
 }
 
 auto read_u64(std::vector<std::byte>& mem, std::size_t ptr) -> std::uint64_t
 {
-    auto bytes = std::array<std::byte, SIZE64>{};
-    std::memcpy(bytes.data(), mem.data() + ptr, SIZE64);
-    return std::bit_cast<std::uint64_t>(bytes);
+    auto ret = std::uint64_t{};
+    std::memcpy(&ret, &mem[ptr], SIZE64);
+    return ret;
 }
 
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
-        [&](const op_load_literal& op) {
-            ctx.memory.push_back(op.blk);
+        [&](const op_load_bytes& op) {
+            for (const auto byte : op.bytes) {
+                ctx.memory.push_back(byte);
+            }
             ++ctx.prog_ptr;
         },
         [&](const op_push_global_addr& op) {
