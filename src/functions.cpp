@@ -14,6 +14,11 @@ namespace {
 
 static constexpr auto SIZE64 = sizeof(std::uint64_t);
 
+auto pop_n(std::vector<std::byte>& mem, std::size_t count) -> void
+{
+    mem.resize(mem.size() - count);
+}
+
 template <typename T>
 auto pop_value(std::vector<std::byte>& mem) -> T
 {
@@ -190,14 +195,17 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
         const auto newline = name == "println";
         const auto length = std::get<type_list>(args[0]).count;
         return builtin_val{
-            .ptr = [=](std::span<const std::byte> data) -> std::vector<std::byte> {
-                for (const auto& datum : data) {
-                    print("{}", static_cast<char>(datum));
+            .ptr = [=](std::vector<std::byte>& mem) -> void {
+                auto it = mem.end();
+                std::advance(it, -1 * length);
+                for (; it != mem.end(); ++it) {
+                    print("{}", static_cast<char>(*it));
                 }
                 if (newline) {
                     print("\n");
                 }
-                return std::vector{std::byte{0}};
+                pop_n(mem, length);
+                mem.push_back(std::byte{0}); // Return null
             },
             .return_type = null_type()
         };
