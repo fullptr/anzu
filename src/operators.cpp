@@ -157,10 +157,7 @@ auto bool_negate(std::vector<block>& mem)
 
 }
 
-auto resolve_binary_op(
-    const type_store& types, const binary_op_description& desc
-)
-    -> std::optional<binary_op_info>
+auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binary_op_info>
 {
     if (is_ptr_type(desc.lhs) && desc.rhs == uint_type()) {
         return binary_op_info{ ptr_addition, desc.lhs };

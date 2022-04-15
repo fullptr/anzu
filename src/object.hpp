@@ -18,12 +18,6 @@ using block_byte  = std::byte;
 using block_uint  = std::uint64_t;
 using block_float = double;
 
-struct block_ptr
-{
-    std::size_t ptr;
-    std::size_t size;
-};
-
 using block = std::variant<
     block_byte,
     block_uint,
