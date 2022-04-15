@@ -85,7 +85,7 @@ auto ptr_addition(std::vector<block>& mem)
     const auto size = pop_u64(mem);
     const auto ptr = pop_u64(mem);
 
-    push_u64(mem, ptr + offset);
+    push_u64(mem, ptr + offset * size);
     push_u64(mem, size);
 }
 

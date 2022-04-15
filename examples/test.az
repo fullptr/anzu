@@ -1,8 +1,20 @@
+struct vec2
+{
+    x: i64
+    y: i64
+}
+
+fn println(v: vec2) -> null
+{
+    print("vec2 = {")
+    print(v.x)
+    print(", ")
+    print(v.y)
+    println("}")
+}
 
 
-p_value := 5
-p := &p_value
+l := [vec2(1, 2), vec2(3, 4)]
+p := &l[0u]
 
-if true {} # Needed otherwise the parser tries to parse "&p_value * ptr". Need semi-colons
-
-println(*p)
+println(*(p + 1u))
