@@ -62,83 +62,25 @@ auto builtin_println_null(std::vector<std::byte>& mem) -> void
     mem.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_i32(std::vector<std::byte>& mem) -> void
+template <typename T>
+auto builtin_print(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, SIZE32>();
-    std::memcpy(bytes.data(), mem.data(), SIZE32);
-    print("{}", std::bit_cast<std::int32_t>(bytes));
+    auto bytes = std::array<std::byte, sizeof(T)>();
+    std::memcpy(bytes.data(), mem.data() + mem.size() - sizeof(T), sizeof(T));
+    print("{}", std::bit_cast<T>(bytes));
 
-    mem.resize(mem.size() - SIZE32);
+    mem.resize(mem.size() - sizeof(T));
     mem.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_println_i32(std::vector<std::byte>& mem) -> void
+template <typename T>
+auto builtin_println(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, SIZE32>();
-    std::memcpy(bytes.data(), mem.data(), SIZE32);
-    print("{}\n", std::bit_cast<std::int32_t>(bytes));
+    auto bytes = std::array<std::byte, sizeof(T)>();
+    std::memcpy(bytes.data(), mem.data() + mem.size() - sizeof(T), sizeof(T));
+    print("{}\n", std::bit_cast<T>(bytes));
 
-    mem.resize(mem.size() - SIZE32);
-    mem.push_back(std::byte{0}); // returns null
-}
-
-auto builtin_print_i64(std::vector<std::byte>& mem) -> void
-{
-    auto bytes = std::array<std::byte, SIZE64>();
-    std::memcpy(bytes.data(), mem.data(), SIZE64);
-    print("{}", std::bit_cast<std::int64_t>(bytes));
-
-    mem.resize(mem.size() - SIZE64);
-    mem.push_back(std::byte{0}); // returns null
-}
-
-auto builtin_println_i64(std::vector<std::byte>& mem) -> void
-{
-    auto bytes = std::array<std::byte, SIZE64>();
-    std::memcpy(bytes.data(), mem.data(), SIZE64);
-    print("{}\n", std::bit_cast<std::int64_t>(bytes));
-
-    mem.resize(mem.size() - SIZE64);
-    mem.push_back(std::byte{0}); // returns null
-}
-
-auto builtin_print_u64(std::vector<std::byte>& mem) -> void
-{
-    auto bytes = std::array<std::byte, SIZE64>();
-    std::memcpy(bytes.data(), mem.data(), SIZE64);
-    print("{}", std::bit_cast<std::uint64_t>(bytes));
-
-    mem.resize(mem.size() - SIZE64);
-    mem.push_back(std::byte{0}); // returns null
-}
-
-auto builtin_println_u64(std::vector<std::byte>& mem) -> void
-{
-    auto bytes = std::array<std::byte, SIZE64>();
-    std::memcpy(bytes.data(), mem.data(), SIZE64);
-    print("{}\n", std::bit_cast<std::uint64_t>(bytes));
-
-    mem.resize(mem.size() - SIZE64);
-    mem.push_back(std::byte{0}); // returns null
-}
-
-auto builtin_print_f64(std::vector<std::byte>& mem) -> void
-{
-    auto bytes = std::array<std::byte, SIZE64>();
-    std::memcpy(bytes.data(), mem.data(), SIZE64);
-    print("{}", std::bit_cast<double>(bytes));
-
-    mem.resize(mem.size() - SIZE64);
-    mem.push_back(std::byte{0}); // returns null
-}
-
-auto builtin_println_f64(std::vector<std::byte>& mem) -> void
-{
-    auto bytes = std::array<std::byte, SIZE64>();
-    std::memcpy(bytes.data(), mem.data(), SIZE64);
-    print("{}\n", std::bit_cast<double>(bytes));
-
-    mem.resize(mem.size() - SIZE64);
+    mem.resize(mem.size() - sizeof(T));
     mem.push_back(std::byte{0}); // returns null
 }
 
@@ -155,65 +97,65 @@ auto construct_builtin_map() -> builtin_map
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { u64_type() } },
-        builtin_val{ .ptr = builtin_print_u64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<std::uint64_t>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { u64_type() } },
-        builtin_val{ .ptr = builtin_println_u64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<std::uint64_t>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { char_type() } },
-        builtin_val{ .ptr = builtin_print_char, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<char>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { char_type() } },
-        builtin_val{ .ptr = builtin_println_char, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<char>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { f64_type() } },
-        builtin_val{ .ptr = builtin_print_f64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<double>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { f64_type() } },
-        builtin_val{ .ptr = builtin_println_f64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<double>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_print_bool, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<bool>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_println_bool, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<bool>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { null_type() } },
-        builtin_val{ .ptr = builtin_print_null, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<std::byte>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { null_type() } },
-        builtin_val{ .ptr = builtin_println_null, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<std::byte>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { i32_type() } },
-        builtin_val{ .ptr = builtin_print_i32, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<std::int32_t>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { i32_type() } },
-        builtin_val{ .ptr = builtin_println_i32, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<std::int32_t>, .return_type = null_type() }
     );
 
     builtins.emplace(
         builtin_key{ .name = "print", .args = { i64_type() } },
-        builtin_val{ .ptr = builtin_print_i64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_print<std::int64_t>, .return_type = null_type() }
     );
     builtins.emplace(
         builtin_key{ .name = "println", .args = { i64_type() } },
-        builtin_val{ .ptr = builtin_println_i64, .return_type = null_type() }
+        builtin_val{ .ptr = builtin_println<std::int64_t>, .return_type = null_type() }
     );
 
     return builtins;
