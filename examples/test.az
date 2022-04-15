@@ -1,5 +1,8 @@
 
 
-fn foo() -> null {}
+p_value := 5
+p := &p_value
 
-foo()
+if true {} # Needed otherwise the parser tries to parse "&p_value * ptr". Need semi-colons
+
+println(*p)

@@ -97,7 +97,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_save) {
             const auto size = pop_u64(ctx);
             const auto ptr = pop_u64(ctx);
-            print("size = {}, ptr = {}\n", size, ptr);
             runtime_assert(ptr + size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
             if (ptr + size < ctx.memory.size()) {
                 for (const auto i : std::views::iota(ptr, ptr + size) | std::views::reverse) {

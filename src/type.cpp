@@ -183,7 +183,7 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
     }
 
     if (is_ptr_type(type)) {
-        return 2; // Two unsigned int blocks, ptr and size
+        return 16; // Two unsigned ints, ptr and size
     }
 
     if (type == i32_type()) {
