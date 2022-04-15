@@ -137,7 +137,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 arg = pop_back(ctx.memory);
             }
 
-            ctx.memory.push_back(op.ptr(args));
+            const auto ret = op.ptr(args);
+            for (const auto& b : ret) {
+                ctx.memory.push_back(b);
+            }
             ++ctx.prog_ptr;
         },
         [&](const op_builtin_mem_op& op) {

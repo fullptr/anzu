@@ -55,7 +55,7 @@ println(true && false)
 println(true || false)
 
 # functions
-fn adder(a: int, b: int, c: int) -> int
+fn adder(a: i64, b: i64, c: i64) -> i64
 {
     return a + b + c
 }
@@ -73,12 +73,12 @@ y := println(x)
 println(y)
 
 # Allowing functions from other functions
-fn add2(x: int, y: int) -> int
+fn add2(x: i64, y: i64) -> i64
 {
     return x + y
 }
 
-fn add3(x: int, y: int, z: int) -> int
+fn add3(x: i64, y: i64, z: i64) -> i64
 {
     return add2(x, add2(y, z))
 }
@@ -97,8 +97,8 @@ fn print_one_to_ten() -> null
 # Struct definition
 struct vec2
 {
-    x: int
-    y: int
+    x: i64
+    y: i64
 }
 
 fn println(v: vec2) -> null

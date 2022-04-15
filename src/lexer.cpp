@@ -20,6 +20,22 @@ auto is_int(std::string_view token) -> bool
     return std::ranges::all_of(token, [](char c) { return std::isdigit(c); });
 }
 
+auto is_i32(std::string_view token) -> bool
+{
+    const auto has_suffix = token.ends_with(tk_i32);
+    if (!has_suffix) { return false; }
+    token.remove_suffix(tk_i32.size());
+    return is_int(token);
+}
+
+auto is_i64(std::string_view token) -> bool
+{
+    if (token.ends_with(tk_i64)) {
+        token.remove_suffix(tk_i64.size());
+    }
+    return is_int(token);
+}
+
 auto is_uint(std::string_view token) -> bool
 {
     const auto has_suffix = token.ends_with("u");
@@ -139,8 +155,11 @@ auto lex_line(
                 if (is_keyword(token)) {
                     push_token(token, col, token_type::keyword);
                 }
-                else if (is_int(token)) {
-                    push_token(token, col, token_type::integer);
+                else if (is_i32(token)) {
+                    push_token(token, col, token_type::i32);
+                }
+                else if (is_i64(token)) {
+                    push_token(token, col, token_type::i64);
                 }
                 else if (is_uint(token)) {
                     push_token(token, col, token_type::uinteger);

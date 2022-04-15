@@ -317,21 +317,29 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
     return std::visit(overloaded{
         [&](const node_literal_expr& expr) { return expr.value.type; },
         [&](const node_unary_op_expr& expr) {
-            const auto r = resolve_unary_op({
+            const auto desc = unary_op_description{
                 .op = expr.token.text,
                 .type=type_of_expr(com, *expr.expr)
-            });
+            };
+            const auto r = resolve_unary_op(desc);
+            if (!r.has_value()) {
+                compiler_error(expr.token, "could not find op '{}{}'", desc.op, desc.type);
+            }
             return r->result_type;
         },
         [&](const node_binary_op_expr& expr) {
-            const auto r = resolve_binary_op(
-                com.types,
-                {
-                    .op = expr.token.text,
-                    .lhs=type_of_expr(com, *expr.lhs),
-                    .rhs=type_of_expr(com, *expr.rhs)
-                }
-            );
+            const auto desc = binary_op_description{
+                .op = expr.token.text,
+                .lhs=type_of_expr(com, *expr.lhs),
+                .rhs=type_of_expr(com, *expr.rhs)
+            };
+            const auto r = resolve_binary_op( com.types, desc);
+            if (!r.has_value()) {
+                compiler_error(
+                    expr.token, "could not find op '{} {} {}'",
+                    desc.lhs, desc.op, desc.rhs
+                );
+            }
             return r->result_type;
         },
         [&](const node_function_call_expr& expr) {
@@ -385,7 +393,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                     return field.type;
                 }
             }
-            return int_type();
+            return i64_type();
         },
         [&](const node_arrow_expr& expr) {
             const auto ptype = type_of_expr(com, *expr.expr);
@@ -396,7 +404,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                     return field.type;
                 }
             }
-            return int_type();
+            return i64_type();
         },
         [&](const node_deref_expr& expr) {
             const auto ptype = type_of_expr(com, *expr.expr);

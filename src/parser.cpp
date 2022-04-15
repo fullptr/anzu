@@ -28,12 +28,27 @@ template <typename... Args>
     }
 }
 
-auto to_int(std::string_view token) -> block_int
+auto to_i32(std::string_view token) -> std::int32_t
 {
-    auto result = block_int{};
+    token.remove_suffix(tk_i32.size());
+    auto result = std::int32_t{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
-        print("type error: cannot convert '{}' to int\n", token);
+        print("type error: cannot convert '{}' to '{}'\n", token, tk_i32);
+        std::exit(1);
+    }
+    return result;
+}
+
+auto to_i64(std::string_view token) -> std::int64_t
+{
+    if (token.ends_with(tk_i64)) {
+        token.remove_suffix(tk_i64.size());
+    }
+    auto result = std::int64_t{};
+    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
+    if (ec != std::errc{}) {
+        print("type error: cannot convert '{}' to '{}'\n", token, tk_i64);
         std::exit(1);
     }
     return result;
@@ -67,8 +82,11 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
-    if (tokens.curr().type == token_type::integer) {
-        return make_int(to_int(tokens.consume().text));
+    if (tokens.curr().type == token_type::i32) {
+        return make_i32(to_i32(tokens.consume().text));
+    }
+    if (tokens.curr().type == token_type::i64) {
+        return make_i64(to_i64(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::uinteger) {
         return make_uint(to_uint(tokens.consume().text));
@@ -79,7 +97,7 @@ auto parse_literal(tokenstream& tokens) -> object
     if (tokens.curr().type == token_type::character) {
         const auto c = tokens.consume().text;
         parser_assert(c.size() == 1, tokens.curr(), "failed to parse char ({})", c);
-        return make_char(std::bit_cast<block_byte>(c.front()));
+        return make_char(c.front());
     }
     if (tokens.curr().type == token_type::string) {
         auto ret = object{};
@@ -258,7 +276,7 @@ auto parse_type(tokenstream& tokens) -> type_name
     auto type = type_name{type_simple{.name=tokens.consume().text}};
     while (tokens.consume_maybe(tk_lbracket)) {
         auto new_type = type_name{type_list{
-            .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_int())
+            .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_i64())
         }};
         tokens.consume_only(tk_rbracket);
         type = new_type;

@@ -32,22 +32,27 @@ auto to_string(const object& object) -> std::string
     return std::format("{}({})", object.type, format_comma_separated(object.data));
 }
 
-auto make_int(block_int val) -> object
+auto make_i32(std::int32_t val) -> object
 {
-    return { .data = { block_int{val} }, .type = int_type() };
+    return { .data = to_bytes(val), .type = i32_type() };
 }
 
-auto make_uint(block_uint val) -> object
+auto make_i64(std::int64_t val) -> object
+{
+    return { .data = to_bytes(val), .type = i64_type() };
+}
+
+auto make_uint(std::uint64_t val) -> object
 {
     return { .data = { val }, .type = uint_type() };
 }
 
-auto make_char(block_byte val) -> object
+auto make_char(char val) -> object
 {
-    return { .data = { val }, .type = char_type() };
+    return { .data = { static_cast<std::byte>(val) }, .type = char_type() };
 }
 
-auto make_float(block_float val) -> object
+auto make_float(double val) -> object
 {
     return { .data = { block_float{val} }, .type = float_type() };
 }
