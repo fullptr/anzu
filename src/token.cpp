@@ -17,11 +17,11 @@ auto to_string(token_type type) -> std::string
         break; case token_type::keyword:   { return "keyword"; };
         break; case token_type::symbol:    { return "symbol"; };
         break; case token_type::name:      { return "name"; };
-        break; case token_type::uinteger:  { return "uinteger"; };
         break; case token_type::character: { return "character"; };
         break; case token_type::string:    { return "string"; };
         break; case token_type::i32:       { return "i32"; };
         break; case token_type::i64:       { return "i64"; };
+        break; case token_type::u64:       { return "u64"; };
         break; case token_type::f64:       { return "f64"; };
         break; default:                    { return "UNKNOWN"; };
     }
@@ -76,13 +76,13 @@ auto tokenstream::consume_i64() -> std::int64_t
     return std::stoll(consume().text);
 }
 
-auto tokenstream::consume_uint() -> std::uint64_t
+auto tokenstream::consume_u64() -> std::uint64_t
 {
     if (!valid()) {
         anzu::print("[ERROR] (EOF) expected a uint\n");
         std::exit(1);
     }
-    if (curr().type != token_type::uinteger) {
+    if (curr().type != token_type::u64) {
         const auto [tok_text, line, col, type] = curr();
         anzu::print("[ERROR] ({}:{}) expected a uint, got '{}\n", line, col, tok_text);
         std::exit(1);

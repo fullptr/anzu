@@ -54,10 +54,14 @@ auto to_i64(std::string_view token) -> std::int64_t
     return result;
 }
 
-auto to_uint(std::string_view token) -> block_uint
+auto to_u64(std::string_view token) -> std::uint64_t
 {
-    token.remove_suffix(1); // Strip 'u'
-    auto result = block_uint{};
+    if (token.ends_with(tk_u64)) {
+        token.remove_suffix(tk_u64.size());
+    } else if (token.ends_with('u')) {
+        token.remove_suffix(1);
+    }
+    auto result = std::uint64_t{};
     const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
     if (ec != std::errc{}) {
         print("type error: cannot convert '{}' to uint\n", token);
@@ -88,8 +92,8 @@ auto parse_literal(tokenstream& tokens) -> object
     if (tokens.curr().type == token_type::i64) {
         return make_i64(to_i64(tokens.consume().text));
     }
-    if (tokens.curr().type == token_type::uinteger) {
-        return make_uint(to_uint(tokens.consume().text));
+    if (tokens.curr().type == token_type::u64) {
+        return make_u64(to_u64(tokens.consume().text));
     }
     if (tokens.curr().type == token_type::f64) {
         return make_f64(to_f64(tokens.consume().text));

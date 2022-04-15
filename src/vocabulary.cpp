@@ -9,8 +9,8 @@ auto is_keyword(std::string_view token) -> bool
 {
     static const std::unordered_set<std::string_view> tokens = {
         tk_break, tk_continue, tk_else, tk_false, tk_for, tk_if, tk_in, tk_null, tk_true,
-        tk_while, tk_bool, tk_str, tk_function, tk_return, tk_struct, tk_size_of, tk_uint,
-        tk_char, tk_i32, tk_i64, tk_f64
+        tk_while, tk_bool, tk_str, tk_function, tk_return, tk_struct, tk_size_of, tk_char,
+        tk_i32, tk_i64, tk_u64, tk_f64
     };
     return tokens.contains(token);
 }

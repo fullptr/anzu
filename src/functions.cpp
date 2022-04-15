@@ -111,6 +111,26 @@ auto builtin_println_i64(std::span<const block> args) -> std::vector<block>
     return {block{block_byte{0}}};
 }
 
+auto builtin_print_u64(std::span<const block> args) -> std::vector<block>
+{
+    auto bytes = std::array<std::byte, 8>();
+    for (std::size_t i = 0; i != 8; ++i) {
+        bytes[i] = std::get<std::byte>(args[i]);
+    }
+    print("{}", std::bit_cast<std::uint64_t>(bytes));
+    return {block{block_byte{0}}};
+}
+
+auto builtin_println_u64(std::span<const block> args) -> std::vector<block>
+{
+    auto bytes = std::array<std::byte, 8>();
+    for (std::size_t i = 0; i != 8; ++i) {
+        bytes[i] = std::get<std::byte>(args[i]);
+    }
+    print("{}\n", std::bit_cast<std::uint64_t>(bytes));
+    return {block{block_byte{0}}};
+}
+
 auto builtin_print_f64(std::span<const block> args) -> std::vector<block>
 {
     auto bytes = std::array<std::byte, 8>();
@@ -149,12 +169,12 @@ auto construct_builtin_map() -> builtin_map
     );
 
     builtins.emplace(
-        builtin_key{ .name = "print", .args = { uint_type() } },
-        builtin_val{ .ptr = builtin_print<block_uint>, .return_type = null_type() }
+        builtin_key{ .name = "print", .args = { u64_type() } },
+        builtin_val{ .ptr = builtin_print_u64, .return_type = null_type() }
     );
     builtins.emplace(
-        builtin_key{ .name = "println", .args = { uint_type() } },
-        builtin_val{ .ptr = builtin_println<block_uint>, .return_type = null_type() }
+        builtin_key{ .name = "println", .args = { u64_type() } },
+        builtin_val{ .ptr = builtin_println_u64, .return_type = null_type() }
     );
 
     builtins.emplace(
