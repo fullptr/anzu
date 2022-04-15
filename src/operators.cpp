@@ -7,12 +7,6 @@
 namespace anzu {
 namespace {
 
-auto pop_n(std::vector<std::byte>& mem, std::size_t n) -> void
-{
-    mem.resize(mem.size() - n);
-}
-
-// TODO: Dedeup this, also appears in runtime
 template <typename T>
 auto push_value(std::vector<std::byte>& mem, const T& value) -> void
 {
@@ -21,18 +15,17 @@ auto push_value(std::vector<std::byte>& mem, const T& value) -> void
     }
 }
 
-// TODO: Dedeup this, also appears in runtime
 template <typename T>
 auto pop_value(std::vector<std::byte>& mem) -> T
 {
     auto ret = T{};
     std::memcpy(&ret, &mem[mem.size() - sizeof(T)], sizeof(T));
-    pop_n(mem, sizeof(T));
+    mem.resize(mem.size() - sizeof(T));
     return ret;
 }
 
 template <typename Type, template <typename> typename Op>
-auto bin_op_bytes(std::vector<std::byte>& mem) -> void
+auto bin_op(std::vector<std::byte>& mem) -> void
 {
     static constexpr auto op = Op<Type>{};
     const auto rhs = pop_value<Type>(mem);
@@ -47,13 +40,12 @@ auto ptr_addition(std::vector<std::byte>& mem)
     const auto offset = pop_value<std::uint64_t>(mem);
     const auto size = pop_value<std::uint64_t>(mem);
     const auto ptr = pop_value<std::uint64_t>(mem);
-
     push_value(mem, ptr + offset * size);
     push_value(mem, size);
 }
 
 template <typename Type, template <typename> typename Op>
-auto unary_op_sized(std::vector<std::byte>& mem)
+auto unary_op(std::vector<std::byte>& mem)
 {
     static constexpr auto op = Op<Type>{};
     const auto obj = pop_value<Type>(mem);
@@ -80,118 +72,118 @@ auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binar
 
     if (type == i32_type()) {
         if (desc.op == tk_add) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::plus>, type };
+            return binary_op_info{ bin_op<std::int32_t, std::plus>, type };
         } else if (desc.op == tk_sub) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::minus>, type };
+            return binary_op_info{ bin_op<std::int32_t, std::minus>, type };
         } else if (desc.op == tk_mul) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::multiplies>, type };
+            return binary_op_info{ bin_op<std::int32_t, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::divides>, type };
+            return binary_op_info{ bin_op<std::int32_t, std::divides>, type };
         } else if (desc.op == tk_mod) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::modulus>, type };
+            return binary_op_info{ bin_op<std::int32_t, std::modulus>, type };
         } else if (desc.op == tk_lt) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::less>, bool_type() };
+            return binary_op_info{ bin_op<std::int32_t, std::less>, bool_type() };
         } else if (desc.op == tk_le) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<std::int32_t, std::less_equal>, bool_type() };
         } else if (desc.op == tk_gt) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<std::int32_t, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<std::int32_t, std::greater_equal>, bool_type() };
         } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<std::int32_t, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op_bytes<std::int32_t, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<std::int32_t, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == i64_type()) {
         if (desc.op == tk_add) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::plus>, type };
+            return binary_op_info{ bin_op<std::int64_t, std::plus>, type };
         } else if (desc.op == tk_sub) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::minus>, type };
+            return binary_op_info{ bin_op<std::int64_t, std::minus>, type };
         } else if (desc.op == tk_mul) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::multiplies>, type };
+            return binary_op_info{ bin_op<std::int64_t, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::divides>, type };
+            return binary_op_info{ bin_op<std::int64_t, std::divides>, type };
         } else if (desc.op == tk_mod) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::modulus>, type };
+            return binary_op_info{ bin_op<std::int64_t, std::modulus>, type };
         } else if (desc.op == tk_lt) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::less>, bool_type() };
+            return binary_op_info{ bin_op<std::int64_t, std::less>, bool_type() };
         } else if (desc.op == tk_le) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<std::int64_t, std::less_equal>, bool_type() };
         } else if (desc.op == tk_gt) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<std::int64_t, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<std::int64_t, std::greater_equal>, bool_type() };
         } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<std::int64_t, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op_bytes<std::int64_t, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<std::int64_t, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == u64_type()) {
         if (desc.op == tk_add) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::plus>, type };
+            return binary_op_info{ bin_op<std::uint64_t, std::plus>, type };
         } else if (desc.op == tk_sub) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::minus>, type };
+            return binary_op_info{ bin_op<std::uint64_t, std::minus>, type };
         } else if (desc.op == tk_mul) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::multiplies>, type };
+            return binary_op_info{ bin_op<std::uint64_t, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::divides>, type };
+            return binary_op_info{ bin_op<std::uint64_t, std::divides>, type };
         } else if (desc.op == tk_mod) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::modulus>, type };
+            return binary_op_info{ bin_op<std::uint64_t, std::modulus>, type };
         } else if (desc.op == tk_lt) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::less>, bool_type() };
+            return binary_op_info{ bin_op<std::uint64_t, std::less>, bool_type() };
         } else if (desc.op == tk_le) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<std::uint64_t, std::less_equal>, bool_type() };
         } else if (desc.op == tk_gt) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<std::uint64_t, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<std::uint64_t, std::greater_equal>, bool_type() };
         } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<std::uint64_t, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op_bytes<std::uint64_t, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<std::uint64_t, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == f64_type()) {
         if (desc.op == tk_add) {
-            return binary_op_info{ bin_op_bytes<double, std::plus>, type };
+            return binary_op_info{ bin_op<double, std::plus>, type };
         } else if (desc.op == tk_sub) {
-            return binary_op_info{ bin_op_bytes<double, std::minus>, type };
+            return binary_op_info{ bin_op<double, std::minus>, type };
         } else if (desc.op == tk_mul) {
-            return binary_op_info{ bin_op_bytes<double, std::multiplies>, type };
+            return binary_op_info{ bin_op<double, std::multiplies>, type };
         } else if (desc.op == tk_div) {
-            return binary_op_info{ bin_op_bytes<double, std::divides>, type };
+            return binary_op_info{ bin_op<double, std::divides>, type };
         } else if (desc.op == tk_lt) {
-            return binary_op_info{ bin_op_bytes<double, std::less>, bool_type() };
+            return binary_op_info{ bin_op<double, std::less>, bool_type() };
         } else if (desc.op == tk_le) {
-            return binary_op_info{ bin_op_bytes<double, std::less_equal>, bool_type() };
+            return binary_op_info{ bin_op<double, std::less_equal>, bool_type() };
         } else if (desc.op == tk_gt) {
-            return binary_op_info{ bin_op_bytes<double, std::greater>, bool_type() };
+            return binary_op_info{ bin_op<double, std::greater>, bool_type() };
         } else if (desc.op == tk_ge) {
-            return binary_op_info{ bin_op_bytes<double, std::greater_equal>, bool_type() };
+            return binary_op_info{ bin_op<double, std::greater_equal>, bool_type() };
         } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op_bytes<double, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<double, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op_bytes<double, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<double, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == bool_type()) {
         if (desc.op == tk_and) {
-            return binary_op_info{ bin_op_bytes<bool, std::logical_and>, type };
+            return binary_op_info{ bin_op<bool, std::logical_and>, type };
         } else if (desc.op == tk_or) {
-            return binary_op_info{ bin_op_bytes<bool, std::logical_or>, type };
+            return binary_op_info{ bin_op<bool, std::logical_or>, type };
         } else if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op_bytes<bool, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<bool, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op_bytes<bool, std::not_equal_to>, bool_type() };
+            return binary_op_info{ bin_op<bool, std::not_equal_to>, bool_type() };
         }
     }
     else if (type == char_type()) {
         if (desc.op == tk_eq) {
-            return binary_op_info{ bin_op_bytes<char, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<char, std::equal_to>, bool_type() };
         } else if (desc.op == tk_ne) {
-            return binary_op_info{ bin_op_bytes<char, std::equal_to>, bool_type() };
+            return binary_op_info{ bin_op<char, std::equal_to>, bool_type() };
         }
     }
 
@@ -203,22 +195,22 @@ auto resolve_unary_op(const unary_op_description& desc) -> std::optional<unary_o
     const auto& type = desc.type;
     if (type == i32_type()) {
         if (desc.op == tk_sub) {
-            return unary_op_info{ unary_op_sized<std::int32_t, std::negate>, type };
+            return unary_op_info{ unary_op<std::int32_t, std::negate>, type };
         }
     }
     else if (type == i64_type()) {
         if (desc.op == tk_sub) {
-            return unary_op_info{ unary_op_sized<std::int64_t, std::negate>, type };
+            return unary_op_info{ unary_op<std::int64_t, std::negate>, type };
         }
     }
     else if (type == f64_type()) {
         if (desc.op == tk_sub) {
-            return unary_op_info{ unary_op_sized<double, std::negate>, type };
+            return unary_op_info{ unary_op<double, std::negate>, type };
         }
     }
     else if (type == bool_type()) {
         if (desc.op == tk_bang) {
-            return unary_op_info{ unary_op_sized<bool, std::logical_not>, type };
+            return unary_op_info{ unary_op<bool, std::logical_not>, type };
         }
     }
     return std::nullopt;
