@@ -27,8 +27,7 @@ struct block_ptr
 using block = std::variant<
     block_byte,
     block_uint,
-    block_float,
-    block_ptr
+    block_float
 >;
 
 struct object
@@ -79,7 +78,7 @@ inline auto from_bytes(const std::vector<block>& val) -> T
 
 template <> struct std::formatter<anzu::block> : std::formatter<std::string> {
     auto format(const anzu::block& blk, auto& ctx) {
-        return std::formatter<std::string>::format(to_string(blk), ctx);
+        return std::formatter<std::string>::format(anzu::to_string(blk), ctx);
     }
 };
 

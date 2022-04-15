@@ -21,7 +21,6 @@ auto to_string(const block& blk) -> std::string
 {
     return std::visit(overloaded {
         [](block_byte byte) { return std::format("{:x}", static_cast<unsigned char>(byte)); },
-        [](block_ptr ptr) { return std::format("[{:x}:{}]", ptr.ptr, ptr.size); },
         [](block_uint val) { return std::format("{}u", val); },
         [](auto&& val) { return std::format("{}", val); }
     }, blk);
