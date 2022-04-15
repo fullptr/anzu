@@ -12,18 +12,29 @@
 namespace anzu {
 namespace {
 
-static constexpr auto SIZE32 = sizeof(std::uint32_t);
 static constexpr auto SIZE64 = sizeof(std::uint64_t);
+
+template <typename T>
+auto pop_value(std::vector<std::byte>& mem) -> T
+{
+    auto ret = T{};
+    std::memcpy(&ret, &mem[mem.size() - sizeof(T)], sizeof(T));
+    mem.resize(mem.size() - sizeof(T));
+    return ret;
+}
+
+template <typename T>
+auto push_value(std::vector<std::byte>& mem, const T& value) -> void
+{
+    for (const auto& b : as_bytes(value)) {
+        mem.push_back(b);
+    }
+}
 
 auto builtin_sqrt(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, SIZE64>();
-    std::memcpy(bytes.data(), mem.data(), SIZE64);
-
-    const auto val = std::sqrt(std::bit_cast<double>(bytes));
-    bytes = std::bit_cast<std::array<std::byte, SIZE64>>(val);
-
-    std::memcpy(mem.data(), bytes.data(), SIZE64);
+    auto val = pop_value<double>(mem);
+    push_value(mem, std::sqrt(val));
 }
 
 auto builtin_print_char(std::vector<std::byte>& mem) -> void
@@ -65,22 +76,14 @@ auto builtin_println_null(std::vector<std::byte>& mem) -> void
 template <typename T>
 auto builtin_print(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, sizeof(T)>();
-    std::memcpy(bytes.data(), mem.data() + mem.size() - sizeof(T), sizeof(T));
-    print("{}", std::bit_cast<T>(bytes));
-
-    mem.resize(mem.size() - sizeof(T));
+    print("{}", pop_value<T>(mem));
     mem.push_back(std::byte{0}); // returns null
 }
 
 template <typename T>
 auto builtin_println(std::vector<std::byte>& mem) -> void
 {
-    auto bytes = std::array<std::byte, sizeof(T)>();
-    std::memcpy(bytes.data(), mem.data() + mem.size() - sizeof(T), sizeof(T));
-    print("{}\n", std::bit_cast<T>(bytes));
-
-    mem.resize(mem.size() - sizeof(T));
+    print("{}\n", pop_value<T>(mem));
     mem.push_back(std::byte{0}); // returns null
 }
 
