@@ -69,19 +69,14 @@ auto char_type() -> type_name
     return {type_simple{ .name = std::string{tk_char} }};
 }
 
-auto float_type() -> type_name
+auto f64_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_float} }};
+    return {type_simple{ .name = std::string{tk_f64} }};
 }
 
 auto bool_type() -> type_name
 {
     return {type_simple{ .name = std::string{tk_bool} }};
-}
-
-auto str_type()  -> type_name
-{
-    return {type_simple{ .name = std::string{tk_str} }};
 }
 
 auto null_type() -> type_name
@@ -133,7 +128,7 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == i64_type()
         || type == uint_type()
         || type == char_type()
-        || type == float_type()
+        || type == f64_type()
         || type == bool_type()
         || type == null_type();
 }
@@ -195,7 +190,7 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         return 4;
     }
 
-    if (type == i64_type()) {
+    if (type == i64_type() || type == f64_type()) {
         return 8;
     }
 

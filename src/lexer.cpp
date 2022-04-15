@@ -46,8 +46,11 @@ auto is_uint(std::string_view token) -> bool
     return is_int(token);
 }
 
-auto is_float(std::string_view token) -> bool
+auto is_f64(std::string_view token) -> bool
 {
+    if (token.ends_with(tk_f64)) {
+        token.remove_suffix(tk_f64.size());
+    }
     return std::ranges::all_of(token, [](char c) { return std::isdigit(c) || c == '.'; })
         && (std::ranges::count(token, '.') <= 1);
 }
@@ -164,8 +167,8 @@ auto lex_line(
                 else if (is_uint(token)) {
                     push_token(token, col, token_type::uinteger);
                 }
-                else if (is_float(token)) {
-                    push_token(token, col, token_type::floating);
+                else if (is_f64(token)) {
+                    push_token(token, col, token_type::f64);
                 }
                 else if (!std::isdigit(token[0])) {
                     push_token(token, col, token_type::name);

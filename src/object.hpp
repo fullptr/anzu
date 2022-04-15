@@ -16,19 +16,7 @@ static_assert(sizeof(std::uint64_t) == sizeof(std::size_t));
 
 using block_byte  = std::byte;
 using block_uint  = std::uint64_t;
-using block_float = double;
-
-struct block_ptr
-{
-    std::size_t ptr;
-    std::size_t size;
-};
-
-using block = std::variant<
-    block_byte,
-    block_uint,
-    block_float
->;
+using block = std::variant<block_byte, block_uint>;
 
 struct object
 {
@@ -43,7 +31,7 @@ auto make_i32(std::int32_t val) -> object;
 auto make_i64(std::int64_t val) -> object;
 auto make_uint(std::uint64_t val) -> object;
 auto make_char(char val) -> object;
-auto make_float(double val) -> object;
+auto make_f64(double val) -> object;
 auto make_bool(bool val) -> object;
 auto make_null() -> object;
 

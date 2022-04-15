@@ -23,9 +23,7 @@ struct binary_op_info
     type_name      result_type;
 };
 
-auto resolve_binary_op(
-    const type_store& types, const binary_op_description& desc
-) -> std::optional<binary_op_info>;
+auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binary_op_info>;
 
 struct unary_op_description
 {

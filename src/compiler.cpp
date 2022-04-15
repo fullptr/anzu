@@ -333,7 +333,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                 .lhs=type_of_expr(com, *expr.lhs),
                 .rhs=type_of_expr(com, *expr.rhs)
             };
-            const auto r = resolve_binary_op( com.types, desc);
+            const auto r = resolve_binary_op(desc);
             if (!r.has_value()) {
                 compiler_error(
                     expr.token, "could not find op '{} {} {}'",
@@ -464,7 +464,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     compiler_assert(itype == uint_type(), expr.token, "subscript argument must be a 'uint', got '{}'", itype);
 
     com.program.emplace_back(op_load_literal{ .blk={block_uint{etype_size}} });
-    const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
+    const auto info = resolve_binary_op({ .op="*", .lhs=itype, .rhs=itype });
     com.program.emplace_back(op_builtin_mem_op{
         .name = "uint * uint",
         .ptr = info->operator_func
@@ -503,7 +503,7 @@ auto compile_expr_val(compiler& com, const node_binary_op_expr& node) -> type_na
     const auto rhs = compile_expr_val(com, *node.rhs);
     const auto op = node.token.text;
 
-    const auto info = resolve_binary_op(com.types, { .op=op, .lhs=lhs, .rhs=rhs });
+    const auto info = resolve_binary_op({ .op=op, .lhs=lhs, .rhs=rhs });
     compiler_assert(info.has_value(), node.token, "could not evaluate '{} {} {}'", lhs, op, rhs);
 
     com.program.emplace_back(op_builtin_mem_op{
