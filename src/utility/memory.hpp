@@ -7,38 +7,39 @@
 
 namespace anzu {
 
-inline static constexpr auto SIZE64 = sizeof(std::uint64_t);
-
-template <std::size_t N>
-auto pop_n(std::vector<std::byte>& vec) -> void
+inline auto pop_n(std::vector<std::byte>& vec, std::size_t count) -> void
 {
-    vec.resize(vec.size() - N);
+    vec.resize(vec.size() - count);
 }
 
-auto push_u64(std::vector<std::byte>& mem, std::uint64_t value) -> void
+template <typename T>
+auto push_value(std::vector<std::byte>& mem, const T& value) -> void
 {
-    for (const auto& b : std::bit_cast<std::array<std::byte, SIZE64>>(value)) {
+    for (const auto& b : as_bytes(value)) {
         mem.push_back(b);
     }
 }
 
-auto pop_u64(std::vector<std::byte>& mem) -> std::uint64_t
+template <typename T>
+auto pop_value(std::vector<std::byte>& mem) -> T
 {
-    auto ret = std::uint64_t{};
-    std::memcpy(&ret, mem.data() + mem.size() - SIZE64, SIZE64);
-    pop_n<SIZE64>(mem);
+    auto ret = T{};
+    std::memcpy(&ret, &mem[mem.size() - sizeof(T)], sizeof(T));
+    mem.resize(mem.size() - sizeof(T));
     return ret;
 }
 
-auto write_u64(std::vector<std::byte>& mem, std::size_t ptr, std::uint64_t value) -> void
+template <typename T>
+auto write_value(std::vector<std::byte>& mem, std::size_t ptr, const T& value) -> void
 {
-    std::memcpy(&mem[ptr], &value, SIZE64);
+    std::memcpy(&mem[ptr], &value, sizeof(T));
 }
 
-auto read_u64(std::vector<std::byte>& mem, std::size_t ptr) -> std::uint64_t
+template <typename T>
+auto read_value(std::vector<std::byte>& mem, std::size_t ptr) -> T
 {
-    auto ret = std::uint64_t{};
-    std::memcpy(&ret, &mem[ptr], SIZE64);
+    auto ret = T{};
+    std::memcpy(&ret, &mem[ptr], sizeof(T));
     return ret;
 }
 

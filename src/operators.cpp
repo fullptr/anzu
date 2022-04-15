@@ -1,5 +1,6 @@
 #include "operators.hpp"
 #include "object.hpp"
+#include "utility/memory.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -21,23 +22,6 @@ auto to_type_name() -> type_name
     } else {
         static_assert(false);
     }
-}
-
-template <typename T>
-auto push_value(std::vector<std::byte>& mem, const T& value) -> void
-{
-    for (const auto& b : as_bytes(value)) {
-        mem.push_back(b);
-    }
-}
-
-template <typename T>
-auto pop_value(std::vector<std::byte>& mem) -> T
-{
-    auto ret = T{};
-    std::memcpy(&ret, &mem[mem.size() - sizeof(T)], sizeof(T));
-    mem.resize(mem.size() - sizeof(T));
-    return ret;
 }
 
 template <typename Type, template <typename> typename Op>

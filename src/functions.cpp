@@ -3,6 +3,7 @@
 #include "runtime.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
+#include "utility/memory.hpp"
 
 #include <unordered_map>
 #include <string>
@@ -11,30 +12,6 @@
 
 namespace anzu {
 namespace {
-
-static constexpr auto SIZE64 = sizeof(std::uint64_t);
-
-auto pop_n(std::vector<std::byte>& mem, std::size_t count) -> void
-{
-    mem.resize(mem.size() - count);
-}
-
-template <typename T>
-auto pop_value(std::vector<std::byte>& mem) -> T
-{
-    auto ret = T{};
-    std::memcpy(&ret, &mem[mem.size() - sizeof(T)], sizeof(T));
-    mem.resize(mem.size() - sizeof(T));
-    return ret;
-}
-
-template <typename T>
-auto push_value(std::vector<std::byte>& mem, const T& value) -> void
-{
-    for (const auto& b : as_bytes(value)) {
-        mem.push_back(b);
-    }
-}
 
 auto builtin_sqrt(std::vector<std::byte>& mem) -> void
 {
