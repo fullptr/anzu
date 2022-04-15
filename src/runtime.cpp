@@ -26,13 +26,6 @@ auto pop_n(std::vector<std::byte>& vec) -> void
     vec.resize(vec.size() - N);
 }
 
-auto pop_back(std::vector<std::byte>& vec) -> std::byte
-{
-    const auto back = vec.back();
-    vec.pop_back();
-    return back;   
-}
-
 auto push_u64(std::vector<std::byte>& mem, std::uint64_t value) -> void
 {
     for (const auto& b : std::bit_cast<std::array<std::byte, SIZE64>>(value)) {
@@ -101,7 +94,8 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             runtime_assert(ptr + size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
             if (ptr + size < ctx.memory.size()) {
                 for (const auto i : std::views::iota(ptr, ptr + size) | std::views::reverse) {
-                    ctx.memory[i] = pop_back(ctx.memory);
+                    ctx.memory[i] = ctx.memory.back();
+                    ctx.memory.pop_back();
                 }
             }
             ++ctx.prog_ptr;
@@ -172,7 +166,8 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_builtin_call& op) {
             auto args = std::vector<std::byte>(op.args_size);
             for (auto& arg : args | std::views::reverse) {
-                arg = pop_back(ctx.memory);
+                arg = ctx.memory.back();
+                ctx.memory.pop_back();
             }
 
             const auto ret = op.ptr(args);
