@@ -74,14 +74,15 @@ auto uint_division(std::vector<block>& mem) -> void
     mem.back().emplace<block_float>(static_cast<block_float>(lhs) / rhs);
 }
 
-auto ptr_addition(std::size_t obj_size)
+// Top of stack: [ptr], [size], [offset]
+// offset is popped, size stays the same, ptr is modified
+auto ptr_addition(std::vector<block>& mem)
 {
-    return [=](std::vector<block>& mem) {
-        const auto rhs = get_back<block_uint>(mem, 0);
-        auto& lhs = get_back<block_ptr>(mem, 1);
-        mem.pop_back();
-        lhs.ptr += rhs * obj_size;
-    };
+    const auto offset = get_back<block_uint>(mem, 0);
+    const auto size = get_back<block_uint>(mem, 1);
+    auto& ptr = get_back<block_uint>(mem, 2);
+    mem.pop_back();
+    ptr += offset * size;
 }
 
 // TODO: use memcmp here when we have just bytes
@@ -162,8 +163,7 @@ auto resolve_binary_op(
     -> std::optional<binary_op_info>
 {
     if (is_ptr_type(desc.lhs) && desc.rhs == uint_type()) {
-        const auto elem_size = types.size_of(inner_type(desc.lhs));
-        return binary_op_info{ ptr_addition(elem_size), desc.lhs };
+        return binary_op_info{ ptr_addition, desc.lhs };
     }
 
     if (desc.lhs != desc.rhs) {

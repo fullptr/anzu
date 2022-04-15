@@ -32,38 +32,38 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ++ctx.prog_ptr;
         },
         [&](const op_push_global_addr& op) {
-            const auto idx = op.position;
-            const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
-            ctx.memory.push_back(ptr);
+            ctx.memory.push_back(block_uint{op.position});
+            ctx.memory.push_back(block_uint{op.size});
             ++ctx.prog_ptr;
         },
         [&](const op_push_local_addr& op) {
-            const auto idx = ctx.base_ptr + op.offset;
-            const auto ptr = block_ptr{ .ptr=idx, .size=op.size };
-            ctx.memory.push_back(ptr);
+            ctx.memory.push_back(block_uint{ctx.base_ptr + op.offset});
+            ctx.memory.push_back(block_uint{op.size});
             ++ctx.prog_ptr;
         },
         [&](op_modify_ptr) {
-            const auto size = std::get<block_uint>(pop_back(ctx.memory));
+            const auto new_size = std::get<block_uint>(pop_back(ctx.memory));
             const auto offset = std::get<block_uint>(pop_back(ctx.memory));
-            auto& ptr = std::get<block_ptr>(ctx.memory.back());
-            ptr.ptr += offset;
-            ptr.size = size;
+            pop_back(ctx.memory); // Old size
+            auto& ptr = std::get<block_uint>(ctx.memory.back());
+            ptr += offset;
+            ctx.memory.push_back(new_size);
             ++ctx.prog_ptr;
         },
         [&](op_load) {
-            const auto ptr_blk = pop_back(ctx.memory);
-            const auto ptr = std::get<block_ptr>(ptr_blk);
-            for (std::size_t i = 0; i != ptr.size; ++i) {
-                ctx.memory.push_back(ctx.memory[ptr.ptr + i]);
+            const auto size = std::get<block_uint>(pop_back(ctx.memory));
+            const auto ptr = std::get<block_uint>(pop_back(ctx.memory));
+            for (std::size_t i = 0; i != size; ++i) {
+                ctx.memory.push_back(ctx.memory[ptr + i]);
             }
             ++ctx.prog_ptr;
         },
         [&](op_save) {
-            const auto [idx, size] = std::get<block_ptr>(pop_back(ctx.memory));
-            runtime_assert(idx + size <= ctx.memory.size(), "tried to access invalid memory address {}", idx);
-            if (idx + size < ctx.memory.size()) {
-                for (const auto i : std::views::iota(idx, idx + size) | std::views::reverse) {
+            const auto size = std::get<block_uint>(pop_back(ctx.memory));
+            const auto ptr = std::get<block_uint>(pop_back(ctx.memory));
+            runtime_assert(ptr + size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
+            if (ptr + size < ctx.memory.size()) {
+                for (const auto i : std::views::iota(ptr, ptr + size) | std::views::reverse) {
                     ctx.memory[i] = pop_back(ctx.memory);
                 }
             }
