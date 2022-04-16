@@ -238,7 +238,7 @@ auto compile_ptr_to_field(
 )
     -> type_name
 {
-    auto offset     = std::size_t{0};
+    auto offset = std::size_t{0};
     for (const auto& field : com.types.fields_of(type)) {
         if (field.name == field_name) {
             push_literal(com, offset);
