@@ -35,15 +35,17 @@ struct op_modify_ptr
 
 struct op_load
 {
+    std::size_t count;
 };
 
 struct op_save
 {
+    std::size_t count;
 };
 
 struct op_pop
 {
-    std::size_t size;
+    std::size_t count;
 };
 
 struct op_if

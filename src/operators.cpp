@@ -33,15 +33,13 @@ auto bin_op(std::vector<std::byte>& mem) -> void
     push_value(mem, op(lhs, rhs));
 }
 
-// Top of stack: [ptr], [size], [offset]
-// offset is popped, size stays the same, ptr is modified
-auto ptr_addition(std::vector<std::byte>& mem)
+auto ptr_addition(std::size_t type_size)
 {
-    const auto offset = pop_value<std::uint64_t>(mem);
-    const auto size = pop_value<std::uint64_t>(mem);
-    const auto ptr = pop_value<std::uint64_t>(mem);
-    push_value(mem, ptr + offset * size);
-    push_value(mem, size);
+    return [=](std::vector<std::byte>& mem) {
+        const auto offset = pop_value<std::uint64_t>(mem);
+        const auto ptr = pop_value<std::uint64_t>(mem);
+        push_value(mem, ptr + offset * type_size);
+    };
 }
 
 template <typename Type, template <typename> typename Op>
@@ -116,10 +114,12 @@ auto resolve_numerical_binary_op(std::string_view op) -> std::optional<binary_op
 
 }
 
-auto resolve_binary_op(const binary_op_description& desc) -> std::optional<binary_op_info>
+auto resolve_binary_op(
+    const type_store& types, const binary_op_description& desc
+) -> std::optional<binary_op_info>
 {
     if (is_ptr_type(desc.lhs) && desc.rhs == u64_type()) {
-        return binary_op_info{ ptr_addition, desc.lhs };
+        return binary_op_info{ ptr_addition(types.size_of(desc.lhs)), desc.lhs };
     }
 
     if (desc.lhs != desc.rhs) {

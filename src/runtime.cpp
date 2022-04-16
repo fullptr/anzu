@@ -30,48 +30,38 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         },
         [&](const op_push_global_addr& op) {
             push_value(ctx.memory, op.position);
-            push_value(ctx.memory, op.size);
             ++ctx.prog_ptr;
         },
         [&](const op_push_local_addr& op) {
             push_value(ctx.memory, ctx.base_ptr + op.offset);
-            push_value(ctx.memory, op.size);
             ++ctx.prog_ptr;
         },
         [&](op_modify_ptr) {
-            const auto new_size = pop_value<std::uint64_t>(ctx.memory);
             const auto offset = pop_value<std::uint64_t>(ctx.memory);
-            pop_value<std::uint64_t>(ctx.memory); // Old size
             const auto ptr = pop_value<std::uint64_t>(ctx.memory);
-
             push_value(ctx.memory, ptr + offset);
-            push_value(ctx.memory, new_size);
             ++ctx.prog_ptr;
         },
-        [&](op_load) {
-            const auto size = pop_value<std::uint64_t>(ctx.memory);
+        [&](op_load op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.memory);
-            for (std::size_t i = 0; i != size; ++i) {
+            for (std::size_t i = 0; i != op.count; ++i) {
                 ctx.memory.push_back(ctx.memory[ptr + i]);
             }
             ++ctx.prog_ptr;
         },
-        [&](op_save) {
-            const auto size = pop_value<std::uint64_t>(ctx.memory);
+        [&](op_save op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.memory);
-            runtime_assert(ptr + size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
-            if (ptr + size < ctx.memory.size()) {
-                for (const auto i : std::views::iota(ptr, ptr + size) | std::views::reverse) {
+            runtime_assert(ptr + op.count <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
+            if (ptr + op.count < ctx.memory.size()) {
+                for (const auto i : std::views::iota(ptr, ptr + op.count) | std::views::reverse) {
                     ctx.memory[i] = ctx.memory.back();
                     ctx.memory.pop_back();
                 }
             }
             ++ctx.prog_ptr;
         },
-        [&](const op_pop& op) {
-            for (std::size_t i = 0; i != op.size; ++i) {
-                ctx.memory.pop_back();
-            }
+        [&](op_pop op) {
+            ctx.memory.resize(ctx.memory.size() - op.count);
             ++ctx.prog_ptr;
         },
         [&](op_if) {
