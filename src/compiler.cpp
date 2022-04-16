@@ -190,18 +190,14 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
     if (com.current_func) {
         auto& locals = com.current_func->vars;
         if (const auto info = locals.find(name); info.has_value()) {
-            com.program.emplace_back(op_push_local_addr{
-                .offset=info->location, .size=info->type_size
-            });
+            com.program.emplace_back(op_push_local_addr{ .offset=info->location });
             return info->type;
         }
     }
 
     auto& globals = com.globals;
     if (const auto info = globals.find(name); info.has_value()) {
-        com.program.emplace_back(op_push_global_addr{
-            .position=info->location, .size=info->type_size
-        });
+        com.program.emplace_back(op_push_global_addr{ .position=info->location });
         return info->type;
     }
 

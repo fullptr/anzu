@@ -20,13 +20,11 @@ struct op_load_bytes
 struct op_push_global_addr
 {
     std::size_t position;
-    std::size_t size;
 };
 
 struct op_push_local_addr
 {
     std::size_t offset;
-    std::size_t size;
 };
 
 struct op_modify_ptr

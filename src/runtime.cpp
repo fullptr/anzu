@@ -28,11 +28,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
             ++ctx.prog_ptr;
         },
-        [&](const op_push_global_addr& op) {
+        [&](op_push_global_addr op) {
             push_value(ctx.memory, op.position);
             ++ctx.prog_ptr;
         },
-        [&](const op_push_local_addr& op) {
+        [&](op_push_local_addr op) {
             push_value(ctx.memory, ctx.base_ptr + op.offset);
             ++ctx.prog_ptr;
         },
