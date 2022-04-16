@@ -52,14 +52,6 @@ struct object
 
 auto to_string(const object& object) -> std::string;
 
-auto make_i32(std::int32_t val) -> object;
-auto make_i64(std::int64_t val) -> object;
-auto make_u64(std::uint64_t val) -> object;
-auto make_f64(double val) -> object;
-auto make_char(char val) -> object;
-auto make_bool(bool val) -> object;
-auto make_null() -> object;
-
 // Should be elsewhere
 auto format_special_chars(const std::string& str) -> std::string;
 
@@ -157,16 +149,14 @@ template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
     }
 };
 
-template <>
-struct std::formatter<anzu::type_name> : std::formatter<std::string>
+template <> struct std::formatter<anzu::type_name> : std::formatter<std::string>
 {
     auto format(const anzu::type_name& type, auto& ctx) {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
     }
 };
 
-template <>
-struct std::formatter<anzu::signature> : std::formatter<std::string>
+template <> struct std::formatter<anzu::signature> : std::formatter<std::string>
 {
     auto format(const anzu::signature& type, auto& ctx) {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);

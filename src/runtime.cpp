@@ -68,7 +68,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_if_end) {
             ++ctx.prog_ptr;
         },
-        [&](const op_else& op) {
+        [&](op_else op) {
             ctx.prog_ptr = op.jump;
         },
         [&](op_loop_begin) {
