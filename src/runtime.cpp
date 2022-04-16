@@ -52,7 +52,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_save op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.memory);
             runtime_assert(ptr + op.size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
-            std::memcpy(&ctx.memory[ptr], &ctx.memory[ctx.memory.size() - op.size], op.size);
+            if (ptr + op.size < ctx.memory.size()) {
+                std::memcpy(&ctx.memory[ptr], &ctx.memory[ctx.memory.size() - op.size], op.size);
+                ctx.memory.resize(ctx.memory.size() - op.size);
+            }
             ++ctx.prog_ptr;
         },
         [&](op_pop op) {
