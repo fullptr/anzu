@@ -1,7 +1,7 @@
 #include "parser.hpp"
+#include "object.hpp"
 #include "functions.hpp"
 #include "vocabulary.hpp"
-#include "type.hpp"
 
 #include <unordered_set>
 #include <string_view>

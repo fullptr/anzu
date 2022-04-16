@@ -13,6 +13,7 @@
 #include <tuple>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace anzu {
 namespace {

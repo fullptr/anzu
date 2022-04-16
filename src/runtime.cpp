@@ -74,22 +74,21 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_loop_begin) {
             ++ctx.prog_ptr;
         },
-        [&](const op_loop_end& op) {
+        [&](op_loop_end op) {
             ctx.prog_ptr = op.jump;
         },
-        [&](const op_break& op) {
+        [&](op_break op) {
             ctx.prog_ptr = op.jump;
         },
-        [&](const op_continue& op) {
+        [&](op_continue op) {
             ctx.prog_ptr = op.jump;
         },
-        [&](const op_jump_if_false& op) {
-            if (ctx.memory.back() == std::byte{1}) {
+        [&](op_jump_if_false op) {
+            if (pop_value<bool>(ctx.memory)) {
                 ++ctx.prog_ptr;
             } else {
                 ctx.prog_ptr = op.jump;
             }
-            ctx.memory.pop_back();
         },
         [&](const op_function& op) {
             ctx.prog_ptr = op.jump;
@@ -99,12 +98,8 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             const auto prev_prog_ptr = read_value<std::uint64_t>(ctx.memory, ctx.base_ptr + sizeof(std::uint64_t));
             const auto return_size = read_value<std::uint64_t>(ctx.memory, ctx.base_ptr + 2*sizeof(std::uint64_t));
             
-            for (std::size_t i = 0; i != return_size; ++i) {
-                ctx.memory[ctx.base_ptr + i] = ctx.memory[ctx.memory.size() - return_size + i];
-            }
-            while (ctx.memory.size() > ctx.base_ptr + return_size) {
-                ctx.memory.pop_back();
-            }
+            std::memcpy(&ctx.memory[ctx.base_ptr], &ctx.memory[ctx.memory.size() - return_size], return_size);
+            ctx.memory.resize(ctx.base_ptr + return_size);
             ctx.base_ptr = prev_base_ptr;
             ctx.prog_ptr = prev_prog_ptr;
         },
