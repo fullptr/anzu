@@ -239,22 +239,16 @@ auto compile_ptr_to_field(
     -> type_name
 {
     auto offset     = std::size_t{0};
-    auto size       = std::size_t{0};
-    auto field_type = type_name{};
     for (const auto& field : com.types.fields_of(type)) {
-        const auto field_size = com.types.size_of(field.type);
         if (field.name == field_name) {
-            size = field_size;
-            field_type = field.type;
-            break;
+            push_literal(com, offset);
+            com.program.emplace_back(op_modify_ptr{});
+            return field.type;
         }
-        offset += field_size;
+        offset += com.types.size_of(field.type);
     }
     
-    compiler_assert(size != 0, tok, "type {} has no field '{}'\n", type, field_name);
-    push_literal(com, offset);
-    com.program.emplace_back(op_modify_ptr{});
-    return field_type;
+    compiler_error(tok, "could not find field '{}' for type '{}'\n", field_name, type);
 }
 
 // Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
