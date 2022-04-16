@@ -54,7 +54,7 @@ public:
 
     auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
     {
-        const auto [_, success] = d_scopes.back().emplace(name, var_info{d_next, type, type_size});
+        const auto [_, success] = d_scopes.back().try_emplace(name, d_next, type, type_size);
         if (success) {
             d_next += type_size;
         }
@@ -743,9 +743,6 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
-    if (type == null_type()) {
-        compiler_error(node.token, "cannot create a variable of type '{}'", tk_null);
-    }
     declare_variable_name(com, node.token, node.name, type);
     save_variable(com, node.token, node.name);
 }
