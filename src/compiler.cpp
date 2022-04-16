@@ -13,6 +13,7 @@
 #include <tuple>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace anzu {
 namespace {
@@ -53,7 +54,7 @@ public:
 
     auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
     {
-        const auto [_, success] = d_scopes.back().emplace(name, var_info{d_next, type, type_size});
+        const auto [_, success] = d_scopes.back().try_emplace(name, d_next, type, type_size);
         if (success) {
             d_next += type_size;
         }
@@ -223,7 +224,7 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
     // Initial function payload. 3 uints that store the old base ptr, old prog ptr
     // and the return size in bytes.
     auto args_size = 3 * sizeof(std::uint64_t);
-    for (const auto& arg : sig.args) {
+    for (const auto& arg : sig.params) {
         args_size += com.types.size_of(arg.type);
     }
     return args_size;
@@ -237,23 +238,17 @@ auto compile_ptr_to_field(
 )
     -> type_name
 {
-    auto offset     = std::size_t{0};
-    auto size       = std::size_t{0};
-    auto field_type = type_name{};
+    auto offset = std::size_t{0};
     for (const auto& field : com.types.fields_of(type)) {
-        const auto field_size = com.types.size_of(field.type);
         if (field.name == field_name) {
-            size = field_size;
-            field_type = field.type;
-            break;
+            push_literal(com, offset);
+            com.program.emplace_back(op_modify_ptr{});
+            return field.type;
         }
-        offset += field_size;
+        offset += com.types.size_of(field.type);
     }
     
-    compiler_assert(size != 0, tok, "type {} has no field '{}'\n", type, field_name);
-    push_literal(com, offset);
-    com.program.emplace_back(op_modify_ptr{});
-    return field_type;
+    compiler_error(tok, "could not find field '{}' for type '{}'\n", field_name, type);
 }
 
 // Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
@@ -280,11 +275,11 @@ void link_up_jumps(compiler& com, std::size_t begin, std::size_t jump, std::size
 
 void verify_sig(const token& tok, const signature& sig, const std::vector<type_name>& args)
 {
-    if (sig.args.size() != args.size()) {
-        compiler_error(tok, "function expected {} args, got {}", sig.args.size(), args.size());
+    if (sig.params.size() != args.size()) {
+        compiler_error(tok, "function expected {} args, got {}", sig.params.size(), args.size());
     }
 
-    for (const auto& [actual, expected] : zip(args, sig.args)) {
+    for (const auto& [actual, expected] : zip(args, sig.params)) {
         if (actual != expected.type) {
             compiler_error(tok, "'{}' does not match '{}'", actual, expected.type);
         }
@@ -295,7 +290,7 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
 {
     auto sig = signature{};
     for (const auto& field : com.types.fields_of(type)) {
-        sig.args.emplace_back(field.name, field.type);
+        sig.params.emplace_back(field.name, field.type);
     }
     sig.return_type = type;
     return sig;
@@ -770,8 +765,8 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
 
     auto key = function_key{};
     key.name = node.name;
-    key.args.reserve(node.sig.args.size());
-    for (const auto& arg : node.sig.args) {
+    key.args.reserve(node.sig.params.size());
+    for (const auto& arg : node.sig.params) {
         verify_real_type(com, node.token, arg.type);
         key.args.push_back(arg.type);
     }
@@ -784,7 +779,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     declare_variable_name(com, node.token, "# old_base_ptr", u64_type()); // Store the old base ptr
     declare_variable_name(com, node.token, "# old_prog_ptr", u64_type()); // Store the old program ptr
     declare_variable_name(com, node.token, "# return_size", u64_type());  // Store the return size
-    for (const auto& arg : node.sig.args) {
+    for (const auto& arg : node.sig.params) {
         declare_variable_name(com, node.token, arg.name, arg.type);
     }
     compile_stmt(com, *node.body);
@@ -806,20 +801,20 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
-    compiler_assert(node.sig.args.size() >= 1, node.token, "member functions must have at least one arg");
+    compiler_assert(node.sig.params.size() >= 1, node.token, "member functions must have at least one arg");
 
     const auto qualified_name = std::format("{}::{}", node.struct_name, node.function_name);
 
     const auto expected = concrete_ptr_type(make_type(node.struct_name));
-    const auto actual = node.sig.args.front().type;
+    const auto actual = node.sig.params.front().type;
     if (actual != expected) {
         compiler_error(node.token, "first arg to member function should be '{}', got '{}'", expected, actual);
     }
 
     auto key = function_key{};
     key.name = qualified_name;
-    key.args.reserve(node.sig.args.size());
-    for (const auto& arg : node.sig.args) {
+    key.args.reserve(node.sig.params.size());
+    for (const auto& arg : node.sig.params) {
         verify_real_type(com, node.token, arg.type);
         key.args.push_back(arg.type);
     }
@@ -832,7 +827,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     declare_variable_name(com, node.token, "# old_base_ptr", u64_type()); // Store the old base ptr
     declare_variable_name(com, node.token, "# old_prog_ptr", u64_type()); // Store the old program ptr
     declare_variable_name(com, node.token, "# return_size", u64_type());  // Store the return size
-    for (const auto& arg : node.sig.args) {
+    for (const auto& arg : node.sig.params) {
         declare_variable_name(com, node.token, arg.name, arg.type);
     }
     compile_stmt(com, *node.body);

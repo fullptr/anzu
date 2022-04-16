@@ -1,6 +1,5 @@
 #pragma once
 #include "object.hpp"
-#include "type.hpp"
 
 #include <functional>
 #include <optional>

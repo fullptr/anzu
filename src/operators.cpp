@@ -1,5 +1,6 @@
 #include "operators.hpp"
 #include "object.hpp"
+#include "vocabulary.hpp"
 #include "utility/memory.hpp"
 
 #include <algorithm>

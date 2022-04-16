@@ -77,6 +77,26 @@ template <typename... Args>
     std::exit(1);
 }
 
+auto parse_character_literal(std::int64_t lineno, line_iterator& iter) -> std::string
+{
+    const auto col = iter.position();
+    std::string return_value;
+    if (iter.consume_maybe('\\')) {
+        switch (iter.consume()) {
+            break; case 'n': return_value = "\n"; 
+            break; case 't': return_value = "\t"; 
+            break; case 'r': return_value = "\r";
+            break; default: lexer_error(lineno, col, "unknown escape sequence for character");
+        }
+    } else {
+        return_value = iter.consume();
+    }
+    if (!iter.consume_maybe('\'')) {
+        lexer_error(lineno, col, "character literal not closed");
+    }
+    return return_value;
+}
+
 auto parse_string_literal(std::int64_t lineno, line_iterator& iter) -> std::string
 {
     const auto col = iter.position();
@@ -140,11 +160,8 @@ auto lex_line(
             push_token(literal, col, token_type::string);
         }
         else if (iter.consume_maybe('\'')) {
-            const auto c = iter.consume();
-            if (!iter.consume_maybe('\'')) {
-                lexer_error(lineno, col, "EOF reached before closing character literal");
-            }
-            push_token(std::string{c}, col, token_type::character);
+            const auto literal = parse_character_literal(lineno, iter);
+            push_token(literal, col, token_type::character);
         }
         else if (iter.consume_maybe('#')) {
             return;

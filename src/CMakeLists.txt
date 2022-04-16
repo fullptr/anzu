@@ -14,7 +14,6 @@ add_executable(
     program.cpp
     runtime.cpp
     object.cpp
-    type.cpp
     functions.cpp
     operators.cpp
     vocabulary.cpp

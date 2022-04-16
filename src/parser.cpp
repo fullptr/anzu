@@ -1,7 +1,7 @@
 #include "parser.hpp"
+#include "object.hpp"
 #include "functions.hpp"
 #include "vocabulary.hpp"
-#include "type.hpp"
 
 #include <unordered_set>
 #include <string_view>
@@ -28,57 +28,76 @@ template <typename... Args>
     }
 }
 
-auto to_i32(std::string_view token) -> std::int32_t
+auto parse_i32(const token& tok) -> object
 {
-    token.remove_suffix(tk_i32.size());
+    auto text = std::string_view{tok.text};
+
+    parser_assert(text.ends_with(tk_i32), tok, "expected suffix '{}'\n", tk_i32);
+    text.remove_suffix(tk_i32.size());
+    
     auto result = std::int32_t{};
-    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
-    if (ec != std::errc{}) {
-        print("type error: cannot convert '{}' to '{}'\n", token, tk_i32);
-        std::exit(1);
-    }
-    return result;
+    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    parser_assert(ec == std::errc{}, tok, "cannot convert '{}' to '{}'\n", text, tk_i32);
+
+    const auto bytes = as_bytes(result);
+    return object{ .data={bytes.begin(), bytes.end()}, .type=i32_type() };
 }
 
-auto to_i64(std::string_view token) -> std::int64_t
+auto parse_i64(const token& tok) -> object
 {
-    if (token.ends_with(tk_i64)) {
-        token.remove_suffix(tk_i64.size());
+    auto text = std::string_view{tok.text};
+
+    if (text.ends_with(tk_i64)) {
+        text.remove_suffix(tk_i64.size());
     }
+
     auto result = std::int64_t{};
-    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
-    if (ec != std::errc{}) {
-        print("type error: cannot convert '{}' to '{}'\n", token, tk_i64);
-        std::exit(1);
-    }
-    return result;
+    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    parser_assert(ec == std::errc{}, tok, "cannot convert '{}' to '{}'\n", text, tk_i64);
+
+    const auto bytes = as_bytes(result);
+    return object{ .data={bytes.begin(), bytes.end()}, .type=i64_type() };
 }
 
-auto to_u64(std::string_view token) -> std::uint64_t
+auto parse_u64(const token& tok) -> object
 {
-    if (token.ends_with(tk_u64)) {
-        token.remove_suffix(tk_u64.size());
-    } else if (token.ends_with('u')) {
-        token.remove_suffix(1);
+    auto text = std::string_view{tok.text};
+
+    if (text.ends_with(tk_u64)) {
+        text.remove_suffix(tk_u64.size());
+    } else if (text.ends_with('u')) {
+        text.remove_suffix(1);
     }
+
     auto result = std::uint64_t{};
-    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
-    if (ec != std::errc{}) {
-        print("type error: cannot convert '{}' to uint\n", token);
-        std::exit(1);
-    }
-    return result;
+    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    parser_assert(ec == std::errc{}, tok, "cannot convert '{}' to '{}'\n", text, tk_u64);
+
+    const auto bytes = as_bytes(result);
+    return object{ .data={bytes.begin(), bytes.end()}, .type=u64_type() };
 }
 
-auto to_f64(std::string_view token) -> double
+auto parse_f64(const token& tok) -> object
 {
+    auto text = std::string_view{tok.text};
+
     auto result = double{};
-    const auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), result);
-    if (ec != std::errc{}) {
-        print("type error: cannot convert '{}' to float\n", token);
-        std::exit(1);
-    }
-    return result;
+    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    parser_assert(ec == std::errc{}, tok, "cannot convert '{}' to '{}'\n", text, tk_f64);
+
+    const auto bytes = as_bytes(result);
+    return object{ .data={bytes.begin(), bytes.end()}, .type=f64_type() };
+}
+
+auto parse_char(const token& tok) -> object
+{
+    auto text = std::string_view{tok.text};
+
+    parser_assert(tok.text.size() == 1, tok, "failed to parse char");
+    const char result = tok.text.front();
+
+    const auto bytes = as_bytes(result);
+    return object{ .data={bytes.begin(), bytes.end()}, .type=char_type() };
 }
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
@@ -87,21 +106,19 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 auto parse_literal(tokenstream& tokens) -> object
 {
     if (tokens.curr().type == token_type::i32) {
-        return make_i32(to_i32(tokens.consume().text));
+        return parse_i32(tokens.consume());
     }
     if (tokens.curr().type == token_type::i64) {
-        return make_i64(to_i64(tokens.consume().text));
+        return parse_i64(tokens.consume());
     }
     if (tokens.curr().type == token_type::u64) {
-        return make_u64(to_u64(tokens.consume().text));
+        return parse_u64(tokens.consume());
     }
     if (tokens.curr().type == token_type::f64) {
-        return make_f64(to_f64(tokens.consume().text));
+        return parse_f64(tokens.consume());
     }
     if (tokens.curr().type == token_type::character) {
-        const auto c = tokens.consume().text;
-        parser_assert(c.size() == 1, tokens.curr(), "failed to parse char ({})", c);
-        return make_char(c.front());
+        return parse_char(tokens.consume());
     }
     if (tokens.curr().type == token_type::string) {
         auto ret = object{};
@@ -113,13 +130,13 @@ auto parse_literal(tokenstream& tokens) -> object
         return ret;
     }
     if (tokens.consume_maybe(tk_true)) {
-        return make_bool(true);
+        return object{ .data{std::byte{1}}, .type=bool_type() };
     }
     if (tokens.consume_maybe(tk_false)) {
-        return make_bool(false);
+        return object{ .data{std::byte{0}}, .type=bool_type() };
     }
     if (tokens.consume_maybe(tk_null)) {
-        return make_null();
+        return object{ .data{std::byte{0}}, .type=null_type() };
     }
     parser_error(tokens.curr(), "failed to parse literal ({})", tokens.curr().text);
 };
@@ -297,11 +314,11 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
-        auto arg = function_arg{};
-        arg.name = parse_name(tokens);
+        auto param = signature::parameter{};
+        param.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
-        arg.type = parse_type(tokens);
-        stmt.sig.args.push_back(arg);
+        param.type = parse_type(tokens);
+        stmt.sig.params.push_back(param);
     });    
     tokens.consume_only(tk_rarrow);
     stmt.sig.return_type = parse_type(tokens);
@@ -322,11 +339,11 @@ auto parse_member_function_def_stmt(
     stmt.function_name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
-        auto arg = function_arg{};
-        arg.name = parse_name(tokens);
+        auto param = signature::parameter{};
+        param.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
-        arg.type = parse_type(tokens);
-        stmt.sig.args.push_back(arg);
+        param.type = parse_type(tokens);
+        stmt.sig.params.push_back(param);
     });    
     tokens.consume_only(tk_rarrow);
     stmt.sig.return_type = parse_type(tokens);
@@ -345,7 +362,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     } else {
         stmt.return_value = std::make_unique<node_expr>();
         auto& ret_expr = stmt.return_value->emplace<node_literal_expr>();
-        ret_expr.value = make_null();
+        ret_expr.value = object{ .data={std::byte{0}}, .type=null_type() };
         ret_expr.token = stmt.token;
     }
     return node;
