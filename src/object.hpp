@@ -52,9 +52,6 @@ struct object
 
 auto to_string(const object& object) -> std::string;
 
-// Should be elsewhere
-auto format_special_chars(const std::string& str) -> std::string;
-
 template <typename T>
 inline auto as_bytes(const T& val) -> std::array<std::byte, sizeof(T)>
 {

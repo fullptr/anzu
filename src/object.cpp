@@ -23,26 +23,6 @@ auto to_string(const object& object) -> std::string
     return std::format("{}({})", object.type, format_comma_separated(object.data));
 }
 
-auto format_special_chars(const std::string& str) -> std::string
-{
-    std::string ret;
-    for (auto it = str.begin(); it != str.end(); ++it) {
-        if (*it == '\\') {
-            if (++it == str.end()) { format_error(str); }
-            switch (*it) {
-                break; case 'n': ret += '\n';
-                break; case 't': ret += '\t';
-                break; case 'r': ret += '\r';
-                break; default: format_error(str);
-            }
-        }
-        else {
-            ret += *it;
-        }
-    }
-    return ret;
-}
-
 auto to_string(const type_name& type) -> std::string
 {
     return std::visit([](const auto& t) { return to_string(t); }, type);
