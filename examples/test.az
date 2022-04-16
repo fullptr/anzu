@@ -13,8 +13,18 @@ fn println(v: vec2) -> null
     println("}")
 }
 
+l := [vec2(1, 2), vec2(3, 4), vec2(5, 6)]
 
-l := [vec2(1, 2), vec2(3, 4)]
 p := &l[0u]
+size := size_of(l) / size_of(l[0])
+idx := 0u
 
+while idx != size {
+    println(*(p + idx))
+    println(idx)
+    idx = idx + 1u
+}
+
+println(*(p + 0u))
 println(*(p + 1u))
+println(*(p + 2u))

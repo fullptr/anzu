@@ -19,19 +19,19 @@ auto to_string(const op& op_code) -> std::string
             return std::format("LOAD_BYTES({})", format_comma_separated(op.bytes));
         },
         [&](const op_push_global_addr& op) {
-            return std::format("PUSH_GLOBAL_ADDR({}, {})", op.position, op.size);
+            return std::format("PUSH_GLOBAL_ADDR({})", op.position);
         },
         [&](const op_push_local_addr& op) {
-            return std::format("PUSH_LOCAL_ADDR(+{}, {})", op.offset, op.size);
+            return std::format("PUSH_LOCAL_ADDR(+{})", op.offset);
         },
         [&](const op_modify_ptr& op) {
             return std::string{"MODIFY_PTR"};
         },
-        [&](const op_load&) {
-            return std::string{"LOAD"};
+        [&](const op_load& op) {
+            return std::format("LOAD({})", op.size);
         },
         [&](const op_save& op) {
-            return std::string{"SAVE"};
+            return std::format("SAVE({})", op.size);
         },
         [&](const op_pop& op) {
             return std::format("POP({})", op.size);

@@ -190,18 +190,14 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
     if (com.current_func) {
         auto& locals = com.current_func->vars;
         if (const auto info = locals.find(name); info.has_value()) {
-            com.program.emplace_back(op_push_local_addr{
-                .offset=info->location, .size=info->type_size
-            });
+            com.program.emplace_back(op_push_local_addr{ .offset=info->location });
             return info->type;
         }
     }
 
     auto& globals = com.globals;
     if (const auto info = globals.find(name); info.has_value()) {
-        com.program.emplace_back(op_push_global_addr{
-            .position=info->location, .size=info->type_size
-        });
+        com.program.emplace_back(op_push_global_addr{ .position=info->location });
         return info->type;
     }
 
@@ -210,14 +206,16 @@ auto find_variable(compiler& com, const token& tok, const std::string& name) -> 
 
 auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
-    find_variable(com, tok, name);
-    com.program.emplace_back(anzu::op_save{});
+    const auto type = find_variable(com, tok, name);
+    const auto size = com.types.size_of(type);
+    com.program.emplace_back(anzu::op_save{ .size=size });
 }
 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
-    find_variable(com, tok, name);
-    com.program.emplace_back(anzu::op_load{});
+    const auto type = find_variable(com, tok, name);
+    const auto size = com.types.size_of(type);
+    com.program.emplace_back(anzu::op_load{ .size=size });
 }
 
 auto signature_args_size(const compiler& com, const signature& sig) -> std::size_t
@@ -229,13 +227,6 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
         args_size += com.types.size_of(arg.type);
     }
     return args_size;
-}
-
-auto modify_ptr(compiler& com, std::size_t offset, std::size_t size) -> void
-{
-    push_literal(com, offset);
-    push_literal(com, size);
-    com.program.emplace_back(op_modify_ptr{});
 }
 
 // Given a type and field name, and assuming that the top of the stack at runtime is a pointer
@@ -260,7 +251,8 @@ auto compile_ptr_to_field(
     }
     
     compiler_assert(size != 0, tok, "type {} has no field '{}'\n", type, field_name);
-    modify_ptr(com, offset, size);
+    push_literal(com, offset);
+    com.program.emplace_back(op_modify_ptr{});
     return field_type;
 }
 
@@ -342,7 +334,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                 .lhs=type_of_expr(com, *expr.lhs),
                 .rhs=type_of_expr(com, *expr.rhs)
             };
-            const auto r = resolve_binary_op(desc);
+            const auto r = resolve_binary_op(com.types, desc);
             if (!r.has_value()) {
                 compiler_error(
                     expr.token, "could not find op '{} {} {}'",
@@ -473,14 +465,12 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
     compiler_assert(itype == u64_type(), expr.token, "subscript argument must be a 'u64', got '{}'", itype);
 
     push_literal(com, etype_size);
-    const auto info = resolve_binary_op({ .op="*", .lhs=itype, .rhs=itype });
+    const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
     com.program.emplace_back(op_builtin_mem_op{
         .name = "uint * uint",
         .ptr = info->operator_func
     });
 
-    // Push the size
-    push_literal(com, etype_size);
     com.program.emplace_back(op_modify_ptr{});
     return etype;
 }
@@ -507,7 +497,7 @@ auto compile_expr_val(compiler& com, const node_binary_op_expr& node) -> type_na
     const auto rhs = compile_expr_val(com, *node.rhs);
     const auto op = node.token.text;
 
-    const auto info = resolve_binary_op({ .op=op, .lhs=lhs, .rhs=rhs });
+    const auto info = resolve_binary_op(com.types, { .op=op, .lhs=lhs, .rhs=rhs });
     compiler_assert(info.has_value(), node.token, "could not evaluate '{} {} {}'", lhs, op, rhs);
 
     com.program.emplace_back(op_builtin_mem_op{
@@ -670,7 +660,8 @@ auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 auto compile_expr_val(compiler& com, const auto& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, node);
-    com.program.emplace_back(op_load{});
+    const auto size = com.types.size_of(type);
+    com.program.emplace_back(op_load{ .size=size });
     return type;
 }
 
@@ -765,8 +756,9 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = compile_expr_val(com, *node.expr);
     const auto lhs = compile_expr_ptr(com, *node.position);
+    const auto size = com.types.size_of(lhs);
     compiler_assert(lhs == rhs, node.token, "cannot assign a {} to a {}\n", rhs, lhs);
-    com.program.emplace_back(op_save{});
+    com.program.emplace_back(op_save{ .size=size });
 }
 
 void compile_stmt(compiler& com, const node_function_def_stmt& node)
