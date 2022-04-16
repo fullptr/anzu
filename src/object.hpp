@@ -50,8 +50,6 @@ struct object
     anzu::type_name        type;
 };
 
-auto to_string(const object& object) -> std::string;
-
 template <typename T>
 inline auto as_bytes(const T& val) -> std::array<std::byte, sizeof(T)>
 {
@@ -67,11 +65,6 @@ struct field
 
 using type_fields = std::vector<field>;
 
-auto to_string(const type_name& type) -> std::string;
-auto to_string(const type_list& type) -> std::string;
-auto to_string(const type_ptr& type) -> std::string;
-auto to_string(const type_simple& type) -> std::string;
-
 auto hash(const type_name& type) -> std::size_t;
 auto hash(const type_list& type) -> std::size_t;
 auto hash(const type_ptr& type) -> std::size_t;
@@ -85,10 +78,7 @@ auto char_type() -> type_name;
 auto bool_type() -> type_name;
 auto null_type() -> type_name;
 
-inline auto make_type(const std::string& name) -> type_name
-{
-    return { type_simple{ .name=name } };
-}
+auto make_type(const std::string& name) -> type_name;
 
 auto concrete_list_type(const type_name& t, std::size_t size) -> type_name;
 auto is_list_type(const type_name& t) -> bool;
@@ -100,22 +90,19 @@ auto is_ptr_type(const type_name& t) -> bool;
 // type with a single subtype.
 auto inner_type(const type_name& t) -> type_name;
 
-struct function_arg
-{
-    std::string name;
-    type_name   type;
-    auto operator==(const function_arg&) const -> bool = default;
-};
-using function_args = std::vector<function_arg>;
-
 struct signature
 {
-    function_args args;
-    type_name     return_type;
+    struct parameter
+    {
+        std::string name;
+        type_name   type;
+        auto operator==(const parameter&) const -> bool = default;
+    };
+
+    std::vector<parameter> params;
+    type_name              return_type;
     auto operator==(const signature&) const -> bool = default;
 };
-
-auto to_string(const signature& sig) -> std::string;
 
 class type_store
 {
@@ -129,6 +116,13 @@ public:
     auto size_of(const type_name& t) const -> std::size_t;
     auto fields_of(const type_name& t) const -> type_fields;
 };
+
+auto to_string(const object& object) -> std::string;
+auto to_string(const type_name& type) -> std::string;
+auto to_string(const type_list& type) -> std::string;
+auto to_string(const type_ptr& type) -> std::string;
+auto to_string(const type_simple& type) -> std::string;
+auto to_string(const signature& sig) -> std::string;
 
 }
 
@@ -165,7 +159,7 @@ struct std::hash<anzu::signature>
     auto operator()(const anzu::signature& sig) const -> std::size_t
     {
         auto ret = anzu::hash(sig.return_type);
-        for (const auto& arg : sig.args) {
+        for (const auto& arg : sig.params) {
             ret ^= anzu::hash(arg.type);
         }
         return ret;

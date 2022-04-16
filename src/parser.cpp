@@ -314,11 +314,11 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
-        auto arg = function_arg{};
-        arg.name = parse_name(tokens);
+        auto param = signature::parameter{};
+        param.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
-        arg.type = parse_type(tokens);
-        stmt.sig.args.push_back(arg);
+        param.type = parse_type(tokens);
+        stmt.sig.params.push_back(param);
     });    
     tokens.consume_only(tk_rarrow);
     stmt.sig.return_type = parse_type(tokens);
@@ -339,11 +339,11 @@ auto parse_member_function_def_stmt(
     stmt.function_name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
-        auto arg = function_arg{};
-        arg.name = parse_name(tokens);
+        auto param = signature::parameter{};
+        param.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
-        arg.type = parse_type(tokens);
-        stmt.sig.args.push_back(arg);
+        param.type = parse_type(tokens);
+        stmt.sig.params.push_back(param);
     });    
     tokens.consume_only(tk_rarrow);
     stmt.sig.return_type = parse_type(tokens);

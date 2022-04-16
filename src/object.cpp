@@ -99,6 +99,11 @@ auto null_type() -> type_name
     return {type_simple{ .name = std::string{tk_null} }};
 }
 
+auto make_type(const std::string& name) -> type_name
+{
+    return { type_simple{ .name=name } };
+}
+
 auto concrete_list_type(const type_name& t, std::size_t size) -> type_name
 {
     return {type_list{ .inner_type = { t }, .count = size }};
@@ -165,7 +170,7 @@ auto update(
 auto to_string(const signature& sig) -> std::string
 {
     const auto proj = [](const auto& arg) { return arg.type; };
-    return std::format("({}) -> {}", format_comma_separated(sig.args, proj), sig.return_type);
+    return std::format("({}) -> {}", format_comma_separated(sig.params, proj), sig.return_type);
 }
 
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
