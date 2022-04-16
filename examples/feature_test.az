@@ -67,11 +67,6 @@ if adder(1, 2, 3) == 6 {
     println("no")
 }
 
-# printing null and showing functions with no return value return null
-x := null
-y := println(x)
-println(y)
-
 # Allowing functions from other functions
 fn add2(x: i64, y: i64) -> i64
 {

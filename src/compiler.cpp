@@ -749,6 +749,9 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
+    if (type == null_type()) {
+        compiler_error(node.token, "cannot create a variable of type '{}'", tk_null);
+    }
     declare_variable_name(com, node.token, node.name, type);
     save_variable(com, node.token, node.name);
 }
