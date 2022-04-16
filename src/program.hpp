@@ -27,23 +27,24 @@ struct op_push_local_addr
     std::size_t offset;
 };
 
+// This is just integer addition now
 struct op_modify_ptr
 {
 };
 
 struct op_load
 {
-    std::size_t count;
+    std::size_t size;
 };
 
 struct op_save
 {
-    std::size_t count;
+    std::size_t size;
 };
 
 struct op_pop
 {
-    std::size_t count;
+    std::size_t size;
 };
 
 struct op_if

@@ -28,13 +28,13 @@ auto to_string(const op& op_code) -> std::string
             return std::string{"MODIFY_PTR"};
         },
         [&](const op_load& op) {
-            return std::format("LOAD({})", op.count);
+            return std::format("LOAD({})", op.size);
         },
         [&](const op_save& op) {
-            return std::format("SAVE({})", op.count);
+            return std::format("SAVE({})", op.size);
         },
         [&](const op_pop& op) {
-            return std::format("POP({})", op.count);
+            return std::format("POP({})", op.size);
         },
         [&](const op_if& op) {
             return std::string{"IF"};

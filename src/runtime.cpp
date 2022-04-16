@@ -44,24 +44,19 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         },
         [&](op_load op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.memory);
-            for (std::size_t i = 0; i != op.count; ++i) {
+            for (std::size_t i = 0; i != op.size; ++i) {
                 ctx.memory.push_back(ctx.memory[ptr + i]);
             }
             ++ctx.prog_ptr;
         },
         [&](op_save op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.memory);
-            runtime_assert(ptr + op.count <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
-            if (ptr + op.count < ctx.memory.size()) {
-                for (const auto i : std::views::iota(ptr, ptr + op.count) | std::views::reverse) {
-                    ctx.memory[i] = ctx.memory.back();
-                    ctx.memory.pop_back();
-                }
-            }
+            runtime_assert(ptr + op.size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
+            std::memcpy(&ctx.memory[ptr], &ctx.memory[ctx.memory.size() - op.size], op.size);
             ++ctx.prog_ptr;
         },
         [&](op_pop op) {
-            ctx.memory.resize(ctx.memory.size() - op.count);
+            ctx.memory.resize(ctx.memory.size() - op.size);
             ++ctx.prog_ptr;
         },
         [&](op_if) {

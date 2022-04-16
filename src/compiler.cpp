@@ -208,14 +208,14 @@ auto save_variable(compiler& com, const token& tok, const std::string& name) -> 
 {
     const auto type = find_variable(com, tok, name);
     const auto size = com.types.size_of(type);
-    com.program.emplace_back(anzu::op_save{ .count=size });
+    com.program.emplace_back(anzu::op_save{ .size=size });
 }
 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = find_variable(com, tok, name);
     const auto size = com.types.size_of(type);
-    com.program.emplace_back(anzu::op_load{ .count=size });
+    com.program.emplace_back(anzu::op_load{ .size=size });
 }
 
 auto signature_args_size(const compiler& com, const signature& sig) -> std::size_t
@@ -661,7 +661,7 @@ auto compile_expr_val(compiler& com, const auto& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, node);
     const auto size = com.types.size_of(type);
-    com.program.emplace_back(op_load{ .count=size });
+    com.program.emplace_back(op_load{ .size=size });
     return type;
 }
 
@@ -758,7 +758,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     const auto lhs = compile_expr_ptr(com, *node.position);
     const auto size = com.types.size_of(lhs);
     compiler_assert(lhs == rhs, node.token, "cannot assign a {} to a {}\n", rhs, lhs);
-    com.program.emplace_back(op_save{ .count=size });
+    com.program.emplace_back(op_save{ .size=size });
 }
 
 void compile_stmt(compiler& com, const node_function_def_stmt& node)
@@ -871,7 +871,7 @@ void compile_stmt(compiler& com, const node_return_stmt& node)
 void compile_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
-    com.program.emplace_back(anzu::op_pop{ .count=com.types.size_of(type) });
+    com.program.emplace_back(anzu::op_pop{ .size=com.types.size_of(type) });
 }
 
 auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name
