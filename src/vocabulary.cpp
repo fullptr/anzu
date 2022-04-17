@@ -29,7 +29,7 @@ auto is_symbol(std::string_view token) -> bool
         tk_add, tk_and, tk_declare, tk_colon, tk_comma, tk_div, tk_eq, tk_ge, tk_gt,
         tk_lbracket, tk_le, tk_lparen, tk_lt, tk_mod, tk_mul, tk_ne, tk_or, tk_period,
         tk_rbracket, tk_rparen, tk_sub, tk_rarrow, tk_lbrace, tk_rbrace, tk_assign,
-        tk_declare, tk_fullstop, tk_bang, tk_ampersand
+        tk_declare, tk_fullstop, tk_bang, tk_ampersand, tk_semicolon
     };
     return tokens.contains(token);
 }

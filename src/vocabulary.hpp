@@ -59,6 +59,7 @@ constexpr auto tk_rbrace    = sv{"}"};
 constexpr auto tk_fullstop  = sv{"."};
 constexpr auto tk_bang      = sv{"!"};
 constexpr auto tk_ampersand = sv{"&"};
+constexpr auto tk_semicolon = sv{";"};
 
 auto is_keyword    (sv token) -> bool;
 auto is_sentinel   (sv token) -> bool;

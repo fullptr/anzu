@@ -357,14 +357,15 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_return_stmt>();
     
     stmt.token = tokens.consume_only(tk_return);
-    if (!is_sentinel(tokens.curr().text)) {
-        stmt.return_value = parse_expression(tokens);
-    } else {
+    if (tokens.peek(tk_semicolon)) {
         stmt.return_value = std::make_unique<node_expr>();
         auto& ret_expr = stmt.return_value->emplace<node_literal_expr>();
         ret_expr.value = object{ .data={std::byte{0}}, .type=null_type() };
         ret_expr.token = stmt.token;
+    } else {
+        stmt.return_value = parse_expression(tokens);
     }
+    tokens.consume_only(tk_semicolon);
     return node;
 }
 
@@ -424,6 +425,7 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     stmt.token = tokens.consume_only(tk_declare);
     stmt.expr = parse_expression(tokens);
+    tokens.consume_only(tk_semicolon);
     return node;
 }
 
@@ -442,10 +444,10 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
+    while (tokens.consume_maybe(tk_semicolon));
     if (tokens.peek(tk_function) || tokens.peek(tk_struct)) {
         parser_error(tokens.curr(), "functions and structs can only be declared in the global scope");
     }
-
     if (tokens.peek(tk_return)) {
         return parse_return_stmt(tokens);
     }
@@ -475,16 +477,19 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         stmt.token = tokens.consume();
         stmt.position = std::move(expr);
         stmt.expr = parse_expression(tokens);
+        tokens.consume_only(tk_semicolon);
     } else {
         auto& stmt = node->emplace<node_expression_stmt>();
         stmt.token = std::visit([](auto&& n) { return n.token; }, *expr);
         stmt.expr = std::move(expr);
+        tokens.consume_only(tk_semicolon);
     }
     return node;
 }
 
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 {
+    while (tokens.consume_maybe(tk_semicolon));
     if (tokens.peek(tk_function)) {
         return parse_function_def_stmt(tokens);
     }
