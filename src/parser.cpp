@@ -411,6 +411,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
             f.name = parse_name(tokens);
             tokens.consume_only(tk_colon);
             f.type = parse_type(tokens);
+            tokens.consume_only(tk_semicolon);
         }
     }
 

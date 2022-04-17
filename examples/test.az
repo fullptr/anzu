@@ -1,15 +1,15 @@
 
-l := [234345, 543656742, 234234123434, 45623234]
+l := [234345, 543656742, 234234123434, 45623234];
 
 struct span
 {
-    ptr: &i64
-    size: u64
+    ptr: &i64;
+    size: u64;
 
-    fn at(idx: u64) -> i64
+    fn at(self: &span, idx: u64) -> i64
     {
-        return *(ptr + idx)
+        return *(self->ptr + idx);
     }
 }
 
-s := span(&l[0u], size_of(l) / size_of(l[0u]))
+s := span(&l[0u], size_of(l) / size_of(l[0u]));
