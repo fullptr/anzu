@@ -347,7 +347,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             }
             auto it = com.functions.find(key);
             if (it == com.functions.end()) {
-                compiler_error(expr.token, "could not find function '{}'", key.name);
+                compiler_error(expr.token, "could not find function '{}({})'", key.name, format_comma_separated(key.args));
             }
             return it->second.sig.return_type;
         },

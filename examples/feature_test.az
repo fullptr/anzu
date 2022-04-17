@@ -1,41 +1,41 @@
 # tests all language features, here is a comment
 
 # declaring variables from literals
-a := 1               # ints
-b := true            # bools
-c := "hello world\n" # string literal
-d := [1, 2, 3]       # list
+a := 1;               # ints
+b := true;            # bools
+c := "hello world\n"; # string literal
+d := [1, 2, 3];       # list
 
 # variables from variables
-e := a
+e := a;
 
 # while-statements
-idx := 0
+idx := 0;
 while idx < 10 {
-    print(idx)
-    print(", ")
-    idx = idx + 1
+    print(idx);
+    print(", ");
+    idx = idx + 1;
 }
-println("")
+println("");
 
 # if-statements
 # basic if
 if true {
-    print("in true block\n")
+    print("in true block\n");
 }
 
 # if with else
 if 2 < 1 {
     # never entered
 } else {
-    println("in else block")
+    println("in else block");
 }
 
 # if with elif
 if 1 > 3 {
     # not entered
 } else if 2 == 1 + 1 {  # also testing an expression
-    println("i just evaluated 2 == 1 + 1")
+    println("i just evaluated 2 == 1 + 1");
 }
 
 # if with elif and else
@@ -44,142 +44,139 @@ if false {
 } else if false {
     # also nah
 } else {
-    println("in else after skipping the if and elif")
+    println("in else after skipping the if and elif");
 }
 
 # simple expressions
-println(2 + 2)
-println(8 * (1 + 6) > 5)
-println(true && true)
-println(true && false)
-println(true || false)
+println(2 + 2);
+println(8 * (1 + 6) > 5);
+println(true && true);
+println(true && false);
+println(true || false);
 
 # functions
 fn adder(a: i64, b: i64, c: i64) -> i64
 {
-    return a + b + c
+    return a + b + c;
 }
 
-print("Does adder(1, 2, 3) == 6? ")
+print("Does adder(1, 2, 3) == 6? ");
 if adder(1, 2, 3) == 6 {
-    println("yes")
+    println("yes");
 } else {
-    println("no")
+    println("no");
 }
 
 # Allowing functions from other functions
 fn add2(x: i64, y: i64) -> i64
 {
-    return x + y
+    return x + y;
 }
 
 fn add3(x: i64, y: i64, z: i64) -> i64
 {
-    return add2(x, add2(y, z))
+    return add2(x, add2(y, z));
 }
 
-println(add3(1, 2, 3))
+println(add3(1, 2, 3));
 
 fn print_one_to_ten() -> null
 {
-    i := 0
+    i := 0;
     while i < 10 {
-        println(i)
-        i = i + 1
+        println(i);
+        i = i + 1;
     }
 }
 
 # Struct definition
 struct vec2
 {
-    x: i64
-    y: i64
+    x: i64;
+    y: i64;
 }
 
 fn println(v: vec2) -> null
 {
-    print("vec2 = {")
-    print(v.x)
-    print(", ")
-    print(v.y)
-    println("}")
+    print("vec2 = {");
+    print(v.x);
+    print(", ");
+    print(v.y);
+    println("}");
 }
 
 # Attribute access
-my_vec := vec2(1, 2)
-println(my_vec)
-println(my_vec.x)
-println(my_vec.y)
-my_vec.x = 5
-println(my_vec.x)
+my_vec := vec2(1, 2);
+println(my_vec);
+println(my_vec.x);
+println(my_vec.y);
+my_vec.x = 5;
+println(my_vec.x);
 
 # Pointers
-p_value := 5
-p := &p_value
-
-fn hack() -> null {} # Needed otherwise the parser tries to parse "&p_value * ptr". Need semi-colons
-
-*p = 6
-println("p_value should now equal 6:")
-println(p_value)
+p_value := 5;
+p := &p_value;
+*p = 6;
+println("p_value should now equal 6:");
+println(p_value);
 
 # Lists
-xl := [1, 2, 3, 4]
-xl[2u] = 0
-println("Size of list is 4:")
-println(size_of(xl))
+xl := [1, 2, 3, 4];
+xl[2u] = 0;
+println("Size of list is 4:");
+println(size_of(xl));
 
-xl2 := [vec2(1, 2), vec2(3, 4)]
-println("xl2 should have size 32 but length 2:")
-print("size: ")
-println(size_of(xl2))
-println(size_of(xl2[0]))
-print("length: ")
-println(size_of(xl2) / size_of(xl2[0]))
+xl2 := [vec2(1, 2), vec2(3, 4)];
+println("xl2 should have size 32 but length 2:");
+print("size: ");
+println(size_of(xl2));
+println(size_of(xl2[0]));
+print("length: ");
+println(size_of(xl2) / size_of(xl2[0]));
 
 # Pointer Arithmetic
 struct span
 {
-    p: &vec2
-    size: u64
+    p: &vec2;
+    size: u64;
 }
 
 fn test_ptr_arithmetic(s: span) -> null
 {
-    idx := 0u
+    idx := 0u;
     while idx != s.size {
-        println(*(s.p + idx))
-        idx = idx + 1u
+        println(*(s.p + idx));
+        idx = idx + 1u;
     }
-    *(s.p + 1u) = vec2(10, 20)
+    *(s.p + 1u) = vec2(10, 20);
 }
 
-list_of_vec2s := [vec2(1, 2), vec2(3, 4), vec2(5, 6)]
-my_span := span(&list_of_vec2s[0u], 3u)
+list_of_vec2s := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
+my_span := span(&list_of_vec2s[0u], 3u);
 
-test_ptr_arithmetic(my_span)
+test_ptr_arithmetic(my_span);
 
 # Member functions
 fn square(x: f64) -> f64
 {
-    return x * x
+    return x * x;
 }
 
 struct vec3
 {
-    x: f64
-    y: f64
-    z: f64
+    x: f64;
+    y: f64;
+    z: f64;
 
     fn length(self: &vec3) -> f64
     {
-        x_squared := square(self->x)
-        y_squared := square(self->y)
-        z_squared := square(self->z)
-        return sqrt(x_squared + y_squared + z_squared)
+        x_squared := square(self->x);
+        y_squared := square(self->y);
+        z_squared := square(self->z);
+        return sqrt(x_squared + y_squared + z_squared);
     }
 }
 
-v := vec3(3.0, 4.0, 5.0)
-println("length of vec3(3.0, 4.0, 5.0):")
-println(v.length())
+v := vec3(3.0, 4.0, 5.0);
+println("length of vec3(3.0, 4.0, 5.0):");
+println(v.length());

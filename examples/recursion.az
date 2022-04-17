@@ -3,12 +3,12 @@
 fn fibb(n: i32) -> i32
 {
     if n == 0i32 {
-        return 0i32
+        return 0i32;
     } else if n == 1i32 {
-        return 1i32
+        return 1i32;
     }
 
-    return fibb(n - 1i32) + fibb(n - 2i32)
+    return fibb(n - 1i32) + fibb(n - 2i32);
 }
 
-println(fibb(5i32))
+println(fibb(5i32));
