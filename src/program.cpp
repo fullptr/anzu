@@ -42,10 +42,6 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_if_end& op) {
             return std::string{"END_IF"};
         },
-        [&](const op_else& op) {
-            const auto jump_str = std::format("JUMP -> {}", op.jump);
-            return std::format(FORMAT2, "ELSE", jump_str);
-        },
         [&](op_jump_relative op) {
             return std::format(FORMAT2, "JUMP_RELATIVE", op.jump);
         },

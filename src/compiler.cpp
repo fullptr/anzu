@@ -696,11 +696,11 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
     compile_stmt(com, *node.body);
 
     if (node.else_body) {
-        const auto else_pos = append_op(com, op_else{});
+        const auto else_pos = append_op(com, op_jump_relative{});
         compile_stmt(com, *node.else_body);
         com.program.emplace_back(anzu::op_if_end{});
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
-        std::get<op_else>(com.program[else_pos]).jump = com.program.size(); // Jump past the end if false
+        std::get<op_jump_relative>(com.program[else_pos]).jump = com.program.size() - else_pos; // Jump past the end if false
     } else {
         com.program.emplace_back(anzu::op_if_end{});
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
