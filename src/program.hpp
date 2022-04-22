@@ -51,10 +51,6 @@ struct op_if
 {
 };
 
-struct op_if_end
-{
-};
-
 struct op_jump_relative
 {
     std::int64_t jump;
@@ -114,7 +110,6 @@ struct op : std::variant<
     op_save,
     op_pop,
     op_if,
-    op_if_end,
     op_jump_relative,
     op_break,
     op_continue,
