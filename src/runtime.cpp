@@ -62,9 +62,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.memory.resize(ctx.memory.size() - op.size);
             ++ctx.prog_ptr;
         },
-        [&](op_if) {
-            ++ctx.prog_ptr;
-        },
         [&](op_break op) {
             ctx.prog_ptr += op.jump;
         },

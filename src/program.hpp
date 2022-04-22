@@ -47,10 +47,6 @@ struct op_pop
     std::size_t size;
 };
 
-struct op_if
-{
-};
-
 struct op_jump_relative
 {
     std::int64_t jump;
@@ -109,7 +105,6 @@ struct op : std::variant<
     op_load,
     op_save,
     op_pop,
-    op_if,
     op_jump_relative,
     op_break,
     op_continue,

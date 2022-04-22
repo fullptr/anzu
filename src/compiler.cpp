@@ -688,7 +688,6 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
 {
-    const auto if_pos = append_op(com, op_if{});
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "if-stmt expected bool, got {}", cond_type);
 

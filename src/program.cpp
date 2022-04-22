@@ -36,9 +36,6 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_pop& op) {
             return std::format("POP({})", op.size);
         },
-        [&](const op_if& op) {
-            return std::string{"IF"};
-        },
         [&](op_jump_relative op) {
             return std::format(FORMAT2, "JUMP_RELATIVE", op.jump);
         },
