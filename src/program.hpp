@@ -67,12 +67,12 @@ struct op_jump_relative
 
 struct op_break
 {
-    std::size_t jump;
+    std::int64_t jump;
 };
 
 struct op_continue
 {
-    std::size_t jump;
+    std::int64_t jump;
 };
 
 struct op_jump_if_false

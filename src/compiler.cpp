@@ -254,7 +254,7 @@ auto compile_ptr_to_field(
 // Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
 // This function links the do to jump to one past the end if false, makes breaks
 // jump past the end, and makes continues jump back to the beginning.
-void link_up_jumps(compiler& com, std::size_t begin, std::size_t jump, std::size_t end)
+void link_up_jumps(compiler& com, std::int64_t begin, std::int64_t jump, std::int64_t end)
 {
     // Jump past the end if false
     std::get<op_jump_if_false>(com.program[jump]).jump = end + 1;
@@ -263,10 +263,10 @@ void link_up_jumps(compiler& com, std::size_t begin, std::size_t jump, std::size
     for (std::size_t idx = jump + 1; idx != end; ++idx) {
         std::visit(overloaded{
             [&](op_break& op) {
-                if (op.jump == 0) { op.jump = end + 1; }
+                if (op.jump == 0) { op.jump = end + 1 - idx; }
             },
             [&](op_continue& op) {
-                if (op.jump == 0) { op.jump = begin; }
+                if (op.jump == 0) { op.jump = begin - idx; }
             },
             [](auto&&) {}
         }, com.program[idx]);
@@ -676,7 +676,9 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "while-stmt expected bool, got {}", cond_type);
 
-    const auto jump_pos = append_op(com, op_jump_if_false{});
+    const auto jump_pos = std::ssize(com.program);
+    com.program.emplace_back(op_jump_if_false{});
+
     compile_stmt(com, *node.body);
     const auto end_pos = std::ssize(com.program);
     const auto jump = std::int64_t{begin_pos - end_pos};

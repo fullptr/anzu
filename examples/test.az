@@ -4,4 +4,8 @@ idx := 0;
 while idx < 10 {
     println(idx);
     idx = idx + 1;
+    if (idx == 5) {
+        continue;
+    }
+    println("foo");
 }

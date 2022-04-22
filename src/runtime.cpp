@@ -72,10 +72,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = op.jump;
         },
         [&](op_break op) {
-            ctx.prog_ptr = op.jump;
+            ctx.prog_ptr += op.jump;
         },
         [&](op_continue op) {
-            ctx.prog_ptr = op.jump;
+            ctx.prog_ptr += op.jump;
         },
         [&](op_jump_if_false op) {
             if (pop_value<bool>(ctx.memory)) {

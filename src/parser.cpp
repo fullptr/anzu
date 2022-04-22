@@ -459,10 +459,14 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         return parse_if_stmt(tokens);
     }
     if (tokens.peek(tk_break)) {
-        return std::make_unique<node_stmt>(node_break_stmt{ tokens.consume() });
+        auto ret = std::make_unique<node_stmt>(node_break_stmt{ tokens.consume() });
+        tokens.consume_only(tk_semicolon);
+        return ret;
     }
     if (tokens.peek(tk_continue)) {
-        return std::make_unique<node_stmt>(node_continue_stmt{ tokens.consume() });
+        auto ret = std::make_unique<node_stmt>(node_continue_stmt{ tokens.consume() });
+        tokens.consume_only(tk_semicolon);
+        return ret;
     }
     if (tokens.peek_next(tk_declare)) { // <name> ':=' <expr>
         return parse_declaration_stmt(tokens);
