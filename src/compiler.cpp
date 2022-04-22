@@ -663,21 +663,21 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "while-stmt expected bool, got {}", cond_type);
 
-    const auto jump_pos = append_op(com, op_jump_relative_if_false{});
+    const auto jump_pos = append_op(com, op_jump_if_false{});
 
     com.control_flow.emplace();
     compile_stmt(com, *node.body);
     const auto end_pos = std::ssize(com.program);
-    com.program.emplace_back(op_jump_relative{ .jump=(begin_pos - end_pos) });
+    com.program.emplace_back(op_jump{ .jump=(begin_pos - end_pos) });
 
-    std::get<op_jump_relative_if_false>(com.program[jump_pos]).jump = end_pos + 1 - jump_pos;
+    std::get<op_jump_if_false>(com.program[jump_pos]).jump = end_pos + 1 - jump_pos;
 
     const auto& control_flow = com.control_flow.top();
     for (const auto idx : control_flow.break_stmts) {
-        std::get<op_jump_relative>(com.program[idx]).jump = end_pos + 1 - idx; // Jump past end
+        std::get<op_jump>(com.program[idx]).jump = end_pos + 1 - idx; // Jump past end
     }
     for (const auto idx : control_flow.continue_stmts) {
-        std::get<op_jump_relative>(com.program[idx]).jump = begin_pos - idx; // Jump to start
+        std::get<op_jump>(com.program[idx]).jump = begin_pos - idx; // Jump to start
     }
     com.control_flow.pop();
 }
@@ -687,16 +687,16 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "if-stmt expected bool, got {}", cond_type);
 
-    const auto jump_pos = append_op(com, op_jump_relative_if_false{});
+    const auto jump_pos = append_op(com, op_jump_if_false{});
     compile_stmt(com, *node.body);
 
     if (node.else_body) {
-        const auto else_pos = append_op(com, op_jump_relative{});
+        const auto else_pos = append_op(com, op_jump{});
         compile_stmt(com, *node.else_body);
-        std::get<op_jump_relative_if_false>(com.program[jump_pos]).jump = else_pos + 1 - jump_pos; // Jump into the else block if false
-        std::get<op_jump_relative>(com.program[else_pos]).jump = com.program.size() - else_pos; // Jump past the end if false
+        std::get<op_jump_if_false>(com.program[jump_pos]).jump = else_pos + 1 - jump_pos; // Jump into the else block if false
+        std::get<op_jump>(com.program[else_pos]).jump = com.program.size() - else_pos; // Jump past the end if false
     } else {
-        std::get<op_jump_relative_if_false>(com.program[jump_pos]).jump = com.program.size() - jump_pos; // Jump past the end if false
+        std::get<op_jump_if_false>(com.program[jump_pos]).jump = com.program.size() - jump_pos; // Jump past the end if false
     }
 }
 
@@ -729,13 +729,13 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
 
 void compile_stmt(compiler& com, const node_break_stmt&)
 {
-    const auto pos = append_op(com, op_jump_relative{});
+    const auto pos = append_op(com, op_jump{});
     com.control_flow.top().break_stmts.insert(pos);
 }
 
 void compile_stmt(compiler& com, const node_continue_stmt&)
 {
-    const auto pos = append_op(com, op_jump_relative{});
+    const auto pos = append_op(com, op_jump{});
     com.control_flow.top().continue_stmts.insert(pos);
 }
 
