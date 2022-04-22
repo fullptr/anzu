@@ -71,12 +71,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_else op) {
             ctx.prog_ptr = op.jump;
         },
-        [&](op_loop_begin) {
-            ++ctx.prog_ptr;
-        },
-        [&](op_loop_end op) {
-            ctx.prog_ptr = op.jump;
-        },
         [&](op_break op) {
             ctx.prog_ptr = op.jump;
         },
@@ -121,6 +115,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_builtin_mem_op& op) {
             op.ptr(ctx.memory);
             ++ctx.prog_ptr;
+        },
+        [&](op_jump_relative op) {
+            ctx.prog_ptr += op.jump;
         }
     }, op_code);
 }

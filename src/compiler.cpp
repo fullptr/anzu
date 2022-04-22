@@ -27,7 +27,7 @@ template <typename... Args>
 }
 
 template <typename... Args>
-[[noreturn]] void compiler_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
+void compiler_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
 {
     if (!cond) {
         compiler_error(tok, msg, std::forward<Args>(args)...);
@@ -672,13 +672,15 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
 
 void compile_stmt(compiler& com, const node_while_stmt& node)
 {
-    const auto begin_pos = append_op(com, op_loop_begin{});
+    const auto begin_pos = std::ssize(com.program);
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "while-stmt expected bool, got {}", cond_type);
 
     const auto jump_pos = append_op(com, op_jump_if_false{});
     compile_stmt(com, *node.body);
-    const auto end_pos = append_op(com, op_loop_end{ .jump=begin_pos });
+    const auto end_pos = std::ssize(com.program);
+    const auto jump = std::int64_t{begin_pos - end_pos};
+    com.program.emplace_back(op_jump_relative{ .jump=jump });
     link_up_jumps(com, begin_pos, jump_pos, end_pos);
 }
 

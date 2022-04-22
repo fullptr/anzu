@@ -21,7 +21,7 @@ template <typename... Args>
 }
 
 template <typename... Args>
-[[noreturn]] void parser_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
+void parser_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
 {
     if (!cond) {
         parser_error(tok, msg, std::forward<Args>(args)...);

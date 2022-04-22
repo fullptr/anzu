@@ -60,13 +60,9 @@ struct op_else
     std::size_t jump;
 };
 
-struct op_loop_begin
+struct op_jump_relative
 {
-};
-
-struct op_loop_end
-{
-    std::size_t jump;
+    std::int64_t jump;
 };
 
 struct op_break
@@ -125,8 +121,7 @@ struct op : std::variant<
     op_if,
     op_if_end,
     op_else,
-    op_loop_begin,
-    op_loop_end,
+    op_jump_relative,
     op_break,
     op_continue,
     op_jump_if_false,

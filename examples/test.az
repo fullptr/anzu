@@ -1,8 +1,7 @@
 
 
-fn de(x: f64) -> f64
-{
-    return x * x;
+idx := 0;
+while idx < 10 {
+    println(idx);
+    idx = idx + 1;
 }
-
-println(de(8.0));
