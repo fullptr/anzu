@@ -12,6 +12,7 @@
 #include <optional>
 #include <tuple>
 #include <vector>
+#include <stack>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -116,6 +117,12 @@ struct current_function
     type_name     return_type;
 };
 
+struct control_flow_frame
+{
+    std::unordered_set<std::size_t> continue_stmts;
+    std::unordered_set<std::size_t> break_stmts;
+};
+
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler
@@ -128,6 +135,8 @@ struct compiler
 
     var_locations globals;
     std::optional<current_function> current_func;
+
+    std::stack<control_flow_frame> control_flow;
 
     type_store types;
 };
@@ -249,28 +258,6 @@ auto compile_ptr_to_field(
     }
     
     compiler_error(tok, "could not find field '{}' for type '{}'\n", field_name, type);
-}
-
-// Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
-// This function links the do to jump to one past the end if false, makes breaks
-// jump past the end, and makes continues jump back to the beginning.
-void link_up_jumps(compiler& com, std::int64_t begin, std::int64_t jump, std::int64_t end)
-{
-    // Jump past the end if false
-    std::get<op_jump_if_false>(com.program[jump]).jump = end + 1;
-        
-    // Only set unset jumps, there may be other already set from nested loops
-    for (std::size_t idx = jump + 1; idx != end; ++idx) {
-        std::visit(overloaded{
-            [&](op_break& op) {
-                if (op.jump == 0) { op.jump = end + 1 - idx; }
-            },
-            [&](op_continue& op) {
-                if (op.jump == 0) { op.jump = begin - idx; }
-            },
-            [](auto&&) {}
-        }, com.program[idx]);
-    }
 }
 
 void verify_sig(const token& tok, const signature& sig, const std::vector<type_name>& args)
@@ -676,14 +663,23 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "while-stmt expected bool, got {}", cond_type);
 
-    const auto jump_pos = std::ssize(com.program);
-    com.program.emplace_back(op_jump_if_false{});
+    const auto jump_pos = append_op(com, op_jump_if_false{});
 
+    com.control_flow.emplace();
     compile_stmt(com, *node.body);
     const auto end_pos = std::ssize(com.program);
-    const auto jump = std::int64_t{begin_pos - end_pos};
-    com.program.emplace_back(op_jump_relative{ .jump=jump });
-    link_up_jumps(com, begin_pos, jump_pos, end_pos);
+    com.program.emplace_back(op_jump_relative{ .jump=(begin_pos - end_pos) });
+
+    std::get<op_jump_if_false>(com.program[jump_pos]).jump = end_pos + 1;
+
+    const auto& control_flow = com.control_flow.top();
+    for (const auto idx : control_flow.break_stmts) {
+        std::get<op_jump_relative>(com.program[idx]).jump = end_pos + 1 - idx; // Jump past end
+    }
+    for (const auto idx : control_flow.continue_stmts) {
+        std::get<op_jump_relative>(com.program[idx]).jump = begin_pos - idx; // Jump to start
+    }
+    com.control_flow.pop();
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
@@ -733,12 +729,14 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
 
 void compile_stmt(compiler& com, const node_break_stmt&)
 {
-    com.program.emplace_back(anzu::op_break{});
+    const auto pos = append_op(com, op_jump_relative{});
+    com.control_flow.top().break_stmts.insert(pos);
 }
 
 void compile_stmt(compiler& com, const node_continue_stmt&)
 {
-    com.program.emplace_back(anzu::op_continue{});
+    const auto pos = append_op(com, op_jump_relative{});
+    com.control_flow.top().continue_stmts.insert(pos);
 }
 
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
