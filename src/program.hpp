@@ -52,7 +52,7 @@ struct op_jump_relative
     std::int64_t jump;
 };
 
-struct op_jump_if_false
+struct op_jump_relative_if_false
 {
     std::size_t jump;
 };
@@ -96,7 +96,7 @@ struct op : std::variant<
     op_save,
     op_pop,
     op_jump_relative,
-    op_jump_if_false,
+    op_jump_relative_if_false,
     op_builtin_mem_op,
     op_function,
     op_return,

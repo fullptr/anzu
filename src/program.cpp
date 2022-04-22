@@ -39,9 +39,8 @@ auto to_string(const op& op_code) -> std::string
         [&](op_jump_relative op) {
             return std::format(FORMAT2, "JUMP_RELATIVE", op.jump);
         },
-        [&](const op_jump_if_false& op) {
-            const auto jump_str = std::format("JUMP -> {} IF FALSE", op.jump);
-            return std::format(FORMAT2, "JUMP_IF_FALSE", jump_str);
+        [&](const op_jump_relative_if_false& op) {
+            return std::format(FORMAT2, "JUMP_RELATIVE_IF_FALSE", op.jump);
         },
         [&](const op_function& op) {
             const auto func_str = std::format("FUNCTION({})", op.name);
