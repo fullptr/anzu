@@ -36,34 +36,11 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_pop& op) {
             return std::format("POP({})", op.size);
         },
-        [&](const op_if& op) {
-            return std::string{"IF"};
+        [&](op_jump op) {
+            return std::format(FORMAT2, "JUMP_RELATIVE", op.jump);
         },
-        [&](const op_if_end& op) {
-            return std::string{"END_IF"};
-        },
-        [&](const op_else& op) {
-            const auto jump_str = std::format("JUMP -> {}", op.jump);
-            return std::format(FORMAT2, "ELSE", jump_str);
-        },
-        [&](const op_loop_begin& op) {
-            return std::string{"LOOP_BEGIN"};
-        },
-        [&](const op_loop_end& op) {
-            const auto jump_str = std::format("JUMP -> {}", op.jump);
-            return std::format(FORMAT2, "LOOP_END", jump_str);
-        },
-        [&](const op_break& op) {
-            const auto jump_str = std::format("JUMP -> {}", op.jump);
-            return std::format(FORMAT2, "BREAK", jump_str);
-        },
-        [&](const op_continue& op) {
-            const auto jump_str = std::format("JUMP -> {}", op.jump);
-            return std::format(FORMAT2, "CONTINUE", jump_str);
-        },
-        [&](const op_jump_if_false& op) {
-            const auto jump_str = std::format("JUMP -> {} IF FALSE", op.jump);
-            return std::format(FORMAT2, "JUMP_IF_FALSE", jump_str);
+        [&](op_jump_if_false op) {
+            return std::format(FORMAT2, "JUMP_RELATIVE_IF_FALSE", op.jump);
         },
         [&](const op_function& op) {
             const auto func_str = std::format("FUNCTION({})", op.name);
@@ -80,9 +57,6 @@ auto to_string(const op& op_code) -> std::string
         },
         [&](const op_builtin_call& op) {
             return std::format("BUILTIN_CALL({})", op.name);
-        },
-        [&](const op_builtin_mem_op& op) {
-            return std::format("BUILTIN_MEM_OP({})", op.name);
         }
     }, op_code);
 }

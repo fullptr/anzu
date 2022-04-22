@@ -12,6 +12,7 @@
 #include <optional>
 #include <tuple>
 #include <vector>
+#include <stack>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -27,7 +28,7 @@ template <typename... Args>
 }
 
 template <typename... Args>
-[[noreturn]] void compiler_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
+void compiler_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
 {
     if (!cond) {
         compiler_error(tok, msg, std::forward<Args>(args)...);
@@ -116,6 +117,12 @@ struct current_function
     type_name     return_type;
 };
 
+struct control_flow_frame
+{
+    std::unordered_set<std::size_t> continue_stmts;
+    std::unordered_set<std::size_t> break_stmts;
+};
+
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler
@@ -128,6 +135,8 @@ struct compiler
 
     var_locations globals;
     std::optional<current_function> current_func;
+
+    std::stack<control_flow_frame> control_flow;
 
     type_store types;
 };
@@ -249,28 +258,6 @@ auto compile_ptr_to_field(
     }
     
     compiler_error(tok, "could not find field '{}' for type '{}'\n", field_name, type);
-}
-
-// Both for and while loops have the form [<begin> <condition> <do> <body> <end>].
-// This function links the do to jump to one past the end if false, makes breaks
-// jump past the end, and makes continues jump back to the beginning.
-void link_up_jumps(compiler& com, std::size_t begin, std::size_t jump, std::size_t end)
-{
-    // Jump past the end if false
-    std::get<op_jump_if_false>(com.program[jump]).jump = end + 1;
-        
-    // Only set unset jumps, there may be other already set from nested loops
-    for (std::size_t idx = jump + 1; idx != end; ++idx) {
-        std::visit(overloaded{
-            [&](op_break& op) {
-                if (op.jump == 0) { op.jump = end + 1; }
-            },
-            [&](op_continue& op) {
-                if (op.jump == 0) { op.jump = begin; }
-            },
-            [](auto&&) {}
-        }, com.program[idx]);
-    }
 }
 
 void verify_sig(const token& tok, const signature& sig, const std::vector<type_name>& args)
@@ -461,7 +448,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
 
     push_literal(com, etype_size);
     const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
-    com.program.emplace_back(op_builtin_mem_op{
+    com.program.emplace_back(op_builtin_call{
         .name = "uint * uint",
         .ptr = info->operator_func
     });
@@ -495,7 +482,7 @@ auto compile_expr_val(compiler& com, const node_binary_op_expr& node) -> type_na
     const auto info = resolve_binary_op(com.types, { .op=op, .lhs=lhs, .rhs=rhs });
     compiler_assert(info.has_value(), node.token, "could not evaluate '{} {} {}'", lhs, op, rhs);
 
-    com.program.emplace_back(op_builtin_mem_op{
+    com.program.emplace_back(op_builtin_call{
         .name = std::format("{} {} {}", lhs, op, rhs),
         .ptr = info->operator_func
     });
@@ -509,7 +496,7 @@ auto compile_expr_val(compiler& com, const node_unary_op_expr& node) -> type_nam
     const auto info = resolve_unary_op({.op = op, .type = type});
     compiler_assert(info.has_value(), node.token, "could not evaluate '{}{}'", op, type);
 
-    com.program.emplace_back(op_builtin_mem_op{
+    com.program.emplace_back(op_builtin_call{
         .name = std::format("{}{}", op, type),
         .ptr = info->operator_func
     });
@@ -672,19 +659,31 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
 
 void compile_stmt(compiler& com, const node_while_stmt& node)
 {
-    const auto begin_pos = append_op(com, op_loop_begin{});
+    const auto begin_pos = std::ssize(com.program);
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "while-stmt expected bool, got {}", cond_type);
 
     const auto jump_pos = append_op(com, op_jump_if_false{});
+
+    com.control_flow.emplace();
     compile_stmt(com, *node.body);
-    const auto end_pos = append_op(com, op_loop_end{ .jump=begin_pos });
-    link_up_jumps(com, begin_pos, jump_pos, end_pos);
+    const auto end_pos = std::ssize(com.program);
+    com.program.emplace_back(op_jump{ .jump=(begin_pos - end_pos) });
+
+    std::get<op_jump_if_false>(com.program[jump_pos]).jump = end_pos + 1 - jump_pos;
+
+    const auto& control_flow = com.control_flow.top();
+    for (const auto idx : control_flow.break_stmts) {
+        std::get<op_jump>(com.program[idx]).jump = end_pos + 1 - idx; // Jump past end
+    }
+    for (const auto idx : control_flow.continue_stmts) {
+        std::get<op_jump>(com.program[idx]).jump = begin_pos - idx; // Jump to start
+    }
+    com.control_flow.pop();
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
 {
-    const auto if_pos = append_op(com, op_if{});
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "if-stmt expected bool, got {}", cond_type);
 
@@ -692,14 +691,12 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
     compile_stmt(com, *node.body);
 
     if (node.else_body) {
-        const auto else_pos = append_op(com, op_else{});
+        const auto else_pos = append_op(com, op_jump{});
         compile_stmt(com, *node.else_body);
-        com.program.emplace_back(anzu::op_if_end{});
-        std::get<op_jump_if_false>(com.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
-        std::get<op_else>(com.program[else_pos]).jump = com.program.size(); // Jump past the end if false
+        std::get<op_jump_if_false>(com.program[jump_pos]).jump = else_pos + 1 - jump_pos; // Jump into the else block if false
+        std::get<op_jump>(com.program[else_pos]).jump = com.program.size() - else_pos; // Jump past the end if false
     } else {
-        com.program.emplace_back(anzu::op_if_end{});
-        std::get<op_jump_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
+        std::get<op_jump_if_false>(com.program[jump_pos]).jump = com.program.size() - jump_pos; // Jump past the end if false
     }
 }
 
@@ -732,12 +729,14 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
 
 void compile_stmt(compiler& com, const node_break_stmt&)
 {
-    com.program.emplace_back(anzu::op_break{});
+    const auto pos = append_op(com, op_jump{});
+    com.control_flow.top().break_stmts.insert(pos);
 }
 
 void compile_stmt(compiler& com, const node_continue_stmt&)
 {
-    com.program.emplace_back(anzu::op_continue{});
+    const auto pos = append_op(com, op_jump{});
+    com.control_flow.top().continue_stmts.insert(pos);
 }
 
 void compile_stmt(compiler& com, const node_declaration_stmt& node)

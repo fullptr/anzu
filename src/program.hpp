@@ -47,36 +47,9 @@ struct op_pop
     std::size_t size;
 };
 
-struct op_if
+struct op_jump
 {
-};
-
-struct op_if_end
-{
-};
-
-struct op_else
-{
-    std::size_t jump;
-};
-
-struct op_loop_begin
-{
-};
-
-struct op_loop_end
-{
-    std::size_t jump;
-};
-
-struct op_break
-{
-    std::size_t jump;
-};
-
-struct op_continue
-{
-    std::size_t jump;
+    std::int64_t jump;
 };
 
 struct op_jump_if_false
@@ -98,12 +71,6 @@ struct op_builtin_call
     std::size_t      args_size;
 };
 
-struct op_builtin_mem_op
-{
-    std::string    name;
-    builtin_mem_op ptr;
-};
-
 struct op_function
 {
     std::string name;
@@ -122,15 +89,8 @@ struct op : std::variant<
     op_load,
     op_save,
     op_pop,
-    op_if,
-    op_if_end,
-    op_else,
-    op_loop_begin,
-    op_loop_end,
-    op_break,
-    op_continue,
+    op_jump,
     op_jump_if_false,
-    op_builtin_mem_op,
     op_function,
     op_return,
     op_function_call,
