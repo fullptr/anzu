@@ -97,10 +97,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             op.ptr(ctx.memory);
             ++ctx.prog_ptr;
         },
-        [&](const op_builtin_mem_op& op) {
-            op.ptr(ctx.memory);
-            ++ctx.prog_ptr;
-        },
         [&](op_jump_relative op) {
             ctx.prog_ptr += op.jump;
         }

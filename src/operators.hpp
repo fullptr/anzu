@@ -1,13 +1,12 @@
 #pragma once
 #include "object.hpp"
+#include "functions.hpp"
 
 #include <functional>
 #include <optional>
 #include <vector>
 
 namespace anzu {
-
-using builtin_mem_op = std::function<void(std::vector<std::byte>& memory)>;
 
 struct binary_op_description
 {
@@ -18,8 +17,8 @@ struct binary_op_description
 
 struct binary_op_info
 {
-    builtin_mem_op operator_func;
-    type_name      result_type;
+    builtin_function operator_func;
+    type_name        result_type;
 };
 
 auto resolve_binary_op(
@@ -34,8 +33,8 @@ struct unary_op_description
 
 struct unary_op_info
 {
-    builtin_mem_op operator_func;
-    type_name      result_type;
+    builtin_function operator_func;
+    type_name        result_type;
 };
 
 auto resolve_unary_op(const unary_op_description& desc) -> std::optional<unary_op_info>;

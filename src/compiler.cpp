@@ -448,7 +448,7 @@ auto compile_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_na
 
     push_literal(com, etype_size);
     const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
-    com.program.emplace_back(op_builtin_mem_op{
+    com.program.emplace_back(op_builtin_call{
         .name = "uint * uint",
         .ptr = info->operator_func
     });
@@ -482,7 +482,7 @@ auto compile_expr_val(compiler& com, const node_binary_op_expr& node) -> type_na
     const auto info = resolve_binary_op(com.types, { .op=op, .lhs=lhs, .rhs=rhs });
     compiler_assert(info.has_value(), node.token, "could not evaluate '{} {} {}'", lhs, op, rhs);
 
-    com.program.emplace_back(op_builtin_mem_op{
+    com.program.emplace_back(op_builtin_call{
         .name = std::format("{} {} {}", lhs, op, rhs),
         .ptr = info->operator_func
     });
@@ -496,7 +496,7 @@ auto compile_expr_val(compiler& com, const node_unary_op_expr& node) -> type_nam
     const auto info = resolve_unary_op({.op = op, .type = type});
     compiler_assert(info.has_value(), node.token, "could not evaluate '{}{}'", op, type);
 
-    com.program.emplace_back(op_builtin_mem_op{
+    com.program.emplace_back(op_builtin_call{
         .name = std::format("{}{}", op, type),
         .ptr = info->operator_func
     });

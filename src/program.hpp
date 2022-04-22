@@ -71,12 +71,6 @@ struct op_builtin_call
     std::size_t      args_size;
 };
 
-struct op_builtin_mem_op
-{
-    std::string    name;
-    builtin_mem_op ptr;
-};
-
 struct op_function
 {
     std::string name;
@@ -97,7 +91,6 @@ struct op : std::variant<
     op_pop,
     op_jump_relative,
     op_jump_relative_if_false,
-    op_builtin_mem_op,
     op_function,
     op_return,
     op_function_call,
