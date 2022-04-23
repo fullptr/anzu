@@ -1,11 +1,16 @@
 
 
-idx := 0;
-while idx < 10 {
-    println(idx);
-    idx = idx + 1;
-    if (idx == 5) {
-        continue;
+struct vec2
+{
+    x: f64;
+    y: f64;
+
+    fn length2(self: &vec2) -> f64
+    {
+        return (self->x * self->x) + (self->y * self->y);
     }
-    println("foo");
 }
+
+v := vec2(3.0, 4.0);
+pv := &v;
+println((*pv).length2());
