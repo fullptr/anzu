@@ -242,14 +242,31 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         
         // For x->y, parse as (*x).y by first wrapping x in a node_deref_expr
         else if (tokens.peek(tk_rarrow)) {
-            auto& expr = new_node->emplace<node_field_expr>();
-            expr.token = tokens.consume();
-            expr.field_name = tokens.consume().text;
-            expr.expr = std::make_unique<node_expr>();
+            const auto tok = tokens.consume();
+            if (tokens.peek_next(tk_lparen)) {
+                auto& expr = new_node->emplace<node_member_function_call_expr>();
+                expr.token = tok;
+                expr.function_name = tokens.consume().text;
+                expr.expr = std::make_unique<node_expr>();
+                tokens.consume_only(tk_lparen);
+                tokens.consume_comma_separated_list(tk_rparen, [&] {
+                    expr.args.push_back(parse_expression(tokens));
+                });
 
-            auto& inner = expr.expr->emplace<node_deref_expr>();
-            inner.token = std::visit([](auto&& n) { return n.token; }, *node);
-            inner.expr = std::move(node);
+                auto& inner = expr.expr->emplace<node_deref_expr>();
+                inner.token = std::visit([](auto&& n) { return n.token; }, *node);
+                inner.expr = std::move(node);
+            } else {
+                auto& expr = new_node->emplace<node_field_expr>();
+                expr.token = tok;
+                expr.field_name = tokens.consume().text;
+                expr.expr = std::make_unique<node_expr>();
+
+                auto& inner = expr.expr->emplace<node_deref_expr>();
+                inner.token = std::visit([](auto&& n) { return n.token; }, *node);
+                inner.expr = std::move(node);
+            }
+
         } else {
             auto& expr = new_node->emplace<node_subscript_expr>();
             expr.token = tokens.consume();
