@@ -751,6 +751,23 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     com.program.emplace_back(op_save{ .size=size });
 }
 
+void compile_function_body(
+    compiler& com,
+    const token& tok,
+    const std::string& name,
+    const signature& sig,
+    const node_stmt_ptr& body)
+{
+    com.current_func.emplace(current_function{ .vars={}, .return_type=sig.return_type });
+    declare_variable_name(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
+    declare_variable_name(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
+    for (const auto& arg : sig.params) {
+        declare_variable_name(com, tok, arg.name, arg.type);
+    }
+    compile_stmt(com, *body);
+    com.current_func.reset();
+}
+
 void compile_stmt(compiler& com, const node_function_def_stmt& node)
 {
     if (com.types.contains(make_type(node.name))) {
@@ -770,14 +787,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     const auto begin_pos = append_op(com, op_function{ .name=node.name });
     com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
 
-    com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
-    declare_variable_name(com, node.token, "# old_base_ptr", u64_type()); // Store the old base ptr
-    declare_variable_name(com, node.token, "# old_prog_ptr", u64_type()); // Store the old program ptr
-    for (const auto& arg : node.sig.params) {
-        declare_variable_name(com, node.token, arg.name, arg.type);
-    }
-    compile_stmt(com, *node.body);
-    com.current_func.reset();
+    compile_function_body(com, node.token, node.name, node.sig, node.body);
 
     if (!function_ends_with_return(*node.body)) {
         // A function returning null does not need a final return statement, and in this case
@@ -817,14 +827,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     const auto begin_pos = append_op(com, op_function{ .name=qualified_name });
     com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
 
-    com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
-    declare_variable_name(com, node.token, "# old_base_ptr", u64_type()); // Store the old base ptr
-    declare_variable_name(com, node.token, "# old_prog_ptr", u64_type()); // Store the old program ptr
-    for (const auto& arg : node.sig.params) {
-        declare_variable_name(com, node.token, arg.name, arg.type);
-    }
-    compile_stmt(com, *node.body);
-    com.current_func.reset();
+    compile_function_body(com, node.token, qualified_name, node.sig, node.body);
 
     if (!function_ends_with_return(*node.body)) {
         // A function returning null does not need a final return statement, and in this case
@@ -876,7 +879,7 @@ auto compile_stmt(compiler& com, const node_stmt& root) -> void
 
 auto compile(const node_stmt_ptr& root) -> program
 {
-    compiler com;
+    auto com = compiler{};
     compile_stmt(com, *root);
     return com.program;
 }
