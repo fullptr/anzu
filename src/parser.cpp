@@ -238,11 +238,18 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
                 expr.field_name = tokens.consume().text;
                 expr.expr = std::move(node);
             }
-        } else if (tokens.peek(tk_rarrow)) {
-            auto& expr = new_node->emplace<node_arrow_expr>();
+        }
+        
+        // For x->y, parse as (*x).y by first wrapping x in a node_deref_expr
+        else if (tokens.peek(tk_rarrow)) {
+            auto& expr = new_node->emplace<node_field_expr>();
             expr.token = tokens.consume();
             expr.field_name = tokens.consume().text;
-            expr.expr = std::move(node);
+            expr.expr = std::make_unique<node_expr>();
+
+            auto& inner = expr.expr->emplace<node_deref_expr>();
+            inner.token = std::visit([](auto&& n) { return n.token; }, *node);
+            inner.expr = std::move(node);
         } else {
             auto& expr = new_node->emplace<node_subscript_expr>();
             expr.token = tokens.consume();

@@ -1,16 +1,18 @@
 
 
-struct vec2
+struct pair
 {
-    x: f64;
-    y: f64;
-
-    fn length2(self: &vec2) -> f64
-    {
-        return (self->x * self->x) + (self->y * self->y);
-    }
+    x: i64;
+    y: i64;
 }
 
-v := vec2(3.0, 4.0);
-pv := &v;
-println((*pv).length2());
+struct wrapper
+{
+    z: &pair;
+};
+
+p := pair(1, 2);
+w := wrapper(&p);
+
+println(w.z->y);
+println((*w.z).y);

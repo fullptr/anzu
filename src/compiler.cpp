@@ -379,17 +379,6 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             }
             return i64_type();
         },
-        [&](const node_arrow_expr& expr) {
-            const auto ptype = type_of_expr(com, *expr.expr);
-            compiler_assert(is_ptr_type(ptype), expr.token, "cannot use arrow operator on non-ptr type '{}'", ptype);
-            const auto type = inner_type(ptype);
-            for (const auto& field : com.types.fields_of(type)) {
-                if (field.name == expr.field_name) {
-                    return field.type;
-                }
-            }
-            return i64_type();
-        },
         [&](const node_deref_expr& expr) {
             const auto ptype = type_of_expr(com, *expr.expr);
             compiler_assert(is_ptr_type(ptype), expr.token, "cannot use deref operator on non-ptr type '{}'", ptype);
@@ -418,13 +407,6 @@ auto compile_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
     const auto type = compile_expr_ptr(com, *node.expr);
     return compile_ptr_to_field(com, node.token, type, node.field_name);
-}
-
-auto compile_expr_ptr(compiler& com, const node_arrow_expr& node) -> type_name
-{
-    const auto type = compile_expr_val(com, *node.expr); // Push the address
-    compiler_assert(is_ptr_type(type), node.token, "cannot use arrow operator on non-ptr type '{}'", type);
-    return compile_ptr_to_field(com, node.token, inner_type(type), node.field_name);
 }
 
 auto compile_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
