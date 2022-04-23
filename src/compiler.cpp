@@ -766,6 +766,17 @@ void compile_function_body(
     }
     compile_stmt(com, *body);
     com.current_func.reset();
+
+    if (!function_ends_with_return(*body)) {
+        // A function returning null does not need a final return statement, and in this case
+        // we manually add a return value of null here.
+        if (sig.return_type == null_type()) {
+            com.program.emplace_back(op_load_bytes{{std::byte{0}}});
+            com.program.emplace_back(op_return{ .size=1 });
+        } else {
+            compiler_error(tok, "function '{}' does not end in a return statement", name);
+        }
+    }
 }
 
 void compile_stmt(compiler& com, const node_function_def_stmt& node)
@@ -788,17 +799,6 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
 
     compile_function_body(com, node.token, node.name, node.sig, node.body);
-
-    if (!function_ends_with_return(*node.body)) {
-        // A function returning null does not need a final return statement, and in this case
-        // we manually add a return value of null here.
-        if (node.sig.return_type == null_type()) {
-            com.program.emplace_back(op_load_bytes{{std::byte{0}}});
-            com.program.emplace_back(op_return{ .size=1 });
-        } else {
-            compiler_error(node.token, "function '{}' does not end in a return statement", node.name);
-        }
-    }
     
     std::get<op_function>(com.program[begin_pos]).jump = com.program.size();
 }
@@ -828,17 +828,6 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     com.functions[key] = { .sig=node.sig, .ptr=begin_pos };
 
     compile_function_body(com, node.token, qualified_name, node.sig, node.body);
-
-    if (!function_ends_with_return(*node.body)) {
-        // A function returning null does not need a final return statement, and in this case
-        // we manually add a return value of null here.
-        if (node.sig.return_type == null_type()) {
-            com.program.emplace_back(op_load_bytes{{std::byte{0}}});
-            com.program.emplace_back(op_return{ .size=1 });
-        } else {
-            compiler_error(node.token, "function '{}' does not end in a return statement", qualified_name);
-        }
-    }
     
     std::get<op_function>(com.program[begin_pos]).jump = com.program.size();
 }
