@@ -79,6 +79,7 @@ struct op_function
 
 struct op_return
 {
+    std::size_t size;
 };
 
 struct op : std::variant<

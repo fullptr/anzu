@@ -18,22 +18,22 @@ auto to_string(const op& op_code) -> std::string
         [&](const op_load_bytes& op) {
             return std::format("LOAD_BYTES({})", format_comma_separated(op.bytes));
         },
-        [&](const op_push_global_addr& op) {
+        [&](op_push_global_addr op) {
             return std::format("PUSH_GLOBAL_ADDR({})", op.position);
         },
-        [&](const op_push_local_addr& op) {
+        [&](op_push_local_addr op) {
             return std::format("PUSH_LOCAL_ADDR(+{})", op.offset);
         },
-        [&](const op_modify_ptr& op) {
+        [&](op_modify_ptr) {
             return std::string{"MODIFY_PTR"};
         },
-        [&](const op_load& op) {
+        [&](op_load op) {
             return std::format("LOAD({})", op.size);
         },
-        [&](const op_save& op) {
+        [&](op_save op) {
             return std::format("SAVE({})", op.size);
         },
-        [&](const op_pop& op) {
+        [&](op_pop op) {
             return std::format("POP({})", op.size);
         },
         [&](op_jump op) {
@@ -47,8 +47,8 @@ auto to_string(const op& op_code) -> std::string
             const auto jump_str = std::format("JUMP -> {}", op.jump);
             return std::format(FORMAT2, func_str, jump_str);
         },
-        [&](const op_return& op) {
-            return std::string{"RETURN"};
+        [&](op_return op) {
+            return std::format("RETURN({})", op.size);
         },
         [&](const op_function_call& op) {
             const auto func_str = std::format("FUNCTION_CALL({})", op.name);

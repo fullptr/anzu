@@ -23,7 +23,7 @@ template <typename... Args>
 [[noreturn]] void compiler_error(const token& tok, std::string_view msg, Args&&... args)
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
+    print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
     std::exit(1);
 }
 
@@ -127,7 +127,7 @@ struct control_flow_frame
 // as well as information such as function definitions.
 struct compiler
 {
-    anzu::program program;
+    program program;
 
     using function_hash = decltype([](const function_key& f) { return hash(f); });
     std::unordered_map<function_key, function_val, function_hash> functions;
@@ -218,21 +218,21 @@ auto save_variable(compiler& com, const token& tok, const std::string& name) -> 
 {
     const auto type = find_variable(com, tok, name);
     const auto size = com.types.size_of(type);
-    com.program.emplace_back(anzu::op_save{ .size=size });
+    com.program.emplace_back(op_save{ .size=size });
 }
 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = find_variable(com, tok, name);
     const auto size = com.types.size_of(type);
-    com.program.emplace_back(anzu::op_load{ .size=size });
+    com.program.emplace_back(op_load{ .size=size });
 }
 
 auto signature_args_size(const compiler& com, const signature& sig) -> std::size_t
 {
-    // Initial function payload. 3 uints that store the old base ptr, old prog ptr
+    // Initial function payload. 2 uints that store the old base ptr and prog ptr
     // and the return size in bytes.
-    auto args_size = 3 * sizeof(std::uint64_t);
+    auto args_size = 2 * sizeof(std::uint64_t);
     for (const auto& arg : sig.params) {
         args_size += com.types.size_of(arg.type);
     }
@@ -528,10 +528,8 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     
     if (auto it = com.functions.find(key); it != com.functions.end()) {
         const auto& [sig, ptr] = it->second;
-        const auto return_size = com.types.size_of(sig.return_type);
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
-        push_literal(com, return_size);
         
         // Push the args to the stack
         std::vector<type_name> param_types;
@@ -539,7 +537,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
             param_types.emplace_back(compile_expr_val(com, *arg));
         }
         verify_sig(node.token, sig, param_types);
-        com.program.emplace_back(anzu::op_function_call{
+        com.program.emplace_back(op_function_call{
             .name=node.function_name,
             .ptr=ptr + 1, // Jump into the function
             .args_size=signature_args_size(com, sig)
@@ -557,9 +555,9 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
 
     if (is_builtin(node.function_name, param_types)) {
-        const auto& builtin = anzu::fetch_builtin(node.function_name, param_types);
+        const auto& builtin = fetch_builtin(node.function_name, param_types);
 
-        com.program.emplace_back(anzu::op_builtin_call{
+        com.program.emplace_back(op_builtin_call{
             .name=node.function_name,
             .ptr=builtin.ptr,
             .args_size=args_size
@@ -590,10 +588,8 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
     }
     
     const auto& [sig, ptr] = it->second;
-    const auto return_size = com.types.size_of(sig.return_type);
     push_literal(com, std::uint64_t{0}); // base ptr
     push_literal(com, std::uint64_t{0}); // prog ptr
-    push_literal(com, return_size);
     
     // Push the args to the stack
     std::vector<type_name> param_types;
@@ -603,7 +599,7 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
         param_types.emplace_back(compile_expr_val(com, *arg));
     }
     verify_sig(node.token, sig, param_types);
-    com.program.emplace_back(anzu::op_function_call{
+    com.program.emplace_back(op_function_call{
         .name=node.function_name,
         .ptr=ptr + 1, // Jump into the function
         .args_size=signature_args_size(com, sig)
@@ -777,7 +773,6 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
     declare_variable_name(com, node.token, "# old_base_ptr", u64_type()); // Store the old base ptr
     declare_variable_name(com, node.token, "# old_prog_ptr", u64_type()); // Store the old program ptr
-    declare_variable_name(com, node.token, "# return_size", u64_type());  // Store the return size
     for (const auto& arg : node.sig.params) {
         declare_variable_name(com, node.token, arg.name, arg.type);
     }
@@ -789,13 +784,13 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         // we manually add a return value of null here.
         if (node.sig.return_type == null_type()) {
             com.program.emplace_back(op_load_bytes{{std::byte{0}}});
-            com.program.emplace_back(op_return{});
+            com.program.emplace_back(op_return{ .size=1 });
         } else {
             compiler_error(node.token, "function '{}' does not end in a return statement", node.name);
         }
     }
     
-    std::get<anzu::op_function>(com.program[begin_pos]).jump = com.program.size();
+    std::get<op_function>(com.program[begin_pos]).jump = com.program.size();
 }
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
@@ -825,7 +820,6 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     com.current_func.emplace(current_function{ .vars={}, .return_type=node.sig.return_type });
     declare_variable_name(com, node.token, "# old_base_ptr", u64_type()); // Store the old base ptr
     declare_variable_name(com, node.token, "# old_prog_ptr", u64_type()); // Store the old program ptr
-    declare_variable_name(com, node.token, "# return_size", u64_type());  // Store the return size
     for (const auto& arg : node.sig.params) {
         declare_variable_name(com, node.token, arg.name, arg.type);
     }
@@ -837,13 +831,13 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
         // we manually add a return value of null here.
         if (node.sig.return_type == null_type()) {
             com.program.emplace_back(op_load_bytes{{std::byte{0}}});
-            com.program.emplace_back(op_return{});
+            com.program.emplace_back(op_return{ .size=1 });
         } else {
             compiler_error(node.token, "function '{}' does not end in a return statement", qualified_name);
         }
     }
     
-    std::get<anzu::op_function>(com.program[begin_pos]).jump = com.program.size();
+    std::get<op_function>(com.program[begin_pos]).jump = com.program.size();
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)
@@ -859,13 +853,13 @@ void compile_stmt(compiler& com, const node_return_stmt& node)
             com.current_func->return_type, return_type
         );
     }
-    com.program.emplace_back(anzu::op_return{});
+    com.program.emplace_back(op_return{ .size=com.types.size_of(return_type) });
 }
 
 void compile_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
-    com.program.emplace_back(anzu::op_pop{ .size=com.types.size_of(type) });
+    com.program.emplace_back(op_pop{ .size=com.types.size_of(type) });
 }
 
 auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name
@@ -880,9 +874,9 @@ auto compile_stmt(compiler& com, const node_stmt& root) -> void
 
 }
 
-auto compile(const node_stmt_ptr& root) -> anzu::program
+auto compile(const node_stmt_ptr& root) -> program
 {
-    anzu::compiler com;
+    compiler com;
     compile_stmt(com, *root);
     return com.program;
 }
