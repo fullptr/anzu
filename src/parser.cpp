@@ -168,6 +168,27 @@ auto parse_function_call(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
+auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
+{
+    auto new_node = std::make_unique<node_expr>();
+    if (tokens.peek_next(tk_lparen)) {
+        auto& expr = new_node->emplace<node_member_function_call_expr>();
+        expr.token = tokens.consume();
+        expr.function_name = tokens.consume().text;
+        tokens.consume_only(tk_lparen);
+        tokens.consume_comma_separated_list(tk_rparen, [&] {
+            expr.args.push_back(parse_expression(tokens));
+        });
+        expr.expr = std::move(node);
+    } else {
+        auto& expr = new_node->emplace<node_field_expr>();
+        expr.token = tokens.consume();
+        expr.field_name = tokens.consume().text;
+        expr.expr = std::move(node);
+    }
+    node = std::move(new_node);
+}
+
 auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
 {
     auto node = std::make_unique<node_expr>();
@@ -220,61 +241,29 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     }
 
     while (tokens.peek(tk_fullstop) || tokens.peek(tk_rarrow) || tokens.peek(tk_lbracket)) {
-        auto new_node = std::make_unique<node_expr>();
         if (tokens.peek(tk_fullstop)) {
-            const auto tok = tokens.consume();
-            if (tokens.peek_next(tk_lparen)) {
-                auto& expr = new_node->emplace<node_member_function_call_expr>();
-                expr.token = tok;
-                expr.function_name = tokens.consume().text;
-                tokens.consume_only(tk_lparen);
-                tokens.consume_comma_separated_list(tk_rparen, [&] {
-                    expr.args.push_back(parse_expression(tokens));
-                });
-                expr.expr = std::move(node);
-            } else {
-                auto& expr = new_node->emplace<node_field_expr>();
-                expr.token = tok;
-                expr.field_name = tokens.consume().text;
-                expr.expr = std::move(node);
-            }
+            parse_member_access(tokens, node);
         }
         
         // For x->y, parse as (*x).y by first wrapping x in a node_deref_expr
         else if (tokens.peek(tk_rarrow)) {
-            const auto tok = tokens.consume();
-            if (tokens.peek_next(tk_lparen)) {
-                auto& expr = new_node->emplace<node_member_function_call_expr>();
-                expr.token = tok;
-                expr.function_name = tokens.consume().text;
-                expr.expr = std::make_unique<node_expr>();
-                tokens.consume_only(tk_lparen);
-                tokens.consume_comma_separated_list(tk_rparen, [&] {
-                    expr.args.push_back(parse_expression(tokens));
-                });
-
-                auto& inner = expr.expr->emplace<node_deref_expr>();
-                inner.token = std::visit([](auto&& n) { return n.token; }, *node);
-                inner.expr = std::move(node);
-            } else {
-                auto& expr = new_node->emplace<node_field_expr>();
-                expr.token = tok;
-                expr.field_name = tokens.consume().text;
-                expr.expr = std::make_unique<node_expr>();
-
-                auto& inner = expr.expr->emplace<node_deref_expr>();
-                inner.token = std::visit([](auto&& n) { return n.token; }, *node);
-                inner.expr = std::move(node);
-            }
-
-        } else {
+            auto deref_node = std::make_unique<node_expr>();
+            auto& deref_inner = deref_node->emplace<node_deref_expr>();
+            deref_inner.token = std::visit([](auto&& n) { return n.token; }, *node);
+            deref_inner.expr = std::move(node);
+            node = std::move(deref_node);
+            parse_member_access(tokens, node);
+        }
+        
+        else {
+            auto new_node = std::make_unique<node_expr>();
             auto& expr = new_node->emplace<node_subscript_expr>();
             expr.token = tokens.consume();
             expr.index = parse_expression(tokens);
             tokens.consume_only(tk_rbracket);
             expr.expr = std::move(node);
+            node = std::move(new_node);
         }
-        node = std::move(new_node);
     }
 
     return node;
