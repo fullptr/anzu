@@ -9,10 +9,4 @@ struct pair
 struct wrapper
 {
     z: &pair;
-};
-
-p := pair(1, 2);
-w := wrapper(&p);
-
-println(w.z->y);
-println((*w.z).y);
+}
