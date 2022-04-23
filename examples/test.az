@@ -1,11 +1,22 @@
 
 
-idx := 0;
-while idx < 10 {
-    println(idx);
-    idx = idx + 1;
-    if (idx == 5) {
-        continue;
+struct pair
+{
+    x: i64;
+    y: i64;
+
+    fn sum(self: &pair) -> i64
+    {
+        return self->x + self->y;
     }
-    println("foo");
 }
+
+struct wrapper
+{
+    z: &pair;
+};
+
+p := pair(1, 2);
+w := wrapper(&p);
+
+println(w.z->sum());

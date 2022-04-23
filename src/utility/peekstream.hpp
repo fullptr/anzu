@@ -20,7 +20,7 @@ public:
     {}
 
     auto valid() const -> bool { return d_curr != d_end; }
-    auto has_next() const -> bool { return std::next(d_curr) != d_end; }
+    auto has_next() const -> bool { return valid() && std::next(d_curr) != d_end; }
 
     auto curr() const -> const value_type& { return *d_curr; }
     auto next() const -> const value_type& { return *std::next(d_curr); }

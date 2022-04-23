@@ -13,7 +13,7 @@ public:
     value_ptr(const value_ptr& other) : d_value(std::make_unique<T>(*other)) {}
     value_ptr(const T& val) : d_value(std::make_unique<T>(val)) {}
 
-    value_ptr& operator=(const value_ptr& other)
+    auto operator=(const value_ptr& other) -> value_ptr&
     {
         *d_value = *other.d_value;
         return *this;
@@ -34,7 +34,7 @@ public:
     auto get() -> T* { return d_value.get(); }
     auto get() const -> const T* { return d_value.get(); }
 
-    void reset() { d_value = nullptr; }
+    void reset(T* ptr = nullptr) { d_value.reset(ptr); }
 
     auto operator==(const value_ptr& other) const -> bool
     {

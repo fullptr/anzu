@@ -75,20 +75,18 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_function& op) {
             ctx.prog_ptr = op.jump;
         },
-        [&](op_return) {
+        [&](op_return op) {
             const auto prev_base_ptr = read_value<std::uint64_t>(ctx.memory, ctx.base_ptr);
             const auto prev_prog_ptr = read_value<std::uint64_t>(ctx.memory, ctx.base_ptr + sizeof(std::uint64_t));
-            const auto return_size = read_value<std::uint64_t>(ctx.memory, ctx.base_ptr + 2*sizeof(std::uint64_t));
             
-            std::memcpy(&ctx.memory[ctx.base_ptr], &ctx.memory[ctx.memory.size() - return_size], return_size);
-            ctx.memory.resize(ctx.base_ptr + return_size);
+            std::memcpy(&ctx.memory[ctx.base_ptr], &ctx.memory[ctx.memory.size() - op.size], op.size);
+            ctx.memory.resize(ctx.base_ptr + op.size);
             ctx.base_ptr = prev_base_ptr;
             ctx.prog_ptr = prev_prog_ptr;
         },
         [&](const op_function_call& op) {
             // Store the old base_ptr and prog_ptr so that they can be restored at the end of
-            // the function. Note that the return size is stored at new_base_ptr + 2 but and has
-            // already been written in.
+            // the function.
             const auto new_base_ptr = ctx.memory.size() - op.args_size;
             write_value(ctx.memory, new_base_ptr, ctx.base_ptr);
             write_value(ctx.memory, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr + 1); // Pos after function call

@@ -34,14 +34,6 @@ struct node_field_expr
     anzu::token token;
 };
 
-struct node_arrow_expr
-{
-    node_expr_ptr expr;
-    std::string   field_name;
-
-    anzu::token token; 
-};
-
 struct node_unary_op_expr
 {
     node_expr_ptr expr;
@@ -124,7 +116,6 @@ struct node_expr : std::variant<
     // Lvalue expressions
     node_variable_expr,
     node_field_expr,
-    node_arrow_expr,
     node_deref_expr,
     node_subscript_expr>
 {
