@@ -1,0 +1,25 @@
+{
+    "name": "anzu",
+    "displayName": "anzu",
+    "description": "The Anzu Programming Language",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.66.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "anzu",
+            "aliases": ["anzu", "anzu"],
+            "extensions": [".az"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "anzu",
+            "scopeName": "source.anzu",
+            "path": "./syntaxes/anzu.tmLanguage.json"
+        }]
+    }
+}
