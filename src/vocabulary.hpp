@@ -19,7 +19,7 @@ constexpr auto tk_while     = sv{"while"};
 constexpr auto tk_function  = sv{"fn"};
 constexpr auto tk_return    = sv{"return"};
 constexpr auto tk_struct    = sv{"struct"};
-constexpr auto tk_size_of   = sv{"size_of"};
+constexpr auto tk_sizeof    = sv{"sizeof"};
 
 // Builtin Types
 constexpr auto tk_i32       = sv{"i32"};

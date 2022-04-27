@@ -212,7 +212,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
-    else if (tokens.peek(tk_size_of)) {
+    else if (tokens.peek(tk_sizeof)) {
         auto& expr = node->emplace<node_sizeof_expr>();
         expr.token = tokens.consume();
         tokens.consume_only(tk_lparen);
