@@ -91,12 +91,9 @@ auto parse_f64(const token& tok) -> object
 
 auto parse_char(const token& tok) -> object
 {
-    auto text = std::string_view{tok.text};
-
     parser_assert(tok.text.size() == 1, tok, "failed to parse char");
-    const char result = tok.text.front();
 
-    const auto bytes = as_bytes(result);
+    const auto bytes = as_bytes(tok.text.front());
     return object{ .data={bytes.begin(), bytes.end()}, .type=char_type() };
 }
 
@@ -171,9 +168,10 @@ auto parse_function_call(tokenstream& tokens) -> node_expr_ptr
 auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 {
     auto new_node = std::make_unique<node_expr>();
+    const auto tok = tokens.consume();
     if (tokens.peek_next(tk_lparen)) {
         auto& expr = new_node->emplace<node_member_function_call_expr>();
-        expr.token = tokens.consume();
+        expr.token = tok;
         expr.function_name = tokens.consume().text;
         tokens.consume_only(tk_lparen);
         tokens.consume_comma_separated_list(tk_rparen, [&] {
@@ -182,7 +180,7 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         expr.expr = std::move(node);
     } else {
         auto& expr = new_node->emplace<node_field_expr>();
-        expr.token = tokens.consume();
+        expr.token = tok;
         expr.field_name = tokens.consume().text;
         expr.expr = std::move(node);
     }
@@ -214,7 +212,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
-    else if (tokens.peek(tk_size_of)) {
+    else if (tokens.peek(tk_sizeof)) {
         auto& expr = node->emplace<node_sizeof_expr>();
         expr.token = tokens.consume();
         tokens.consume_only(tk_lparen);

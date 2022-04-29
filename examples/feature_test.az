@@ -124,15 +124,15 @@ println(p_value);
 xl := [1, 2, 3, 4];
 xl[2u] = 0;
 println("Size of list is 4:");
-println(size_of(xl));
+println(sizeof(xl));
 
 xl2 := [vec2(1, 2), vec2(3, 4)];
 println("xl2 should have size 32 but length 2:");
 print("size: ");
-println(size_of(xl2));
-println(size_of(xl2[0]));
+println(sizeof(xl2));
+println(sizeof(xl2[0]));
 print("length: ");
-println(size_of(xl2) / size_of(xl2[0]));
+println(sizeof(xl2) / sizeof(xl2[0]));
 
 # Pointer Arithmetic
 struct span

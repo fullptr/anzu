@@ -5,18 +5,13 @@ struct pair
     x: i64;
     y: i64;
 
-    fn sum(self: &pair) -> i64
+    fn get_x(self: &pair) -> &i64
     {
-        return self->x + self->y;
+        return &self->x;
     }
 }
 
-struct wrapper
-{
-    z: &pair;
-};
-
 p := pair(1, 2);
-w := wrapper(&p);
+*p.get_x() = 5;
 
-println(w.z->sum());
+println(p.x);

@@ -1,0 +1,79 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "anzu",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#comment"
+		},
+		{
+			"name": "keyword.control.anzu",
+			"match": "\\b(if|else|while|break|continue|return|for)\\b"
+		},
+		{
+			"name": "keyword.other.anzu",
+			"match": "\\b(in|fn|struct|sizeof)\\b"
+		},
+		{
+			"name": "storage.type.anzu",
+			"match": "\\b(i32|i64|u64|f64|char|bool)\\b"
+		},
+		{
+			"name": "constant.language.anzu",
+			"match": "\\b(true|false|null)\\b"
+		},
+		{
+			"name": "constant.numeric.float.anzu",
+			"match": "\\b(?i:(\\d+e[\\-\\+]?\\d+))\\b"
+		},
+		{
+			"name": "constant.numeric.integer.anzu",
+			"match": "\\b(?i:([1-9]+[0-9]*|0)u?)\\b"
+		},
+		{
+			"name": "keyword.operator.logical.anzu",
+			"match": "\\b(\\|\\||&&)\\b"
+		},
+		{
+			"name": "keyword.operator.comparison.anzu",
+			"match": "\\b(<=|>=|==|<|>|!=)\\b"
+		},
+		{
+			"name": "keyword.operator.assignment.anzu",
+			"match": "\\b(=|:=)\\b"
+		},
+		{
+			"name": "comment.line.number-sign.anzu",
+			"begin": "#",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.command.anzu"
+				}
+			},
+			"end": "\n"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.anzu",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.anzu",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.anzu"
+}
