@@ -20,6 +20,10 @@
 			"match": "\\b(in|fn|struct|sizeof)\\b"
 		},
 		{
+			"name": "storage.type.anzu",
+			"match": "\\b(i32|i64|u64|f64|char|bool)\\b"
+		},
+		{
 			"name": "constant.language.anzu",
 			"match": "\\b(true|false|null)\\b"
 		},
