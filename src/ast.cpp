@@ -60,6 +60,12 @@ auto print_node(const node_expr& root, int indent) -> void
                 print_node(*element, indent + 1);
             }
         },
+        [&](const node_repeat_list_expr& node) {
+            print("{}List:\n", spaces);
+            print("{}- Element:\n", spaces);
+            print_node(*node.value, indent + 1);
+            print("{}- Count: {}\n", spaces, node.size);
+        },
         [&](const node_addrof_expr& node) {
             print("{}AddrOf:\n", spaces);
             print_node(*node.expr, indent + 1);

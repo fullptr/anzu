@@ -2,14 +2,29 @@
 An interpreted programming language written in C++. This started out as a stack-based language like Forth, it then took a route similar to Python with structures programming and duck-typing, and now I am drifting towards it being more simiar to C with a lot of "compile-time" checks including static typing.
 
 ## Features so far
-* Supports `ints`, `bools`, `null` and `string-literals`.
-* Variables:
-    * Declare like `x := 5`.
-    * Assign a new value like `x = 6`.
-    * This syntax makes updating a variable in an outer scope vs a variable in the local scope unambiguous.
-* `if` statements (with optional `else` and `elif` too).
+* Fundamental types:
+    1. Signed integral types `i32` and `i64`.
+    1. Unsigned integral type `u64`.
+    1. Floating point type `f64`.
+    1. Boolean type `bool`.
+    1. Character type `char`.
+    1. Null type `null`.
+    1. Typed pointers, eg: `&i64` is an `i64` pointer.
 
-    ```
+* Builtin fixed-size arrays:
+    1. Declare elements up front: `l := [1, 2, 3]`.
+    1. Declare repeat value and size: `l := [0; 5u]` (same as `l := [0, 0, 0, 0, 0]`).
+    1. All objects in an array must be the same type.
+
+* Variables:
+    * Declare with `:=` operator: `x := 5`.
+    * Assign to existing variable with `=` operator: `x = 6`.
+
+* Comments using `#` symbol.
+
+* `if` statements.
+
+    ```rs
     if <condition> {
         ...
     } else if <condition> {
@@ -18,33 +33,35 @@ An interpreted programming language written in C++. This started out as a stack-
         ...
     }
     ```
+
 * `while` loops (with optional `break` and `continue`):
 
-    ```
+    ```rs
     while <condition> {
         ...
     }
     ```
-* `for` loops (with optional `break` and `continue`):
+* `fn` function statements:
 
-    ```
-    for <variable_name> in <list_object> {
-        ...
+    ```rs
+    fn factorial(i: u64) -> u64 {
+        if (i == 0u) {
+            return 1u; 
+        }
+        return i * factorial(i - 1u);
     }
     ```
-* `fn` function statements (with optional `return`):
-
-    ```
-    fn <name>([<arg>: <type>]*) -> <return_type> {
-        ...
-    }
-    ```
-* `struct` statements:
-    ```
-    struct <name>
+* `struct` statements and member functions:
+    ```cpp
+    struct vec2
     {
-        <field_name> : <field_type>
-        ...
+        x: f64;
+        y: f64;
+
+        fn length2(self: &vec2) -> f64
+        {
+            return (self->x * self->x) + (self->y * self->y);
+        }
     }
     ```
 * All the common arithmetic, comparison and logical operators. More will be implemented.
@@ -92,8 +109,6 @@ Utility Modules (in src/utility)
 
 # TODO
 ## Focus
-* Member Functions
-* Constructors
 * Const
 * Dynamic Allocation
 

@@ -1,58 +1,72 @@
 # tests all language features, here is a comment
 
 # declaring variables from literals
-a := 1;               # ints
-b := true;            # bools
-c := "hello world\n"; # string literal
-d := [1, 2, 3];       # list
+{
+    a := 1;               # ints
+    b := true;            # bools
+    c := "hello world\n"; # string literal
+    d := [1, 2, 3];       # list
 
-# variables from variables
-e := a;
+    # variables from variables
+    e := a;
+}
 
 # while-statements
-idx := 0;
-while idx < 10 {
-    print(idx);
-    print(", ");
-    idx = idx + 1;
+{
+    idx := 0;
+    while idx < 10 {
+        print(idx);
+        print(", ");
+        idx = idx + 1;
+    }
+    println("");
 }
-println("");
 
 # if-statements
 # basic if
-if true {
-    print("in true block\n");
+{
+    if true {
+        print("in true block\n");
+    }
 }
 
 # if with else
-if 2 < 1 {
-    # never entered
-} else {
-    println("in else block");
+{
+    if 2 < 1 {
+        # never entered
+    } else {
+        println("in else block");
+    }
 }
 
 # if with elif
-if 1 > 3 {
-    # not entered
-} else if 2 == 1 + 1 {  # also testing an expression
-    println("i just evaluated 2 == 1 + 1");
+{
+    if 1 > 3 {
+        # not entered
+    } else if 2 == 1 + 1 {  # also testing an expression
+        println("i just evaluated 2 == 1 + 1");
+    }
 }
 
 # if with elif and else
-if false {
-    # nah
-} else if false {
-    # also nah
-} else {
-    println("in else after skipping the if and elif");
+{
+    if false {
+        # nah
+    } else if false {
+        # also nah
+    } else {
+        println("in else after skipping the if and elif");
+    }
 }
 
 # simple expressions
-println(2 + 2);
-println(8 * (1 + 6) > 5);
-println(true && true);
-println(true && false);
-println(true || false);
+{
+    println(2 + 2);
+    println(8 * (1 + 6) > 5);
+    println(true && true);
+    println(true && false);
+    println(true || false);
+}
 
 # functions
 fn adder(a: i64, b: i64, c: i64) -> i64
@@ -60,11 +74,13 @@ fn adder(a: i64, b: i64, c: i64) -> i64
     return a + b + c;
 }
 
-print("Does adder(1, 2, 3) == 6? ");
-if adder(1, 2, 3) == 6 {
-    println("yes");
-} else {
-    println("no");
+{
+    print("Does adder(1, 2, 3) == 6? ");
+    if adder(1, 2, 3) == 6 {
+        println("yes");
+    } else {
+        println("no");
+    }
 }
 
 # Allowing functions from other functions
@@ -79,15 +95,6 @@ fn add3(x: i64, y: i64, z: i64) -> i64
 }
 
 println(add3(1, 2, 3));
-
-fn print_one_to_ten() -> null
-{
-    i := 0;
-    while i < 10 {
-        println(i);
-        i = i + 1;
-    }
-}
 
 # Struct definition
 struct vec2
@@ -106,33 +113,39 @@ fn println(v: vec2) -> null
 }
 
 # Attribute access
-my_vec := vec2(1, 2);
-println(my_vec);
-println(my_vec.x);
-println(my_vec.y);
-my_vec.x = 5;
-println(my_vec.x);
+{
+    my_vec := vec2(1, 2);
+    println(my_vec);
+    println(my_vec.x);
+    println(my_vec.y);
+    my_vec.x = 5;
+    println(my_vec.x);
+}
 
 # Pointers
-p_value := 5;
-p := &p_value;
-*p = 6;
-println("p_value should now equal 6:");
-println(p_value);
+{
+    p_value := 5;
+    p := &p_value;
+    *p = 6;
+    println("p_value should now equal 6:");
+    println(p_value);
+}
 
 # Lists
-xl := [1, 2, 3, 4];
-xl[2u] = 0;
-println("Size of list is 4:");
-println(sizeof(xl));
+{
+    xl := [1, 2, 3, 4];
+    xl[2u] = 0;
+    println("Size of list is 4:");
+    println(sizeof(xl));
 
-xl2 := [vec2(1, 2), vec2(3, 4)];
-println("xl2 should have size 32 but length 2:");
-print("size: ");
-println(sizeof(xl2));
-println(sizeof(xl2[0]));
-print("length: ");
-println(sizeof(xl2) / sizeof(xl2[0]));
+    xl2 := [vec2(1, 2), vec2(3, 4)];
+    println("xl2 should have size 32 but length 2:");
+    print("size: ");
+    println(sizeof(xl2));
+    println(sizeof(xl2[0]));
+    print("length: ");
+    println(sizeof(xl2) / sizeof(xl2[0]));
+}
 
 # Pointer Arithmetic
 struct span
@@ -177,6 +190,21 @@ struct vec3
     }
 }
 
-v := vec3(3.0, 4.0, 5.0);
-println("length of vec3(3.0, 4.0, 5.0):");
-println(v.length());
+# Member function testing
+{
+    v := vec3(3.0, 4.0, 5.0);
+    println("length of vec3(3.0, 4.0, 5.0):");
+    println(v.length());
+}
+
+# Repeat-element syntax for lists
+{
+    a := [1; 5u];
+    b := [1, 1, 1, 1, 1];
+
+    idx := 0u;
+    while idx != sizeof(a) / sizeof(a[0u]) {
+        println(a[idx] == b[idx]);
+        idx = idx + 1u;
+    }
+} 
