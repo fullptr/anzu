@@ -1,17 +1,10 @@
 
 
-struct pair
-{
-    x: i64;
-    y: i64;
+a := [1; 5u];
+b := [1, 1, 1, 1, 1];
 
-    fn get_x(self: &pair) -> &i64
-    {
-        return &self->x;
-    }
+idx := 0u;
+while idx != sizeof(a) / sizeof(a[0u]) {
+    println(a[idx] == b[idx]);
+    idx = idx + 1u;
 }
-
-p := pair(1, 2);
-*p.get_x() = 5;
-
-println(p.x);

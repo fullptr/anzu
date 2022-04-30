@@ -361,6 +361,12 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                 .count = expr.elements.size()
             }};
         },
+        [&](const node_repeat_list_expr& expr) {
+            return type_name{type_list{
+                .inner_type = type_of_expr(com, *expr.value),
+                .count = expr.size
+            }};
+        },
         [&](const node_addrof_expr& expr) {
             return concrete_ptr_type(type_of_expr(com, *expr.expr));
         },
@@ -600,6 +606,17 @@ auto compile_expr_val(compiler& com, const node_list_expr& node) -> type_name
         compiler_assert(element_type == inner_type, node.token, "list has mismatching element types");
     }
     return concrete_list_type(inner_type, node.elements.size());
+}
+
+auto compile_expr_val(compiler& com, const node_repeat_list_expr& node) -> type_name
+{
+    compiler_assert(node.size != 0, node.token, "currently do not support empty list literals");
+
+    const auto inner_type = type_of_expr(com, *node.value);
+    for (std::size_t i = 0; i != node.size; ++i) {
+        compile_expr_val(com, *node.value);
+    }
+    return concrete_list_type(inner_type, node.size);
 }
 
 auto compile_expr_val(compiler& com, const node_addrof_expr& node) -> type_name

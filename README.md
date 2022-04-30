@@ -92,8 +92,6 @@ Utility Modules (in src/utility)
 
 # TODO
 ## Focus
-* Member Functions
-* Constructors
 * Const
 * Dynamic Allocation
 

@@ -196,11 +196,26 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         tokens.consume_only(tk_rparen);
     }
     else if (tokens.peek(tk_lbracket)) {
-        auto& expr = node->emplace<node_list_expr>();
-        expr.token = tokens.consume();
-        tokens.consume_comma_separated_list(tk_rbracket, [&] {
-            expr.elements.push_back(parse_expression(tokens));
-        });
+        const auto tok = tokens.consume();
+        auto first = parse_expression(tokens);
+        if (tokens.consume_maybe(tk_semicolon)) {
+            auto& expr = node->emplace<node_repeat_list_expr>();
+            expr.token = tok;
+            expr.value = std::move(first);
+            expr.size = tokens.consume_u64();
+            tokens.consume_only(tk_rbracket);
+        } else {
+            auto& expr = node->emplace<node_list_expr>();
+            expr.token = tok;
+            expr.elements.push_back(std::move(first));
+            if (tokens.consume_maybe(tk_comma)) {
+                tokens.consume_comma_separated_list(tk_rbracket, [&] {
+                    expr.elements.push_back(parse_expression(tokens));
+                });
+            } else {
+                tokens.consume_only(tk_rbracket);
+            }
+        }
     }
     else if (tokens.peek(tk_sub) || tokens.peek(tk_bang)) {
         auto& expr = node->emplace<node_unary_op_expr>();
