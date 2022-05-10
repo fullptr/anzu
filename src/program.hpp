@@ -47,6 +47,16 @@ struct op_pop
     std::size_t size;
 };
 
+struct op_allocate
+{
+    std::size_t size;
+};
+
+struct op_deallocate
+{
+    std::size_t size;
+};
+
 struct op_jump
 {
     std::int64_t jump;
@@ -90,6 +100,8 @@ struct op : std::variant<
     op_load,
     op_save,
     op_pop,
+    op_allocate,
+    op_deallocate,
     op_jump,
     op_jump_if_false,
     op_function,
