@@ -13,6 +13,7 @@ add_executable(
     compiler.cpp
     program.cpp
     runtime.cpp
+    memory.cpp
     object.cpp
     functions.cpp
     operators.cpp

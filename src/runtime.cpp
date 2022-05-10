@@ -9,6 +9,29 @@
 #include <utility>
 
 namespace anzu {
+namespace {
+
+constexpr auto top_bit = (std::numeric_limits<std::uint64_t>::max() / 2) + 1;
+
+auto set_top_bit(std::uint64_t x) -> std::uint64_t
+{
+    constexpr auto top_bit = std::uint64_t{1} << 63;
+    return x | top_bit; 
+}
+
+auto unset_top_bit(std::uint64_t x) -> std::uint64_t
+{
+    constexpr auto top_bit = std::uint64_t{1} << 63;
+    return x & ~top_bit; 
+}
+
+auto get_top_bit(std::uint64_t x) -> bool
+{
+    constexpr auto top_bit = std::uint64_t{1} << 63;
+    return x & top_bit;
+}
+
+}
 
 template <typename ...Args>
 auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
@@ -24,49 +47,67 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
     std::visit(overloaded {
         [&](const op_load_bytes& op) {
             for (const auto byte : op.bytes) {
-                ctx.memory.push_back(byte);
+                ctx.stack.push_back(byte);
             }
             ++ctx.prog_ptr;
         },
         [&](op_push_global_addr op) {
-            push_value(ctx.memory, op.position);
+            push_value(ctx.stack, op.position);
             ++ctx.prog_ptr;
         },
         [&](op_push_local_addr op) {
-            push_value(ctx.memory, ctx.base_ptr + op.offset);
+            push_value(ctx.stack, ctx.base_ptr + op.offset);
             ++ctx.prog_ptr;
         },
         [&](op_modify_ptr) {
-            const auto offset = pop_value<std::uint64_t>(ctx.memory);
-            const auto ptr = pop_value<std::uint64_t>(ctx.memory);
-            push_value(ctx.memory, ptr + offset);
+            const auto offset = pop_value<std::uint64_t>(ctx.stack);
+            const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+            push_value(ctx.stack, ptr + offset);
             ++ctx.prog_ptr;
         },
         [&](op_load op) {
-            const auto ptr = pop_value<std::uint64_t>(ctx.memory);
-            for (std::size_t i = 0; i != op.size; ++i) {
-                ctx.memory.push_back(ctx.memory[ptr + i]);
+            const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+            
+            if (get_top_bit(ptr)) {
+                const auto heap_ptr = unset_top_bit(ptr);
+                for (std::size_t i = 0; i != op.size; ++i) {
+                    ctx.stack.push_back(ctx.heap[heap_ptr + i]);
+                }
+            } else {
+                for (std::size_t i = 0; i != op.size; ++i) {
+                    ctx.stack.push_back(ctx.stack[ptr + i]);
+                }
             }
+
             ++ctx.prog_ptr;
         },
         [&](op_save op) {
-            const auto ptr = pop_value<std::uint64_t>(ctx.memory);
-            runtime_assert(ptr + op.size <= ctx.memory.size(), "tried to access invalid memory address {}", ptr);
-            if (ptr + op.size < ctx.memory.size()) {
-                std::memcpy(&ctx.memory[ptr], &ctx.memory[ctx.memory.size() - op.size], op.size);
-                ctx.memory.resize(ctx.memory.size() - op.size);
+            const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+
+            if (get_top_bit(ptr)) {
+                const auto heap_ptr = unset_top_bit(ptr);
+                //runtime_assert(ptr + op.size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
+                std::memcpy(&ctx.heap[heap_ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
+                ctx.stack.resize(ctx.stack.size() - op.size);
+            } else {
+                runtime_assert(ptr + op.size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
+                if (ptr + op.size < ctx.stack.size()) {
+                    std::memcpy(&ctx.stack[ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
+                    ctx.stack.resize(ctx.stack.size() - op.size);
+                }
             }
+
             ++ctx.prog_ptr;
         },
         [&](op_pop op) {
-            ctx.memory.resize(ctx.memory.size() - op.size);
+            ctx.stack.resize(ctx.stack.size() - op.size);
             ++ctx.prog_ptr;
         },
         [&](op_jump op) {
             ctx.prog_ptr += op.jump;
         },
         [&](op_jump_if_false op) {
-            if (pop_value<bool>(ctx.memory)) {
+            if (pop_value<bool>(ctx.stack)) {
                 ++ctx.prog_ptr;
             } else {
                 ctx.prog_ptr += op.jump;
@@ -76,26 +117,26 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = op.jump;
         },
         [&](op_return op) {
-            const auto prev_base_ptr = read_value<std::uint64_t>(ctx.memory, ctx.base_ptr);
-            const auto prev_prog_ptr = read_value<std::uint64_t>(ctx.memory, ctx.base_ptr + sizeof(std::uint64_t));
+            const auto prev_base_ptr = read_value<std::uint64_t>(ctx.stack, ctx.base_ptr);
+            const auto prev_prog_ptr = read_value<std::uint64_t>(ctx.stack, ctx.base_ptr + sizeof(std::uint64_t));
             
-            std::memcpy(&ctx.memory[ctx.base_ptr], &ctx.memory[ctx.memory.size() - op.size], op.size);
-            ctx.memory.resize(ctx.base_ptr + op.size);
+            std::memcpy(&ctx.stack[ctx.base_ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
+            ctx.stack.resize(ctx.base_ptr + op.size);
             ctx.base_ptr = prev_base_ptr;
             ctx.prog_ptr = prev_prog_ptr;
         },
         [&](const op_function_call& op) {
             // Store the old base_ptr and prog_ptr so that they can be restored at the end of
             // the function.
-            const auto new_base_ptr = ctx.memory.size() - op.args_size;
-            write_value(ctx.memory, new_base_ptr, ctx.base_ptr);
-            write_value(ctx.memory, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr + 1); // Pos after function call
+            const auto new_base_ptr = ctx.stack.size() - op.args_size;
+            write_value(ctx.stack, new_base_ptr, ctx.base_ptr);
+            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr + 1); // Pos after function call
             
             ctx.base_ptr = new_base_ptr;
             ctx.prog_ptr = op.ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            op.ptr(ctx.memory);
+            op.ptr(ctx.stack);
             ++ctx.prog_ptr;
         }
     }, op_code);
@@ -120,7 +161,7 @@ auto run_program_debug(const anzu::program& program) -> void
         const auto& op = program[ctx.prog_ptr];
         anzu::print("{:>4} - {}\n", ctx.prog_ptr, op);
         apply_op(ctx, program[ctx.prog_ptr]);
-        anzu::print("Memory: {}\n", format_comma_separated(ctx.memory));
+        anzu::print("Memory: {}\n", format_comma_separated(ctx.stack));
     }
 }
 
