@@ -396,6 +396,9 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                 compiler_error(expr.token, "cannot use subscript operator on non-list type '{}'", ltype);
             }
             return *std::get<type_list>(ltype).inner_type;
+        },
+        [&](const node_new_expr& expr) {
+            return concrete_ptr_type(expr.type);
         }
     }, node);
 }
@@ -633,6 +636,11 @@ auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
     return u64_type();
 }
 
+auto compile_expr_val(compiler& com, const node_new_expr& node) -> type_name
+{
+    return concrete_ptr_type(node.type);
+}
+
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
 // we can load it by pushing the address to the stack and loading.
 auto compile_expr_val(compiler& com, const auto& node) -> type_name
@@ -827,6 +835,11 @@ void compile_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
     com.program.emplace_back(op_pop{ .size=com.types.size_of(type) });
+}
+
+void compile_stmt(compiler& com, const node_delete_stmt& node)
+{
+
 }
 
 auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name

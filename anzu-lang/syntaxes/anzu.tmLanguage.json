@@ -17,7 +17,7 @@
 		},
 		{
 			"name": "keyword.other.anzu",
-			"match": "\\b(in|fn|struct|sizeof)\\b"
+			"match": "\\b(in|fn|struct|sizeof|new|delete)\\b"
 		},
 		{
 			"name": "storage.type.anzu",
