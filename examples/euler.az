@@ -2,7 +2,7 @@
 
 x := 5u;
 
-y := new i64[5];
+y := new i64 : x;
 
-delete y;
+#delete y;
 
