@@ -1,0 +1,73 @@
+
+
+
+struct vector
+{
+    _data:     &i64;
+    _size:     u64;
+    _capacity: u64;
+
+    fn push(self: &vector, val: i64) -> null
+    {
+        if (self->_size == self->_capacity) {
+            new_cap := 2u * self->_capacity;
+            if new_cap == 0u {
+                new_cap = 1u;
+            }
+            new_data := new i64 : new_cap;
+
+            idx := 0u;
+            while idx != self->_size {
+                *(new_data + idx) = *(self->_data + idx);
+                idx = idx + 1u;
+            }
+
+            delete self->_data;
+            self->_data = new_data;
+            self->_capacity = new_cap;
+        }
+        *(self->_data + self->_size) = val;
+        self->_size = self->_size + 1u;
+    }
+
+    fn size(self: &vector) -> u64
+    {
+        return self->_size;
+    }
+
+    fn capacity(self: &vector) -> u64
+    {
+        return self->_capacity;
+    }
+
+    fn at(self: &vector, idx: u64) -> i64
+    {
+        return *(self->_data + idx);
+    }
+}
+
+fn new_vector() -> vector
+{
+    # We don't have nullptr yet, so we must allocate some space here for now
+    return vector(new i64, 0u, 1u);
+}
+
+fn delete_vector(v: vector) -> null
+{
+    delete v._data;
+    v._size = 0u;
+    v._capacity = 0u;
+}
+
+v := new_vector();
+#idx := 0;
+#while idx != 10 {
+#    v.push(idx);
+#    print(v.size());
+#    print(", ");
+#    println(v.capacity());
+#    idx = idx + 1;
+#}
+
+delete_vector(v);
+println("done");

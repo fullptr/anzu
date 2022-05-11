@@ -24,6 +24,8 @@ auto try_merge_left(map& pool, iter lhs, iter rhs) -> iter
 
 auto memory_allocator::allocate(std::size_t size) -> std::size_t
 {
+    d_bytes_allocated += size;
+
     for (auto it = d_pools.begin(); it != d_pools.end(); ++it) {
         auto& [pool_ptr, pool_size] = *it;
         if (size <= pool_size) { // Can fit in this block pool.
@@ -62,6 +64,8 @@ auto memory_allocator::allocate(std::size_t size) -> std::size_t
 
 auto memory_allocator::deallocate(std::size_t ptr, std::size_t size) -> void
 {
+    d_bytes_allocated -= size;
+    
     auto [it, success] = d_pools.emplace(ptr, size);
     if (!success) {
         print("logic error, double deallocation of ptr={}\n", ptr);
@@ -74,6 +78,11 @@ auto memory_allocator::deallocate(std::size_t ptr, std::size_t size) -> void
     if (std::next(it) != d_pools.end()) {
         try_merge_left(d_pools, it, std::next(it));
     }
+}
+
+auto memory_allocator::bytes_allocated() const -> std::size_t
+{
+    return d_bytes_allocated;
 }
 
 }
