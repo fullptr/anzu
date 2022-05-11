@@ -1,6 +1,4 @@
 
-
-
 struct vector
 {
     data:     &i64;

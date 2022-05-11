@@ -1,6 +1,6 @@
 #pragma once
 #include "program.hpp"
-#include "memory.hpp"
+#include "allocator.hpp"
 
 #include <vector>
 #include <utility>
