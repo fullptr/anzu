@@ -165,6 +165,10 @@ auto run_program(const anzu::program& program) -> void
     while (ctx.prog_ptr < program.size()) {
         apply_op(ctx, program[ctx.prog_ptr]);
     }
+
+    if (ctx.allocator.bytes_allocated() > 0) {
+        anzu::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
+    }
 }
 
 auto run_program_debug(const anzu::program& program) -> void
@@ -178,6 +182,10 @@ auto run_program_debug(const anzu::program& program) -> void
         apply_op(ctx, program[ctx.prog_ptr]);
         anzu::print("Stack: {}\n", format_comma_separated(ctx.stack));
         anzu::print("Heap: allocated={}\n", ctx.allocator.bytes_allocated());
+    }
+
+    if (ctx.allocator.bytes_allocated() > 0) {
+        anzu::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
     }
 }
 
