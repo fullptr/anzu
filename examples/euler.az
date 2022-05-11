@@ -10,6 +10,7 @@ y := new i64 : x;
 idx := 0u;
 while idx < x {
     println(*(y + idx));
+    println(y + idx);
     idx = idx + 1u;
 }
 
