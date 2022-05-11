@@ -110,6 +110,14 @@ struct node_subscript_expr
     anzu::token token;
 };
 
+struct node_new_expr
+{
+    type_name     type;
+    node_expr_ptr size;
+    
+    anzu::token token;
+};
+
 struct node_expr : std::variant<
     // Rvalue expressions
     node_literal_expr,
@@ -121,6 +129,7 @@ struct node_expr : std::variant<
     node_repeat_list_expr,
     node_addrof_expr,
     node_sizeof_expr,
+    node_new_expr,
 
     // Lvalue expressions
     node_variable_expr,
@@ -225,6 +234,13 @@ struct node_return_stmt
     anzu::token token;
 };
 
+struct node_delete_stmt
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
 struct node_stmt : std::variant<
     node_sequence_stmt,
     node_while_stmt,
@@ -237,7 +253,8 @@ struct node_stmt : std::variant<
     node_member_function_def_stmt,
     node_function_def_stmt,
     node_expression_stmt,
-    node_return_stmt>
+    node_return_stmt,
+    node_delete_stmt>
 {
 };
 

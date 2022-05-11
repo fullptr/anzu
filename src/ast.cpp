@@ -84,6 +84,11 @@ auto print_node(const node_expr& root, int indent) -> void
             print_node(*node.expr, indent + 1);
             print("{}- Index:\n", spaces);
             print_node(*node.index, indent + 1);
+        },
+        [&](const node_new_expr& node) {
+            print("{}New {}:\n", spaces, node.type);
+            print("{}- Size:\n", spaces);
+            print_node(*node.size, indent + 1);
         }
     }, root);
 }
@@ -170,6 +175,10 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_return_stmt& node) {
             print("{}Return:\n", spaces);
             print_node(*node.return_value, indent + 1);
+        },
+        [&](const node_delete_stmt& node) {
+            print("{}Delete:\n", spaces);
+            print_node(*node.expr, indent + 1);
         }
     }, root);
 }

@@ -99,6 +99,7 @@ auto parse_char(const token& tok) -> object
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
+auto parse_type(tokenstream& tokens) -> type_name;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
@@ -246,6 +247,18 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         auto& expr = node->emplace<node_variable_expr>();
         expr.token = tokens.consume();
         expr.name = expr.token.text;
+    }
+    else if (tokens.peek(tk_new)) {
+        auto& expr = node->emplace<node_new_expr>();
+        expr.token = tokens.consume();
+        expr.type = parse_type(tokens);
+        if (tokens.consume_maybe(tk_colon)) {
+            expr.size = parse_expression(tokens);
+        } else {
+            expr.size = std::make_unique<node_expr>();
+            auto& inner = expr.size->emplace<node_literal_expr>();
+            inner.value = parse_u64(token{.text="1u"});
+        }
     }
     else {
         auto& expr = node->emplace<node_literal_expr>();
@@ -469,6 +482,18 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_delete_stmt>();
+
+    stmt.token = tokens.consume_only(tk_delete);
+    stmt.expr = parse_expression(tokens);
+    tokens.consume_only(tk_semicolon);
+
+    return node;
+}
+
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
     while (tokens.consume_maybe(tk_semicolon));
@@ -499,6 +524,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     }
     if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(tokens);
+    }
+    if (tokens.peek(tk_delete)) {
+        return parse_delete_stmt(tokens);
     }
 
     auto node = std::make_unique<node_stmt>();

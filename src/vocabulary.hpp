@@ -20,6 +20,8 @@ constexpr auto tk_function  = sv{"fn"};
 constexpr auto tk_return    = sv{"return"};
 constexpr auto tk_struct    = sv{"struct"};
 constexpr auto tk_sizeof    = sv{"sizeof"};
+constexpr auto tk_new       = sv{"new"};
+constexpr auto tk_delete    = sv{"delete"};
 
 // Builtin Types
 constexpr auto tk_i32       = sv{"i32"};

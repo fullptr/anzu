@@ -1,10 +1,5 @@
 
+x := new i64;
+*(x + 0u) = 5;
 
-a := [1; 5u];
-b := [1, 1, 1, 1, 1];
-
-idx := 0u;
-while idx != sizeof(a) / sizeof(a[0u]) {
-    println(a[idx] == b[idx]);
-    idx = idx + 1u;
-}
+println(*x);

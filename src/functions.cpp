@@ -158,6 +158,12 @@ auto is_builtin(const std::string& name, const std::vector<type_name>& args) -> 
     ) {
         return true;
     }
+    else if (name.starts_with("print") &&
+        args.size() == 1 &&
+        std::holds_alternative<type_ptr>(args[0])
+    ) {
+        return true;
+    }
     return builtins.contains({name, args});
 }
 
@@ -182,6 +188,23 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
                     print("\n");
                 }
                 pop_n(mem, length);
+                mem.push_back(std::byte{0}); // Return null
+            },
+            .return_type = null_type()
+        };
+    }
+    else if (name.starts_with("print") &&
+        args.size() == 1 &&
+        std::holds_alternative<type_ptr>(args[0])
+    ) {
+        const auto newline = name == "println";
+        return builtin_val{
+            .ptr = [=](std::vector<std::byte>& mem) -> void {
+                const auto ptr = pop_value<std::uint64_t>(mem);
+                print("{}", ptr);
+                if (newline) {
+                    print("\n");
+                }
                 mem.push_back(std::byte{0}); // Return null
             },
             .return_type = null_type()
