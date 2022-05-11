@@ -13,7 +13,11 @@ struct runtime_context
     std::size_t base_ptr = 0;
 
     std::vector<std::byte> stack;
-    memory_allocator       heap;
+    std::vector<std::byte> heap;
+
+    memory_allocator allocator;
+
+    runtime_context() : allocator{heap} {}
 };
 
 auto run_program(const program& prog) -> void;

@@ -1,12 +1,54 @@
 
 
-size := 1u + 5u;
-arr := new i64 : size;
 
-idx := 0u;
-while idx < size {
-    println(*(arr + idx));
-    idx = idx + 1u;
+struct vector
+{
+    _data:     &i64;
+    _size:     u64;
+    _capacity: u64;
+
+    fn push(self: &vector, val: i64) -> null
+    {
+        if (self->_size == self->_capacity) {
+            new_data := new i64 : 2u * self->_capacity;
+            idx := 0u;
+            while idx != self->_size {
+                *(new_data + idx) = *(self->_data + idx);
+                idx = idx + 1u;
+            }
+            delete self->_data;
+            self->_data = new_data;
+        }
+        *(self->_data + self->_size) = val;
+        self->_size = self->_size + 1u;
+    }
+
+    fn size(self: &vector) -> u64
+    {
+        return self->_size;
+    }
+
+    fn capacity(self: &vector) -> u64
+    {
+        return self->_capacity;
+    }
+
+    fn at(self: &vector, idx: u64) -> i64
+    {
+        return *(self->_data + idx);
+    }
 }
 
-delete arr;
+fn make_vector() -> vector
+{
+    return vector(new i64, 0u, 1u);
+}
+
+v := make_vector();
+print(v.size());
+print(", ");
+println(v.capacity());
+
+v.push(1);
+v.push(2);
+v.push(4);

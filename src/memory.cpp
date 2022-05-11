@@ -41,11 +41,11 @@ auto memory_allocator::allocate(std::size_t size) -> std::size_t
     if (!d_pools.empty()) {
         const auto last = std::prev(d_pools.end());
         const auto [last_ptr, last_size] = *last;
-        if (last_ptr + last_size == d_memory.size()) {
+        if (last_ptr + last_size == d_memory->size()) {
             // We already know this pool is too small (since we would have used it in the
             // above code) so size - last_size is definitely positive.
             for (std::size_t i = 0; i != size - last_size; ++i) {
-                d_memory.emplace_back();
+                d_memory->emplace_back();
             }
             d_pools.erase(last);
             return last_ptr;
@@ -53,9 +53,9 @@ auto memory_allocator::allocate(std::size_t size) -> std::size_t
     }
 
     // Otherwise, append the end of vector.
-    const auto ptr = d_memory.size();
+    const auto ptr = d_memory->size();
     for (std::size_t i = 0; i != size; ++i) {
-        d_memory.emplace_back();
+        d_memory->emplace_back();
     }
     return ptr;
 }
