@@ -104,16 +104,18 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ++ctx.prog_ptr;
         },
         [&](op_allocate op) {
-            const auto ptr = ctx.heap.allocate(op.size + sizeof(std::uint64_t));
-            write_value(ctx.heap.memory(), ptr, op.size); // Store the size at the pointer
+            const auto count = pop_value<std::uint64_t>(ctx.stack);
+            const auto ptr = ctx.heap.allocate(count * op.type_size + sizeof(std::uint64_t));
+            write_value(ctx.heap.memory(), ptr, count * op.type_size); // Store the size at the pointer
             push_value(ctx.stack, set_top_bit(ptr + sizeof(std::uint64_t))); // Return pointer past the size
+            ++ctx.prog_ptr;
         },
         [&](op_deallocate op) {
-            const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-            runtime_assert(get_top_bit(ptr), "cannot delete a pointer to stack memory\n");
-            const auto heap_ptr = unset_top_bit(ptr);
-            const auto size = read_value<std::uint64_t>(ctx.heap.memory(), heap_ptr);
-            ctx.heap.deallocate(heap_ptr, size + sizeof(std::uint64_t));
+            //const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+            //runtime_assert(get_top_bit(ptr), "cannot delete a pointer to stack memory\n");
+            //const auto heap_ptr = unset_top_bit(ptr);
+            //const auto size = read_value<std::uint64_t>(ctx.heap.memory(), heap_ptr);
+            //ctx.heap.deallocate(heap_ptr, size + sizeof(std::uint64_t));
         },
         [&](op_jump op) {
             ctx.prog_ptr += op.jump;

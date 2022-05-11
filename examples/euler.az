@@ -4,5 +4,12 @@ x := 5u;
 
 y := new i64 : x;
 
-#delete y;
+*(y + 2u) = 5;
+*(y + 3u) = 6;
+
+idx := 0u;
+while idx < x {
+    println(*(y + idx));
+    idx = idx + 1u;
+}
 

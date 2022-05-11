@@ -37,10 +37,10 @@ auto to_string(const op& op_code) -> std::string
             return std::format("POP({})", op.size);
         },
         [&](op_allocate op) {
-            return std::format("ALLOCATE({})", op.size);
+            return std::format("ALLOCATE({})", op.type_size);
         },
         [&](op_deallocate op) {
-            return std::format("DEALLOCATE({})", op.size);
+            return std::format("DEALLOCATE({})", op.type_size);
         },
         [&](op_jump op) {
             return std::format(FORMAT2, "JUMP_RELATIVE", op.jump);

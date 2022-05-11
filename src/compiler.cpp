@@ -638,6 +638,9 @@ auto compile_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 
 auto compile_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
+    const auto count = compile_expr_val(com, *node.size);
+    compiler_assert(count == u64_type(), node.token, "count of array must be u64, got {}\n", count);
+    com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(node.type) });
     return concrete_ptr_type(node.type);
 }
 

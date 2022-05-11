@@ -49,12 +49,12 @@ struct op_pop
 
 struct op_allocate
 {
-    std::size_t size;
+    std::size_t type_size;
 };
 
 struct op_deallocate
 {
-    std::size_t size;
+    std::size_t type_size;
 };
 
 struct op_jump
