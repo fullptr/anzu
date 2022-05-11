@@ -842,7 +842,9 @@ void compile_stmt(compiler& com, const node_expression_stmt& node)
 
 void compile_stmt(compiler& com, const node_delete_stmt& node)
 {
-
+    const auto type = compile_expr_val(com, *node.expr);
+    compiler_assert(is_ptr_type(type), node.token, "delete requires a ptr, got {}\n", type);
+    com.program.emplace_back(op_deallocate{});
 }
 
 auto compile_expr_val(compiler& com, const node_expr& expr) -> type_name

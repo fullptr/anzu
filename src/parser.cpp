@@ -482,6 +482,18 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_delete_stmt>();
+
+    stmt.token = tokens.consume_only(tk_delete);
+    stmt.expr = parse_expression(tokens);
+    tokens.consume_only(tk_semicolon);
+
+    return node;
+}
+
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
     while (tokens.consume_maybe(tk_semicolon));
@@ -512,6 +524,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     }
     if (tokens.peek(tk_lbrace)) {
         return parse_braced_statement_list(tokens);
+    }
+    if (tokens.peek(tk_delete)) {
+        return parse_delete_stmt(tokens);
     }
 
     auto node = std::make_unique<node_stmt>();

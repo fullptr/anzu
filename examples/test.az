@@ -1,10 +1,12 @@
 
 
-a := [1; 5u];
-b := [1, 1, 1, 1, 1];
+size := 1u + 5u;
+arr := new i64 : size;
 
 idx := 0u;
-while idx != sizeof(a) / sizeof(a[0u]) {
-    println(a[idx] == b[idx]);
+while idx < size {
+    println(*(arr + idx));
     idx = idx + 1u;
 }
+
+delete arr;

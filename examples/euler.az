@@ -1,16 +1,17 @@
 # project euler #1, sum of multiple of 3 and 5 below 1000
 
-x := 5u;
+count := 0;
+i := 0;
 
-y := new i64 : x;
-
-*(y + 2u) = 5;
-*(y + 3u) = 6;
-
-idx := 0u;
-while idx < x {
-    println(*(y + idx));
-    println(y + idx);
-    idx = idx + 1u;
+while i < 1000 {
+    if i % 3 == 0 {
+        count = count + i;
+    } else if i % 5 == 0 {
+        count = count + i;
+    }
+    i = i + 1;
 }
 
+x := "hello";
+
+println(count);

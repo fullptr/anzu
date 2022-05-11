@@ -54,7 +54,6 @@ struct op_allocate
 
 struct op_deallocate
 {
-    std::size_t type_size;
 };
 
 struct op_jump
