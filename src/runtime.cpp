@@ -113,7 +113,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_deallocate) {
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
             runtime_assert(get_top_bit(ptr), "cannot delete a pointer to stack memory\n");
-            const auto heap_ptr = unset_top_bit(ptr);
+            const auto heap_ptr = unset_top_bit(ptr) - sizeof(std::uint64_t);
             const auto size = read_value<std::uint64_t>(ctx.heap, heap_ptr);
             ctx.allocator.deallocate(heap_ptr, size + sizeof(std::uint64_t));
             ++ctx.prog_ptr;
@@ -176,7 +176,7 @@ auto run_program_debug(const anzu::program& program) -> void
         const auto& op = program[ctx.prog_ptr];
         anzu::print("{:>4} - {}\n", ctx.prog_ptr, op);
         apply_op(ctx, program[ctx.prog_ptr]);
-        //anzu::print("Stack: {}\n", format_comma_separated(ctx.stack));
+        anzu::print("Stack: {}\n", format_comma_separated(ctx.stack));
         anzu::print("Heap: allocated={}\n", ctx.allocator.bytes_allocated());
     }
 }

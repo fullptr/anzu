@@ -60,14 +60,14 @@ fn delete_vector(v: vector) -> null
 }
 
 v := new_vector();
-#idx := 0;
-#while idx != 10 {
-#    v.push(idx);
-#    print(v.size());
-#    print(", ");
-#    println(v.capacity());
-#    idx = idx + 1;
-#}
+idx := 0;
+while idx != 10 {
+    v.push(idx);
+    print(v.size());
+    print(", ");
+    println(v.capacity());
+    idx = idx + 1;
+}
 
 delete_vector(v);
 println("done");
