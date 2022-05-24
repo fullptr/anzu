@@ -42,9 +42,21 @@ struct var_info
     std::size_t type_size;
 };
 
+struct var_scope
+{
+    enum class scope_type
+    {
+        seq_stmt,
+        while_stmt
+    };
+
+    scope_type type;
+    std::unordered_map<std::string, var_info> vars;
+};
+
 class var_locations
 {
-    std::vector<std::unordered_map<std::string, var_info>> d_scopes;
+    std::vector<var_scope> d_scopes;
     std::size_t d_next = 0;
 
 public:
@@ -55,7 +67,7 @@ public:
 
     auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
     {
-        const auto [_, success] = d_scopes.back().try_emplace(name, d_next, type, type_size);
+        const auto [_, success] = d_scopes.back().vars.try_emplace(name, d_next, type, type_size);
         if (success) {
             d_next += type_size;
         }
@@ -65,22 +77,22 @@ public:
     auto find(const std::string& name) const -> std::optional<var_info>
     {
         for (const auto& scope : d_scopes | std::views::reverse) {
-            if (const auto it = scope.find(name); it != scope.end()) {
+            if (const auto it = scope.vars.find(name); it != scope.vars.end()) {
                 return it->second;
             }
         }
         return std::nullopt;
     }
 
-    auto push_scope() -> void
+    auto push_scope(var_scope::scope_type type) -> void
     {
-        d_scopes.emplace_back();
+        d_scopes.emplace_back(type);
     }
 
     auto pop_scope() -> std::size_t // Returns the size of the scope just popped
     {
         auto scope_size = std::size_t{0};
-        for (const auto& [name, info] : d_scopes.back()) {
+        for (const auto& [name, info] : d_scopes.back().vars) {
             scope_size += info.type_size;
         }
         d_scopes.pop_back();
@@ -656,7 +668,7 @@ auto compile_expr_val(compiler& com, const auto& node) -> type_name
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    current_vars(com).push_scope();
+    current_vars(com).push_scope(var_scope::scope_type::seq_stmt);
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
@@ -666,6 +678,8 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
 
 void compile_stmt(compiler& com, const node_while_stmt& node)
 {
+    current_vars(com).push_scope(var_scope::scope_type::while_stmt);
+
     const auto begin_pos = std::ssize(com.program);
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "while-stmt expected bool, got {}", cond_type);
@@ -687,6 +701,9 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
         std::get<op_jump>(com.program[idx]).jump = begin_pos - idx; // Jump to start
     }
     com.control_flow.pop();
+
+    const auto scope_size = current_vars(com).pop_scope();
+    com.program.emplace_back(op_pop{scope_size});
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
