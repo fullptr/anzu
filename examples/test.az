@@ -1,5 +1,8 @@
 
-x := new i64;
-*(x + 0u) = 5;
-
-println(*x);
+println("before scope");
+{
+    x := 5;
+    y := true;
+    println("in scope");
+}
+println("after scope");

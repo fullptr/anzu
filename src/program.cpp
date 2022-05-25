@@ -63,6 +63,9 @@ auto to_string(const op& op_code) -> std::string
         },
         [&](const op_builtin_call& op) {
             return std::format("BUILTIN_CALL({})", op.name);
+        },
+        [](const op_debug& op) {
+            return std::format("DEBUG({})", op.message);
         }
     }, op_code);
 }

@@ -99,6 +99,11 @@ public:
         d_next -= scope_size;
         return scope_size;
     }
+
+    auto current_scope() -> var_scope&
+    {
+        return d_scopes.back();
+    }
 };
 
 struct function_key
@@ -672,6 +677,16 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
+
+    // First, destruct all variables in the current scope
+    {
+        auto& scope = current_vars(com).current_scope();
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            
+        }
+    }
+
+    // Then, clean up the memory
     const auto scope_size = current_vars(com).pop_scope();
     if (scope_size > 0) {
         com.program.emplace_back(op_pop{scope_size});
