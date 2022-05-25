@@ -320,6 +320,41 @@ auto function_ends_with_return(const node_stmt& node) -> bool
     return std::holds_alternative<node_return_stmt>(node);
 }
 
+auto call_destructor(compiler& com, const std::string& var, const type_name& type) -> void
+{
+    if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
+    com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", var, type)});
+}
+
+auto destruct_on_end_of_scope(compiler& com) -> void
+{
+    auto& scope = current_vars(com).current_scope();
+    for (const auto& [name, info] : scope.vars | std::views::reverse) {
+        call_destructor(com, name, info.type);
+    }
+}
+
+auto destruct_on_break_or_continue(compiler& com) -> void
+{
+    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            call_destructor(com, name, info.type);
+        }
+        if (scope.type == var_scope::scope_type::while_stmt) {
+            return;
+        }
+    }
+}
+
+auto destruct_on_return(compiler& com) -> void
+{
+    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            call_destructor(com, name, info.type);
+        }
+    }
+}
+
 auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
 {
     return std::visit(overloaded{
@@ -685,15 +720,7 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
         compile_stmt(com, *seq_node);
     }
 
-    // First, destruct all variables in the current scope
-    {
-        auto& scope = current_vars(com).current_scope();
-        for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", name, info.type)});
-        }
-    }
-
-    // Then, clean up the memory
+    destruct_on_end_of_scope(com);
     const auto scope_size = current_vars(com).pop_scope();
     if (scope_size > 0) {
         com.program.emplace_back(op_pop{scope_size});
@@ -765,28 +792,14 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
 
 void compile_stmt(compiler& com, const node_break_stmt&)
 {
-    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
-        for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", name, info.type)});
-        }
-        if (scope.type == var_scope::scope_type::while_stmt) {
-            break;
-        }
-    }
+    destruct_on_break_or_continue(com);
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().break_stmts.insert(pos);
 }
 
 void compile_stmt(compiler& com, const node_continue_stmt&)
 {
-    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
-        for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", name, info.type)});
-        }
-        if (scope.type == var_scope::scope_type::while_stmt) {
-            break;
-        }
-    }
+    destruct_on_break_or_continue(com);
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().continue_stmts.insert(pos);
 }
@@ -843,6 +856,7 @@ void compile_function_body(
         // A function returning null does not need a final return statement, and in this case
         // we manually add a return value of null here.
         if (sig.return_type == null_type()) {
+            destruct_on_return(com);
             com.program.emplace_back(op_load_bytes{{std::byte{0}}});
             com.program.emplace_back(op_return{ .size=1 });
         } else {
@@ -881,6 +895,7 @@ void compile_stmt(compiler& com, const node_return_stmt& node)
     if (!com.current_func) {
         compiler_error(node.token, "return statements can only be within functions");
     }
+    destruct_on_return(com);
     const auto return_type = compile_expr_val(com, *node.return_value);
     if (return_type != com.current_func->return_type) {
         compiler_error(

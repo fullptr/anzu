@@ -1,10 +1,10 @@
 
-while true {
-    x := 5;
-    {
-        y := 6;
-    }
-    z := 7;
-    break;
-    u := 6;
+fn foo() -> null
+{
+    x := 6;
+    return; 
+    y := 8;
 }
+
+foo();
+foo();
