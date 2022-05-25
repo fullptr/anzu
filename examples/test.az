@@ -1,10 +1,22 @@
 
-t := 1;
-println("before scope");
-{
-    x := 5;
-    y := true;
-    println("in scope");
+num := 0;
+while num < 10 {
+    v := 5;
+    num = num + 1;
+    {
+        println("start inner scope");
+        b := 6;
+        if num > 3 {
+            println("breaking");
+            break;
+        }
+        c := 0;
+        println("end inner scope");
+    }
+
+    g := 5;
+    println("end of loop");
 }
-println("after scope");
-h := 2;
+
+
+# jj, g, y, x, h, t
