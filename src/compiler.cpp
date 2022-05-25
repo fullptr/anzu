@@ -673,7 +673,9 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
         compile_stmt(com, *seq_node);
     }
     const auto scope_size = current_vars(com).pop_scope();
-    com.program.emplace_back(op_pop{scope_size});
+    if (scope_size > 0) {
+        com.program.emplace_back(op_pop{scope_size});
+    }
 }
 
 void compile_stmt(compiler& com, const node_while_stmt& node)
@@ -703,7 +705,9 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
     com.control_flow.pop();
 
     const auto scope_size = current_vars(com).pop_scope();
-    com.program.emplace_back(op_pop{scope_size});
+    if (scope_size > 0) {
+        com.program.emplace_back(op_pop{scope_size});
+    }
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
@@ -817,7 +821,6 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         compiler_error(node.token, "'{}' cannot be a function name, it is a type def", node.name);
     }
     com.function_names.insert(node.name);
-
     compile_function_body(com, node.token, node.name, node.sig, node.body);
 }
 
