@@ -17,7 +17,7 @@ using line_iterator = peekstream<std::string>;
 
 auto is_int(std::string_view token) -> bool
 {
-    return std::ranges::all_of(token, [](char c) { return std::isdigit(c); });
+    return !token.empty() && std::ranges::all_of(token, [](char c) { return std::isdigit(c); });
 }
 
 auto is_i32(std::string_view token) -> bool

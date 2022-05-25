@@ -1,5 +1,10 @@
 
 while true {
     x := 5;
-    continue;
+    {
+        y := 6;
+    }
+    z := 7;
+    break;
+    u := 6;
 }

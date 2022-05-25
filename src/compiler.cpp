@@ -198,7 +198,9 @@ auto append_op(compiler& com, T&& op) -> std::size_t
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
-    current_vars(com).declare(name, type, com.types.size_of(type));
+    if (!current_vars(com).declare(name, type, com.types.size_of(type))) {
+        compiler_error(tok, "name already in use: '{}'", name);
+    }
 }
 
 auto get_var_type(const compiler& com, const token& tok, const std::string& name) -> type_name
