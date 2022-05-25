@@ -682,7 +682,9 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
     {
         auto& scope = current_vars(com).current_scope();
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            
+            com.program.emplace_back(op_debug{
+                .message = std::format("destructing {}: {}\n", name, info.type)
+            });
         }
     }
 
