@@ -1,10 +1,35 @@
 
-fn foo() -> null
+struct managed_int
 {
-    x := 6;
-    return; 
-    y := 8;
+    val: &i64;
+
+    fn move(self: &managed_int, other: &managed_int) -> null
+    {
+
+    }
+
+    fn copy(self: &managed_int, other: &managed_int) -> null
+    {
+
+    }
+
+    fn drop(self: &managed_int) -> null
+    {
+        println("deleting int");
+        delete self->val;
+    }
 }
 
-foo();
-foo();
+fn make_int(val: i64) -> managed_int
+{
+    ret := managed_int(new i64);
+    *(ret.val) = val;
+    return ret;
+}
+
+{
+    f := make_int(6);
+    println("here i am");
+}
+
+println("end");
