@@ -1,22 +1,5 @@
 
-num := 0;
-while num < 10 {
-    v := 5;
-    num = num + 1;
-    {
-        println("start inner scope");
-        b := 6;
-        if num > 3 {
-            println("breaking");
-            break;
-        }
-        c := 0;
-        println("end inner scope");
-    }
-
-    g := 5;
-    println("end of loop");
+while true {
+    x := 5;
+    continue;
 }
-
-
-# jj, g, y, x, h, t

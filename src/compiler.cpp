@@ -100,9 +100,14 @@ public:
         return scope_size;
     }
 
-    auto current_scope() -> var_scope&
+    auto current_scope() const -> const var_scope&
     {
         return d_scopes.back();
+    }
+
+    auto scopes() const -> const std::vector<var_scope>&
+    {
+        return d_scopes;
     }
 };
 
@@ -682,9 +687,7 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
     {
         auto& scope = current_vars(com).current_scope();
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            com.program.emplace_back(op_debug{
-                .message = std::format("destructing {}: {}\n", name, info.type)
-            });
+            com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", name, info.type)});
         }
     }
 
@@ -760,12 +763,28 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
 
 void compile_stmt(compiler& com, const node_break_stmt&)
 {
+    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", name, info.type)});
+        }
+        if (scope.type == var_scope::scope_type::while_stmt) {
+            break;
+        }
+    }
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().break_stmts.insert(pos);
 }
 
 void compile_stmt(compiler& com, const node_continue_stmt&)
 {
+    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", name, info.type)});
+        }
+        if (scope.type == var_scope::scope_type::while_stmt) {
+            break;
+        }
+    }
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().continue_stmts.insert(pos);
 }
