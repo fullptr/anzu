@@ -68,6 +68,8 @@ v.push(4);
 v.push(7);
 v.push(8);
 
-println(v.pop());
-println(v.pop());
-println(v.pop());
+idx := 0u;
+while idx != v.size() {
+    println(v.at(idx));
+    idx = idx + 1u;
+}

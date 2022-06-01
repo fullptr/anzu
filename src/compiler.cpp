@@ -131,6 +131,7 @@ struct function_val
 {
     signature   sig;
     std::size_t ptr;
+    token       tok;
 };
 
 struct current_function
@@ -329,18 +330,22 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
     func_key.name = destructor_name;
     func_key.args = { concrete_ptr_type(type) };
     if (auto it = com.functions.find(func_key); it != com.functions.end()) {
-        const auto& [sig, ptr] = it->second;
+        const auto& [sig, ptr, tok] = it->second;
+        compiler_assert(
+            sig.return_type == null_type(), tok, "{} must return null", destructor_name
+        );
 
         // Push the args to the stack
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
-        push_var_addr(com, token{}, var);
+        push_var_addr(com, tok, var);
 
         com.program.emplace_back(op_function_call{
             .name=destructor_name,
             .ptr=ptr + 1, // Jump into the function
             .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
         });
+        com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
     }
 
     // TODO: Destruct the sub members of classes
@@ -611,7 +616,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
     
     if (auto it = com.functions.find(key); it != com.functions.end()) {
-        const auto& [sig, ptr] = it->second;
+        const auto& [sig, ptr, tok] = it->second;
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
         
@@ -671,7 +676,7 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
         compiler_error(node.token, "could not find function '{}'", qualified_function_name);
     }
     
-    const auto& [sig, ptr] = it->second;
+    const auto& [sig, ptr, tok] = it->second;
     push_literal(com, std::uint64_t{0}); // base ptr
     push_literal(com, std::uint64_t{0}); // prog ptr
     
@@ -874,7 +879,7 @@ void compile_function_body(
     const auto key = make_key(com, tok, name, sig);
 
     const auto begin_pos = append_op(com, op_function{ .name=key.name });
-    com.functions[key] = { .sig=sig, .ptr=begin_pos };
+    com.functions[key] = { .sig=sig, .ptr=begin_pos, .tok=tok };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=sig.return_type });
     declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
