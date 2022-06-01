@@ -153,6 +153,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_builtin_call& op) {
             op.ptr(ctx.stack);
             ++ctx.prog_ptr;
+        },
+        [&](const op_debug& op) {
+            print(op.message);
+            ++ctx.prog_ptr;
         }
     }, op_code);
 }

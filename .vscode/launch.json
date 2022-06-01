@@ -9,7 +9,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/src/Debug/anzu.exe",
-            "args": ["${workspaceFolder}/examples/vector.az", "run"],
+            "args": ["${workspaceFolder}/examples/test.az", "run"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

@@ -49,6 +49,11 @@ struct vector
     {
         return self->capacity;
     }
+
+    fn drop(self: &vector) -> null
+    {
+        delete self->data;
+    }
 }
 
 fn new_vector() -> vector
@@ -57,21 +62,14 @@ fn new_vector() -> vector
     return vector(new i64, 0u, 1u);
 }
 
-fn delete_vector(v: vector) -> null
-{
-    delete v.data;
-    v.size = 0u;
-    v.capacity = 0u;
-}
-
 v := new_vector();
 
 v.push(4);
 v.push(7);
 v.push(8);
 
-println(v.pop());
-println(v.pop());
-println(v.pop());
-
-delete_vector(v);
+idx := 0u;
+while idx != v.size() {
+    println(v.at(idx));
+    idx = idx + 1u;
+}

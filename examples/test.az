@@ -1,5 +1,29 @@
 
-x := new i64;
-*(x + 0u) = 5;
+struct managed_int
+{
+    val: &i64;
 
-println(*x);
+    fn drop(self: &managed_int) -> null
+    {
+        print("deleting int: ");
+        println(*(self->val));
+        delete self->val;
+    }
+}
+
+fn make_int(val: i64) -> managed_int
+{
+    ret := managed_int(new i64);
+    *(ret.val) = val;
+    return ret;
+}
+
+{
+    b := "hello";
+    a := 1;
+    f := make_int(60);
+    c := 5;
+    println("here i am");
+}
+
+println("end");

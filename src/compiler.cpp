@@ -42,9 +42,21 @@ struct var_info
     std::size_t type_size;
 };
 
+struct var_scope
+{
+    enum class scope_type
+    {
+        seq_stmt,
+        while_stmt
+    };
+
+    scope_type type;
+    std::unordered_map<std::string, var_info> vars;
+};
+
 class var_locations
 {
-    std::vector<std::unordered_map<std::string, var_info>> d_scopes;
+    std::vector<var_scope> d_scopes;
     std::size_t d_next = 0;
 
 public:
@@ -55,7 +67,7 @@ public:
 
     auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
     {
-        const auto [_, success] = d_scopes.back().try_emplace(name, d_next, type, type_size);
+        const auto [_, success] = d_scopes.back().vars.try_emplace(name, d_next, type, type_size);
         if (success) {
             d_next += type_size;
         }
@@ -65,27 +77,37 @@ public:
     auto find(const std::string& name) const -> std::optional<var_info>
     {
         for (const auto& scope : d_scopes | std::views::reverse) {
-            if (const auto it = scope.find(name); it != scope.end()) {
+            if (const auto it = scope.vars.find(name); it != scope.vars.end()) {
                 return it->second;
             }
         }
         return std::nullopt;
     }
 
-    auto push_scope() -> void
+    auto push_scope(var_scope::scope_type type) -> void
     {
-        d_scopes.emplace_back();
+        d_scopes.emplace_back(type);
     }
 
     auto pop_scope() -> std::size_t // Returns the size of the scope just popped
     {
         auto scope_size = std::size_t{0};
-        for (const auto& [name, info] : d_scopes.back()) {
+        for (const auto& [name, info] : d_scopes.back().vars) {
             scope_size += info.type_size;
         }
         d_scopes.pop_back();
         d_next -= scope_size;
         return scope_size;
+    }
+
+    auto current_scope() const -> const var_scope&
+    {
+        return d_scopes.back();
+    }
+
+    auto scopes() const -> const std::vector<var_scope>&
+    {
+        return d_scopes;
     }
 };
 
@@ -109,6 +131,7 @@ struct function_val
 {
     signature   sig;
     std::size_t ptr;
+    token       tok;
 };
 
 struct current_function
@@ -176,7 +199,9 @@ auto append_op(compiler& com, T&& op) -> std::size_t
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
-    current_vars(com).declare(name, type, com.types.size_of(type));
+    if (!current_vars(com).declare(name, type, com.types.size_of(type))) {
+        compiler_error(tok, "name already in use: '{}'", name);
+    }
 }
 
 auto get_var_type(const compiler& com, const token& tok, const std::string& name) -> type_name
@@ -294,6 +319,78 @@ auto function_ends_with_return(const node_stmt& node) -> bool
         return true;
     }
     return std::holds_alternative<node_return_stmt>(node);
+}
+
+auto call_destructor(compiler& com, const std::string& var, const type_name& type) -> void
+{
+    if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
+
+    const auto destructor_name = std::format("{}::drop", type);
+    auto func_key = function_key{};
+    func_key.name = destructor_name;
+    func_key.args = { concrete_ptr_type(type) };
+    if (auto it = com.functions.find(func_key); it != com.functions.end()) {
+        const auto& [sig, ptr, tok] = it->second;
+        compiler_assert(
+            sig.return_type == null_type(), tok, "{} must return null", destructor_name
+        );
+
+        // Push the args to the stack
+        push_literal(com, std::uint64_t{0}); // base ptr
+        push_literal(com, std::uint64_t{0}); // prog ptr
+        push_var_addr(com, tok, var);
+
+        com.program.emplace_back(op_function_call{
+            .name=destructor_name,
+            .ptr=ptr + 1, // Jump into the function
+            .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+        });
+        com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
+    }
+
+    // TODO: Destruct the sub members of classes
+}
+
+auto destruct_on_end_of_scope(compiler& com) -> void
+{
+    auto& scope = current_vars(com).current_scope();
+    for (const auto& [name, info] : scope.vars | std::views::reverse) {
+        call_destructor(com, name, info.type);
+    }
+}
+
+auto destruct_on_break_or_continue(compiler& com) -> void
+{
+    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            call_destructor(com, name, info.type);
+        }
+        if (scope.type == var_scope::scope_type::while_stmt) {
+            return;
+        }
+    }
+}
+
+auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -> void
+{
+    auto return_variable = std::string{"#"};
+    auto skip_return_destructor = true;
+    if (node && std::holds_alternative<node_variable_expr>(*node->return_value)) {
+        return_variable = std::get<node_variable_expr>(*node->return_value).name;
+    }
+    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            // If the return expr is just a variable name, do not destruct that object.
+            // Further, if there is a variable in an outer scope with the same name, make
+            // sure to only destruct the inner name.
+            if (name != return_variable || !skip_return_destructor) {
+                call_destructor(com, name, info.type);
+            }
+            else {
+                skip_return_destructor = false;
+            }
+        }
+    }
 }
 
 auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
@@ -519,7 +616,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
     
     if (auto it = com.functions.find(key); it != com.functions.end()) {
-        const auto& [sig, ptr] = it->second;
+        const auto& [sig, ptr, tok] = it->second;
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
         
@@ -579,7 +676,7 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
         compiler_error(node.token, "could not find function '{}'", qualified_function_name);
     }
     
-    const auto& [sig, ptr] = it->second;
+    const auto& [sig, ptr, tok] = it->second;
     push_literal(com, std::uint64_t{0}); // base ptr
     push_literal(com, std::uint64_t{0}); // prog ptr
     
@@ -656,16 +753,22 @@ auto compile_expr_val(compiler& com, const auto& node) -> type_name
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    current_vars(com).push_scope();
+    current_vars(com).push_scope(var_scope::scope_type::seq_stmt);
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
+
+    destruct_on_end_of_scope(com);
     const auto scope_size = current_vars(com).pop_scope();
-    com.program.emplace_back(op_pop{scope_size});
+    if (scope_size > 0) {
+        com.program.emplace_back(op_pop{scope_size});
+    }
 }
 
 void compile_stmt(compiler& com, const node_while_stmt& node)
 {
+    current_vars(com).push_scope(var_scope::scope_type::while_stmt);
+
     const auto begin_pos = std::ssize(com.program);
     const auto cond_type = compile_expr_val(com, *node.condition);
     compiler_assert(cond_type == bool_type(), node.token, "while-stmt expected bool, got {}", cond_type);
@@ -687,6 +790,11 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
         std::get<op_jump>(com.program[idx]).jump = begin_pos - idx; // Jump to start
     }
     com.control_flow.pop();
+
+    const auto scope_size = current_vars(com).pop_scope();
+    if (scope_size > 0) {
+        com.program.emplace_back(op_pop{scope_size});
+    }
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
@@ -722,12 +830,14 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
 
 void compile_stmt(compiler& com, const node_break_stmt&)
 {
+    destruct_on_break_or_continue(com);
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().break_stmts.insert(pos);
 }
 
 void compile_stmt(compiler& com, const node_continue_stmt&)
 {
+    destruct_on_break_or_continue(com);
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().continue_stmts.insert(pos);
 }
@@ -769,7 +879,7 @@ void compile_function_body(
     const auto key = make_key(com, tok, name, sig);
 
     const auto begin_pos = append_op(com, op_function{ .name=key.name });
-    com.functions[key] = { .sig=sig, .ptr=begin_pos };
+    com.functions[key] = { .sig=sig, .ptr=begin_pos, .tok=tok };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=sig.return_type });
     declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
@@ -784,6 +894,7 @@ void compile_function_body(
         // A function returning null does not need a final return statement, and in this case
         // we manually add a return value of null here.
         if (sig.return_type == null_type()) {
+            destruct_on_return(com);
             com.program.emplace_back(op_load_bytes{{std::byte{0}}});
             com.program.emplace_back(op_return{ .size=1 });
         } else {
@@ -800,7 +911,6 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         compiler_error(node.token, "'{}' cannot be a function name, it is a type def", node.name);
     }
     com.function_names.insert(node.name);
-
     compile_function_body(com, node.token, node.name, node.sig, node.body);
 }
 
@@ -823,6 +933,7 @@ void compile_stmt(compiler& com, const node_return_stmt& node)
     if (!com.current_func) {
         compiler_error(node.token, "return statements can only be within functions");
     }
+    destruct_on_return(com, &node);
     const auto return_type = compile_expr_val(com, *node.return_value);
     if (return_type != com.current_func->return_type) {
         compiler_error(

@@ -91,6 +91,11 @@ struct op_return
     std::size_t size;
 };
 
+struct op_debug
+{
+    std::string message;
+};
+
 struct op : std::variant<
     op_load_bytes,
     op_push_global_addr,
@@ -106,7 +111,8 @@ struct op : std::variant<
     op_function,
     op_return,
     op_function_call,
-    op_builtin_call
+    op_builtin_call,
+    op_debug
 >
 {};
 
