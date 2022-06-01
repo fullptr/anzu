@@ -323,7 +323,28 @@ auto function_ends_with_return(const node_stmt& node) -> bool
 auto call_destructor(compiler& com, const std::string& var, const type_name& type) -> void
 {
     if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
-    com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", var, type)});
+
+    const auto destructor_name = std::format("{}::drop", type);
+    auto func_key = function_key{};
+    func_key.name = destructor_name;
+    func_key.args = { concrete_ptr_type(type) };
+    if (auto it = com.functions.find(func_key); it != com.functions.end()) {
+        const auto& [sig, ptr] = it->second;
+        com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", var, type)});
+
+        // Push the args to the stack
+        push_literal(com, std::uint64_t{0}); // base ptr
+        push_literal(com, std::uint64_t{0}); // prog ptr
+        push_literal(com, std::uint64_t{0}); // TODO: PUSH POINTER TO INSTANCE
+
+        com.program.emplace_back(op_function_call{
+            .name=destructor_name,
+            .ptr=ptr + 1, // Jump into the function
+            .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+        });
+    }
+
+    // TODO: Destruct the sub members of classes
 }
 
 auto destruct_on_end_of_scope(compiler& com) -> void
@@ -346,11 +367,24 @@ auto destruct_on_break_or_continue(compiler& com) -> void
     }
 }
 
-auto destruct_on_return(compiler& com) -> void
+auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -> void
 {
+    auto return_variable = std::string{"#"};
+    auto skip_return_destructor = true;
+    if (node && std::holds_alternative<node_variable_expr>(*node->return_value)) {
+        return_variable = std::get<node_variable_expr>(*node->return_value).name;
+    }
     for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            call_destructor(com, name, info.type);
+            // If the return expr is just a variable name, do not destruct that object.
+            // Further, if there is a variable in an outer scope with the same name, make
+            // sure to only destruct the inner name.
+            if (name != return_variable || !skip_return_destructor) {
+                call_destructor(com, name, info.type);
+            }
+            else {
+                skip_return_destructor = false;
+            }
         }
     }
 }
@@ -895,7 +929,7 @@ void compile_stmt(compiler& com, const node_return_stmt& node)
     if (!com.current_func) {
         compiler_error(node.token, "return statements can only be within functions");
     }
-    destruct_on_return(com);
+    destruct_on_return(com, &node);
     const auto return_type = compile_expr_val(com, *node.return_value);
     if (return_type != com.current_func->return_type) {
         compiler_error(

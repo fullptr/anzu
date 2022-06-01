@@ -3,16 +3,6 @@ struct managed_int
 {
     val: &i64;
 
-    fn move(self: &managed_int, other: &managed_int) -> null
-    {
-
-    }
-
-    fn copy(self: &managed_int, other: &managed_int) -> null
-    {
-
-    }
-
     fn drop(self: &managed_int) -> null
     {
         println("deleting int");
