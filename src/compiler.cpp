@@ -330,12 +330,11 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
     func_key.args = { concrete_ptr_type(type) };
     if (auto it = com.functions.find(func_key); it != com.functions.end()) {
         const auto& [sig, ptr] = it->second;
-        com.program.emplace_back(op_debug{std::format("destructing {}: {}\n", var, type)});
 
         // Push the args to the stack
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
-        push_literal(com, std::uint64_t{0}); // TODO: PUSH POINTER TO INSTANCE
+        push_var_addr(com, token{}, var);
 
         com.program.emplace_back(op_function_call{
             .name=destructor_name,
