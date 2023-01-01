@@ -1,0 +1,15 @@
+struct object
+{
+    inner: i64;
+
+    fn drop(self: &object) -> null
+    {
+        print("dropping object ");
+        println(self->inner);
+    }
+}
+
+
+x := 10; # makes the address of the following list non-zero, to make sure offsets work
+l := [object(1), object(2), object(3)];
+println("end");
