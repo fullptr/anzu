@@ -265,10 +265,9 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
     return args_size;
 }
 
-// Given a type and field name, and assuming that the top of the stack at runtime is a pointer
-// to an object of the given type, this function adds an op code to modify that pointer to
-// instead point to the given field. Returns the type of the field.
-auto compile_ptr_to_field(
+// Given a type and a field name, push the offset of the fields position relative to its
+// owner onto the stack
+auto compile_field_offset(
     compiler& com, const token& tok, const type_name& type, const std::string& field_name
 )
     -> type_name
@@ -277,13 +276,24 @@ auto compile_ptr_to_field(
     for (const auto& field : com.types.fields_of(type)) {
         if (field.name == field_name) {
             push_literal(com, offset);
-            com.program.emplace_back(op_modify_ptr{});
             return field.type;
         }
         offset += com.types.size_of(field.type);
     }
     
     compiler_error(tok, "could not find field '{}' for type '{}'\n", field_name, type);
+}
+
+// Given a type and field name, and assuming that the top of the stack at runtime is a pointer
+// to an object of the given type, this function adds an op code to modify that pointer to
+// instead point to the given field. Returns the type of the field.
+auto compile_ptr_to_field(
+    compiler& com, const token& tok, const type_name& type, const std::string& field_name
+)
+    -> type_name
+{
+    compile_field_offset(com, tok, type, field_name);
+    com.program.emplace_back(op_modify_ptr{});
 }
 
 void verify_sig(const token& tok, const signature& sig, const std::vector<type_name>& args)
