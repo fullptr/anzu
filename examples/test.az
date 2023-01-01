@@ -1,17 +1,20 @@
 
 struct object
 {
-    val: i64;
+    id: i64;
 
     fn drop(self: &object) -> null
     {
-        println("dropping object");
+        print("dropping object ");
+        println(self->id);
     }
 }
 
 {
     println("before creation");
-    x := [object(4); 5u];
+    x := [object(1), object(2)];
+    println(x[0u].id);
+    println(x[1u].id);
     println("after creation");
 }
 

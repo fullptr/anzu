@@ -370,19 +370,20 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
             compiler_assert(
                 sig.return_type == null_type(), tok, "{} must return null", destructor_name
             );
+            const auto inner_size = com.types.size_of(*list.inner_type);
 
             for (std::size_t index = 0; index != list.count; ++index) {
                 // Push the args to the stack
                 push_literal(com, std::uint64_t{0}); // base ptr
                 push_literal(com, std::uint64_t{0}); // prog ptr
                 push_var_addr(com, tok, var);
-                push_literal(com, index);
+                push_literal(com, index * inner_size);
                 com.program.emplace_back(op_modify_ptr{});
 
                 com.program.emplace_back(op_function_call{
                     .name=destructor_name,
                     .ptr=ptr + 1, // Jump into the function
-                    .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+                    .args_size=com.types.size_of(concrete_ptr_type(*list.inner_type)) + 2 * sizeof(std::uint64_t)
                 });
                 com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
             }
