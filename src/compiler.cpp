@@ -463,6 +463,9 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return r->result_type;
         },
         [&](const node_function_call_expr& expr) {
+            if (com.types.contains(make_type(expr.function_name))) { // constructor
+                return make_type(expr.function_name);
+            }
             auto key = function_key{};
             key.name = expr.function_name;
             key.args.reserve(expr.args.size());
@@ -471,7 +474,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             }
             auto it = com.functions.find(key);
             if (it == com.functions.end()) {
-                compiler_error(expr.token, "could not find function '{}({})'", key.name, format_comma_separated(key.args));
+                compiler_error(expr.token, "(1) could not find function '{}({})'", key.name, format_comma_separated(key.args));
             }
             return it->second.sig.return_type;
         },
@@ -487,7 +490,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             const auto it = com.functions.find(key);
             if (it == com.functions.end()) {
                 const auto function_str = std::format("{}({})", key.name, format_comma_separated(key.args));
-                compiler_error(expr.token, "could not find function '{}'", function_str);
+                compiler_error(expr.token, "(2) could not find function '{}'", function_str);
             }
             return it->second.sig.return_type;
         },
@@ -694,7 +697,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
 
     const auto function_str = std::format("{}({})", node.function_name, format_comma_separated(key.args));
-    compiler_error(node.token, "could not find function '{}'", function_str);
+    compiler_error(node.token, "(3) could not find function '{}'", function_str);
 }
 
 auto compile_expr_val(compiler& com, const node_member_function_call_expr& node) -> type_name
@@ -712,7 +715,7 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
     
     const auto it = com.functions.find(key);
     if (it == com.functions.end()) {
-        compiler_error(node.token, "could not find function '{}'", qualified_function_name);
+        compiler_error(node.token, "(4) could not find function '{}'", qualified_function_name);
     }
     
     const auto& [sig, ptr, tok] = it->second;

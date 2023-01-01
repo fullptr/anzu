@@ -9,20 +9,9 @@ struct object
     }
 }
 
-struct outer
-{
-    inner: object;
-
-    fn drop(self: &outer) -> null
-    {
-        println("dropping outer");
-    }
-}
-
 {
     println("before creation");
-    o := object(5);
-    x := [o; 3u];
+    x := [object(4); 5u];
     println("after creation");
 }
 
