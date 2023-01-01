@@ -333,10 +333,10 @@ auto function_ends_with_return(const node_stmt& node) -> bool
 }
 
 // Assumes that the given "compile_obj_ptr" is a function that compiles code to produce
-// a pointer to an object of the given type. Takes a token as input. This function compiles
+// a pointer to an object of the given type. This function compiles
 // code to destruct that object.
 using compile_obj_ptr_cb = std::function<void(const token&)>;
-auto call_destructor_ptr(compiler& com, const type_name& type, compile_obj_ptr_cb compile_obj_ptr) -> void
+auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb compile_obj_ptr) -> void
 {
     const auto destructor_name = std::format("{}::drop", type);
     auto func_key = function_key{};
@@ -362,30 +362,32 @@ auto call_destructor_ptr(compiler& com, const type_name& type, compile_obj_ptr_c
     }
 
     // Loop through the fields and call their destructors.
-    for (const auto& field : com.types.fields_of(type)) {
-        call_destructor_ptr(com, field.type, [&](const token& tok) {
+    const auto fields = com.types.fields_of(type);
+    for (const auto& field : fields | std::views::reverse) {
+        call_destructor(com, field.type, [&](const token& tok) {
             compile_obj_ptr(tok);
             compile_ptr_to_field(com, tok, field.type, field.name);
         });
     }
 }
 
-auto call_destructor(compiler& com, const std::string& var, const type_name& type) -> void
+auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void
 {
     if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
 
     return std::visit(overloaded{
         [&](const type_simple&) {
             // Call destructor of the object type.
-            call_destructor_ptr(com, type, [&](const token& tok) {
+            call_destructor(com, type, [&](const token& tok) {
                 push_var_addr(com, tok, var);
             });
         },
         [&](const type_list& list) {
             const auto inner_type = *list.inner_type;
             const auto inner_size = com.types.size_of(inner_type);
-            for (std::size_t index = 0; index != list.count; ++index) {
-                call_destructor_ptr(com, inner_type, [&](const token& tok) {
+            for (std::size_t index = list.count; index != 0;) {
+                --index;
+                call_destructor(com, inner_type, [&](const token& tok) {
                     push_var_addr(com, tok, var);
                     push_literal(com, index * inner_size);
                 });
@@ -399,7 +401,7 @@ auto destruct_on_end_of_scope(compiler& com) -> void
 {
     auto& scope = current_vars(com).current_scope();
     for (const auto& [name, info] : scope.vars | std::views::reverse) {
-        call_destructor(com, name, info.type);
+        call_destructor_named_var(com, name, info.type);
     }
 }
 
@@ -407,7 +409,7 @@ auto destruct_on_break_or_continue(compiler& com) -> void
 {
     for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            call_destructor(com, name, info.type);
+            call_destructor_named_var(com, name, info.type);
         }
         if (scope.type == var_scope::scope_type::while_stmt) {
             return;
@@ -428,7 +430,7 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
             // Further, if there is a variable in an outer scope with the same name, make
             // sure to only destruct the inner name.
             if (name != return_variable || !skip_return_destructor) {
-                call_destructor(com, name, info.type);
+                call_destructor_named_var(com, name, info.type);
             }
             else {
                 skip_return_destructor = false;
