@@ -390,6 +390,7 @@ auto call_destructor_named_var(compiler& com, const std::string& var, const type
                 call_destructor(com, inner_type, [&](const token& tok) {
                     push_var_addr(com, tok, var);
                     push_literal(com, index * inner_size);
+                    com.program.emplace_back(op_modify_ptr{});
                 });
             }
         },
