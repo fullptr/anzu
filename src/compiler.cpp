@@ -335,8 +335,8 @@ auto function_ends_with_return(const node_stmt& node) -> bool
 // Assumes that the given "compile_obj_ptr" is a function that compiles code to produce
 // a pointer to an object of the given type. Takes a token as input. This function compiles
 // code to destruct that object.
-template <typename Func>
-auto call_destructor_ptr(compiler& com, const type_name& type, Func&& compile_obj_ptr) -> void
+using compile_obj_ptr_cb = std::function<void(const token&)>;
+auto call_destructor_ptr(compiler& com, const type_name& type, compile_obj_ptr_cb compile_obj_ptr) -> void
 {
     const auto destructor_name = std::format("{}::drop", type);
     auto func_key = function_key{};
@@ -360,26 +360,39 @@ auto call_destructor_ptr(compiler& com, const type_name& type, Func&& compile_ob
         });
         com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
     }
+
+    // Loop through the fields and call their destructors.
+    for (const auto& field : com.types.fields_of(type)) {
+        call_destructor_ptr(com, field.type, [&](const token& tok) {
+            compile_obj_ptr(tok);
+            compile_ptr_to_field(com, tok, field.type, field.name);
+        });
+    }
 }
 
 auto call_destructor(compiler& com, const std::string& var, const type_name& type) -> void
 {
     if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
 
-    call_destructor_ptr(com, type, [&](const token& tok) {
-        push_var_addr(com, tok, var);
-    });
-
-    if (std::holds_alternative<type_list>(type)) {
-        const auto& list = std::get<type_list>(type);
-        const auto inner_size = com.types.size_of(*list.inner_type);
-        for (std::size_t index = 0; index != list.count; ++index) {
-            call_destructor_ptr(com, *list.inner_type, [&](const token& tok) {
+    return std::visit(overloaded{
+        [&](const type_simple&) {
+            // Call destructor of the object type.
+            call_destructor_ptr(com, type, [&](const token& tok) {
                 push_var_addr(com, tok, var);
-                push_literal(com, index * inner_size);
             });
-        }
-    }
+        },
+        [&](const type_list& list) {
+            const auto inner_type = *list.inner_type;
+            const auto inner_size = com.types.size_of(inner_type);
+            for (std::size_t index = 0; index != list.count; ++index) {
+                call_destructor_ptr(com, inner_type, [&](const token& tok) {
+                    push_var_addr(com, tok, var);
+                    push_literal(com, index * inner_size);
+                });
+            }
+        },
+        [&](const type_ptr&) {}
+    }, type);
 }
 
 auto destruct_on_end_of_scope(compiler& com) -> void

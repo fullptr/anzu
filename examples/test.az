@@ -1,21 +1,26 @@
 
 struct object
 {
-    id: i64;
+    inner: &i64;
 
     fn drop(self: &object) -> null
     {
-        print("dropping object ");
-        println(self->id);
+        println("dropping object");
+        delete self->inner;
     }
 }
 
+fn make_ptr(val: i64) -> object
 {
-    println("before creation");
-    x := [object(1), object(2)];
-    println(x[0u].id);
-    println(x[1u].id);
-    println("after creation");
+    p1 := new i64;
+    *p1 = val;
+    return object(p1);
+}
+
+{
+    println("before");
+    x := make_ptr(5);
+    println("after");
 }
 
 println("end");
