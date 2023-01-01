@@ -348,7 +348,32 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
         com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
     }
 
-    // TODO: Destruct the sub members of classes
+    // Destructs members of the object (need to make recursive)
+    for (const auto& field : com.types.fields_of(type)) {
+        const auto destructor_name = std::format("{}::drop", field.type);
+        auto func_key = function_key{};
+        func_key.name = destructor_name;
+        func_key.args = { concrete_ptr_type(field.type) };
+        if (auto it = com.functions.find(func_key); it != com.functions.end()) {
+            const auto& [sig, ptr, tok] = it->second;
+            compiler_assert(
+                sig.return_type == null_type(), tok, "{} must return null", destructor_name
+            );
+
+            // Push the args to the stack
+            push_literal(com, std::uint64_t{0}); // base ptr
+            push_literal(com, std::uint64_t{0}); // prog ptr
+            push_var_addr(com, tok, var);
+            compile_ptr_to_field(com, tok, type, field.name);
+
+            com.program.emplace_back(op_function_call{
+                .name=destructor_name,
+                .ptr=ptr + 1, // Jump into the function
+                .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+            });
+            com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
+        }
+    }
 }
 
 auto destruct_on_end_of_scope(compiler& com) -> void
