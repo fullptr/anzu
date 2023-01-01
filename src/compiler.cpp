@@ -332,10 +332,12 @@ auto function_ends_with_return(const node_stmt& node) -> bool
     return std::holds_alternative<node_return_stmt>(node);
 }
 
-auto call_destructor(compiler& com, const std::string& var, const type_name& type) -> void
+// Assumes that the given "compile_obj_ptr" is a function that compiles code to produce
+// a pointer to an object of the given type. Takes a token as input. This function compiles
+// code to destruct that object.
+template <typename Func>
+auto call_destructor_ptr(compiler& com, const type_name& type, Func&& compile_obj_ptr) -> void
 {
-    if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
-
     const auto destructor_name = std::format("{}::drop", type);
     auto func_key = function_key{};
     func_key.name = destructor_name;
@@ -349,7 +351,7 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
         // Push the args to the stack
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
-        push_var_addr(com, tok, var);
+        compile_obj_ptr(tok);
 
         com.program.emplace_back(op_function_call{
             .name=destructor_name,
@@ -358,35 +360,24 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
         });
         com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
     }
+}
+
+auto call_destructor(compiler& com, const std::string& var, const type_name& type) -> void
+{
+    if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
+
+    call_destructor_ptr(com, type, [&](const token& tok) {
+        push_var_addr(com, tok, var);
+    });
 
     if (std::holds_alternative<type_list>(type)) {
         const auto& list = std::get<type_list>(type);
-        const auto destructor_name = std::format("{}::drop", *list.inner_type);
-        auto func_key = function_key{};
-        func_key.name = destructor_name;
-        func_key.args = { concrete_ptr_type(*list.inner_type) };
-        if (auto it = com.functions.find(func_key); it != com.functions.end()) {
-            const auto& [sig, ptr, tok] = it->second;
-            compiler_assert(
-                sig.return_type == null_type(), tok, "{} must return null", destructor_name
-            );
-            const auto inner_size = com.types.size_of(*list.inner_type);
-
-            for (std::size_t index = 0; index != list.count; ++index) {
-                // Push the args to the stack
-                push_literal(com, std::uint64_t{0}); // base ptr
-                push_literal(com, std::uint64_t{0}); // prog ptr
+        const auto inner_size = com.types.size_of(*list.inner_type);
+        for (std::size_t index = 0; index != list.count; ++index) {
+            call_destructor_ptr(com, *list.inner_type, [&](const token& tok) {
                 push_var_addr(com, tok, var);
                 push_literal(com, index * inner_size);
-                com.program.emplace_back(op_modify_ptr{});
-
-                com.program.emplace_back(op_function_call{
-                    .name=destructor_name,
-                    .ptr=ptr + 1, // Jump into the function
-                    .args_size=com.types.size_of(concrete_ptr_type(*list.inner_type)) + 2 * sizeof(std::uint64_t)
-                });
-                com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
-            }
+            });
         }
     }
 }
