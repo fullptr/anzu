@@ -21,7 +21,8 @@ struct outer
 
 {
     println("before creation");
-    x := outer(object(5));
+    o := object(5);
+    x := [o; 3u];
     println("after creation");
 }
 

@@ -292,8 +292,9 @@ auto compile_ptr_to_field(
 )
     -> type_name
 {
-    compile_field_offset(com, tok, type, field_name);
+    const auto field_type = compile_field_offset(com, tok, type, field_name);
     com.program.emplace_back(op_modify_ptr{});
+    return field_type;
 }
 
 void verify_sig(const token& tok, const signature& sig, const std::vector<type_name>& args)
@@ -358,30 +359,33 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
         com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
     }
 
-    // Destructs members of the object (need to make recursive)
-    for (const auto& field : com.types.fields_of(type)) {
-        const auto destructor_name = std::format("{}::drop", field.type);
+    if (std::holds_alternative<type_list>(type)) {
+        const auto& list = std::get<type_list>(type);
+        const auto destructor_name = std::format("{}::drop", *list.inner_type);
         auto func_key = function_key{};
         func_key.name = destructor_name;
-        func_key.args = { concrete_ptr_type(field.type) };
+        func_key.args = { concrete_ptr_type(*list.inner_type) };
         if (auto it = com.functions.find(func_key); it != com.functions.end()) {
             const auto& [sig, ptr, tok] = it->second;
             compiler_assert(
                 sig.return_type == null_type(), tok, "{} must return null", destructor_name
             );
 
-            // Push the args to the stack
-            push_literal(com, std::uint64_t{0}); // base ptr
-            push_literal(com, std::uint64_t{0}); // prog ptr
-            push_var_addr(com, tok, var);
-            compile_ptr_to_field(com, tok, type, field.name);
+            for (std::size_t index = 0; index != list.count; ++index) {
+                // Push the args to the stack
+                push_literal(com, std::uint64_t{0}); // base ptr
+                push_literal(com, std::uint64_t{0}); // prog ptr
+                push_var_addr(com, tok, var);
+                push_literal(com, index);
+                com.program.emplace_back(op_modify_ptr{});
 
-            com.program.emplace_back(op_function_call{
-                .name=destructor_name,
-                .ptr=ptr + 1, // Jump into the function
-                .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
-            });
-            com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
+                com.program.emplace_back(op_function_call{
+                    .name=destructor_name,
+                    .ptr=ptr + 1, // Jump into the function
+                    .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+                });
+                com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
+            }
         }
     }
 }
@@ -909,7 +913,8 @@ void compile_function_body(
     const token& tok,
     const std::string& name,
     const signature& sig,
-    const node_stmt_ptr& body)
+    const node_stmt_ptr& body,
+    const bool is_destructor)
 {
     const auto key = make_key(com, tok, name, sig);
 
@@ -923,6 +928,9 @@ void compile_function_body(
         declare_var(com, tok, arg.name, arg.type);
     }
     compile_stmt(com, *body);
+    if (is_destructor) {
+        // call destructors for each member variable
+    }
     com.current_func.reset();
 
     if (!function_ends_with_return(*body)) {
@@ -946,7 +954,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         compiler_error(node.token, "'{}' cannot be a function name, it is a type def", node.name);
     }
     com.function_names.insert(node.name);
-    compile_function_body(com, node.token, node.name, node.sig, node.body);
+    compile_function_body(com, node.token, node.name, node.sig, node.body, false);
 }
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
@@ -960,7 +968,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     }
 
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
-    compile_function_body(com, node.token, name, node.sig, node.body);
+    compile_function_body(com, node.token, name, node.sig, node.body, name.ends_with("::drop"));
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)
