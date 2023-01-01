@@ -19,7 +19,7 @@ fn make_ptr(val: i64) -> object
 
 {
     println("before");
-    x := make_ptr(5);
+    x := object(new i64);
     println("after");
 }
 
