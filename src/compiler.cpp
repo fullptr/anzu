@@ -265,10 +265,9 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
     return args_size;
 }
 
-// Given a type and field name, and assuming that the top of the stack at runtime is a pointer
-// to an object of the given type, this function adds an op code to modify that pointer to
-// instead point to the given field. Returns the type of the field.
-auto compile_ptr_to_field(
+// Given a type and a field name, push the offset of the fields position relative to its
+// owner onto the stack
+auto compile_field_offset(
     compiler& com, const token& tok, const type_name& type, const std::string& field_name
 )
     -> type_name
@@ -277,13 +276,25 @@ auto compile_ptr_to_field(
     for (const auto& field : com.types.fields_of(type)) {
         if (field.name == field_name) {
             push_literal(com, offset);
-            com.program.emplace_back(op_modify_ptr{});
             return field.type;
         }
         offset += com.types.size_of(field.type);
     }
     
     compiler_error(tok, "could not find field '{}' for type '{}'\n", field_name, type);
+}
+
+// Given a type and field name, and assuming that the top of the stack at runtime is a pointer
+// to an object of the given type, this function adds an op code to modify that pointer to
+// instead point to the given field. Returns the type of the field.
+auto compile_ptr_to_field(
+    compiler& com, const token& tok, const type_name& type, const std::string& field_name
+)
+    -> type_name
+{
+    const auto field_type = compile_field_offset(com, tok, type, field_name);
+    com.program.emplace_back(op_modify_ptr{});
+    return field_type;
 }
 
 void verify_sig(const token& tok, const signature& sig, const std::vector<type_name>& args)
@@ -321,10 +332,12 @@ auto function_ends_with_return(const node_stmt& node) -> bool
     return std::holds_alternative<node_return_stmt>(node);
 }
 
-auto call_destructor(compiler& com, const std::string& var, const type_name& type) -> void
+// Assumes that the given "compile_obj_ptr" is a function that compiles code to produce
+// a pointer to an object of the given type. This function compiles
+// code to destruct that object.
+using compile_obj_ptr_cb = std::function<void(const token&)>;
+auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb compile_obj_ptr) -> void
 {
-    if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
-
     const auto destructor_name = std::format("{}::drop", type);
     auto func_key = function_key{};
     func_key.name = destructor_name;
@@ -338,7 +351,7 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
         // Push the args to the stack
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
-        push_var_addr(com, tok, var);
+        compile_obj_ptr(tok);
 
         com.program.emplace_back(op_function_call{
             .name=destructor_name,
@@ -348,14 +361,47 @@ auto call_destructor(compiler& com, const std::string& var, const type_name& typ
         com.program.emplace_back(op_pop{ .size = com.types.size_of(null_type()) });
     }
 
-    // TODO: Destruct the sub members of classes
+    // Loop through the fields and call their destructors.
+    const auto fields = com.types.fields_of(type);
+    for (const auto& field : fields | std::views::reverse) {
+        call_destructor(com, field.type, [&](const token& tok) {
+            compile_obj_ptr(tok);
+            compile_ptr_to_field(com, tok, field.type, field.name);
+        });
+    }
+}
+
+auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void
+{
+    if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
+
+    return std::visit(overloaded{
+        [&](const type_simple&) {
+            // Call destructor of the object type.
+            call_destructor(com, type, [&](const token& tok) {
+                push_var_addr(com, tok, var);
+            });
+        },
+        [&](const type_list& list) {
+            const auto inner_type = *list.inner_type;
+            const auto inner_size = com.types.size_of(inner_type);
+            for (std::size_t index = list.count; index != 0;) {
+                --index;
+                call_destructor(com, inner_type, [&](const token& tok) {
+                    push_var_addr(com, tok, var);
+                    push_literal(com, index * inner_size);
+                });
+            }
+        },
+        [&](const type_ptr&) {}
+    }, type);
 }
 
 auto destruct_on_end_of_scope(compiler& com) -> void
 {
     auto& scope = current_vars(com).current_scope();
     for (const auto& [name, info] : scope.vars | std::views::reverse) {
-        call_destructor(com, name, info.type);
+        call_destructor_named_var(com, name, info.type);
     }
 }
 
@@ -363,7 +409,7 @@ auto destruct_on_break_or_continue(compiler& com) -> void
 {
     for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            call_destructor(com, name, info.type);
+            call_destructor_named_var(com, name, info.type);
         }
         if (scope.type == var_scope::scope_type::while_stmt) {
             return;
@@ -384,7 +430,7 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
             // Further, if there is a variable in an outer scope with the same name, make
             // sure to only destruct the inner name.
             if (name != return_variable || !skip_return_destructor) {
-                call_destructor(com, name, info.type);
+                call_destructor_named_var(com, name, info.type);
             }
             else {
                 skip_return_destructor = false;
@@ -424,6 +470,9 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return r->result_type;
         },
         [&](const node_function_call_expr& expr) {
+            if (com.types.contains(make_type(expr.function_name))) { // constructor
+                return make_type(expr.function_name);
+            }
             auto key = function_key{};
             key.name = expr.function_name;
             key.args.reserve(expr.args.size());
@@ -432,7 +481,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             }
             auto it = com.functions.find(key);
             if (it == com.functions.end()) {
-                compiler_error(expr.token, "could not find function '{}({})'", key.name, format_comma_separated(key.args));
+                compiler_error(expr.token, "(1) could not find function '{}({})'", key.name, format_comma_separated(key.args));
             }
             return it->second.sig.return_type;
         },
@@ -448,7 +497,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             const auto it = com.functions.find(key);
             if (it == com.functions.end()) {
                 const auto function_str = std::format("{}({})", key.name, format_comma_separated(key.args));
-                compiler_error(expr.token, "could not find function '{}'", function_str);
+                compiler_error(expr.token, "(2) could not find function '{}'", function_str);
             }
             return it->second.sig.return_type;
         },
@@ -655,7 +704,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
     }
 
     const auto function_str = std::format("{}({})", node.function_name, format_comma_separated(key.args));
-    compiler_error(node.token, "could not find function '{}'", function_str);
+    compiler_error(node.token, "(3) could not find function '{}'", function_str);
 }
 
 auto compile_expr_val(compiler& com, const node_member_function_call_expr& node) -> type_name
@@ -673,7 +722,7 @@ auto compile_expr_val(compiler& com, const node_member_function_call_expr& node)
     
     const auto it = com.functions.find(key);
     if (it == com.functions.end()) {
-        compiler_error(node.token, "could not find function '{}'", qualified_function_name);
+        compiler_error(node.token, "(4) could not find function '{}'", qualified_function_name);
     }
     
     const auto& [sig, ptr, tok] = it->second;
@@ -874,7 +923,8 @@ void compile_function_body(
     const token& tok,
     const std::string& name,
     const signature& sig,
-    const node_stmt_ptr& body)
+    const node_stmt_ptr& body,
+    const bool is_destructor)
 {
     const auto key = make_key(com, tok, name, sig);
 
@@ -888,6 +938,9 @@ void compile_function_body(
         declare_var(com, tok, arg.name, arg.type);
     }
     compile_stmt(com, *body);
+    if (is_destructor) {
+        // call destructors for each member variable
+    }
     com.current_func.reset();
 
     if (!function_ends_with_return(*body)) {
@@ -911,7 +964,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         compiler_error(node.token, "'{}' cannot be a function name, it is a type def", node.name);
     }
     com.function_names.insert(node.name);
-    compile_function_body(com, node.token, node.name, node.sig, node.body);
+    compile_function_body(com, node.token, node.name, node.sig, node.body, false);
 }
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
@@ -925,7 +978,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     }
 
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
-    compile_function_body(com, node.token, name, node.sig, node.body);
+    compile_function_body(com, node.token, name, node.sig, node.body, name.ends_with("::drop"));
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)

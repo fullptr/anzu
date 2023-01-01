@@ -1,29 +1,26 @@
 
-struct managed_int
+struct object
 {
-    val: &i64;
+    inner: &i64;
 
-    fn drop(self: &managed_int) -> null
+    fn drop(self: &object) -> null
     {
-        print("deleting int: ");
-        println(*(self->val));
-        delete self->val;
+        println("dropping object");
+        delete self->inner;
     }
 }
 
-fn make_int(val: i64) -> managed_int
+fn make_ptr(val: i64) -> object
 {
-    ret := managed_int(new i64);
-    *(ret.val) = val;
-    return ret;
+    p1 := new i64;
+    *p1 = val;
+    return object(p1);
 }
 
 {
-    b := "hello";
-    a := 1;
-    f := make_int(60);
-    c := 5;
-    println("here i am");
+    println("before");
+    x := object(new i64);
+    println("after");
 }
 
 println("end");
