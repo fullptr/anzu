@@ -3,6 +3,12 @@ struct vec2
 {
     x: i64;
     y: i64;
+
+    fn copy(self: &vec2, other: &vec2)
+    {
+        self->x = other->x;
+        self->y = other->y;
+    }
 }
 
 fn constructor(x: i64, y: i64) -> vec2
@@ -10,5 +16,8 @@ fn constructor(x: i64, y: i64) -> vec2
     return vec2(x, y);
 }
 
-a := constructor(0, 1);
+b := vec2(1, 2);
+a := b;
+
 println(a.x);
+println(a.y);
