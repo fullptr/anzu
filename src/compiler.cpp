@@ -979,19 +979,19 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
 
     const auto expected = concrete_ptr_type(make_type(node.struct_name));
     const auto actual = node.sig.params.front().type;
-    if (actual != expected) {
-        compiler_error(node.token, "first arg to member function should be '{}', got '{}'", expected, actual);
+    compiler_assert_eq(actual, expected, node.token, "'{}' bad 1st arg", node.function_name);
+
+    if (node.function_name == "drop") {
+        compiler_assert_eq(node.sig.return_type, null_type(), node.token, "'drop' bad return type");
+        compiler_assert_eq(node.sig.params.size(), 1, node.token, "'drop' bad number of args");
+    }
+    else if (node.function_name == "copy") {
+        compiler_assert_eq(node.sig.return_type, null_type(), node.token, "'copy' bad return type");
+        compiler_assert_eq(node.sig.params.size(), 2, node.token, "'copy' bad number of args");
+        compiler_assert_eq(node.sig.params.back().type, expected, node.token, "'copy' bad 2nd arg");
     }
 
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
-    if (node.function_name == "drop") {
-        compiler_assert_eq(
-            node.sig.return_type, null_type(), node.token, "drop function bad return type"
-        );
-        compiler_assert_eq(
-            node.sig.params.size(), std::size_t{1}, node.token, "drop function bad number of args"
-        );
-    }
     compile_function_body(com, node.token, name, node.sig, node.body);
 }
 
