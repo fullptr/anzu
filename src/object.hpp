@@ -90,6 +90,8 @@ auto is_ptr_type(const type_name& t) -> bool;
 // type with a single subtype.
 auto inner_type(const type_name& t) -> type_name;
 
+auto is_type_fundamental(const type_name& type) -> bool;
+
 struct signature
 {
     struct parameter

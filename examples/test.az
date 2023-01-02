@@ -1,31 +1,10 @@
 
-struct object
+struct vec2
 {
-    inner: &i64;
-
-    fn drop(self: &object)
-    {
-        println("dropping object");
-        delete self->inner;
-    } 
-
-    fn copy(self: &object, other: &object)
-    {
-        
-    }
+    x: i64;
+    y: i64;
 }
 
-fn make_ptr(val: i64) -> object
-{
-    p1 := new i64;
-    *p1 = val;
-    return object(p1);
-}
+l := [vec2(1, 1), vec2(2, 2)];
 
-{
-    println("before");
-    x := object(new i64);
-    println("after");
-}
-
-println("end");
+a := l[0u];

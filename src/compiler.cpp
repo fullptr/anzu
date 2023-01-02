@@ -904,16 +904,24 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
-    declare_var(com, node.token, node.name, type);
-    save_variable(com, node.token, node.name);
+    if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
+        compiler_error(node.token, "copy construction not defined for {}", type);
+    } else {
+        declare_var(com, node.token, node.name, type);
+        save_variable(com, node.token, node.name);
+    }
 }
 
 void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = compile_expr_val(com, *node.expr);
-    const auto lhs = compile_expr_ptr(com, *node.position);
-    compiler_assert_eq(lhs, rhs, node.token, "invalid assignment");
-    com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
+    if (is_lvalue_expr(*node.expr) && !is_type_fundamental(rhs)) {
+        compiler_error(node.token, "copy assignment not defined for {}", rhs);
+    } else {
+        const auto lhs = compile_expr_ptr(com, *node.position);
+        compiler_assert_eq(lhs, rhs, node.token, "invalid assignment");
+        com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
+    }
 }
 
 auto make_key(compiler& com, const token& tok, const std::string& name, const signature& sig)
