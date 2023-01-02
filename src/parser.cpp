@@ -359,8 +359,11 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         param.type = parse_type(tokens);
         stmt.sig.params.push_back(param);
     });    
-    tokens.consume_only(tk_rarrow);
-    stmt.sig.return_type = parse_type(tokens);
+    if (tokens.consume_maybe(tk_rarrow)) {
+        stmt.sig.return_type = parse_type(tokens);
+    } else {
+        stmt.sig.return_type = null_type();
+    }
     stmt.body = parse_statement(tokens);
     return node;
 }
@@ -383,9 +386,12 @@ auto parse_member_function_def_stmt(
         tokens.consume_only(tk_colon);
         param.type = parse_type(tokens);
         stmt.sig.params.push_back(param);
-    });    
-    tokens.consume_only(tk_rarrow);
-    stmt.sig.return_type = parse_type(tokens);
+    });
+    if (tokens.consume_maybe(tk_rarrow)) {
+        stmt.sig.return_type = parse_type(tokens);
+    } else {
+        stmt.sig.return_type = null_type();
+    }
     stmt.body = parse_statement(tokens);
     return node;
 }

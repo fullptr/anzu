@@ -148,25 +148,6 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == null_type();
 }
 
-// Loads each key/value pair from src into dst. If the key already exists in dst and has a
-// different value, stop and return false.
-auto update(
-    std::unordered_map<int, type_name>& dst, const std::unordered_map<int, type_name>& src
-)
-    -> bool
-{
-    for (const auto& [key, value] : src) {
-        if (auto it = dst.find(key); it != dst.end()) {
-            if (it->second != value) {
-                return false;
-            }
-        } else {
-            dst.emplace(key, value);
-        }
-    }
-    return true;
-}
-
 auto to_string(const signature& sig) -> std::string
 {
     const auto proj = [](const auto& arg) { return arg.type; };
