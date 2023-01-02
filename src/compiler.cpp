@@ -924,8 +924,7 @@ void compile_function_body(
     const token& tok,
     const std::string& name,
     const signature& sig,
-    const node_stmt_ptr& body,
-    const bool is_destructor)
+    const node_stmt_ptr& body)
 {
     const auto key = make_key(com, tok, name, sig);
 
@@ -939,9 +938,6 @@ void compile_function_body(
         declare_var(com, tok, arg.name, arg.type);
     }
     compile_stmt(com, *body);
-    if (is_destructor) {
-        // call destructors for each member variable
-    }
     com.current_func.reset();
 
     if (!function_ends_with_return(*body)) {
@@ -965,7 +961,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         compiler_error(node.token, "'{}' cannot be a function name, it is a type def", node.name);
     }
     com.function_names.insert(node.name);
-    compile_function_body(com, node.token, node.name, node.sig, node.body, false);
+    compile_function_body(com, node.token, node.name, node.sig, node.body);
 }
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
@@ -979,7 +975,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     }
 
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
-    compile_function_body(com, node.token, name, node.sig, node.body, name.ends_with("::drop"));
+    compile_function_body(com, node.token, name, node.sig, node.body);
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)
