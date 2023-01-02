@@ -9,7 +9,7 @@ struct vec2
 
 a := vec2(2, 3);
 b := vec2(1, 2);
-a = b;
+c := b;
 
-println(a.x);
-println(a.y);
+println(c.x);
+println(c.y);

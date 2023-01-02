@@ -388,6 +388,8 @@ auto parse_member_function_def_stmt(
         } else {
             parser_assert(false, stmt.token, "can only =default or =delete");
         }
+        stmt.sig.return_type = null_type();
+        stmt.body = std::make_unique<node_stmt>(node_sequence_stmt{});
         tokens.consume_only(tk_semicolon);
         return node;
     }

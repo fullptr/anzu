@@ -905,6 +905,24 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = type_of_expr(com, *node.expr);
     if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
+        auto copy_fn = function_key{};
+        copy_fn.name = std::format("{}::copy", type);;
+        copy_fn.args = { concrete_ptr_type(type), concrete_ptr_type(type) };
+        const auto it = com.functions.find(copy_fn);
+        if (it == com.functions.end()) {
+            compiler_error(node.token, "{} cannot be copy-constructed", type);
+        }
+        const auto& [sig, ptr, tok] = it->second;
+
+        if (sig.special == signature::special_type::defaulted) {
+            const auto type = compile_expr_val(com, *node.expr);
+            declare_var(com, node.token, node.name, type);
+            save_variable(com, node.token, node.name);
+            return;
+        } else if (sig.special == signature::special_type::deleted) {
+            compiler_error(node.token, "{} cannot be copy-constructed, it is deleted", type);
+        }
+
         // 1) Create space for new variable
         const auto bytes = std::vector(com.types.size_of(type), std::byte{0});
         com.program.emplace_back(op_load_bytes{ .bytes = bytes });
@@ -913,25 +931,17 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         declare_var(com, node.token, node.name, type);
 
         // 3) Call copy assignment
-        auto copy_fn = function_key{};
-        copy_fn.name = std::format("{}::copy", type);;
-        copy_fn.args = { concrete_ptr_type(type), concrete_ptr_type(type) };
-        if (auto it = com.functions.find(copy_fn); it != com.functions.end()) {
-            const auto& [sig, ptr, tok] = it->second;
-            push_literal(com, std::uint64_t{0}); // base ptr
-            push_literal(com, std::uint64_t{0}); // prog ptr
-            push_var_addr(com, node.token, node.name);
-            compile_expr_ptr(com, *node.expr);
+        push_literal(com, std::uint64_t{0}); // base ptr
+        push_literal(com, std::uint64_t{0}); // prog ptr
+        push_var_addr(com, node.token, node.name);
+        compile_expr_ptr(com, *node.expr);
 
-            com.program.emplace_back(op_function_call{
-                .name=copy_fn.name,
-                .ptr=ptr + 1, // Jump into the function
-                .args_size=2 * com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
-            });
-            com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
-        } else {
-            compiler_error(node.token, "{} cannot be copy-constructed", type);
-        }
+        com.program.emplace_back(op_function_call{
+            .name=copy_fn.name,
+            .ptr=ptr + 1, // Jump into the function
+            .args_size=2 * com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+        });
+        com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
     } else {
         const auto type = compile_expr_val(com, *node.expr);
         declare_var(com, node.token, node.name, type);
@@ -1029,12 +1039,19 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
+    const auto expected = concrete_ptr_type(make_type(node.struct_name));
+    const auto name = std::format("{}::{}", node.struct_name, node.function_name);
+    
     if (node.sig.special != signature::special_type::none) {
+        const auto key = function_key{
+            .name = name,
+            .args = { expected, expected }
+        };
+        com.functions[key] = { .sig=node.sig, .ptr=0, .tok=node.token };
         return;
     }
     compiler_assert(node.sig.params.size() >= 1, node.token, "member functions must have at least one arg");
 
-    const auto expected = concrete_ptr_type(make_type(node.struct_name));
     const auto actual = node.sig.params.front().type;
     compiler_assert_eq(actual, expected, node.token, "'{}' bad 1st arg", node.function_name);
 
@@ -1049,7 +1066,6 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
         compiler_assert_eq(node.sig.params.back().type, expected, node.token, "'copy' bad 2nd arg");
     }
 
-    const auto name = std::format("{}::{}", node.struct_name, node.function_name);
     compile_function_body(com, node.token, name, node.sig, node.body);
 }
 
