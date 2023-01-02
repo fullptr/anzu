@@ -1029,6 +1029,9 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
+    if (node.sig.special != signature::special_type::none) {
+        return;
+    }
     compiler_assert(node.sig.params.size() >= 1, node.token, "member functions must have at least one arg");
 
     const auto expected = concrete_ptr_type(make_type(node.struct_name));

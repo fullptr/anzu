@@ -4,16 +4,7 @@ struct vec2
     x: i64;
     y: i64;
 
-    fn copy(self: &vec2, other: &vec2)
-    {
-        self->x = other->x;
-        self->y = other->y;
-    }
-}
-
-fn constructor(x: i64, y: i64) -> vec2
-{
-    return vec2(x, y);
+    fn copy = null;
 }
 
 a := vec2(2, 3);

@@ -379,6 +379,18 @@ auto parse_member_function_def_stmt(
     stmt.token = tokens.consume_only(tk_function);
     stmt.struct_name = struct_name;
     stmt.function_name = parse_name(tokens);
+    if (tokens.consume_maybe(tk_assign)) {
+        parser_assert(stmt.function_name == "copy", stmt.token, "only copy can be deleted or defaulted");
+        if (tokens.consume_maybe(tk_null)) { // defaulted
+            stmt.sig.special = signature::special_type::defaulted;
+        } else if (tokens.consume_maybe(tk_delete)) { // deleted
+            stmt.sig.special = signature::special_type::deleted;
+        } else {
+            parser_assert(false, stmt.token, "can only =default or =delete");
+        }
+        tokens.consume_only(tk_semicolon);
+        return node;
+    }
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
         auto param = signature::parameter{};

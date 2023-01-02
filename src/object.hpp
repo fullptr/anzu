@@ -101,8 +101,16 @@ struct signature
         auto operator==(const parameter&) const -> bool = default;
     };
 
+    enum class special_type
+    {
+        none,
+        deleted,
+        defaulted,
+    };
+
     std::vector<parameter> params;
     type_name              return_type;
+    special_type           special = special_type::none;
     auto operator==(const signature&) const -> bool = default;
 };
 
