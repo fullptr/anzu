@@ -16,8 +16,9 @@ fn constructor(x: i64, y: i64) -> vec2
     return vec2(x, y);
 }
 
+a := vec2(2, 3);
 b := vec2(1, 2);
-a := b;
+a = b;
 
 println(a.x);
 println(a.y);

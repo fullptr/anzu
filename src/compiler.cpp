@@ -941,10 +941,29 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
 
 void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
-    const auto rhs = compile_expr_val(com, *node.expr);
-    if (is_lvalue_expr(*node.expr) && !is_type_fundamental(rhs)) {
-        compiler_error(node.token, "{} cannot be copy-assigned", rhs);
+    const auto type = type_of_expr(com, *node.expr);
+    if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
+        auto copy_fn = function_key{};
+        copy_fn.name = std::format("{}::copy", type);;
+        copy_fn.args = { concrete_ptr_type(type), concrete_ptr_type(type) };
+        if (auto it = com.functions.find(copy_fn); it != com.functions.end()) {
+            const auto& [sig, ptr, tok] = it->second;
+            push_literal(com, std::uint64_t{0}); // base ptr
+            push_literal(com, std::uint64_t{0}); // prog ptr
+            compile_expr_ptr(com, *node.position);
+            compile_expr_ptr(com, *node.expr);
+
+            com.program.emplace_back(op_function_call{
+                .name=copy_fn.name,
+                .ptr=ptr + 1, // Jump into the function
+                .args_size=2 * com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+            });
+            com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
+        } else {
+            compiler_error(node.token, "{} cannot be copy-constructed", type);
+        }
     } else {
+        const auto rhs = compile_expr_val(com, *node.expr);
         const auto lhs = compile_expr_ptr(com, *node.position);
         compiler_assert_eq(lhs, rhs, node.token, "invalid assignment");
         com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
