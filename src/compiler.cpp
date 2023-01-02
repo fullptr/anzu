@@ -905,7 +905,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = compile_expr_val(com, *node.expr);
     if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
-        compiler_error(node.token, "copy construction not defined for {}", type);
+        compiler_error(node.token, "{} cannot be copy-constructed", type);
     } else {
         declare_var(com, node.token, node.name, type);
         save_variable(com, node.token, node.name);
@@ -916,7 +916,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = compile_expr_val(com, *node.expr);
     if (is_lvalue_expr(*node.expr) && !is_type_fundamental(rhs)) {
-        compiler_error(node.token, "copy assignment not defined for {}", rhs);
+        compiler_error(node.token, "{} cannot be copy-assigned", rhs);
     } else {
         const auto lhs = compile_expr_ptr(com, *node.position);
         compiler_assert_eq(lhs, rhs, node.token, "invalid assignment");

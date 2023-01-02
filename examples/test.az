@@ -5,6 +5,10 @@ struct vec2
     y: i64;
 }
 
-l := [vec2(1, 1), vec2(2, 2)];
+fn constructor(x: i64, y: i64) -> vec2
+{
+    return vec2(x, y);
+}
 
-a := l[0u];
+a := constructor(0, 1);
+println(a.x);
