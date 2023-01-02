@@ -9,7 +9,7 @@ struct object
         delete self->inner;
     } 
 
-    fn copy(self: &object, other: &i64)
+    fn copy(self: &object, other: &object)
     {
         
     }

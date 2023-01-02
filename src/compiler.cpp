@@ -981,6 +981,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     const auto actual = node.sig.params.front().type;
     compiler_assert_eq(actual, expected, node.token, "'{}' bad 1st arg", node.function_name);
 
+    // Special function extra checks
     if (node.function_name == "drop") {
         compiler_assert_eq(node.sig.return_type, null_type(), node.token, "'drop' bad return type");
         compiler_assert_eq(node.sig.params.size(), 1, node.token, "'drop' bad number of args");
