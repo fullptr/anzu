@@ -682,7 +682,8 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         // Push the args to the stack
         std::vector<type_name> param_types;
         for (const auto& arg : node.args) {
-            param_types.emplace_back(compile_expr_val(com, *arg));
+            auto type = compile_expr_val(com, *arg);
+            param_types.emplace_back(type);
         }
         verify_sig(node.token, sig, param_types);
         com.program.emplace_back(op_function_call{
@@ -907,7 +908,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
     if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
         auto copy_fn = function_key{};
         copy_fn.name = std::format("{}::copy", type);;
-        copy_fn.args = { concrete_ptr_type(type), concrete_ptr_type(type) };
+        copy_fn.args = { concrete_ptr_type(type) };
         const auto it = com.functions.find(copy_fn);
         if (it == com.functions.end()) {
             compiler_error(node.token, "{} cannot be copy-constructed", type);
@@ -920,28 +921,23 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
             save_variable(com, node.token, node.name);
             return;
         } else if (sig.special == signature::special_type::deleted) {
-            compiler_error(node.token, "{} cannot be copy-constructed, it is deleted", type);
+            compiler_error(node.token, "{} is a non-copyable type", type);
         }
 
-        // 1) Create space for new variable
-        const auto bytes = std::vector(com.types.size_of(type), std::byte{0});
-        com.program.emplace_back(op_load_bytes{ .bytes = bytes });
-
-        // 2) Assign that space to the new variable
-        declare_var(com, node.token, node.name, type);
-
-        // 3) Call copy assignment
+        // Call ::copy
         push_literal(com, std::uint64_t{0}); // base ptr
         push_literal(com, std::uint64_t{0}); // prog ptr
-        push_var_addr(com, node.token, node.name);
         compile_expr_ptr(com, *node.expr);
 
         com.program.emplace_back(op_function_call{
             .name=copy_fn.name,
             .ptr=ptr + 1, // Jump into the function
-            .args_size=2 * com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+            .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
         });
-        com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
+
+        // Store the result as the new variable
+        declare_var(com, node.token, node.name, type);
+
     } else {
         const auto type = compile_expr_val(com, *node.expr);
         declare_var(com, node.token, node.name, type);
@@ -954,7 +950,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     const auto type = type_of_expr(com, *node.expr);
     if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
         auto copy_fn = function_key{};
-        copy_fn.name = std::format("{}::copy", type);;
+        copy_fn.name = std::format("{}::assign", type);;
         copy_fn.args = { concrete_ptr_type(type), concrete_ptr_type(type) };
         const auto it = com.functions.find(copy_fn);
         if (it == com.functions.end()) {
@@ -969,7 +965,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
             com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
             return;
         } else if (sig.special == signature::special_type::deleted) {
-            compiler_error(node.token, "{} cannot be copy-assigned, it is deleted", type);
+            compiler_error(node.token, "{} is a non-copyable type", type);
         }
 
         push_literal(com, std::uint64_t{0}); // base ptr
@@ -1019,7 +1015,7 @@ void compile_function_body(
     declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
     declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
     for (const auto& arg : sig.params) {
-        declare_var(com, tok, arg.name, arg.type);
+        declare_var(com, tok, arg.name, arg.type); // TODO: run copy constructors here
     }
     compile_stmt(com, *body);
     com.current_func.reset();
@@ -1072,9 +1068,13 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
         compiler_assert_eq(node.sig.params.size(), 1, node.token, "'drop' bad number of args");
     }
     else if (node.function_name == "copy") {
-        compiler_assert_eq(node.sig.return_type, null_type(), node.token, "'copy' bad return type");
-        compiler_assert_eq(node.sig.params.size(), 2, node.token, "'copy' bad number of args");
-        compiler_assert_eq(node.sig.params.back().type, expected, node.token, "'copy' bad 2nd arg");
+        compiler_assert_eq(node.sig.return_type, make_type(node.struct_name), node.token, "'copy' bad return type");
+        compiler_assert_eq(node.sig.params.size(), 1, node.token, "'copy' bad number of args");
+    }
+    else if (node.function_name == "assign") {
+        compiler_assert_eq(node.sig.return_type, null_type(), node.token, "'assign' bad return type");
+        compiler_assert_eq(node.sig.params.size(), 2, node.token, "'assign' bad number of args");
+        compiler_assert_eq(node.sig.params.back().type, expected, node.token, "'assign' bad 2nd arg");
     }
 
     compile_function_body(com, node.token, name, node.sig, node.body);

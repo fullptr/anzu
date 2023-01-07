@@ -1,15 +1,33 @@
 
-struct vec2
+struct unique_int
 {
-    x: i64;
-    y: i64;
+    val: i64;
 
-    fn copy = null;
+    fn drop(self: &unique_int)
+    {
+        println("calling drop");
+    }
+
+    fn copy(self: &unique_int) -> unique_int
+    {
+        println("calling copy");
+        return unique_int(self->val);
+    }
+
+    fn assign(self: &unique_int, other: &unique_int)
+    {
+        println("calling assign");
+        other->val = self->val;
+    }
 }
 
-a := vec2(2, 3);
-b := vec2(1, 2);
-a = b;
+{
+    x := unique_int(5);
+    y := x;
+    println(x.val);
+    println(y.val);
 
-println(a.x);
-println(a.y);
+    println("done");
+}
+
+println("after");
