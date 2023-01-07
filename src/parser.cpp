@@ -385,7 +385,7 @@ auto parse_member_function_def_stmt(
             stmt.token,
             "only copy and assign can be deleted or defaulted"
         );
-        if (tokens.consume_maybe(tk_null)) { // defaulted
+        if (tokens.consume_maybe(tk_default)) { // defaulted
             stmt.sig.special = signature::special_type::defaulted;
         } else if (tokens.consume_maybe(tk_delete)) { // deleted
             stmt.sig.special = signature::special_type::deleted;

@@ -17,7 +17,7 @@
 		},
 		{
 			"name": "keyword.other.anzu",
-			"match": "\\b(in|fn|struct|sizeof|new|delete)\\b"
+			"match": "\\b(in|fn|struct|sizeof|new|delete|default)\\b"
 		},
 		{
 			"name": "storage.type.anzu",
@@ -60,8 +60,7 @@
 	],
 	"repository": {
 		"keywords": {
-			"patterns": [
-			]
+			"patterns": []
 		},
 		"strings": {
 			"name": "string.quoted.double.anzu",
