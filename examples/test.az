@@ -3,21 +3,12 @@ struct unique_int
 {
     val: i64;
 
-    fn drop(self: &unique_int)
-    {
-        println("calling drop");
-    }
-
     fn copy = null;
-    fn assign = null;
 }
 
 {
     x := unique_int(5);
     y := x;
-    println(x.val);
-    println(y.val);
-    y = x;
     println("after assign");
 
     println("done");

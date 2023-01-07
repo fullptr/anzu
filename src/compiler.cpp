@@ -904,7 +904,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         copy_fn.args = { concrete_ptr_type(type) };
         const auto it = com.functions.find(copy_fn);
         if (it == com.functions.end()) {
-            compiler_error(node.token, "{} cannot be copy-constructed", type);
+            compiler_error(node.token, "{} cannot be copied", type);
         }
         const auto& [sig, ptr, tok] = it->second;
 
@@ -945,7 +945,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
         copy_fn.args = { concrete_ptr_type(type), concrete_ptr_type(type) };
         const auto it = com.functions.find(copy_fn);
         if (it == com.functions.end()) {
-            compiler_error(node.token, "{} cannot be copy-assigned", type);
+            compiler_error(node.token, "{} cannot be assigned", type);
         }
         const auto& [sig, ptr, tok] = it->second;
 
@@ -956,7 +956,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
             com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
             return;
         } else if (sig.special == signature::special_type::deleted) {
-            compiler_error(node.token, "{} is a non-copyable type", type);
+            compiler_error(node.token, "{} is a non-assignable type", type);
         }
 
         push_literal(com, std::uint64_t{0}); // base ptr
