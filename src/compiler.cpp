@@ -252,13 +252,6 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
     compiler_error(tok, "could not find variable '{}'\n", name);
 }
 
-auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
-{
-    const auto type = push_var_addr(com, tok, name);
-    const auto size = com.types.size_of(type);
-    com.program.emplace_back(op_save{ .size=size });
-}
-
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
@@ -918,7 +911,6 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         if (sig.special == signature::special_type::defaulted) {
             const auto type = compile_expr_val(com, *node.expr);
             declare_var(com, node.token, node.name, type);
-            save_variable(com, node.token, node.name);
             return;
         } else if (sig.special == signature::special_type::deleted) {
             compiler_error(node.token, "{} is a non-copyable type", type);
@@ -941,7 +933,6 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
     } else {
         const auto type = compile_expr_val(com, *node.expr);
         declare_var(com, node.token, node.name, type);
-        save_variable(com, node.token, node.name);
     }
 }
 

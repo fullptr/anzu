@@ -26,6 +26,8 @@ struct unique_int
     y := x;
     println(x.val);
     println(y.val);
+    y = x;
+    println("after assign");
 
     println("done");
 }
