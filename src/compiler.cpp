@@ -1041,11 +1041,20 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
 
     if (node.sig.special != signature::special_type::none) {
-        const auto key = function_key{
-            .name = name,
-            .args = { expected, expected }
-        };
-        com.functions[key] = { .sig=node.sig, .ptr=0, .tok=node.token };
+        if (node.function_name == "assign") {
+            const auto key = function_key{
+                .name = name,
+                .args = { expected, expected }
+            };
+            com.functions[key] = { .sig=node.sig, .ptr=0, .tok=node.token };
+        }
+        else if (node.function_name == "copy") {
+            const auto key = function_key{
+                .name = name,
+                .args = { expected }
+            };
+            com.functions[key] = { .sig=node.sig, .ptr=0, .tok=node.token };
+        }
         return;
     }
     compiler_assert(node.sig.params.size() >= 1, node.token, "member functions must have at least one arg");

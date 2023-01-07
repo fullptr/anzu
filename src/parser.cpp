@@ -380,7 +380,11 @@ auto parse_member_function_def_stmt(
     stmt.struct_name = struct_name;
     stmt.function_name = parse_name(tokens);
     if (tokens.consume_maybe(tk_assign)) {
-        parser_assert(stmt.function_name == "copy", stmt.token, "only copy can be deleted or defaulted");
+        parser_assert(
+            stmt.function_name == "copy" || stmt.function_name == "assign",
+            stmt.token,
+            "only copy and assign can be deleted or defaulted"
+        );
         if (tokens.consume_maybe(tk_null)) { // defaulted
             stmt.sig.special = signature::special_type::defaulted;
         } else if (tokens.consume_maybe(tk_delete)) { // deleted
