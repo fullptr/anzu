@@ -139,6 +139,8 @@ struct node_expr : std::variant<
 {
 };
 
+auto is_lvalue_expr(const node_expr& expr) -> bool;
+
 struct node_stmt;
 using node_stmt_ptr = std::unique_ptr<node_stmt>;
 

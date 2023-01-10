@@ -90,6 +90,8 @@ auto is_ptr_type(const type_name& t) -> bool;
 // type with a single subtype.
 auto inner_type(const type_name& t) -> type_name;
 
+auto is_type_fundamental(const type_name& type) -> bool;
+
 struct signature
 {
     struct parameter
@@ -99,8 +101,16 @@ struct signature
         auto operator==(const parameter&) const -> bool = default;
     };
 
+    enum class special_type
+    {
+        none,
+        deleted,
+        defaulted,
+    };
+
     std::vector<parameter> params;
     type_name              return_type;
+    special_type           special = special_type::none;
     auto operator==(const signature&) const -> bool = default;
 };
 

@@ -1,31 +1,35 @@
 
-struct object
+struct unique_int
 {
-    inner: &i64;
+    val: i64;
 
-    fn drop(self: &object)
+    fn copy = delete;
+    fn assign = delete;
+    fn drop(self: &unique_int)
     {
-        println("dropping object");
-        delete self->inner;
-    } 
-
-    fn copy(self: &object, other: &object)
-    {
-        
+        println("dropping");
     }
 }
 
-fn make_ptr(val: i64) -> object
+fn add(x: i64, y: i64) -> i64
 {
-    p1 := new i64;
-    *p1 = val;
-    return object(p1);
+    return x + y;
+}
+
+fn myfunc(x: unique_int)
+{
+    println(x.val);
 }
 
 {
-    println("before");
-    x := object(new i64);
-    println("after");
+    x := unique_int(5);
+    #myfunc(x);
+
+    println("done");
+    println(add(3, 4));
+    a := 5;
+    b := 6;
+    println(add(a, b));
 }
 
-println("end");
+println("after");

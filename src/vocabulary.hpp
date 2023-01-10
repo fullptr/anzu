@@ -22,6 +22,7 @@ constexpr auto tk_struct    = sv{"struct"};
 constexpr auto tk_sizeof    = sv{"sizeof"};
 constexpr auto tk_new       = sv{"new"};
 constexpr auto tk_delete    = sv{"delete"};
+constexpr auto tk_default   = sv{"default"};
 
 // Builtin Types
 constexpr auto tk_i32       = sv{"i32"};
