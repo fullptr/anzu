@@ -8,6 +8,7 @@ struct unique_int
     fn drop(self: &unique_int)
     {
         println("dropping");
+        println(self->val);
     }
 }
 

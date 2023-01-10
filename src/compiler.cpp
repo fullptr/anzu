@@ -359,7 +359,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb co
         com.program.emplace_back(op_function_call{
             .name=destructor_name,
             .ptr=ptr + 1, // Jump into the function
-            .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+            .args_size=signature_args_size(com, sig)
         });
         com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
     }
@@ -703,7 +703,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
                 com.program.emplace_back(op_function_call{
                     .name=copy_fn.name,
                     .ptr=ptr + 1, // Jump into the function
-                    .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+                    .args_size=signature_args_size(com, sig)
                 });
 
             } else {
@@ -956,7 +956,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         com.program.emplace_back(op_function_call{
             .name=copy_fn.name,
             .ptr=ptr + 1, // Jump into the function
-            .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+            .args_size=signature_args_size(com, sig)
         });
 
         // Store the result as the new variable
@@ -999,7 +999,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
         com.program.emplace_back(op_function_call{
             .name=copy_fn.name,
             .ptr=ptr + 1, // Jump into the function
-            .args_size=2 * com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+            .args_size=signature_args_size(com, sig)
         });
         com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
     } else {
