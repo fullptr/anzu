@@ -137,6 +137,16 @@ auto inner_type(const type_name& t) -> type_name
     return {};
 }
 
+auto array_length(const type_name& t) -> std::size_t
+{
+    if (is_list_type(t)) {
+        return std::get<type_list>(t).count;
+    }
+    print("OH NO MY TYPE\n");
+    std::exit(1);
+    return {};
+}
+
 auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == i32_type()

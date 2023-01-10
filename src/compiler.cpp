@@ -949,40 +949,78 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
-        const auto it = com.functions.find(copy_fn(type));
+    if (!is_lvalue_expr(*node.expr) || is_type_fundamental(type)) {
+        const auto type = compile_expr_val(com, *node.expr);
+        declare_var(com, node.token, node.name, type);
+        return;
+    }
+
+    if (is_list_type(type)) {
+        const auto etype = inner_type(type);
+        const auto length = array_length(type);
+        const auto inner_size = com.types.size_of(etype);
+        const auto it = com.functions.find(copy_fn(etype));
         if (it == com.functions.end()) {
-            compiler_error(node.token, "{} cannot be copied", type);
+            compiler_error(node.token, "{} cannot be copied", etype);
         }
         const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
 
         if (sig.special == signature::special_type::defaulted) {
             const auto type = compile_expr_val(com, *node.expr);
-            declare_var(com, node.token, node.name, type);
+            declare_var(com, node.token, node.name, etype);
             return;
         } else if (sig.special == signature::special_type::deleted) {
-            compiler_error(node.token, "{} is a non-copyable type", type);
+            compiler_error(node.token, "{} is a non-copyable type", etype);
         }
 
         // Call ::copy
-        push_literal(com, std::uint64_t{0}); // base ptr
-        push_literal(com, std::uint64_t{0}); // prog ptr
-        compile_expr_ptr(com, *node.expr);
-
-        com.program.emplace_back(op_function_call{
-            .name=name,
-            .ptr=ptr + 1, // Jump into the function
-            .args_size=signature_args_size(com, sig)
-        });
+        for (std::size_t i = 0; i != length; ++i) {
+            push_literal(com, std::uint64_t{0}); // base ptr
+            push_literal(com, std::uint64_t{0}); // prog ptr
+            compile_expr_ptr(com, *node.expr);
+            push_literal(com, i * inner_size);
+            com.program.emplace_back(op_modify_ptr{});
+            com.program.emplace_back(op_function_call{
+                .name=name,
+                .ptr=ptr + 1, // Jump into the function
+                .args_size=signature_args_size(com, sig)
+            });
+        }
 
         // Store the result as the new variable
         declare_var(com, node.token, node.name, type);
+        return;
+    }
 
-    } else {
+    const auto it = com.functions.find(copy_fn(type));
+    if (it == com.functions.end()) {
+        compiler_error(node.token, "{} cannot be copied", type);
+    }
+    const auto& [name, args] = it->first;
+    const auto& [sig, ptr, tok] = it->second;
+
+    if (sig.special == signature::special_type::defaulted) {
         const auto type = compile_expr_val(com, *node.expr);
         declare_var(com, node.token, node.name, type);
+        return;
+    } else if (sig.special == signature::special_type::deleted) {
+        compiler_error(node.token, "{} is a non-copyable type", type);
     }
+
+    // Call ::copy
+    push_literal(com, std::uint64_t{0}); // base ptr
+    push_literal(com, std::uint64_t{0}); // prog ptr
+    compile_expr_ptr(com, *node.expr);
+
+    com.program.emplace_back(op_function_call{
+        .name=name,
+        .ptr=ptr + 1, // Jump into the function
+        .args_size=signature_args_size(com, sig)
+    });
+
+    // Store the result as the new variable
+    declare_var(com, node.token, node.name, type);
 }
 
 void compile_stmt(compiler& com, const node_assignment_stmt& node)
