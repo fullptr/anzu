@@ -1040,7 +1040,7 @@ void compile_function_body(
     declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
     declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
     for (const auto& arg : sig.params) {
-        declare_var(com, tok, arg.name, arg.type); // TODO: run copy constructors here
+        declare_var(com, tok, arg.name, arg.type);
     }
     compile_stmt(com, *body);
 
