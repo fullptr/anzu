@@ -59,7 +59,8 @@ struct var_scope
     enum class scope_type
     {
         seq_stmt,
-        while_stmt
+        while_stmt,
+        function_body,
     };
 
     scope_type type;
@@ -1034,13 +1035,14 @@ void compile_function_body(
     com.functions[key] = { .sig=sig, .ptr=begin_pos, .tok=tok };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=sig.return_type });
+    current_vars(com).push_scope(var_scope::scope_type::function_body); // Ensures destructors for params called
+
     declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
     declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
     for (const auto& arg : sig.params) {
         declare_var(com, tok, arg.name, arg.type); // TODO: run copy constructors here
     }
     compile_stmt(com, *body);
-    com.current_func.reset();
 
     if (!function_ends_with_return(*body)) {
         // A function returning null does not need a final return statement, and in this case
@@ -1053,6 +1055,9 @@ void compile_function_body(
             compiler_error(tok, "function '{}' does not end in a return statement", key.name);
         }
     }
+
+    current_vars(com).pop_scope();
+    com.current_func.reset();
 
     std::get<op_function>(com.program[begin_pos]).jump = com.program.size();
 }

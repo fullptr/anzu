@@ -5,6 +5,15 @@ struct unique_int
 
     fn copy = delete;
     fn assign = delete;
+    fn drop(self: &unique_int)
+    {
+        println("dropping");
+    }
+}
+
+fn add(x: i64, y: i64) -> i64
+{
+    return x + y;
 }
 
 fn myfunc(x: unique_int)
@@ -14,9 +23,13 @@ fn myfunc(x: unique_int)
 
 {
     x := unique_int(5);
-    myfunc(x);
+    #myfunc(x);
 
     println("done");
+    println(add(3, 4));
+    a := 5;
+    b := 6;
+    println(add(a, b));
 }
 
 println("after");
