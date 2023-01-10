@@ -3,13 +3,18 @@ struct unique_int
 {
     val: i64;
 
-    fn copy = default;
+    fn copy = delete;
+    fn assign = delete;
+}
+
+fn myfunc(x: unique_int)
+{
+    println(x.val);
 }
 
 {
     x := unique_int(5);
-    y := x;
-    println("after assign");
+    myfunc(x);
 
     println("done");
 }

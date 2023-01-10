@@ -675,8 +675,39 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
         // Push the args to the stack
         std::vector<type_name> param_types;
         for (const auto& arg : node.args) {
-            auto type = compile_expr_val(com, *arg);
+            const auto type = type_of_expr(com, *arg);
             param_types.emplace_back(type);
+            if (is_lvalue_expr(*arg) && !is_type_fundamental(type)) {
+                auto copy_fn = function_key{};
+                copy_fn.name = std::format("{}::copy", type);;
+                copy_fn.args = { concrete_ptr_type(type) };
+                const auto it = com.functions.find(copy_fn);
+                if (it == com.functions.end()) {
+                    compiler_error(node.token, "{} cannot be copied", type);
+                }
+                const auto& [sig, ptr, tok] = it->second;
+
+                if (sig.special == signature::special_type::defaulted) {
+                    const auto type = compile_expr_val(com, *arg);
+                    continue;
+                } else if (sig.special == signature::special_type::deleted) {
+                    compiler_error(node.token, "{} is a non-copyable type", type);
+                }
+
+                // Call ::copy
+                push_literal(com, std::uint64_t{0}); // base ptr
+                push_literal(com, std::uint64_t{0}); // prog ptr
+                compile_expr_ptr(com, *arg);
+
+                com.program.emplace_back(op_function_call{
+                    .name=copy_fn.name,
+                    .ptr=ptr + 1, // Jump into the function
+                    .args_size=com.types.size_of(concrete_ptr_type(type)) + 2 * sizeof(std::uint64_t)
+                });
+
+            } else {
+                const auto type = compile_expr_val(com, *arg);
+            }
         }
         verify_sig(node.token, sig, param_types);
         com.program.emplace_back(op_function_call{
