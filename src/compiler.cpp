@@ -291,7 +291,7 @@ auto compile_field_offset(
 }
 
 // Given a type and field name, and assuming that the top of the stack at runtime is a pointer
-// to an object of the given type, this function adds an op code to modify that pointer to
+// to an object of the given type, this function adds op codes to modify that pointer to
 // instead point to the given field. Returns the type of the field.
 auto compile_ptr_to_field(
     compiler& com, const token& tok, const type_name& type, const std::string& field_name
@@ -338,17 +338,38 @@ auto function_ends_with_return(const node_stmt& node) -> bool
     return std::holds_alternative<node_return_stmt>(node);
 }
 
+auto assign_fn(const type_name& type) -> function_key
+{
+    return {
+        .name = std::format("{}::assign", type),
+        .args = { concrete_ptr_type(type), concrete_ptr_type(type) }
+    };
+}
+
+auto copy_fn(const type_name& type) -> function_key
+{
+    return {
+        .name = std::format("{}::copy", type),
+        .args = { concrete_ptr_type(type) }
+    };
+}
+
+auto drop_fn(const type_name& type) -> function_key
+{
+    return {
+        .name = std::format("{}::drop", type),
+        .args = { concrete_ptr_type(type) }
+    };
+}
+
 // Assumes that the given "compile_obj_ptr" is a function that compiles code to produce
 // a pointer to an object of the given type. This function compiles
 // code to destruct that object.
 using compile_obj_ptr_cb = std::function<void(const token&)>;
 auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb compile_obj_ptr) -> void
 {
-    const auto destructor_name = std::format("{}::drop", type);
-    auto func_key = function_key{};
-    func_key.name = destructor_name;
-    func_key.args = { concrete_ptr_type(type) };
-    if (auto it = com.functions.find(func_key); it != com.functions.end()) {
+    if (auto it = com.functions.find(drop_fn(type)); it != com.functions.end()) {
+        const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
 
         // Push the args to the stack
@@ -357,7 +378,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb co
         compile_obj_ptr(tok);
 
         com.program.emplace_back(op_function_call{
-            .name=destructor_name,
+            .name=name,
             .ptr=ptr + 1, // Jump into the function
             .args_size=signature_args_size(com, sig)
         });
@@ -679,13 +700,11 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
             const auto type = type_of_expr(com, *arg);
             param_types.emplace_back(type);
             if (is_lvalue_expr(*arg) && !is_type_fundamental(type)) {
-                auto copy_fn = function_key{};
-                copy_fn.name = std::format("{}::copy", type);;
-                copy_fn.args = { concrete_ptr_type(type) };
-                const auto it = com.functions.find(copy_fn);
+                const auto it = com.functions.find(copy_fn(type));
                 if (it == com.functions.end()) {
                     compiler_error(node.token, "{} cannot be copied", type);
                 }
+                const auto& [name, args] = it->first;
                 const auto& [sig, ptr, tok] = it->second;
 
                 if (sig.special == signature::special_type::defaulted) {
@@ -701,7 +720,7 @@ auto compile_expr_val(compiler& com, const node_function_call_expr& node) -> typ
                 compile_expr_ptr(com, *arg);
 
                 com.program.emplace_back(op_function_call{
-                    .name=copy_fn.name,
+                    .name=name,
                     .ptr=ptr + 1, // Jump into the function
                     .args_size=signature_args_size(com, sig)
                 });
@@ -931,13 +950,11 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = type_of_expr(com, *node.expr);
     if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
-        auto copy_fn = function_key{};
-        copy_fn.name = std::format("{}::copy", type);;
-        copy_fn.args = { concrete_ptr_type(type) };
-        const auto it = com.functions.find(copy_fn);
+        const auto it = com.functions.find(copy_fn(type));
         if (it == com.functions.end()) {
             compiler_error(node.token, "{} cannot be copied", type);
         }
+        const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
 
         if (sig.special == signature::special_type::defaulted) {
@@ -954,7 +971,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         compile_expr_ptr(com, *node.expr);
 
         com.program.emplace_back(op_function_call{
-            .name=copy_fn.name,
+            .name=name,
             .ptr=ptr + 1, // Jump into the function
             .args_size=signature_args_size(com, sig)
         });
@@ -972,13 +989,11 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto type = type_of_expr(com, *node.expr);
     if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
-        auto copy_fn = function_key{};
-        copy_fn.name = std::format("{}::assign", type);;
-        copy_fn.args = { concrete_ptr_type(type), concrete_ptr_type(type) };
-        const auto it = com.functions.find(copy_fn);
+        const auto it = com.functions.find(assign_fn(type));
         if (it == com.functions.end()) {
             compiler_error(node.token, "{} cannot be assigned", type);
         }
+        const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
 
         if (sig.special == signature::special_type::defaulted) {
@@ -997,7 +1012,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
         compile_expr_ptr(com, *node.expr);
 
         com.program.emplace_back(op_function_call{
-            .name=copy_fn.name,
+            .name=name,
             .ptr=ptr + 1, // Jump into the function
             .args_size=signature_args_size(com, sig)
         });

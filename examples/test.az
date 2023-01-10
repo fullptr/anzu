@@ -23,14 +23,7 @@ fn myfunc(x: unique_int)
 }
 
 {
-    x := unique_int(5);
-    #myfunc(x);
-
-    println("done");
-    println(add(3, 4));
-    a := 5;
-    b := 6;
-    println(add(a, b));
+    x := [1, 2, 3];
+    x = [4, 5, 6, 7];
+    println(x[0u]);
 }
-
-println("after");
