@@ -387,6 +387,7 @@ auto parse_member_function_def_stmt(
         );
         if (tokens.consume_maybe(tk_default)) { // defaulted
             stmt.sig.special = signature::special_type::defaulted;
+            parser_error(stmt.token, "defaulting copy/assign currently not supported");
         } else if (tokens.consume_maybe(tk_delete)) { // deleted
             stmt.sig.special = signature::special_type::deleted;
         } else {

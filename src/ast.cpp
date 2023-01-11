@@ -191,4 +191,9 @@ auto is_lvalue_expr(const node_expr& expr) -> bool
         || std::holds_alternative<node_subscript_expr>(expr);
 }
 
+auto is_rvalue_expr(const node_expr& expr) -> bool
+{
+    return !is_lvalue_expr(expr);
+}
+
 }

@@ -137,6 +137,16 @@ auto inner_type(const type_name& t) -> type_name
     return {};
 }
 
+auto array_length(const type_name& t) -> std::size_t
+{
+    if (is_list_type(t)) {
+        return std::get<type_list>(t).count;
+    }
+    print("OH NO MY TYPE\n");
+    std::exit(1);
+    return {};
+}
+
 auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == i32_type()
@@ -146,6 +156,13 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == char_type()
         || type == bool_type()
         || type == null_type();
+}
+
+auto is_type_trivially_copyable(const type_name& type) -> bool
+{
+    return is_type_fundamental(type)
+        || is_ptr_type(type)
+        || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)));
 }
 
 auto to_string(const signature& sig) -> std::string
