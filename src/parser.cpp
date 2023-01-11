@@ -75,8 +75,7 @@ auto parse_f64(const token& tok) -> object
 
 auto parse_char(const token& tok) -> object
 {
-    tok.assert(tok.text.size() == 1, "failed to parse char");
-
+    tok.assert_eq(tok.text.size(), 1, "failed to parse char");
     const auto bytes = as_bytes(tok.text.front());
     return object{ .data={bytes.begin(), bytes.end()}, .type=char_type() };
 }

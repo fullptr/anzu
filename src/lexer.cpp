@@ -148,7 +148,7 @@ auto lex_line(
     -> void
 {
     const auto push_token = [&](const std::string& text, std::int64_t col, token_type type) {
-        tokens.push_back({ .text=text, .line=lineno, .col=col, .type=type });
+        tokens.push_back({ text, lineno, col, type });
     };
 
     auto iter = line_iterator{line};
