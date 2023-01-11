@@ -158,6 +158,13 @@ auto is_type_fundamental(const type_name& type) -> bool
         || type == null_type();
 }
 
+auto is_type_trivially_copyable(const type_name& type) -> bool
+{
+    return is_type_fundamental(type)
+        || is_ptr_type(type)
+        || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)));
+}
+
 auto to_string(const signature& sig) -> std::string
 {
     const auto proj = [](const auto& arg) { return arg.type; };

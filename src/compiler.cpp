@@ -949,7 +949,7 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (!is_lvalue_expr(*node.expr) || is_type_fundamental(type)) {
+    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(type)) {
         const auto type = compile_expr_val(com, *node.expr);
         declare_var(com, node.token, node.name, type);
         return;
@@ -960,6 +960,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         const auto length = array_length(type);
         const auto inner_size = com.types.size_of(etype);
         const auto it = com.functions.find(copy_fn(etype));
+
         if (it == com.functions.end()) {
             compiler_error(node.token, "{} cannot be copied", etype);
         }
