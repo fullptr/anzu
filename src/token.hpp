@@ -28,18 +28,27 @@ struct token
     std::int64_t col;
     token_type   type;
 
-    [[noreturn]] auto error(std::string_view message) const -> void;
+    [[noreturn]] void error(std::string_view msg) const;
 
     template <typename... Args>
-    [[noreturn]] auto error(std::string_view message, Args&&... args) const -> void
+    [[noreturn]] void error(std::string_view msg, Args&&... args) const
     {
-        error(std::format(message, std::forward<Args>(args)...));
+        error(std::format(msg, std::forward<Args>(args)...));
     }
 
     template <typename... Args>
-    auto assert(bool condition, std::string_view message, Args&&... args) const -> void
+    void assert(bool condition, std::string_view msg, Args&&... args) const
     {
-        if (!condition) error(std::format(message, std::forward<Args>(args)...));
+        if (!condition) error(std::format(msg, std::forward<Args>(args)...));
+    }
+
+    template <typename... Args>
+    void assert_eq(const auto& lhs, const auto& rhs, std::string_view msg, Args&&... args) const
+    {
+        if (lhs != rhs) {
+            const auto user_msg = std::format(msg, std::forward<Args>(args)...);
+            error("{}: expected {}, got {}", user_msg, rhs, lhs);
+        }
     }
 };
 

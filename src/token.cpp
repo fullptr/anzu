@@ -16,7 +16,7 @@ auto is_consumable_type(token_type type) -> bool
 
 }
 
-auto token::error(std::string_view message) const -> void
+void token::error(std::string_view message) const
 {
     print("[ERROR] ({}:{}) {}\n", line, col, message);
     std::exit(1);
