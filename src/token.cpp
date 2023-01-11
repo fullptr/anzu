@@ -1,7 +1,10 @@
 #include "token.hpp"
 #include "utility/print.hpp"
 
+#include <format>
+
 namespace anzu {
+namespace {
 
 // Returns true if the value is either a keyword or a symbol, which are the only
 // types expected to be consumed by the consume_*, peek, curr and next functions.
@@ -11,19 +14,27 @@ auto is_consumable_type(token_type type) -> bool
     return type == token_type::keyword || type == token_type::symbol;
 }
 
+}
+
+void token::error(std::string_view message) const
+{
+    print("[ERROR] ({}:{}) {}\n", line, col, message);
+    std::exit(1);
+}
+
 auto to_string(token_type type) -> std::string
 {
     switch (type) {
-        break; case token_type::keyword:   { return "keyword"; };
-        break; case token_type::symbol:    { return "symbol"; };
-        break; case token_type::name:      { return "name"; };
-        break; case token_type::character: { return "character"; };
-        break; case token_type::string:    { return "string"; };
-        break; case token_type::i32:       { return "i32"; };
-        break; case token_type::i64:       { return "i64"; };
-        break; case token_type::u64:       { return "u64"; };
-        break; case token_type::f64:       { return "f64"; };
-        break; default:                    { return "UNKNOWN"; };
+        break; case token_type::keyword:   { return "keyword"; }
+        break; case token_type::symbol:    { return "symbol"; }
+        break; case token_type::name:      { return "name"; }
+        break; case token_type::character: { return "character"; }
+        break; case token_type::string:    { return "string"; }
+        break; case token_type::i32:       { return "i32"; }
+        break; case token_type::i64:       { return "i64"; }
+        break; case token_type::u64:       { return "u64"; }
+        break; case token_type::f64:       { return "f64"; }
+        break; default:                    { return "UNKNOWN"; }
     }
 }
 
@@ -55,9 +66,7 @@ auto tokenstream::consume_only(std::string_view text) -> token
         std::exit(1);
     }
     if (curr().text != text || !is_consumable_type(curr().type)) {
-        const auto [tok_text, line, col, type] = curr();
-        anzu::print("[ERROR] ({}:{}) expected '{}', got '{}'\n", line, col, text, tok_text);
-        std::exit(1);
+        curr().error("expected {}, got '{}'\n", text, curr().text);
     }
     return consume();
 }
@@ -69,9 +78,7 @@ auto tokenstream::consume_i64() -> std::int64_t
         std::exit(1);
     }
     if (curr().type != token_type::i64) {
-        const auto [tok_text, line, col, type] = curr();
-        anzu::print("[ERROR] ({}:{}) expected an int, got '{}\n", line, col, tok_text);
-        std::exit(1);
+        curr().error("expected i64, got '{}'\n", curr().text);
     }
     return std::stoll(consume().text);
 }
@@ -83,9 +90,7 @@ auto tokenstream::consume_u64() -> std::uint64_t
         std::exit(1);
     }
     if (curr().type != token_type::u64) {
-        const auto [tok_text, line, col, type] = curr();
-        anzu::print("[ERROR] ({}:{}) expected a uint, got '{}\n", line, col, tok_text);
-        std::exit(1);
+        curr().error("expected u64, got '{}'\n", curr().text);
     }
     return std::stoull(consume().text);
 }

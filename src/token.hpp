@@ -27,6 +27,29 @@ struct token
     std::int64_t line;
     std::int64_t col;
     token_type   type;
+
+    [[noreturn]] void error(std::string_view msg) const;
+
+    template <typename... Args>
+    [[noreturn]] void error(std::string_view msg, Args&&... args) const
+    {
+        error(std::format(msg, std::forward<Args>(args)...));
+    }
+
+    template <typename... Args>
+    void assert(bool condition, std::string_view msg, Args&&... args) const
+    {
+        if (!condition) error(std::format(msg, std::forward<Args>(args)...));
+    }
+
+    template <typename... Args>
+    void assert_eq(const auto& lhs, const auto& rhs, std::string_view msg, Args&&... args) const
+    {
+        if (lhs != rhs) {
+            const auto user_msg = std::format(msg, std::forward<Args>(args)...);
+            error("{}: expected {}, got {}", user_msg, rhs, lhs);
+        }
+    }
 };
 
 auto to_string(token_type type) -> std::string;

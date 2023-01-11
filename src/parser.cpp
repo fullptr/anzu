@@ -12,32 +12,16 @@
 namespace anzu {
 namespace {
 
-template <typename... Args>
-[[noreturn]] void parser_error(const token& tok, std::string_view msg, Args&&... args)
-{
-    const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    print("[ERROR] ({}:{}) {}\n", tok.line, tok.col, formatted_msg);
-    std::exit(1);
-}
-
-template <typename... Args>
-void parser_assert(bool cond, const token& tok, std::string_view msg, Args&&... args)
-{
-    if (!cond) {
-        parser_error(tok, msg, std::forward<Args>(args)...);
-    }
-}
-
 auto parse_i32(const token& tok) -> object
 {
     auto text = std::string_view{tok.text};
 
-    parser_assert(text.ends_with(tk_i32), tok, "expected suffix '{}'\n", tk_i32);
+    tok.assert(text.ends_with(tk_i32), "expected suffix '{}'\n", tk_i32);
     text.remove_suffix(tk_i32.size());
     
     auto result = std::int32_t{};
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    parser_assert(ec == std::errc{}, tok, "cannot convert '{}' to '{}'\n", text, tk_i32);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, tk_i32);
 
     const auto bytes = as_bytes(result);
     return object{ .data={bytes.begin(), bytes.end()}, .type=i32_type() };
@@ -53,7 +37,7 @@ auto parse_i64(const token& tok) -> object
 
     auto result = std::int64_t{};
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    parser_assert(ec == std::errc{}, tok, "cannot convert '{}' to '{}'\n", text, tk_i64);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, tk_i64);
 
     const auto bytes = as_bytes(result);
     return object{ .data={bytes.begin(), bytes.end()}, .type=i64_type() };
@@ -71,7 +55,7 @@ auto parse_u64(const token& tok) -> object
 
     auto result = std::uint64_t{};
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    parser_assert(ec == std::errc{}, tok, "cannot convert '{}' to '{}'\n", text, tk_u64);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, tk_u64);
 
     const auto bytes = as_bytes(result);
     return object{ .data={bytes.begin(), bytes.end()}, .type=u64_type() };
@@ -83,7 +67,7 @@ auto parse_f64(const token& tok) -> object
 
     auto result = double{};
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    parser_assert(ec == std::errc{}, tok, "cannot convert '{}' to '{}'\n", text, tk_f64);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, tk_f64);
 
     const auto bytes = as_bytes(result);
     return object{ .data={bytes.begin(), bytes.end()}, .type=f64_type() };
@@ -91,8 +75,7 @@ auto parse_f64(const token& tok) -> object
 
 auto parse_char(const token& tok) -> object
 {
-    parser_assert(tok.text.size() == 1, tok, "failed to parse char");
-
+    tok.assert_eq(tok.text.size(), 1, "failed to parse char");
     const auto bytes = as_bytes(tok.text.front());
     return object{ .data={bytes.begin(), bytes.end()}, .type=char_type() };
 }
@@ -136,7 +119,7 @@ auto parse_literal(tokenstream& tokens) -> object
     if (tokens.consume_maybe(tk_null)) {
         return object{ .data{std::byte{0}}, .type=null_type() };
     }
-    parser_error(tokens.curr(), "failed to parse literal ({})", tokens.curr().text);
+    tokens.curr().error("failed to parse literal ({})", tokens.curr().text);
 };
 
 auto precedence_table()
@@ -323,7 +306,7 @@ auto parse_name(tokenstream& tokens)
 {
     const auto token = tokens.consume();
     if (token.type != token_type::name) {
-        parser_error(token, "'{}' is not a valid name", token.text);
+        token.error("'{}' is not a valid name", token.text);
     }
     return token.text;   
 }
@@ -380,18 +363,17 @@ auto parse_member_function_def_stmt(
     stmt.struct_name = struct_name;
     stmt.function_name = parse_name(tokens);
     if (tokens.consume_maybe(tk_assign)) {
-        parser_assert(
+        stmt.token.assert(
             stmt.function_name == "copy" || stmt.function_name == "assign",
-            stmt.token,
             "only copy and assign can be deleted or defaulted"
         );
         if (tokens.consume_maybe(tk_default)) { // defaulted
             stmt.sig.special = signature::special_type::defaulted;
-            parser_error(stmt.token, "defaulting copy/assign currently not supported");
+            stmt.token.error("defaulting copy/assign currently not supported");
         } else if (tokens.consume_maybe(tk_delete)) { // deleted
             stmt.sig.special = signature::special_type::deleted;
         } else {
-            parser_assert(false, stmt.token, "can only =default or =delete");
+            stmt.token.error("can only =default or =delete");
         }
         stmt.sig.return_type = null_type();
         stmt.body = std::make_unique<node_stmt>(node_sequence_stmt{});
@@ -523,7 +505,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
     while (tokens.consume_maybe(tk_semicolon));
     if (tokens.peek(tk_function) || tokens.peek(tk_struct)) {
-        parser_error(tokens.curr(), "functions and structs can only be declared in the global scope");
+        tokens.curr().error("functions and structs can only be declared in the global scope");
     }
     if (tokens.peek(tk_return)) {
         return parse_return_stmt(tokens);
