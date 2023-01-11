@@ -22,9 +22,7 @@ fn myfunc(x: unique_int)
 }
 
 {
-    t := new i64;
-    x := [t, t];
-    y := x;
-    println(y[0u]);
-    delete t;
+    x := [unique_int(5), unique_int(6)];
+    y := [unique_int(1), unique_int(2)];
+    x = y;
 }

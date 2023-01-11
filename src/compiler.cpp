@@ -959,8 +959,8 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         const auto etype = inner_type(type);
         const auto length = array_length(type);
         const auto inner_size = com.types.size_of(etype);
-        const auto it = com.functions.find(copy_fn(etype));
 
+        const auto it = com.functions.find(copy_fn(etype));
         if (it == com.functions.end()) {
             compiler_error(node.token, "{} cannot be copied", etype);
         }
@@ -1027,10 +1027,22 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
 void compile_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (is_lvalue_expr(*node.expr) && !is_type_fundamental(type)) {
-        const auto it = com.functions.find(assign_fn(type));
+    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(type)) {
+        const auto rhs = compile_expr_val(com, *node.expr);
+        const auto lhs = compile_expr_ptr(com, *node.position);
+        compiler_assert_eq(lhs, rhs, node.token, "invalid assignment");
+        com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
+        return;
+    }
+
+    if (is_list_type(type)) {
+        const auto etype = inner_type(type);
+        const auto length = array_length(type);
+        const auto inner_size = com.types.size_of(etype);
+
+        const auto it = com.functions.find(assign_fn(etype));
         if (it == com.functions.end()) {
-            compiler_error(node.token, "{} cannot be assigned", type);
+            compiler_error(node.token, "{} cannot be assigned", etype);
         }
         const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
@@ -1042,26 +1054,62 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
             com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
             return;
         } else if (sig.special == signature::special_type::deleted) {
-            compiler_error(node.token, "{} is a non-assignable type", type);
+            compiler_error(node.token, "{} is a non-assignable type", etype);
         }
 
-        push_literal(com, std::uint64_t{0}); // base ptr
-        push_literal(com, std::uint64_t{0}); // prog ptr
-        compile_expr_ptr(com, *node.position);
-        compile_expr_ptr(com, *node.expr);
+        for (std::size_t i = 0; i != length; ++i) {
+            // Call ::assign
+            push_literal(com, std::uint64_t{0}); // base ptr
+            push_literal(com, std::uint64_t{0}); // prog ptr
 
-        com.program.emplace_back(op_function_call{
-            .name=name,
-            .ptr=ptr + 1, // Jump into the function
-            .args_size=signature_args_size(com, sig)
-        });
-        com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
-    } else {
+            compile_expr_ptr(com, *node.position); // i-th element of dst
+            push_literal(com, i * inner_size);
+            com.program.emplace_back(op_modify_ptr{});
+
+            compile_expr_ptr(com, *node.expr); // i-th element of src
+            push_literal(com, i * inner_size);
+            com.program.emplace_back(op_modify_ptr{});
+
+            com.program.emplace_back(op_function_call{
+                .name=name,
+                .ptr=ptr + 1, // Jump into the function
+                .args_size=signature_args_size(com, sig)
+            });
+            com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
+        }
+        
+        return;
+    }
+
+    const auto it = com.functions.find(assign_fn(type));
+    if (it == com.functions.end()) {
+        compiler_error(node.token, "{} cannot be assigned", type);
+    }
+    const auto& [name, args] = it->first;
+    const auto& [sig, ptr, tok] = it->second;
+
+    if (sig.special == signature::special_type::defaulted) {
         const auto rhs = compile_expr_val(com, *node.expr);
         const auto lhs = compile_expr_ptr(com, *node.position);
         compiler_assert_eq(lhs, rhs, node.token, "invalid assignment");
         com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
+        return;
+    } else if (sig.special == signature::special_type::deleted) {
+        compiler_error(node.token, "{} is a non-assignable type", type);
     }
+
+    // Call ::assign
+    push_literal(com, std::uint64_t{0}); // base ptr
+    push_literal(com, std::uint64_t{0}); // prog ptr
+    compile_expr_ptr(com, *node.position);
+    compile_expr_ptr(com, *node.expr);
+
+    com.program.emplace_back(op_function_call{
+        .name=name,
+        .ptr=ptr + 1, // Jump into the function
+        .args_size=signature_args_size(com, sig)
+    });
+    com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
 }
 
 auto make_key(compiler& com, const token& tok, const std::string& name, const signature& sig)
