@@ -1,7 +1,10 @@
 #include "token.hpp"
 #include "utility/print.hpp"
 
+#include <format>
+
 namespace anzu {
+namespace {
 
 // Returns true if the value is either a keyword or a symbol, which are the only
 // types expected to be consumed by the consume_*, peek, curr and next functions.
@@ -9,6 +12,14 @@ namespace anzu {
 auto is_consumable_type(token_type type) -> bool
 {
     return type == token_type::keyword || type == token_type::symbol;
+}
+
+}
+
+auto token::error(std::string_view message) const -> void
+{
+    print("[ERROR] ({}:{}) {}\n", line, col, message);
+    std::exit(1);
 }
 
 auto to_string(token_type type) -> std::string
