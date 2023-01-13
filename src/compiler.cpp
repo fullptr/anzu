@@ -146,7 +146,7 @@ struct compiler
 
     std::stack<control_flow_frame> control_flow;
 
-    type_store types;
+    type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 };
 
 void verify_unused_name(compiler& com, const token& tok, const std::string& name)
@@ -155,7 +155,6 @@ void verify_unused_name(compiler& com, const token& tok, const std::string& name
     tok.assert(!com.types.contains(make_type(name)), message);
     tok.assert(!com.function_names.contains(name), message);
 }
-
 
 template <typename T>
 auto push_literal(compiler& com, const T& value) -> void
@@ -675,15 +674,16 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
     
     if (auto it = com.functions.find(key); it != com.functions.end()) {
         const auto& [sig, ptr, tok] = it->second;
-        push_literal(com, std::uint64_t{0}); // base ptr
-        push_literal(com, std::uint64_t{0}); // prog ptr
+        push_function_call_begin(com);
         
         // Push the args to the stack
         std::vector<type_name> param_types;
         for (const auto& arg : node.args) {
             const auto type = type_of_expr(com, *arg);
             param_types.emplace_back(type);
-            if (is_lvalue_expr(*arg) && !is_type_fundamental(type)) {
+            if (is_rvalue_expr(*arg) || is_type_fundamental(type)) {
+                push_expr_val(com, *arg);
+            } else {
                 const auto it = com.functions.find(copy_fn(type));
                 if (it == com.functions.end()) {
                     node.token.error("{} cannot be copied", type);
@@ -691,22 +691,23 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
                 const auto& [name, args] = it->first;
                 const auto& [sig, ptr, tok] = it->second;
 
-                if (sig.special == signature::special_type::defaulted) {
-                    const auto type = push_expr_val(com, *arg);
-                    continue;
-                } else if (sig.special == signature::special_type::deleted) {
-                    node.token.error("{} is a non-copyable type", type);
+                switch (sig.special) {
+                    break; case signature::special_type::defaulted: {
+                        push_expr_val(com, *arg);
+                    }
+                    break; case signature::special_type::deleted: {
+                        node.token.error("{} is a non-copyable type", type);
+                    }
+                    break; default: {
+                        push_function_call_begin(com);
+                        push_expr_ptr(com, *arg);
+                        push_function_call(com, name, ptr, sig);
+                    }
                 }
 
-                // Call ::copy
-                push_function_call_begin(com);
-                push_expr_ptr(com, *arg);
-                push_function_call(com, name, ptr, sig);
-
-            } else {
-                const auto type = push_expr_val(com, *arg);
             }
         }
+
         verify_sig(node.token, sig, param_types);
         push_function_call(com, node.function_name, ptr, sig);
         return sig.return_type;
