@@ -692,9 +692,6 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
                 const auto& [sig, ptr, tok] = it->second;
 
                 switch (sig.special) {
-                    break; case signature::special_type::defaulted: {
-                        push_expr_val(com, *arg);
-                    }
                     break; case signature::special_type::deleted: {
                         node.token.error("{} is a non-copyable type", type);
                     }
@@ -944,13 +941,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
 
-        // This is definitely wrong here, but it's fine because we currently disallow
-        // defaulted copy. If the inner copy is default copyable, we still need to do the loop
-        if (sig.special == signature::special_type::defaulted) {
-            const auto type = push_expr_val(com, *node.expr);
-            declare_var(com, node.token, node.name, etype);
-            return;
-        } else if (sig.special == signature::special_type::deleted) {
+        if (sig.special == signature::special_type::deleted) {
             node.token.error("{} is a non-copyable type", etype);
         }
 
@@ -975,11 +966,7 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
     const auto& [name, args] = it->first;
     const auto& [sig, ptr, tok] = it->second;
 
-    if (sig.special == signature::special_type::defaulted) {
-        const auto type = push_expr_val(com, *node.expr);
-        declare_var(com, node.token, node.name, type);
-        return;
-    } else if (sig.special == signature::special_type::deleted) {
+    if (sig.special == signature::special_type::deleted) {
         node.token.error("{} is a non-copyable type", type);
     }
 
@@ -1015,13 +1002,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
         const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
 
-        if (sig.special == signature::special_type::defaulted) {
-            const auto rhs = push_expr_val(com, *node.expr);
-            const auto lhs = push_expr_ptr(com, *node.position);
-            node.token.assert_eq(lhs, rhs, "invalid assignment");
-            com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
-            return;
-        } else if (sig.special == signature::special_type::deleted) {
+        if (sig.special == signature::special_type::deleted) {
             node.token.error("{} is a non-assignable type", etype);
         }
 
@@ -1051,13 +1032,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     const auto& [name, args] = it->first;
     const auto& [sig, ptr, tok] = it->second;
 
-    if (sig.special == signature::special_type::defaulted) {
-        const auto rhs = push_expr_val(com, *node.expr);
-        const auto lhs = push_expr_ptr(com, *node.position);
-        node.token.assert_eq(lhs, rhs, "invalid assignment");
-        com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
-        return;
-    } else if (sig.special == signature::special_type::deleted) {
+    if (sig.special == signature::special_type::deleted) {
         node.token.error("{} is a non-assignable type", type);
     }
 

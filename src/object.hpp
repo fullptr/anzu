@@ -64,9 +64,18 @@ struct field
 };
 using type_fields = std::vector<field>;
 
+enum class special_fn
+{
+    defaulted,
+    deleted,
+    implemented,
+};
+
 struct type_info
 {
     type_fields fields;
+    special_fn  copy   = special_fn::deleted;
+    special_fn  assign = special_fn::deleted;
 };
 
 auto hash(const type_name& type) -> std::size_t;
@@ -113,8 +122,7 @@ struct signature
     enum class special_type
     {
         none,
-        deleted,
-        defaulted,
+        deleted
     };
 
     std::vector<parameter> params;

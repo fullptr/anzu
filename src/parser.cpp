@@ -367,13 +367,10 @@ auto parse_member_function_def_stmt(
             stmt.function_name == "copy" || stmt.function_name == "assign",
             "only copy and assign can be deleted or defaulted"
         );
-        if (tokens.consume_maybe(tk_default)) { // defaulted
-            stmt.sig.special = signature::special_type::defaulted;
-            stmt.token.error("defaulting copy/assign currently not supported");
-        } else if (tokens.consume_maybe(tk_delete)) { // deleted
+        if (tokens.consume_maybe(tk_delete)) { // deleted
             stmt.sig.special = signature::special_type::deleted;
         } else {
-            stmt.token.error("can only =default or =delete");
+            stmt.token.error("can only =delete a function");
         }
         stmt.sig.return_type = null_type();
         stmt.body = std::make_unique<node_stmt>(node_sequence_stmt{});
