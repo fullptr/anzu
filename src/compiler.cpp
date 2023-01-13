@@ -266,7 +266,7 @@ auto load_variable(compiler& com, const token& tok, const std::string& name) -> 
 
 // Given a type and a field name, push the offset of the fields position relative to its
 // owner onto the stack
-auto compile_field_offset(
+auto push_field_offset(
     compiler& com, const token& tok, const type_name& type, const std::string& field_name
 )
     -> type_name
@@ -286,12 +286,12 @@ auto compile_field_offset(
 // Given a type and field name, and assuming that the top of the stack at runtime is a pointer
 // to an object of the given type, this function adds op codes to modify that pointer to
 // instead point to the given field. Returns the type of the field.
-auto compile_ptr_to_field(
+auto push_adjust_ptr_to_field(
     compiler& com, const token& tok, const type_name& type, const std::string& field_name
 )
     -> type_name
 {
-    const auto field_type = compile_field_offset(com, tok, type, field_name);
+    const auto field_type = push_field_offset(com, tok, type, field_name);
     com.program.emplace_back(op_modify_ptr{});
     return field_type;
 }
@@ -355,11 +355,11 @@ auto drop_fn(const type_name& type) -> function_key
     };
 }
 
-// Assumes that the given "compile_obj_ptr" is a function that compiles code to produce
+// Assumes that the given "push_object_ptr" is a function that compiles code to produce
 // a pointer to an object of the given type. This function compiles
 // code to destruct that object.
 using compile_obj_ptr_cb = std::function<void(const token&)>;
-auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb compile_obj_ptr) -> void
+auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb push_object_ptr) -> void
 {
     if (auto it = com.functions.find(drop_fn(type)); it != com.functions.end()) {
         const auto& [name, args] = it->first;
@@ -367,7 +367,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb co
 
         // Push the args to the stack
         push_function_call_begin(com);
-        compile_obj_ptr(tok);
+        push_object_ptr(tok);
         push_function_call(com, name, ptr, sig);
         com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
     }
@@ -376,8 +376,8 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb co
     const auto fields = com.types.fields_of(type);
     for (const auto& field : fields | std::views::reverse) {
         call_destructor(com, field.type, [&](const token& tok) {
-            compile_obj_ptr(tok);
-            compile_ptr_to_field(com, tok, field.type, field.name);
+            push_object_ptr(tok);
+            push_adjust_ptr_to_field(com, tok, field.type, field.name);
         });
     }
 }
@@ -570,7 +570,7 @@ auto push_expr_ptr(compiler& com, const node_variable_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
     const auto type = push_expr_ptr(com, *node.expr);
-    return compile_ptr_to_field(com, node.token, type, node.field_name);
+    return push_adjust_ptr_to_field(com, node.token, type, node.field_name);
 }
 
 auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
@@ -915,6 +915,13 @@ void compile_stmt(compiler& com, const node_continue_stmt&)
     com.control_flow.top().continue_stmts.insert(pos);
 }
 
+struct function_info
+{
+    std::string name;
+    signature sig;
+    std::size_t ptr;
+};
+
 void compile_stmt(compiler& com, const node_declaration_stmt& node)
 {
     const auto type = type_of_expr(com, *node.expr);
@@ -936,6 +943,8 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
 
+        // This is definitely wrong here, but it's fine because we currently disallow
+        // defaulted copy. If the inner copy is default copyable, we still need to do the loop
         if (sig.special == signature::special_type::defaulted) {
             const auto type = push_expr_val(com, *node.expr);
             declare_var(com, node.token, node.name, etype);
