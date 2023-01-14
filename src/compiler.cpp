@@ -407,8 +407,8 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 push_ptr_adjust(com, i * inner_size);
                 push_function_call(com, drop->name, drop->ptr, drop->sig);
             }
-            return;
         }
+        return;
     }
 
     if (const auto func = get_function(com, drop_fn(type)); func) {
