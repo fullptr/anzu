@@ -31,8 +31,11 @@ fn myfunc(x: unique_int)
 }
 
 {
-    x := [unique_int(null), unique_int(null)];
-    y := x;
-    y = x;
-    println(y[0u].val);
+    #x := [unique_int(null), unique_int(null)];
+    #y := x;
+    #y = x;
+    #println(y[0u].val);
+
+    unique_int(null);
+    println("after");
 }

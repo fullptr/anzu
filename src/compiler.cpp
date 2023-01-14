@@ -59,6 +59,11 @@ public:
         return success;
     }
 
+    auto top() const -> std::size_t
+    {
+        return d_next;
+    }
+
     auto find(const std::string& name) const -> std::optional<var_info>
     {
         for (const auto& scope : d_scopes | std::views::reverse) {
@@ -476,6 +481,20 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
     }
 }
 
+// Assumes that the top of the stack is an object of the given type. This
+// function calls the destructor and pops the data. It MUST NOT already be a defined
+// variable
+auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
+{
+    const auto object_ptr = current_vars(com).top();
+    call_destructor(com, type, [&](const token&) {
+        // Because the variable has not been delcared, the stack pointer has not
+        // incremented, so it is currently pointing to our temp value.
+        com.program.emplace_back(op_push_local_addr{ .offset = object_ptr});
+    });
+    com.program.emplace_back(op_pop{ .size = com.types.size_of(type) });
+}
+
 // Given an expression, evaluate it and push to the top of the stack. If the expression
 // is an lvalue, copy constructors are invoked.
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
@@ -523,9 +542,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                 .type=type_of_expr(com, *expr.expr)
             };
             const auto r = resolve_unary_op(desc);
-            if (!r.has_value()) {
-                expr.token.error("could not find op '{}{}'", desc.op, desc.type);
-            }
+            expr.token.assert(r.has_value(), "could not find op '{}{}'", desc.op, desc.type);
             return r->result_type;
         },
         [&](const node_binary_op_expr& expr) {
@@ -535,9 +552,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
                 .rhs=type_of_expr(com, *expr.rhs)
             };
             const auto r = resolve_binary_op(com.types, desc);
-            if (!r.has_value()) {
-                expr.token.error("could not find op '{} {} {}'", desc.lhs, desc.op, desc.rhs);
-            }
+            expr.token.assert(r.has_value(), "could not find op '{} {} {}'", desc.lhs, desc.op, desc.rhs);
             return r->result_type;
         },
         [&](const node_function_call_expr& expr) {
@@ -969,7 +984,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
             push_ptr_adjust(com, i * inner_size);
 
             push_function_call(com, assign->name, assign->ptr, assign->sig);
-            com.program.emplace_back(op_pop{ .size = com.types.size_of(assign->sig.return_type) });
+            pop_object(com, assign->sig.return_type, node.token);
         }
 
         return;
@@ -982,7 +997,7 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     push_expr_ptr(com, *node.position);
     push_expr_ptr(com, *node.expr);
     push_function_call(com, assign->name, assign->ptr, assign->sig);
-    com.program.emplace_back(op_pop{ .size = com.types.size_of(assign->sig.return_type) });
+    pop_object(com, assign->sig.return_type, node.token);
 }
 
 auto make_key(compiler& com, const token& tok, const std::string& name, const signature& sig)
@@ -1087,7 +1102,7 @@ void compile_stmt(compiler& com, const node_return_stmt& node)
 void compile_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = push_expr_val(com, *node.expr);
-    com.program.emplace_back(op_pop{ .size=com.types.size_of(type) });
+    pop_object(com, type, node.token);
 }
 
 void compile_stmt(compiler& com, const node_delete_stmt& node)
