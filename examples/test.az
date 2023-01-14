@@ -1,16 +1,17 @@
 
 struct unique_int
 {
-    val: i64;
+    val: null;
 
     fn copy(self: &unique_int) -> unique_int
     {
-        return unique_int(self->val);
+        println("copying");
+        return unique_int(null);
     }
 
     fn assign(self: &unique_int, other: &unique_int)
     {
-        other->val = self->val;
+        println("assigning");
     }
 
     fn drop(self: &unique_int)
@@ -30,7 +31,11 @@ fn myfunc(x: unique_int)
 }
 
 {
-    x := [unique_int(5), unique_int(6)];
-    y := x;
-    println(y[0u].val);
+    #x := [unique_int(null), unique_int(null)];
+    #y := x;
+    #y = x;
+    #println(y[0u].val);
+
+    unique_int(null);
+    println("after");
 }

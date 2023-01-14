@@ -101,6 +101,17 @@ struct vec2
 {
     x: i64;
     y: i64;
+
+    fn copy(self: &vec2) -> vec2
+    {
+        return vec2(self->x, self->y);
+    }
+
+    fn assign(self: &vec2, other: &vec2)
+    {
+        other->x = self->x;
+        other->y = self->y;
+    }
 }
 
 fn println(v: vec2) -> null
@@ -152,6 +163,17 @@ struct span
 {
     p: &vec2;
     size: u64;
+
+    fn copy(self: &span) -> span
+    {
+        return span(self->p, self->size);
+    }
+
+    fn assign(self: &span, other: &span)
+    {
+        other->p = self->p;
+        other->size = self->size;
+    }
 }
 
 fn test_ptr_arithmetic(s: span) -> null
@@ -187,6 +209,18 @@ struct vec3
         y_squared := square(self->y);
         z_squared := square(self->z);
         return sqrt(x_squared + y_squared + z_squared);
+    }
+
+    fn copy(self: &vec3) -> vec3
+    {
+        return vec3(self->x, self->y, self->z);
+    }
+
+    fn assign(self: &vec3, other: &vec3)
+    {
+        other->x = self->x;
+        other->y = self->y;
+        other->z = self->z;
     }
 }
 

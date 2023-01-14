@@ -62,8 +62,12 @@ struct field
     type_name   type;
     auto operator==(const field&) const -> bool = default;
 };
-
 using type_fields = std::vector<field>;
+
+struct type_info
+{
+    type_fields fields;
+};
 
 auto hash(const type_name& type) -> std::size_t;
 auto hash(const type_list& type) -> std::size_t;
@@ -106,23 +110,15 @@ struct signature
         auto operator==(const parameter&) const -> bool = default;
     };
 
-    enum class special_type
-    {
-        none,
-        deleted,
-        defaulted,
-    };
-
     std::vector<parameter> params;
     type_name              return_type;
-    special_type           special = special_type::none;
     auto operator==(const signature&) const -> bool = default;
 };
 
 class type_store
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
-    std::unordered_map<type_name, type_fields, type_hash> d_classes;
+    std::unordered_map<type_name, type_info, type_hash> d_classes;
 
 public:
     auto add(const type_name& name, const type_fields& fields) -> bool;
