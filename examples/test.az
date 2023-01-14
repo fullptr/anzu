@@ -36,6 +36,6 @@ fn myfunc(x: unique_int)
     #y = x;
     #println(y[0u].val);
 
-    unique_int(null);
+    [unique_int(null)];
     println("after");
 }

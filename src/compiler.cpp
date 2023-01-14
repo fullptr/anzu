@@ -395,6 +395,22 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name;
 using compile_obj_ptr_cb = std::function<void(const token&)>;
 auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb push_object_ptr) -> void
 {
+    if (is_list_type(type)) {
+        const auto etype = inner_type(type);
+        const auto inner_size = com.types.size_of(etype);
+
+        if (const auto drop = get_function(com, drop_fn(etype))) {
+            for (std::size_t i = array_length(type); i != 0;) {
+                --i;
+                push_function_call_begin(com);
+                push_object_ptr(drop->tok);
+                push_ptr_adjust(com, i * inner_size);
+                push_function_call(com, drop->name, drop->ptr, drop->sig);
+            }
+        }
+        return;
+    }
+
     if (const auto func = get_function(com, drop_fn(type)); func) {
         // Push the args to the stack
         push_function_call_begin(com);
@@ -416,27 +432,9 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void
 {
     if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
-
-    return std::visit(overloaded{
-        [&](const type_simple&) {
-            // Call destructor of the object type.
-            call_destructor(com, type, [&](const token& tok) {
-                push_var_addr(com, tok, var);
-            });
-        },
-        [&](const type_list& list) {
-            const auto inner_type = *list.inner_type;
-            const auto inner_size = com.types.size_of(inner_type);
-            for (std::size_t index = list.count; index != 0;) {
-                --index;
-                call_destructor(com, inner_type, [&](const token& tok) {
-                    push_var_addr(com, tok, var);
-                    push_ptr_adjust(com, index * inner_size);
-                });
-            }
-        },
-        [&](const type_ptr&) {}
-    }, type);
+    call_destructor(com, type, [&](const token& tok) {
+        push_var_addr(com, tok, var);
+    });
 }
 
 auto destruct_on_end_of_scope(compiler& com) -> void
