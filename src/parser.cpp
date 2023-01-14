@@ -362,21 +362,24 @@ auto parse_member_function_def_stmt(
     stmt.token = tokens.consume_only(tk_function);
     stmt.struct_name = struct_name;
     stmt.function_name = parse_name(tokens);
-    if (tokens.consume_maybe(tk_assign)) {
-        stmt.token.assert(
-            stmt.function_name == "copy" || stmt.function_name == "assign",
-            "only copy and assign can be deleted or defaulted"
-        );
-        if (tokens.consume_maybe(tk_delete)) { // deleted
-            stmt.sig.special = signature::special_type::deleted;
-        } else {
-            stmt.token.error("can only =delete a function");
-        }
-        stmt.sig.return_type = null_type();
-        stmt.body = std::make_unique<node_stmt>(node_sequence_stmt{});
-        tokens.consume_only(tk_semicolon);
-        return node;
-    }
+
+    // TODO: Reimplement the = delete/default logic 
+    //if (tokens.consume_maybe(tk_assign)) {
+    //    stmt.token.assert(
+    //        stmt.function_name == "copy" || stmt.function_name == "assign",
+    //        "only copy and assign can be deleted or defaulted"
+    //    );
+    //    if (tokens.consume_maybe(tk_delete)) { // deleted
+    //        stmt.sig.special = signature::special_type::deleted;
+    //    } else {
+    //        stmt.token.error("can only =delete a function");
+    //    }
+    //    stmt.sig.return_type = null_type();
+    //    stmt.body = std::make_unique<node_stmt>(node_sequence_stmt{});
+    //    tokens.consume_only(tk_semicolon);
+    //    return node;
+    //}
+    
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
         auto param = signature::parameter{};
