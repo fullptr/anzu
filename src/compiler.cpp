@@ -673,7 +673,6 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
     }
     
     if (auto it = com.functions.find(key); it != com.functions.end()) {
-        const auto& [sig, ptr, tok] = it->second;
         push_function_call_begin(com);
         
         // Push the args to the stack
@@ -684,29 +683,21 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
             if (is_rvalue_expr(*arg) || is_type_fundamental(type)) {
                 push_expr_val(com, *arg);
             } else {
+                push_function_call_begin(com);
+                push_expr_ptr(com, *arg);
                 const auto it = com.functions.find(copy_fn(type));
-                if (it == com.functions.end()) {
-                    node.token.error("{} cannot be copied", type);
-                }
+                node.token.assert(it != com.functions.end(), "{} is a non-copyable type", type);
+                
                 const auto& [name, args] = it->first;
                 const auto& [sig, ptr, tok] = it->second;
-
-                switch (sig.special) {
-                    break; case signature::special_type::deleted: {
-                        node.token.error("{} is a non-copyable type", type);
-                    }
-                    break; default: {
-                        push_function_call_begin(com);
-                        push_expr_ptr(com, *arg);
-                        push_function_call(com, name, ptr, sig);
-                    }
-                }
-
+                push_function_call(com, name, ptr, sig);
             }
         }
 
+        const auto& [name, args] = it->first;
+        const auto& [sig, ptr, tok] = it->second;
         verify_sig(node.token, sig, param_types);
-        push_function_call(com, node.function_name, ptr, sig);
+        push_function_call(com, name, ptr, sig);
         return sig.return_type;
     }
 
@@ -752,8 +743,6 @@ auto push_expr_val(compiler& com, const node_member_function_call_expr& node) ->
         node.token.error("(4) could not find function '{}'", qualified_function_name);
     }
     
-    const auto& [sig, ptr, tok] = it->second;
-    push_function_call_begin(com);
     
     // Push the args to the stack
     std::vector<type_name> param_types;
@@ -762,8 +751,11 @@ auto push_expr_val(compiler& com, const node_member_function_call_expr& node) ->
     for (const auto& arg : node.args) {
         param_types.emplace_back(push_expr_val(com, *arg));
     }
+    const auto& [name, args] = it->first;
+    const auto& [sig, ptr, tok] = it->second;
+    push_function_call_begin(com);
     verify_sig(node.token, sig, param_types);
-    push_function_call(com, node.function_name, ptr, sig);
+    push_function_call(com, name, ptr, sig);
     return sig.return_type;
 }
 
@@ -935,15 +927,10 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
         const auto inner_size = com.types.size_of(etype);
 
         const auto it = com.functions.find(copy_fn(etype));
-        if (it == com.functions.end()) {
-            node.token.error("{} cannot be copied", etype);
-        }
+        node.token.assert(it != com.functions.end(), "{} cannot be copied", etype);
+
         const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
-
-        if (sig.special == signature::special_type::deleted) {
-            node.token.error("{} is a non-copyable type", etype);
-        }
 
         // Call ::copy
         for (std::size_t i = 0; i != length; ++i) {
@@ -960,15 +947,10 @@ void compile_stmt(compiler& com, const node_declaration_stmt& node)
     }
 
     const auto it = com.functions.find(copy_fn(type));
-    if (it == com.functions.end()) {
-        node.token.error("{} cannot be copied", type);
-    }
+    node.token.assert(it != com.functions.end(), "{} cannot be copied", type);
+
     const auto& [name, args] = it->first;
     const auto& [sig, ptr, tok] = it->second;
-
-    if (sig.special == signature::special_type::deleted) {
-        node.token.error("{} is a non-copyable type", type);
-    }
 
     // Call ::copy
     push_function_call_begin(com);
@@ -987,24 +969,17 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
         const auto lhs = push_expr_ptr(com, *node.position);
         node.token.assert_eq(lhs, rhs, "invalid assignment");
         com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
-        return;
-    }
 
-    if (is_list_type(type)) {
+    } else if (is_list_type(type)) {
         const auto etype = inner_type(type);
         const auto length = array_length(type);
         const auto inner_size = com.types.size_of(etype);
 
         const auto it = com.functions.find(assign_fn(etype));
-        if (it == com.functions.end()) {
-            node.token.error("{} cannot be assigned", etype);
-        }
+        node.token.assert(it != com.functions.end(), "{} is a non-assignable type", etype);
+
         const auto& [name, args] = it->first;
         const auto& [sig, ptr, tok] = it->second;
-
-        if (sig.special == signature::special_type::deleted) {
-            node.token.error("{} is a non-assignable type", etype);
-        }
 
         for (std::size_t i = 0; i != length; ++i) {
             // Call ::assign
@@ -1021,27 +996,21 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
             push_function_call(com, name, ptr, sig);
             com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
         }
-        
-        return;
-    }
 
-    const auto it = com.functions.find(assign_fn(type));
-    if (it == com.functions.end()) {
-        node.token.error("{} cannot be assigned", type);
-    }
-    const auto& [name, args] = it->first;
-    const auto& [sig, ptr, tok] = it->second;
+    } else {
+        const auto it = com.functions.find(assign_fn(type));
+        node.token.assert(it != com.functions.end(), "{} cannot be assigned", type);
 
-    if (sig.special == signature::special_type::deleted) {
-        node.token.error("{} is a non-assignable type", type);
-    }
+        const auto& [name, args] = it->first;
+        const auto& [sig, ptr, tok] = it->second;
 
-    // Call ::assign
-    push_function_call_begin(com);
-    push_expr_ptr(com, *node.position);
-    push_expr_ptr(com, *node.expr);
-    push_function_call(com, name, ptr, sig);
-    com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
+        push_function_call_begin(com);
+        push_expr_ptr(com, *node.position);
+        push_expr_ptr(com, *node.expr);
+        push_function_call(com, name, ptr, sig);
+        com.program.emplace_back(op_pop{ .size = com.types.size_of(sig.return_type) });
+    
+    }
 }
 
 auto make_key(compiler& com, const token& tok, const std::string& name, const signature& sig)
@@ -1109,24 +1078,8 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto expected = concrete_ptr_type(make_type(node.struct_name));
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
+    const auto struct_type = make_type(node.struct_name);
 
-    if (node.sig.special != signature::special_type::none) {
-        if (node.function_name == "assign") {
-            const auto key = function_key{
-                .name = name,
-                .args = { expected, expected }
-            };
-            com.functions[key] = { .sig=node.sig, .ptr=0, .tok=node.token };
-        }
-        else if (node.function_name == "copy") {
-            const auto key = function_key{
-                .name = name,
-                .args = { expected }
-            };
-            com.functions[key] = { .sig=node.sig, .ptr=0, .tok=node.token };
-        }
-        return;
-    }
     node.token.assert(node.sig.params.size() >= 1, "member functions must have at least one arg");
 
     const auto actual = node.sig.params.front().type;

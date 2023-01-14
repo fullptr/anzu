@@ -3,6 +3,7 @@
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 
+#include <cassert>
 #include <algorithm>
 #include <ranges>
 #include <string_view>

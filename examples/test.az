@@ -32,5 +32,6 @@ fn myfunc(x: unique_int)
 {
     x := [unique_int(5), unique_int(6)];
     y := x;
+    y = x;
     println(y[0u].val);
 }

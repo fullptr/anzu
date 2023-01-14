@@ -66,7 +66,6 @@ using type_fields = std::vector<field>;
 
 enum class special_fn
 {
-    defaulted,
     deleted,
     implemented,
 };
