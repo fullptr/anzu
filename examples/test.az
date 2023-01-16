@@ -42,3 +42,7 @@ fn myfunc(x: unique_int)
     xy := "a";
     x := xy[0u];
 }
+
+arr := [[1, 2], [2, 3], [3, 4], [4, 5]];
+println(sizeof(arr));
+println(lengthof(arr[0u]));

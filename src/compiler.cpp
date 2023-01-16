@@ -601,6 +601,9 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
         [&](const node_sizeof_expr& expr) {
             return u64_type();
         },
+        [&](const node_lengthof_expr& expr) {
+            return u64_type();
+        },
         [&](const node_variable_expr& expr) {
             return get_var_type(com, expr.token, expr.name);
         },
@@ -816,6 +819,16 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
     const auto size = com.types.size_of(type);
+    push_literal(com, size);
+    return u64_type();
+}
+
+auto push_expr_val(compiler& com, const node_lengthof_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    node.token.assert(is_list_type(type), "cannot call lengthof on a non-array type");
+
+    const auto size = array_length(type);
     push_literal(com, size);
     return u64_type();
 }

@@ -23,6 +23,7 @@ constexpr auto tk_sizeof    = sv{"sizeof"};
 constexpr auto tk_new       = sv{"new"};
 constexpr auto tk_delete    = sv{"delete"};
 constexpr auto tk_default   = sv{"default"};
+constexpr auto tk_lengthof  = sv{"lengthof"};
 
 // Builtin Types
 constexpr auto tk_i32       = sv{"i32"};
