@@ -27,9 +27,30 @@ struct op_push_local_addr
     std::size_t offset;
 };
 
-struct op_u64_add
-{
-};
+struct op_i32_add {};
+struct op_i32_sub {};
+struct op_i32_mul {};
+struct op_i32_div {};
+
+struct op_i64_add {};
+struct op_i64_sub {};
+struct op_i64_mul {};
+struct op_i64_div {};
+
+struct op_u64_add {};
+struct op_u64_sub {};
+struct op_u64_mul {};
+struct op_u64_div {};
+
+struct op_f64_add {};
+struct op_f64_sub {};
+struct op_f64_mul {};
+struct op_f64_div {};
+
+struct op_bool_or {};
+struct op_bool_and {};
+struct op_bool_eq {};
+struct op_bool_ne {};
 
 struct op_load
 {
@@ -99,7 +120,26 @@ struct op : std::variant<
     op_load_bytes,
     op_push_global_addr,
     op_push_local_addr,
+    op_i32_add,
+    op_i32_sub,
+    op_i32_mul,
+    op_i32_div,
+    op_i64_add,
+    op_i64_sub,
+    op_i64_mul,
+    op_i64_div,
     op_u64_add,
+    op_u64_sub,
+    op_u64_mul,
+    op_u64_div,
+    op_f64_add,
+    op_f64_sub,
+    op_f64_mul,
+    op_f64_div,
+    op_bool_and,
+    op_bool_or,
+    op_bool_eq,
+    op_bool_ne,
     op_load,
     op_save,
     op_pop,

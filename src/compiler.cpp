@@ -654,23 +654,15 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 {
     const auto ltype = push_expr_ptr(com, *expr.expr);
-    if (!std::holds_alternative<type_list>(ltype)) {
-        expr.token.error("cannot use subscript operator on non-list type '{}'", ltype);
-    }
-    const auto etype = *std::get<type_list>(ltype).inner_type;
+    expr.token.assert(is_list_type(ltype), "cannot use subscript operator on non-list type '{}'", ltype);
+    const auto etype = inner_type(ltype);
     const auto etype_size = com.types.size_of(etype);
 
-    // Push the offset (index * size)
+    // Push the offset (index * size) and add to the ptr
     const auto itype = push_expr_val(com, *expr.index);
     expr.token.assert_eq(itype, u64_type(), "subscript argument wrong type");
-
     push_literal(com, etype_size);
-    const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
-    com.program.emplace_back(op_builtin_call{
-        .name = "uint * uint",
-        .ptr = info->operator_func
-    });
-
+    com.program.emplace_back(op_u64_mul{});
     com.program.emplace_back(op_u64_add{}); // modify ptr
     return etype;
 }

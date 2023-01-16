@@ -24,9 +24,26 @@ auto to_string(const op& op_code) -> std::string
         [&](op_push_local_addr op) {
             return std::format("PUSH_LOCAL_ADDR(+{})", op.offset);
         },
-        [&](op_u64_add) {
-            return std::string{"U64_ADD"};
-        },
+        [&](op_i32_add) { return std::string{"I32_ADD"}; },
+        [&](op_i32_sub) { return std::string{"I32_SUB"}; },
+        [&](op_i32_mul) { return std::string{"I32_MUL"}; },
+        [&](op_i32_div) { return std::string{"I32_DIV"}; },
+        [&](op_i64_add) { return std::string{"I64_ADD"}; },
+        [&](op_i64_sub) { return std::string{"I64_SUB"}; },
+        [&](op_i64_mul) { return std::string{"I64_MUL"}; },
+        [&](op_i64_div) { return std::string{"I64_DIV"}; },
+        [&](op_u64_add) { return std::string{"U64_ADD"}; },
+        [&](op_u64_sub) { return std::string{"U64_SUB"}; },
+        [&](op_u64_mul) { return std::string{"U64_MUL"}; },
+        [&](op_u64_div) { return std::string{"U64_DIV"}; },
+        [&](op_f64_add) { return std::string{"F64_ADD"}; },
+        [&](op_f64_sub) { return std::string{"F64_SUB"}; },
+        [&](op_f64_mul) { return std::string{"F64_MUL"}; },
+        [&](op_f64_div) { return std::string{"F64_DIV"}; },
+        [&](op_bool_and) { return std::string{"BOOL_AND"}; },
+        [&](op_bool_or) { return std::string{"BOOL_OR"}; },
+        [&](op_bool_eq) { return std::string{"BOOL_EQ"}; },
+        [&](op_bool_ne) { return std::string{"BOOL_NE"}; },
         [&](op_load op) {
             return std::format("LOAD({})", op.size);
         },
