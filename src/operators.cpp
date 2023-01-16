@@ -63,41 +63,18 @@ auto resolve_equality_binary_op(std::string_view op) -> std::optional<binary_op_
     return std::nullopt;
 }
 
-template <typename T>
-auto resolve_comparison_binary_op(std::string_view op) -> std::optional<binary_op_info>
-{
-    if (op == tk_lt) {
-        return binary_op_info{ bin_op<T, std::less>, bool_type() };
-    } else if (op == tk_le) {
-        return binary_op_info{ bin_op<T, std::less_equal>, bool_type() };
-    } else if (op == tk_gt) {
-        return binary_op_info{ bin_op<T, std::greater>, bool_type() };
-    } else if (op == tk_ge) {
-        return binary_op_info{ bin_op<T, std::greater_equal>, bool_type() };
-    }
-    return std::nullopt;
-}
-
 }
 
 auto resolve_binary_op(
     const type_store& types, const binary_op_description& desc
 ) -> std::optional<binary_op_info>
 {
-    if (is_ptr_type(desc.lhs) && desc.rhs == u64_type()) {
-        return binary_op_info{ ptr_addition(types.size_of(desc.lhs)), desc.lhs };
-    }
-
     if (desc.lhs != desc.rhs) {
         return std::nullopt;
     }
 
     const auto& type = desc.lhs;
     
-    if (is_list_type(type)) { // No support for having these in bin ops.
-        return std::nullopt;
-    }
-
     if (type == char_type()) {
         if (auto op = resolve_equality_binary_op<char>(desc.op)) {
             return op.value();

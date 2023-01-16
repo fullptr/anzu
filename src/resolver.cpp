@@ -9,6 +9,7 @@ auto resolve_operation(
 )
     -> std::optional<op_info>
 {
+    if (is_ptr_type(lhs) && rhs == u64_type()) return op_info{ {op_u64_add{}}, lhs };
     if (lhs != rhs) return std::nullopt;
 
     const auto& type = lhs;

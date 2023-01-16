@@ -38,4 +38,7 @@ fn myfunc(x: unique_int)
 
     [unique_int(null)];
     println("after");
+
+    xy := "a";
+    x := xy[0u];
 }
