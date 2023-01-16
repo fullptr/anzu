@@ -1,6 +1,7 @@
 #pragma once
 #include "object.hpp"
 #include "functions.hpp"
+#include "program.hpp"
 
 #include <functional>
 #include <optional>
@@ -19,6 +20,7 @@ struct binary_op_info
 {
     builtin_function operator_func;
     type_name        result_type;
+    std::optional<op> op_code = std::nullopt;
 };
 
 auto resolve_binary_op(
