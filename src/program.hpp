@@ -26,6 +26,9 @@ struct op_push_local_addr
     std::size_t offset;
 };
 
+struct op_char_eq {};
+struct op_char_ne {};
+
 struct op_i32_add {};
 struct op_i32_sub {};
 struct op_i32_mul {};
@@ -146,6 +149,9 @@ struct op : std::variant<
     op_load_bytes,
     op_push_global_addr,
     op_push_local_addr,
+
+    op_char_eq,
+    op_char_ne,
 
     op_i32_add,
     op_i32_sub,

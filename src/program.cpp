@@ -25,6 +25,9 @@ auto to_string(const op& op_code) -> std::string
             return std::format("PUSH_LOCAL_ADDR(+{})", op.offset);
         },
 
+        [&](op_char_eq) { return std::string{"CHAR_EQ"}; },
+        [&](op_char_ne) { return std::string{"CHAR_NE"}; },
+
         [&](op_i32_add) { return std::string{"I32_ADD"}; },
         [&](op_i32_sub) { return std::string{"I32_SUB"}; },
         [&](op_i32_mul) { return std::string{"I32_MUL"}; },

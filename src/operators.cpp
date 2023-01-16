@@ -10,22 +10,6 @@
 namespace anzu {
 namespace {
 
-template <typename T>
-auto to_type_name() -> type_name
-{
-    if constexpr (std::is_same_v<T, std::int32_t>) {
-        return i32_type();
-    } else if constexpr (std::is_same_v<T, std::int64_t>) {
-        return i64_type();
-    } else if constexpr (std::is_same_v<T, std::uint64_t>) {
-        return u64_type();
-    } else if constexpr (std::is_same_v<T, double>) {
-        return f64_type();
-    } else {
-        static_assert(false);
-    }
-}
-
 template <typename Type, template <typename> typename Op>
 auto bin_op(std::vector<std::byte>& mem) -> void
 {
@@ -33,15 +17,6 @@ auto bin_op(std::vector<std::byte>& mem) -> void
     const auto rhs = pop_value<Type>(mem);
     const auto lhs = pop_value<Type>(mem);
     push_value(mem, op(lhs, rhs));
-}
-
-auto ptr_addition(std::size_t type_size)
-{
-    return [=](std::vector<std::byte>& mem) {
-        const auto offset = pop_value<std::uint64_t>(mem);
-        const auto ptr = pop_value<std::uint64_t>(mem);
-        push_value(mem, ptr + offset * type_size);
-    };
 }
 
 template <typename Type, template <typename> typename Op>
@@ -69,17 +44,6 @@ auto resolve_binary_op(
     const type_store& types, const binary_op_description& desc
 ) -> std::optional<binary_op_info>
 {
-    if (desc.lhs != desc.rhs) {
-        return std::nullopt;
-    }
-
-    const auto& type = desc.lhs;
-    
-    if (type == char_type()) {
-        if (auto op = resolve_equality_binary_op<char>(desc.op)) {
-            return op.value();
-        }
-    }
     return std::nullopt;
 }
 

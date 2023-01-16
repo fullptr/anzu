@@ -72,6 +72,9 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ++ctx.prog_ptr;
         },
 
+        [&](op_char_eq) { binary_op<char, std::equal_to>(ctx); },
+        [&](op_char_ne) { binary_op<char, std::not_equal_to>(ctx); },
+
         [&](op_i32_add) { binary_op<std::int32_t, std::plus>(ctx); },
         [&](op_i32_sub) { binary_op<std::int32_t, std::minus>(ctx); },
         [&](op_i32_mul) { binary_op<std::int32_t, std::multiplies>(ctx); },
