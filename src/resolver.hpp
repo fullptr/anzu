@@ -16,4 +16,8 @@ auto resolve_operation(
     const type_name& lhs, const type_name& rhs, const std::string& operation
 ) -> std::optional<op_info>;
 
+auto resolve_operation(
+    const type_name& type, const std::string& operation
+) -> std::optional<op_info>;
+
 }

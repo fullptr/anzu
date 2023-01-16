@@ -45,6 +45,15 @@ auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
 }
 
 template <typename Type, template <typename> typename Op>
+auto unary_op(runtime_context& ctx) -> void
+{
+    static constexpr auto op = Op<Type>{};
+    const auto obj = pop_value<Type>(ctx.stack);
+    push_value(ctx.stack, op(obj));
+    ++ctx.prog_ptr;
+}
+
+template <typename Type, template <typename> typename Op>
 auto binary_op(runtime_context& ctx) -> void
 {
     static constexpr auto op = Op<Type>{};
@@ -126,6 +135,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_bool_or)  { binary_op<bool, std::logical_or>(ctx); },
         [&](op_bool_eq)  { binary_op<bool, std::equal_to>(ctx); },
         [&](op_bool_ne)  { binary_op<bool, std::not_equal_to>(ctx); },
+        [&](op_bool_not) { unary_op<bool, std::logical_not>(ctx); },
+
+        [&](op_i32_neg) { unary_op<std::int32_t, std::negate>(ctx); },
+        [&](op_i64_neg) { unary_op<std::int64_t, std::negate>(ctx); },
+        [&](op_f64_neg) { unary_op<double, std::negate>(ctx); },
 
         [&](op_load op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);

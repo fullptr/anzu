@@ -3,7 +3,6 @@
 #include "object.hpp"
 #include "parser.hpp"
 #include "functions.hpp"
-#include "operators.hpp"
 #include "resolver.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
@@ -536,13 +535,12 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
     return std::visit(overloaded{
         [&](const node_literal_expr& expr) { return expr.value.type; },
         [&](const node_unary_op_expr& expr) {
-            const auto desc = unary_op_description{
-                .op = expr.token.text,
-                .type=type_of_expr(com, *expr.expr)
-            };
-            const auto r = resolve_unary_op(desc);
-            expr.token.assert(r.has_value(), "could not find op '{}{}'", desc.op, desc.type);
-            return r->result_type;
+            const auto type = type_of_expr(com, *expr.expr);
+            const auto op = expr.token.text;
+
+            const auto info = resolve_operation(type, op);
+            expr.token.assert(info.has_value(), "could not find op '{}{}'", op, type);
+            return info->return_type;
         },
         [&](const node_binary_op_expr& expr) {
             const auto lhs = type_of_expr(com, *expr.lhs);
@@ -691,6 +689,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     
     const auto info = resolve_operation(lhs, rhs, op);
     node.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
+    com.program.emplace_back(info->op_code);
     return info->return_type;
 }
 
@@ -698,14 +697,11 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     const auto type = push_expr_val(com, *node.expr);
     const auto op = node.token.text;
-    const auto info = resolve_unary_op({.op = op, .type = type});
-    node.token.assert(info.has_value(), "could not evaluate '{}{}'", op, type);
 
-    com.program.emplace_back(op_builtin_call{
-        .name = std::format("{}{}", op, type),
-        .ptr = info->operator_func
-    });
-    return info->result_type;
+    const auto info = resolve_operation(type, op);
+    node.token.assert(info.has_value(), "could not find op '{}{}'", op, type);
+    com.program.emplace_back(info->op_code);
+    return info->return_type;
 } 
 
 auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_name

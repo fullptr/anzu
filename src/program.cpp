@@ -76,9 +76,14 @@ auto to_string(const op& op_code) -> std::string
         [&](op_f64_ge) { return std::string{"F64_GE"}; },
 
         [&](op_bool_and) { return std::string{"BOOL_AND"}; },
-        [&](op_bool_or) { return std::string{"BOOL_OR"}; },
-        [&](op_bool_eq) { return std::string{"BOOL_EQ"}; },
-        [&](op_bool_ne) { return std::string{"BOOL_NE"}; },
+        [&](op_bool_or)  { return std::string{"BOOL_OR"}; },
+        [&](op_bool_eq)  { return std::string{"BOOL_EQ"}; },
+        [&](op_bool_ne)  { return std::string{"BOOL_NE"}; },
+        [&](op_bool_not) { return std::string{"BOOL_NOT"}; },
+
+        [&](op_i32_neg) { return std::string{"I32_NEG"}; },
+        [&](op_i64_neg) { return std::string{"I64_NEG"}; },
+        [&](op_f64_neg) { return std::string{"F64_NEG"}; },
 
         [&](op_load op) {
             return std::format("LOAD({})", op.size);

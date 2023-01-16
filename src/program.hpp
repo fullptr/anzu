@@ -80,6 +80,11 @@ struct op_bool_or {};
 struct op_bool_and {};
 struct op_bool_eq {};
 struct op_bool_ne {};
+struct op_bool_not {};
+
+struct op_i32_neg {};
+struct op_i64_neg {};
+struct op_f64_neg {};
 
 struct op_load
 {
@@ -204,6 +209,11 @@ struct op : std::variant<
     op_bool_or,
     op_bool_eq,
     op_bool_ne,
+    op_bool_not,
+
+    op_i32_neg,
+    op_i64_neg,
+    op_f64_neg,
 
     op_load,
     op_save,

@@ -74,4 +74,24 @@ auto resolve_operation(
     return std::nullopt;
 }
 
+auto resolve_operation(
+    const type_name& type, const std::string& operation
+)
+    -> std::optional<op_info>
+{
+    if (type == i32_type()) {
+        if (operation == tk_sub) return op_info{ {op_i32_neg{}}, type };
+    }
+    else if (type == i64_type()) {
+        if (operation == tk_sub) return op_info{ {op_i64_neg{}}, type };
+    }
+    else if (type == f64_type()) {
+        if (operation == tk_sub) return op_info{ {op_f64_neg{}}, type };
+    }
+    else if (type == bool_type()) {
+        if (operation == tk_sub) return op_info{ {op_bool_not{}}, type };
+    }
+    return std::nullopt;
+}
+
 }
