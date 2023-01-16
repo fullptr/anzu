@@ -194,18 +194,18 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.allocator.deallocate(heap_ptr, size + sizeof(std::uint64_t));
             ++ctx.prog_ptr;
         },
-        [&](op_jump op) {
+        [&](op_jump_rel op) {
             ctx.prog_ptr += op.jump;
         },
-        [&](op_jump_if_false op) {
+        [&](op_jump_abs op) {
+            ctx.prog_ptr = op.jump;
+        },
+        [&](op_jump_rel_if_false op) {
             if (pop_value<bool>(ctx.stack)) {
                 ++ctx.prog_ptr;
             } else {
                 ctx.prog_ptr += op.jump;
             }
-        },
-        [&](const op_function& op) {
-            ctx.prog_ptr = op.jump;
         },
         [&](op_return op) {
             const auto prev_base_ptr = read_value<std::uint64_t>(ctx.stack, ctx.base_ptr);
