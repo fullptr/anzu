@@ -865,18 +865,18 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
     }
 }
 
-void compile_stmt(compiler& com, const node_while_stmt& node)
+auto compile_while_loop(compiler& com, const token& tok, std::function<type_name()> condition, std::function<void()> body) -> void
 {
     current_vars(com).push_scope(var_scope::scope_type::while_stmt);
 
     const auto begin_pos = std::ssize(com.program);
-    const auto cond_type = push_expr_val(com, *node.condition);
-    node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
+    const auto cond_type = condition();
+    tok.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
 
     const auto jump_pos = append_op(com, op_jump_rel_if_false{});
 
     com.control_flow.emplace();
-    compile_stmt(com, *node.body);
+    body();
     const auto end_pos = std::ssize(com.program);
     com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
 
@@ -895,6 +895,24 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
     if (scope_size > 0) {
         com.program.emplace_back(op_pop{scope_size});
     }
+}
+
+void compile_stmt(compiler& com, const node_while_stmt& node)
+{
+    const auto condition_compiler = [&] {
+        return push_expr_val(com, *node.condition);
+    };
+
+    const auto body_compiler = [&] {
+        compile_stmt(com, *node.body);
+    };
+
+    compile_while_loop(com, node.token, condition_compiler, body_compiler);
+}
+
+void compile_stmt(compiler& com, const node_for_stmt& node)
+{
+    
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)

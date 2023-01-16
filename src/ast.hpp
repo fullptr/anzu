@@ -168,6 +168,15 @@ struct node_while_stmt
     anzu::token token;
 };
 
+struct node_for_stmt
+{
+    std::string name;
+    node_expr_ptr condition;
+    node_stmt_ptr body;
+
+    anzu::token token;
+};
+
 struct node_if_stmt
 {
     node_expr_ptr condition;
@@ -255,6 +264,7 @@ struct node_delete_stmt
 struct node_stmt : std::variant<
     node_sequence_stmt,
     node_while_stmt,
+    node_for_stmt,
     node_if_stmt,
     node_struct_stmt,
     node_break_stmt,

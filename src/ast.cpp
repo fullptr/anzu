@@ -114,6 +114,13 @@ auto print_node(const node_stmt& root, int indent) -> void
             print("{}- Body:\n", spaces);
             print_node(*node.body, indent + 1);
         },
+        [&](const node_for_stmt& node) {
+            print("{}For (name={}):\n", spaces, node.name);
+            print("{}- Condition:\n", spaces);
+            print_node(*node.condition, indent + 1);
+            print("{}- Body:\n", spaces);
+            print_node(*node.body, indent + 1);
+        },
         [&](const node_if_stmt& node) {
             print("{}If:\n", spaces);
             print("{}- Condition:\n", spaces);
