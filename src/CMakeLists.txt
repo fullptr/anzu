@@ -17,7 +17,7 @@ add_executable(
     allocator.cpp
     object.cpp
     functions.cpp
-    operators.cpp
+    resolver.cpp
     vocabulary.cpp
 )
 

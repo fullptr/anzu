@@ -11,6 +11,12 @@
     e := a;
 }
 
+# modulus
+{
+    a := 10;
+    b := 5 % 2;
+}
+
 # while-statements
 {
     idx := 0;

@@ -3,7 +3,7 @@
 #include "object.hpp"
 #include "parser.hpp"
 #include "functions.hpp"
-#include "operators.hpp"
+#include "resolver.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 #include "utility/views.hpp"
@@ -171,7 +171,7 @@ auto push_literal(compiler& com, const T& value) -> void
 auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 {
     push_literal(com, offset);
-    com.program.emplace_back(op_modify_ptr{});
+    com.program.emplace_back(op_u64_add{}); // modify ptr
 }
 
 auto current_vars(compiler& com) -> var_locations&
@@ -321,7 +321,7 @@ auto push_adjust_ptr_to_field(
     -> type_name
 {
     const auto field_type = push_field_offset(com, tok, type, field_name);
-    com.program.emplace_back(op_modify_ptr{});
+    com.program.emplace_back(op_u64_add{}); // modify ptr
     return field_type;
 }
 
@@ -535,23 +535,21 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
     return std::visit(overloaded{
         [&](const node_literal_expr& expr) { return expr.value.type; },
         [&](const node_unary_op_expr& expr) {
-            const auto desc = unary_op_description{
-                .op = expr.token.text,
-                .type=type_of_expr(com, *expr.expr)
-            };
-            const auto r = resolve_unary_op(desc);
-            expr.token.assert(r.has_value(), "could not find op '{}{}'", desc.op, desc.type);
-            return r->result_type;
+            const auto type = type_of_expr(com, *expr.expr);
+            const auto op = expr.token.text;
+
+            const auto info = resolve_operation(type, op);
+            expr.token.assert(info.has_value(), "could not find op '{}{}'", op, type);
+            return info->return_type;
         },
         [&](const node_binary_op_expr& expr) {
-            const auto desc = binary_op_description{
-                .op = expr.token.text,
-                .lhs=type_of_expr(com, *expr.lhs),
-                .rhs=type_of_expr(com, *expr.rhs)
-            };
-            const auto r = resolve_binary_op(com.types, desc);
-            expr.token.assert(r.has_value(), "could not find op '{} {} {}'", desc.lhs, desc.op, desc.rhs);
-            return r->result_type;
+            const auto lhs = type_of_expr(com, *expr.lhs);
+            const auto rhs = type_of_expr(com, *expr.rhs);
+            const auto op = expr.token.text;
+
+            const auto info = resolve_operation(lhs, rhs, op);
+            expr.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
+            return info->return_type;
         },
         [&](const node_function_call_expr& expr) {
             if (com.types.contains(make_type(expr.function_name))) { // constructor
@@ -654,24 +652,16 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 {
     const auto ltype = push_expr_ptr(com, *expr.expr);
-    if (!std::holds_alternative<type_list>(ltype)) {
-        expr.token.error("cannot use subscript operator on non-list type '{}'", ltype);
-    }
-    const auto etype = *std::get<type_list>(ltype).inner_type;
+    expr.token.assert(is_list_type(ltype), "cannot use subscript operator on non-list type '{}'", ltype);
+    const auto etype = inner_type(ltype);
     const auto etype_size = com.types.size_of(etype);
 
-    // Push the offset (index * size)
+    // Push the offset (index * size) and add to the ptr
     const auto itype = push_expr_val(com, *expr.index);
-    expr.token.assert_eq(itype, u64_type(), "subscript argument wrog type");
-
+    expr.token.assert_eq(itype, u64_type(), "subscript argument wrong type");
     push_literal(com, etype_size);
-    const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
-    com.program.emplace_back(op_builtin_call{
-        .name = "uint * uint",
-        .ptr = info->operator_func
-    });
-
-    com.program.emplace_back(op_modify_ptr{});
+    com.program.emplace_back(op_u64_mul{});
+    com.program.emplace_back(op_u64_add{}); // modify ptr
     return etype;
 }
 
@@ -696,29 +686,22 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     const auto lhs = push_expr_val(com, *node.lhs);
     const auto rhs = push_expr_val(com, *node.rhs);
     const auto op = node.token.text;
-
-    const auto info = resolve_binary_op(com.types, { .op=op, .lhs=lhs, .rhs=rhs });
-    node.token.assert(info.has_value(), "could not evaluate '{} {} {}'", lhs, op, rhs);
-
-    com.program.emplace_back(op_builtin_call{
-        .name = std::format("{} {} {}", lhs, op, rhs),
-        .ptr = info->operator_func
-    });
-    return info->result_type;
+    
+    const auto info = resolve_operation(lhs, rhs, op);
+    node.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
+    com.program.emplace_back(info->op_code);
+    return info->return_type;
 }
 
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     const auto type = push_expr_val(com, *node.expr);
     const auto op = node.token.text;
-    const auto info = resolve_unary_op({.op = op, .type = type});
-    node.token.assert(info.has_value(), "could not evaluate '{}{}'", op, type);
 
-    com.program.emplace_back(op_builtin_call{
-        .name = std::format("{}{}", op, type),
-        .ptr = info->operator_func
-    });
-    return info->result_type;
+    const auto info = resolve_operation(type, op);
+    node.token.assert(info.has_value(), "could not find op '{}{}'", op, type);
+    com.program.emplace_back(info->op_code);
+    return info->return_type;
 } 
 
 auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_name
