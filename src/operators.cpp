@@ -53,22 +53,6 @@ auto unary_op(std::vector<std::byte>& mem)
 }
 
 template <typename T>
-auto resolve_arithmetic_binary_op(std::string_view op) -> std::optional<binary_op_info>
-{
-    const auto type = to_type_name<T>();
-    if (op == tk_add) {
-        return binary_op_info{ bin_op<T, std::plus>, type };
-    } else if (op == tk_sub) {
-        return binary_op_info{ bin_op<T, std::minus>, type };
-    } else if (op == tk_mul) {
-        return binary_op_info{ bin_op<T, std::multiplies>, type };
-    } else if (op == tk_div) {
-        return binary_op_info{ bin_op<T, std::divides>, type };
-    }
-    return std::nullopt;
-}
-
-template <typename T>
 auto resolve_equality_binary_op(std::string_view op) -> std::optional<binary_op_info>
 {
     if (op == tk_eq) {
@@ -97,9 +81,6 @@ auto resolve_comparison_binary_op(std::string_view op) -> std::optional<binary_o
 template <typename T>
 auto resolve_numerical_binary_op(std::string_view op) -> std::optional<binary_op_info>
 {
-    if (auto bin_op = resolve_arithmetic_binary_op<T>(op)) {
-        return bin_op.value();
-    }
     if (auto bin_op = resolve_equality_binary_op<T>(op)) {
         return bin_op.value();
     }
@@ -145,18 +126,6 @@ auto resolve_binary_op(
     }
     else if (type == f64_type()) {
         return resolve_numerical_binary_op<double>(desc.op);
-    }
-    else if (type == bool_type()) {
-        if (desc.op == tk_and) {
-            return binary_op_info{ bin_op<bool, std::logical_and>, type };
-        }
-        if (desc.op == tk_or) {
-            return binary_op_info{ bin_op<bool, std::logical_or>, type };
-        }
-        
-        if (auto op = resolve_equality_binary_op<bool>(desc.op)) {
-            return op.value();
-        }
     }
     else if (type == char_type()) {
         if (auto op = resolve_equality_binary_op<char>(desc.op)) {

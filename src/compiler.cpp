@@ -4,6 +4,7 @@
 #include "parser.hpp"
 #include "functions.hpp"
 #include "operators.hpp"
+#include "resolver.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 #include "utility/views.hpp"
@@ -544,14 +545,21 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return r->result_type;
         },
         [&](const node_binary_op_expr& expr) {
+            const auto lhs = type_of_expr(com, *expr.lhs);
+            const auto rhs = type_of_expr(com, *expr.rhs);
             const auto desc = binary_op_description{
-                .op = expr.token.text,
-                .lhs=type_of_expr(com, *expr.lhs),
-                .rhs=type_of_expr(com, *expr.rhs)
+                .op = expr.token.text, .lhs=lhs, .rhs=rhs
             };
-            const auto r = resolve_binary_op(com.types, desc);
-            expr.token.assert(r.has_value(), "could not find op '{} {} {}'", desc.lhs, desc.op, desc.rhs);
-            return r->result_type;
+            const auto info1 = resolve_binary_op(com.types, desc);
+            const auto info2 = resolve_operation(lhs, rhs, expr.token.text);
+            if (info1.has_value()) {
+                return info1->result_type;
+            }
+            else if (info2.has_value()) {
+                return info2->return_type;
+            }
+            expr.token.error("could not find op '{} {} {}'", desc.lhs, desc.op, desc.rhs);
+            return null_type();
         },
         [&](const node_function_call_expr& expr) {
             if (com.types.contains(make_type(expr.function_name))) { // constructor
@@ -689,14 +697,22 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     const auto rhs = push_expr_val(com, *node.rhs);
     const auto op = node.token.text;
 
-    const auto info = resolve_binary_op(com.types, { .op=op, .lhs=lhs, .rhs=rhs });
-    node.token.assert(info.has_value(), "could not evaluate '{} {} {}'", lhs, op, rhs);
+    const auto info1 = resolve_binary_op(com.types, { .op=op, .lhs=lhs, .rhs=rhs });
+    const auto info2 = resolve_operation(lhs, rhs, op);
+    if (info1.has_value()) {
+        com.program.emplace_back(op_builtin_call{
+            .name = std::format("{} {} {}", lhs, op, rhs),
+            .ptr = info1->operator_func
+        });
+        return info1->result_type;
+    }
+    else if (info2.has_value()) {
+        com.program.emplace_back(info2->op_code);
+        return info2->return_type;
+    }
 
-    com.program.emplace_back(op_builtin_call{
-        .name = std::format("{} {} {}", lhs, op, rhs),
-        .ptr = info->operator_func
-    });
-    return info->result_type;
+    node.token.error("could not evaluate '{} {} {}'", lhs, op, rhs);
+    return null_type();
 }
 
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name

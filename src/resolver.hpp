@@ -8,10 +8,12 @@ namespace anzu {
 
 struct op_info
 {
-    type_name return_type;
     op        op_code;
+    type_name return_type;
 };
 
-auto resolve_operation(const type_name& lhs, const type_name& rhs) -> std::optional<op_info>;
+auto resolve_operation(
+    const type_name& lhs, const type_name& rhs, const std::string& operation
+) -> std::optional<op_info>;
 
 }
