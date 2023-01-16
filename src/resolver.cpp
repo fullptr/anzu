@@ -18,6 +18,7 @@ auto resolve_operation(
         if (operation == tk_sub) return op_info{ {op_i32_sub{}}, type };
         if (operation == tk_mul) return op_info{ {op_i32_mul{}}, type };
         if (operation == tk_div) return op_info{ {op_i32_div{}}, type };
+        if (operation == tk_mod) return op_info{ {op_i32_mod{}}, type };
 
         if (operation == tk_eq) return op_info{ {op_i32_eq{}}, bool_type() };
         if (operation == tk_ne) return op_info{ {op_i32_ne{}}, bool_type() };
@@ -31,6 +32,7 @@ auto resolve_operation(
         if (operation == tk_sub) return op_info{ {op_i64_sub{}}, type };
         if (operation == tk_mul) return op_info{ {op_i64_mul{}}, type };
         if (operation == tk_div) return op_info{ {op_i64_div{}}, type };
+        if (operation == tk_mod) return op_info{ {op_i64_mod{}}, type };
 
         if (operation == tk_eq) return op_info{ {op_i64_eq{}}, bool_type() };
         if (operation == tk_ne) return op_info{ {op_i64_ne{}}, bool_type() };
@@ -44,6 +46,7 @@ auto resolve_operation(
         if (operation == tk_sub) return op_info{ {op_u64_sub{}}, type };
         if (operation == tk_mul) return op_info{ {op_u64_mul{}}, type };
         if (operation == tk_div) return op_info{ {op_u64_div{}}, type };
+        if (operation == tk_mod) return op_info{ {op_u64_mod{}}, type };
 
         if (operation == tk_eq) return op_info{ {op_u64_eq{}}, bool_type() };
         if (operation == tk_ne) return op_info{ {op_u64_ne{}}, bool_type() };
@@ -89,7 +92,7 @@ auto resolve_operation(
         if (operation == tk_sub) return op_info{ {op_f64_neg{}}, type };
     }
     else if (type == bool_type()) {
-        if (operation == tk_sub) return op_info{ {op_bool_not{}}, type };
+        if (operation == tk_bang) return op_info{ {op_bool_not{}}, type };
     }
     return std::nullopt;
 }
