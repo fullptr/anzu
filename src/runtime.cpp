@@ -59,10 +59,10 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             push_value(ctx.stack, ctx.base_ptr + op.offset);
             ++ctx.prog_ptr;
         },
-        [&](op_modify_ptr) {
-            const auto offset = pop_value<std::uint64_t>(ctx.stack);
-            const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-            push_value(ctx.stack, ptr + offset);
+        [&](op_u64_add) {
+            const auto b = pop_value<std::uint64_t>(ctx.stack);
+            const auto a = pop_value<std::uint64_t>(ctx.stack);
+            push_value(ctx.stack, a + b);
             ++ctx.prog_ptr;
         },
         [&](op_load op) {

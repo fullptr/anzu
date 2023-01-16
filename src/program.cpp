@@ -24,8 +24,8 @@ auto to_string(const op& op_code) -> std::string
         [&](op_push_local_addr op) {
             return std::format("PUSH_LOCAL_ADDR(+{})", op.offset);
         },
-        [&](op_modify_ptr) {
-            return std::string{"MODIFY_PTR"};
+        [&](op_u64_add) {
+            return std::string{"U64_ADD"};
         },
         [&](op_load op) {
             return std::format("LOAD({})", op.size);

@@ -27,8 +27,7 @@ struct op_push_local_addr
     std::size_t offset;
 };
 
-// This is just integer addition now
-struct op_modify_ptr
+struct op_u64_add
 {
 };
 
@@ -100,7 +99,7 @@ struct op : std::variant<
     op_load_bytes,
     op_push_global_addr,
     op_push_local_addr,
-    op_modify_ptr,
+    op_u64_add,
     op_load,
     op_save,
     op_pop,

@@ -171,7 +171,7 @@ auto push_literal(compiler& com, const T& value) -> void
 auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 {
     push_literal(com, offset);
-    com.program.emplace_back(op_modify_ptr{});
+    com.program.emplace_back(op_u64_add{}); // modify ptr
 }
 
 auto current_vars(compiler& com) -> var_locations&
@@ -321,7 +321,7 @@ auto push_adjust_ptr_to_field(
     -> type_name
 {
     const auto field_type = push_field_offset(com, tok, type, field_name);
-    com.program.emplace_back(op_modify_ptr{});
+    com.program.emplace_back(op_u64_add{}); // modify ptr
     return field_type;
 }
 
@@ -662,7 +662,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 
     // Push the offset (index * size)
     const auto itype = push_expr_val(com, *expr.index);
-    expr.token.assert_eq(itype, u64_type(), "subscript argument wrog type");
+    expr.token.assert_eq(itype, u64_type(), "subscript argument wrong type");
 
     push_literal(com, etype_size);
     const auto info = resolve_binary_op(com.types, { .op="*", .lhs=itype, .rhs=itype });
@@ -671,7 +671,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
         .ptr = info->operator_func
     });
 
-    com.program.emplace_back(op_modify_ptr{});
+    com.program.emplace_back(op_u64_add{}); // modify ptr
     return etype;
 }
 
