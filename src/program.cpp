@@ -29,6 +29,7 @@ auto to_string(const op& op_code) -> std::string
         [&](op_i32_sub) { return std::string{"I32_SUB"}; },
         [&](op_i32_mul) { return std::string{"I32_MUL"}; },
         [&](op_i32_div) { return std::string{"I32_DIV"}; },
+        [&](op_i32_mod) { return std::string{"I32_MOD"}; },
         [&](op_i32_eq) { return std::string{"I32_EQ"}; },
         [&](op_i32_ne) { return std::string{"I32_NE"}; },
         [&](op_i32_lt) { return std::string{"I32_LT"}; },
@@ -40,6 +41,7 @@ auto to_string(const op& op_code) -> std::string
         [&](op_i64_sub) { return std::string{"I64_SUB"}; },
         [&](op_i64_mul) { return std::string{"I64_MUL"}; },
         [&](op_i64_div) { return std::string{"I64_DIV"}; },
+        [&](op_i64_mod) { return std::string{"I64_MOD"}; },
         [&](op_i64_eq) { return std::string{"I64_EQ"}; },
         [&](op_i64_ne) { return std::string{"I64_NE"}; },
         [&](op_i64_lt) { return std::string{"I64_LT"}; },
@@ -51,6 +53,7 @@ auto to_string(const op& op_code) -> std::string
         [&](op_u64_sub) { return std::string{"U64_SUB"}; },
         [&](op_u64_mul) { return std::string{"U64_MUL"}; },
         [&](op_u64_div) { return std::string{"U64_DIV"}; },
+        [&](op_u64_mod) { return std::string{"U64_MOD"}; },
         [&](op_u64_eq) { return std::string{"U64_EQ"}; },
         [&](op_u64_ne) { return std::string{"U64_NE"}; },
         [&](op_u64_lt) { return std::string{"U64_LT"}; },
@@ -73,7 +76,7 @@ auto to_string(const op& op_code) -> std::string
         [&](op_bool_or) { return std::string{"BOOL_OR"}; },
         [&](op_bool_eq) { return std::string{"BOOL_EQ"}; },
         [&](op_bool_ne) { return std::string{"BOOL_NE"}; },
-        
+
         [&](op_load op) {
             return std::format("LOAD({})", op.size);
         },

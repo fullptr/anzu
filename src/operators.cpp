@@ -78,17 +78,6 @@ auto resolve_comparison_binary_op(std::string_view op) -> std::optional<binary_o
     return std::nullopt;
 }
 
-template <typename T>
-auto resolve_numerical_binary_op(std::string_view op) -> std::optional<binary_op_info>
-{
-    if constexpr (!std::is_floating_point_v<T>) {
-        if (op == tk_mod) {
-            return binary_op_info{ bin_op<T, std::modulus>, to_type_name<T>() };
-        }
-    }
-    return std::nullopt;
-}
-
 }
 
 auto resolve_binary_op(
@@ -109,19 +98,7 @@ auto resolve_binary_op(
         return std::nullopt;
     }
 
-    if (type == i32_type()) {
-        return resolve_numerical_binary_op<std::int32_t>(desc.op);
-    }
-    else if (type == i64_type()) {
-        return resolve_numerical_binary_op<std::int64_t>(desc.op);
-    }
-    else if (type == u64_type()) {
-        return resolve_numerical_binary_op<std::uint64_t>(desc.op);
-    }
-    else if (type == f64_type()) {
-        return resolve_numerical_binary_op<double>(desc.op);
-    }
-    else if (type == char_type()) {
+    if (type == char_type()) {
         if (auto op = resolve_equality_binary_op<char>(desc.op)) {
             return op.value();
         }

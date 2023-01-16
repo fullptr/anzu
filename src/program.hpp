@@ -30,6 +30,7 @@ struct op_i32_add {};
 struct op_i32_sub {};
 struct op_i32_mul {};
 struct op_i32_div {};
+struct op_i32_mod {};
 struct op_i32_eq {};
 struct op_i32_ne {};
 struct op_i32_lt {};
@@ -41,6 +42,7 @@ struct op_i64_add {};
 struct op_i64_sub {};
 struct op_i64_mul {};
 struct op_i64_div {};
+struct op_i64_mod {};
 struct op_i64_eq {};
 struct op_i64_ne {};
 struct op_i64_lt {};
@@ -52,6 +54,7 @@ struct op_u64_add {};
 struct op_u64_sub {};
 struct op_u64_mul {};
 struct op_u64_div {};
+struct op_u64_mod {};
 struct op_u64_eq {};
 struct op_u64_ne {};
 struct op_u64_lt {};
@@ -148,6 +151,7 @@ struct op : std::variant<
     op_i32_sub,
     op_i32_mul,
     op_i32_div,
+    op_i32_mod,
     op_i32_eq,
     op_i32_ne,
     op_i32_lt,
@@ -159,6 +163,7 @@ struct op : std::variant<
     op_i64_sub,
     op_i64_mul,
     op_i64_div,
+    op_i64_mod,
     op_i64_eq,
     op_i64_ne,
     op_i64_lt,
@@ -170,6 +175,7 @@ struct op : std::variant<
     op_u64_sub,
     op_u64_mul,
     op_u64_div,
+    op_u64_mod,
     op_u64_eq,
     op_u64_ne,
     op_u64_lt,
