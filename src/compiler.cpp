@@ -826,7 +826,9 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_lengthof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    const auto size = com.types.size_of(type);
+    node.token.assert(is_list_type(type), "cannot call lengthof on a non-array type");
+
+    const auto size = array_length(type);
     push_literal(com, size);
     return u64_type();
 }
