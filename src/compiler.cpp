@@ -549,16 +549,9 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             const auto rhs = type_of_expr(com, *expr.rhs);
             const auto op = expr.token.text;
 
-            const auto desc = binary_op_description{ .op = op, .lhs = lhs, .rhs = rhs };
-            
-            if (const auto info = resolve_operation(lhs, rhs, op)) {
-                return info->return_type;
-            }
-            else if (const auto info = resolve_binary_op(com.types, desc)) {
-                return info->result_type;
-            }
-            expr.token.error("could not find op '{} {} {}'", lhs, op, desc.rhs);
-            return null_type();
+            const auto info = resolve_operation(lhs, rhs, op);
+            expr.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
+            return info->return_type;
         },
         [&](const node_function_call_expr& expr) {
             if (com.types.contains(make_type(expr.function_name))) { // constructor
@@ -695,23 +688,10 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     const auto lhs = push_expr_val(com, *node.lhs);
     const auto rhs = push_expr_val(com, *node.rhs);
     const auto op = node.token.text;
-
-    const auto desc = binary_op_description{ .op = op, .lhs = lhs, .rhs = rhs };
     
-    if (const auto info = resolve_operation(lhs, rhs, op)) {
-        com.program.emplace_back(info->op_code);
-        return info->return_type;
-    }
-    else if (const auto info = resolve_binary_op(com.types, desc)) {
-        com.program.emplace_back(op_builtin_call{
-            .name = std::format("{} {} {}", lhs, op, rhs),
-            .ptr = info->operator_func
-        });
-        return info->result_type;
-    }
-
-    node.token.error("could not find op '{} {} {}'", lhs, op, rhs);
-    return null_type();
+    const auto info = resolve_operation(lhs, rhs, op);
+    node.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
+    return info->return_type;
 }
 
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
