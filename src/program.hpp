@@ -110,12 +110,17 @@ struct op_deallocate
 {
 };
 
-struct op_jump
+struct op_jump_rel
 {
     std::int64_t jump;
 };
 
-struct op_jump_if_false
+struct op_jump_abs
+{
+    std::size_t jump;
+};
+
+struct op_jump_rel_if_false
 {
     std::size_t jump;
 };
@@ -132,12 +137,6 @@ struct op_builtin_call
     std::string      name;
     builtin_function ptr;
     std::size_t      args_size;
-};
-
-struct op_function
-{
-    std::string name;
-    std::size_t jump;
 };
 
 struct op_return
@@ -220,9 +219,9 @@ struct op : std::variant<
     op_pop,
     op_allocate,
     op_deallocate,
-    op_jump,
-    op_jump_if_false,
-    op_function,
+    op_jump_rel,
+    op_jump_rel_if_false,
+    op_jump_abs,
     op_return,
     op_function_call,
     op_builtin_call,
