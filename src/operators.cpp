@@ -81,12 +81,6 @@ auto resolve_comparison_binary_op(std::string_view op) -> std::optional<binary_o
 template <typename T>
 auto resolve_numerical_binary_op(std::string_view op) -> std::optional<binary_op_info>
 {
-    if (auto bin_op = resolve_equality_binary_op<T>(op)) {
-        return bin_op.value();
-    }
-    if (auto bin_op = resolve_comparison_binary_op<T>(op)) {
-        return bin_op.value();
-    }
     if constexpr (!std::is_floating_point_v<T>) {
         if (op == tk_mod) {
             return binary_op_info{ bin_op<T, std::modulus>, to_type_name<T>() };
