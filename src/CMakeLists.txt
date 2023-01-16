@@ -18,6 +18,7 @@ add_executable(
     object.cpp
     functions.cpp
     operators.cpp
+    resolver.cpp
     vocabulary.cpp
 )
 
