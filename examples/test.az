@@ -1,12 +1,8 @@
 
 
-idx := 0u;
-loop {
-    if idx == 10u {
-        break;
-    }
-    println("loop");
-    idx = idx + 1u;
-    continue;
-    println("after");
+for x in [1, 2, 3] {
+    println(*x);
 }
+
+l := 5;
+println(l);
