@@ -949,9 +949,9 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
         const auto cond_type = push_expr_val(com, *node.condition);
         node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
         com.program.emplace_back(op_bool_not{});
-        const auto jump_pos = append_op(com, op_jump_rel_if_false{});
+        const auto jump_pos = append_op(com, op_jump_abs_if_false{});
         push_break(com);
-        std::get<op_jump_rel_if_false>(com.program[jump_pos]).jump = com.program.size() - jump_pos; // Jump past the end if false
+        std::get<op_jump_abs_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
         
         // <body>
         compile_stmt(com, *node.body);
@@ -1003,9 +1003,9 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
         load_variable(com, node.token, "#:idx");
         load_variable(com, node.token, "#:size");
         com.program.emplace_back(op_u64_eq{});
-        const auto jump_pos = append_op(com, op_jump_rel_if_false{});
+        const auto jump_pos = append_op(com, op_jump_abs_if_false{});
         push_break(com);
-        std::get<op_jump_rel_if_false>(com.program[jump_pos]).jump = com.program.size() - jump_pos; // Jump past the end if false
+        std::get<op_jump_abs_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
 
         // name := &iter[idx];
         if (is_rvalue_expr(*node.iter)) {
@@ -1035,16 +1035,16 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
     const auto cond_type = push_expr_val(com, *node.condition);
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
 
-    const auto jump_pos = append_op(com, op_jump_rel_if_false{});
+    const auto jump_pos = append_op(com, op_jump_abs_if_false{});
     compile_stmt(com, *node.body);
 
     if (node.else_body) {
-        const auto else_pos = append_op(com, op_jump_rel{});
+        const auto else_pos = append_op(com, op_jump_abs{});
         compile_stmt(com, *node.else_body);
-        std::get<op_jump_rel_if_false>(com.program[jump_pos]).jump = else_pos + 1 - jump_pos; // Jump into the else block if false
-        std::get<op_jump_rel>(com.program[else_pos]).jump = com.program.size() - else_pos; // Jump past the end if false
+        std::get<op_jump_abs_if_false>(com.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
+        std::get<op_jump_abs>(com.program[else_pos]).jump = com.program.size(); // Jump past the end if false
     } else {
-        std::get<op_jump_rel_if_false>(com.program[jump_pos]).jump = com.program.size() - jump_pos; // Jump past the end if false
+        std::get<op_jump_abs_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
     }
 }
 
