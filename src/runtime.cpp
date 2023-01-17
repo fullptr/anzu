@@ -207,6 +207,13 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 ctx.prog_ptr += op.jump;
             }
         },
+        [&](op_jump_abs_if_false op) {
+            if (pop_value<bool>(ctx.stack)) {
+                ++ctx.prog_ptr;
+            } else {
+                ctx.prog_ptr = op.jump;
+            }
+        },
         [&](op_return op) {
             const auto prev_base_ptr = read_value<std::uint64_t>(ctx.stack, ctx.base_ptr);
             const auto prev_prog_ptr = read_value<std::uint64_t>(ctx.stack, ctx.base_ptr + sizeof(std::uint64_t));

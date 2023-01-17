@@ -125,6 +125,11 @@ struct op_jump_rel_if_false
     std::size_t jump;
 };
 
+struct op_jump_abs_if_false
+{
+    std::size_t jump;
+};
+
 struct op_function_call
 {
     std::string name;
@@ -222,6 +227,7 @@ struct op : std::variant<
     op_jump_rel,
     op_jump_rel_if_false,
     op_jump_abs,
+    op_jump_abs_if_false,
     op_return,
     op_function_call,
     op_builtin_call,

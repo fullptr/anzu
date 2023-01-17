@@ -1,8 +1,4 @@
 
-
-for x in [1, 2, 3] {
-    println(*x);
+loop {
+    println("i love corinne");
 }
-
-l := 5;
-println(l);
