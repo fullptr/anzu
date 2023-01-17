@@ -633,9 +633,6 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
         [&](const node_sizeof_expr& expr) {
             return u64_type();
         },
-        [&](const node_lengthof_expr& expr) {
-            return u64_type();
-        },
         [&](const node_variable_expr& expr) {
             return get_var_type(com, expr.token, expr.name);
         },
@@ -855,16 +852,6 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
     return u64_type();
 }
 
-auto push_expr_val(compiler& com, const node_lengthof_expr& node) -> type_name
-{
-    const auto type = type_of_expr(com, *node.expr);
-    node.token.assert(is_list_type(type), "cannot call lengthof on a non-array type");
-
-    const auto size = array_length(type);
-    push_literal(com, size);
-    return u64_type();
-}
-
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
     const auto count = push_expr_val(com, *node.size);
@@ -949,7 +936,7 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     push_literal(com, std::uint64_t{0});
     declare_var(com, node.token, "#:idx", u64_type());
 
-    // size := lengthof(iter);
+    // size := length of iter;
     push_literal(com, array_length(iter_type));
     declare_var(com, node.token, "#:size", u64_type());
 
