@@ -30,9 +30,8 @@ struct var_scope
 {
     enum class scope_type
     {
-        seq_stmt,
-        while_stmt,
-        function_body,
+        block,
+        loop,
     };
 
     scope_type type;
@@ -74,7 +73,7 @@ public:
         return std::nullopt;
     }
 
-    auto push_scope(var_scope::scope_type type) -> void
+    auto push_scope(var_scope::scope_type type = var_scope::scope_type::block) -> void
     {
         d_scopes.emplace_back(type);
     }
@@ -152,6 +151,39 @@ struct compiler
     std::stack<control_flow_frame> control_flow;
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
+};
+
+auto current_vars(compiler& com) -> var_locations&;
+auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
+
+class scope_guard
+{
+    compiler* d_com;
+
+public:
+    scope_guard(compiler& com, var_scope::scope_type type = var_scope::scope_type::block)
+        : d_com(&com)
+    {
+        current_vars(com).push_scope(type);
+    }
+
+    ~scope_guard()
+    {
+        // destruct all variables in the current scope
+        auto& scope = current_vars(*d_com).current_scope();
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            call_destructor_named_var(*d_com, name, info.type);
+        }
+
+        // deallocate all space in used by the space
+        const auto scope_size = current_vars(*d_com).pop_scope();
+        if (scope_size > 0) {
+            d_com->program.emplace_back(op_pop{scope_size});
+        }
+    }
+
+    scope_guard(const scope_guard&) = delete;
+    scope_guard& operator=(const scope_guard&) = delete;
 };
 
 void verify_unused_name(compiler& com, const token& tok, const std::string& name)
@@ -291,6 +323,13 @@ auto load_variable(compiler& com, const token& tok, const std::string& name) -> 
     const auto type = push_var_addr(com, tok, name);
     const auto size = com.types.size_of(type);
     com.program.emplace_back(op_load{ .size=size });
+}
+
+auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
+{
+    const auto type = push_var_addr(com, tok, name);
+    const auto size = com.types.size_of(type);
+    com.program.emplace_back(op_save{ .size=size });
 }
 
 // Given a type and a field name, push the offset of the fields position relative to its
@@ -437,21 +476,14 @@ auto call_destructor_named_var(compiler& com, const std::string& var, const type
     });
 }
 
-auto destruct_on_end_of_scope(compiler& com) -> void
-{
-    auto& scope = current_vars(com).current_scope();
-    for (const auto& [name, info] : scope.vars | std::views::reverse) {
-        call_destructor_named_var(com, name, info.type);
-    }
-}
-
 auto destruct_on_break_or_continue(compiler& com) -> void
 {
     for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
             call_destructor_named_var(com, name, info.type);
+            com.program.emplace_back(op_debug{std::format("destructing {}", name)});
         }
-        if (scope.type == var_scope::scope_type::while_stmt) {
+        if (scope.type == var_scope::scope_type::loop) {
             return;
         }
     }
@@ -853,30 +885,25 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    current_vars(com).push_scope(var_scope::scope_type::seq_stmt);
+    const auto scope = scope_guard{com};
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
-
-    destruct_on_end_of_scope(com);
-    const auto scope_size = current_vars(com).pop_scope();
-    if (scope_size > 0) {
-        com.program.emplace_back(op_pop{scope_size});
-    }
 }
 
-void compile_stmt(compiler& com, const node_while_stmt& node)
+auto compile_while_loop(compiler& com, const token& tok, std::function<type_name()> condition, std::function<void()> body) -> void
 {
-    current_vars(com).push_scope(var_scope::scope_type::while_stmt);
+    const auto scope = scope_guard{com, var_scope::scope_type::loop};
 
     const auto begin_pos = std::ssize(com.program);
-    const auto cond_type = push_expr_val(com, *node.condition);
-    node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
+    const auto cond_type = condition();
+    tok.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
 
     const auto jump_pos = append_op(com, op_jump_rel_if_false{});
 
     com.control_flow.emplace();
-    compile_stmt(com, *node.body);
+    body();
+
     const auto end_pos = std::ssize(com.program);
     com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
 
@@ -890,11 +917,74 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
         std::get<op_jump_rel>(com.program[idx]).jump = begin_pos - idx; // Jump to start
     }
     com.control_flow.pop();
+}
 
-    const auto scope_size = current_vars(com).pop_scope();
-    if (scope_size > 0) {
-        com.program.emplace_back(op_pop{scope_size});
+void compile_stmt(compiler& com, const node_while_stmt& node)
+{
+    const auto condition_compiler = [&] {
+        return push_expr_val(com, *node.condition);
+    };
+
+    const auto body_compiler = [&] {
+        compile_stmt(com, *node.body);
+    };
+
+    compile_while_loop(com, node.token, condition_compiler, body_compiler);
+}
+
+void compile_stmt(compiler& com, const node_for_stmt& node)
+{
+    const auto scope = scope_guard{com};
+
+    const auto iter_type = type_of_expr(com, *node.iter);
+    node.token.assert(is_list_type(iter_type), "for-loops only supported for arrays");
+
+    // Need to create a temporary if we're using an rvalue
+    if (is_rvalue_expr(*node.iter)) {
+        push_expr_val(com, *node.iter);
+        declare_var(com, node.token, "#:iter", iter_type);
     }
+
+    // idx := 0u;
+    push_literal(com, std::uint64_t{0});
+    declare_var(com, node.token, "#:idx", u64_type());
+
+    // size := lengthof(iter);
+    push_literal(com, array_length(iter_type));
+    declare_var(com, node.token, "#:size", u64_type());
+
+    const auto condition_compiler = [&] {
+        load_variable(com, node.token, "#:idx");
+        load_variable(com, node.token, "#:size");
+        com.program.emplace_back(op_u64_ne{});
+        return bool_type();
+    };
+
+    const auto body_compiler = [&] {
+        const auto scope = scope_guard{com};
+
+        // name := &iter[idx];
+        if (is_rvalue_expr(*node.iter)) {
+            push_var_addr(com, node.token, "#:iter");
+        } else {
+            push_expr_ptr(com, *node.iter);
+        }
+        load_variable(com, node.token, "#:idx");
+        push_literal(com, com.types.size_of(inner_type(iter_type)));
+        com.program.emplace_back(op_u64_mul{});
+        com.program.emplace_back(op_u64_add{});
+        declare_var(com, node.token, node.name, concrete_ptr_type(inner_type(iter_type)));
+
+        // idx = idx + 1;
+        load_variable(com, node.token, "#:idx");
+        push_literal(com, std::uint64_t{1});
+        com.program.emplace_back(op_u64_add{});
+        save_variable(com, node.token, "#:idx");
+
+        compile_stmt(com, *node.body);          
+    };
+
+    compile_while_loop(com, node.token, condition_compiler, body_compiler);
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
@@ -1019,28 +1109,30 @@ void compile_function_body(
     com.functions[key] = { .sig=sig, .ptr=begin_pos, .tok=tok };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=sig.return_type });
-    current_vars(com).push_scope(var_scope::scope_type::function_body); // Ensures destructors for params called
 
-    declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
-    declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
-    for (const auto& arg : sig.params) {
-        declare_var(com, tok, arg.name, arg.type);
-    }
-    compile_stmt(com, *body);
+    {
+        const auto scope = scope_guard{com}; // Ensures destructors for params called
 
-    if (!function_ends_with_return(*body)) {
-        // A function returning null does not need a final return statement, and in this case
-        // we manually add a return value of null here.
-        if (sig.return_type == null_type()) {
-            destruct_on_return(com);
-            com.program.emplace_back(op_load_bytes{{std::byte{0}}});
-            com.program.emplace_back(op_return{ .size=1 });
-        } else {
-            tok.error("function '{}' does not end in a return statement", key.name);
+        declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
+        declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
+        for (const auto& arg : sig.params) {
+            declare_var(com, tok, arg.name, arg.type);
+        }
+        compile_stmt(com, *body);
+
+        if (!function_ends_with_return(*body)) {
+            // A function returning null does not need a final return statement, and in this case
+            // we manually add a return value of null here.
+            if (sig.return_type == null_type()) {
+                destruct_on_return(com);
+                com.program.emplace_back(op_load_bytes{{std::byte{0}}});
+                com.program.emplace_back(op_return{ .size=1 });
+            } else {
+                tok.error("function '{}' does not end in a return statement", key.name);
+            }
         }
     }
 
-    current_vars(com).pop_scope();
     com.current_func.reset();
 
     std::get<op_jump_abs>(com.program[begin_pos]).jump = com.program.size();

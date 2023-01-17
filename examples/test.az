@@ -1,48 +1,7 @@
-
-struct unique_int
-{
-    val: null;
-
-    fn copy(self: &unique_int) -> unique_int
-    {
-        println("copying");
-        return unique_int(null);
-    }
-
-    fn assign(self: &unique_int, other: &unique_int)
-    {
-        println("assigning");
-    }
-
-    fn drop(self: &unique_int)
-    {
-        println("dropping");
-    }
+arr := [1, 2, 3];
+for x in arr {
+    println(*x);
 }
 
-fn add(x: i64, y: i64) -> i64
-{
-    return x + y;
-}
-
-fn myfunc(x: unique_int)
-{
-    println(x.val);
-}
-
-{
-    #x := [unique_int(null), unique_int(null)];
-    #y := x;
-    #y = x;
-    #println(y[0u].val);
-
-    [unique_int(null)];
-    println("after");
-
-    xy := "a";
-    x := xy[0u];
-}
-
-arr := [[1, 2], [2, 3], [3, 4], [4, 5]];
-println(sizeof(arr));
-println(lengthof(arr[0u]));
+x := 4;
+println(x);
