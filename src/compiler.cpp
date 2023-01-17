@@ -31,7 +31,7 @@ struct var_scope
     enum class scope_type
     {
         block,
-        while_stmt,
+        loop,
     };
 
     scope_type type;
@@ -483,7 +483,7 @@ auto destruct_on_break_or_continue(compiler& com) -> void
             call_destructor_named_var(com, name, info.type);
             com.program.emplace_back(op_debug{std::format("destructing {}", name)});
         }
-        if (scope.type == var_scope::scope_type::while_stmt) {
+        if (scope.type == var_scope::scope_type::loop) {
             return;
         }
     }
@@ -893,7 +893,7 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
 
 auto compile_while_loop(compiler& com, const token& tok, std::function<type_name()> condition, std::function<void()> body) -> void
 {
-    const auto scope = scope_guard{com, var_scope::scope_type::while_stmt};
+    const auto scope = scope_guard{com, var_scope::scope_type::loop};
 
     const auto begin_pos = std::ssize(com.program);
     const auto cond_type = condition();
