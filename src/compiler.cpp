@@ -897,9 +897,9 @@ auto compile_loop(compiler& com, std::function<void()> body) -> void
         body();
     }
     const auto end_pos = std::ssize(com.program);
-
     com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
 
+    // Fix up the breaks and continues
     const auto& control_flow = com.control_flow.top();
     for (const auto idx : control_flow.break_stmts) {
         std::get<op_jump_rel>(com.program[idx]).jump = end_pos + 1 - idx; // Jump past end
