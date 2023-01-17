@@ -103,6 +103,11 @@ auto print_node(const node_stmt& root, int indent) -> void
                 print_node(*seq_node, indent + 1);
             }
         },
+        [&](const node_loop_stmt& node) {
+            print("{}Loop:\n", spaces);
+            print("{}- Body:\n", spaces);
+            print_node(*node.body, indent + 1);
+        },
         [&](const node_while_stmt& node) {
             print("{}While:\n", spaces);
             print("{}- Condition:\n", spaces);

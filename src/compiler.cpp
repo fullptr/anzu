@@ -906,6 +906,28 @@ auto compile_while_loop(compiler& com, const token& tok, std::function<type_name
     com.control_flow.pop();
 }
 
+void compile_stmt(compiler& com, const node_loop_stmt& node)
+{
+    const auto scope = scope_guard{com, var_scope::scope_type::loop};
+
+    const auto begin_pos = std::ssize(com.program);
+
+    com.control_flow.emplace();
+    compile_stmt(com, *node.body);
+
+    const auto end_pos = std::ssize(com.program);
+    com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
+
+    const auto& control_flow = com.control_flow.top();
+    for (const auto idx : control_flow.break_stmts) {
+        std::get<op_jump_rel>(com.program[idx]).jump = end_pos + 1 - idx; // Jump past end
+    }
+    for (const auto idx : control_flow.continue_stmts) {
+        std::get<op_jump_rel>(com.program[idx]).jump = begin_pos - idx; // Jump to start
+    }
+    com.control_flow.pop();
+}
+
 void compile_stmt(compiler& com, const node_while_stmt& node)
 {
     const auto condition_compiler = [&] {
