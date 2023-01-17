@@ -154,6 +154,39 @@ struct compiler
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 };
 
+auto current_vars(compiler& com) -> var_locations&;
+auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
+
+class scope_guard
+{
+    compiler* d_com;
+
+public:
+    scope_guard(compiler& com, var_scope::scope_type type = var_scope::scope_type::block)
+        : d_com(&com)
+    {
+        current_vars(com).push_scope(type);
+    }
+
+    ~scope_guard()
+    {
+        // destruct all variables in the current scope
+        auto& scope = current_vars(*d_com).current_scope();
+        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+            call_destructor_named_var(*d_com, name, info.type);
+        }
+
+        // deallocate all space in used by the space
+        const auto scope_size = current_vars(*d_com).pop_scope();
+        if (scope_size > 0) {
+            d_com->program.emplace_back(op_pop{scope_size});
+        }
+    }
+
+    scope_guard(const scope_guard&) = delete;
+    scope_guard& operator=(const scope_guard&) = delete;
+};
+
 void verify_unused_name(compiler& com, const token& tok, const std::string& name)
 {
     const auto message = std::format("type '{}' already defined", name);
@@ -442,14 +475,6 @@ auto call_destructor_named_var(compiler& com, const std::string& var, const type
     call_destructor(com, type, [&](const token& tok) {
         push_var_addr(com, tok, var);
     });
-}
-
-auto destruct_on_end_of_scope(compiler& com) -> void
-{
-    auto& scope = current_vars(com).current_scope();
-    for (const auto& [name, info] : scope.vars | std::views::reverse) {
-        call_destructor_named_var(com, name, info.type);
-    }
 }
 
 auto destruct_on_break_or_continue(compiler& com) -> void
@@ -861,21 +886,15 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    current_vars(com).push_scope();
+    const auto scope = scope_guard(com);
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
-    }
-
-    destruct_on_end_of_scope(com);
-    const auto scope_size = current_vars(com).pop_scope();
-    if (scope_size > 0) {
-        com.program.emplace_back(op_pop{scope_size});
     }
 }
 
 auto compile_while_loop(compiler& com, const token& tok, std::function<type_name()> condition, std::function<void()> body) -> void
 {
-    current_vars(com).push_scope(var_scope::scope_type::while_stmt);
+    const auto scope = scope_guard{com, var_scope::scope_type::while_stmt};
 
     const auto begin_pos = std::ssize(com.program);
     const auto cond_type = condition();
@@ -884,12 +903,12 @@ auto compile_while_loop(compiler& com, const token& tok, std::function<type_name
     const auto jump_pos = append_op(com, op_jump_rel_if_false{});
 
     com.control_flow.emplace();
-    current_vars(com).push_scope();
-    body();
-    const auto scope_size_inner = current_vars(com).pop_scope();
-    if (scope_size_inner > 0) {
-        com.program.emplace_back(op_pop{scope_size_inner});
+
+    {
+        const auto inner_scope = scope_guard{com};
+        body();
     }
+
     const auto end_pos = std::ssize(com.program);
     com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
 
@@ -903,11 +922,6 @@ auto compile_while_loop(compiler& com, const token& tok, std::function<type_name
         std::get<op_jump_rel>(com.program[idx]).jump = begin_pos - idx; // Jump to start
     }
     com.control_flow.pop();
-
-    const auto scope_size = current_vars(com).pop_scope();
-    if (scope_size > 0) {
-        com.program.emplace_back(op_pop{scope_size});
-    }
 }
 
 void compile_stmt(compiler& com, const node_while_stmt& node)
@@ -925,7 +939,7 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
 
 void compile_stmt(compiler& com, const node_for_stmt& node)
 {
-    current_vars(com).push_scope();
+    const auto scope = scope_guard{com};
 
     const auto iter_type = type_of_expr(com, *node.iter);
     node.token.assert(is_list_type(iter_type), "for-loops only supported for arrays");
@@ -974,12 +988,6 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     };
 
     compile_while_loop(com, node.token, condition_compiler, body_compiler);
-
-    destruct_on_end_of_scope(com);
-    const auto scope_size = current_vars(com).pop_scope();
-    if (scope_size > 0) {
-        com.program.emplace_back(op_pop{scope_size});
-    }
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
@@ -1104,28 +1112,30 @@ void compile_function_body(
     com.functions[key] = { .sig=sig, .ptr=begin_pos, .tok=tok };
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=sig.return_type });
-    current_vars(com).push_scope(var_scope::scope_type::function_body); // Ensures destructors for params called
 
-    declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
-    declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
-    for (const auto& arg : sig.params) {
-        declare_var(com, tok, arg.name, arg.type);
-    }
-    compile_stmt(com, *body);
+    {
+        const auto scope = scope_guard{com, var_scope::scope_type::function_body}; // Ensures destructors for params called
 
-    if (!function_ends_with_return(*body)) {
-        // A function returning null does not need a final return statement, and in this case
-        // we manually add a return value of null here.
-        if (sig.return_type == null_type()) {
-            destruct_on_return(com);
-            com.program.emplace_back(op_load_bytes{{std::byte{0}}});
-            com.program.emplace_back(op_return{ .size=1 });
-        } else {
-            tok.error("function '{}' does not end in a return statement", key.name);
+        declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
+        declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
+        for (const auto& arg : sig.params) {
+            declare_var(com, tok, arg.name, arg.type);
+        }
+        compile_stmt(com, *body);
+
+        if (!function_ends_with_return(*body)) {
+            // A function returning null does not need a final return statement, and in this case
+            // we manually add a return value of null here.
+            if (sig.return_type == null_type()) {
+                destruct_on_return(com);
+                com.program.emplace_back(op_load_bytes{{std::byte{0}}});
+                com.program.emplace_back(op_return{ .size=1 });
+            } else {
+                tok.error("function '{}' does not end in a return statement", key.name);
+            }
         }
     }
 
-    current_vars(com).pop_scope();
     com.current_func.reset();
 
     std::get<op_jump_abs>(com.program[begin_pos]).jump = com.program.size();
