@@ -891,21 +891,20 @@ auto compile_loop(compiler& com, std::function<void()> body) -> void
 {
     const auto scope = scope_guard{com, var_scope::scope_type::loop};
     
-    const auto begin_pos = std::ssize(com.program);
+    const auto begin_pos = com.program.size();
     {
         const auto body_scope = scope_guard{com};
         body();
     }
-    const auto end_pos = std::ssize(com.program);
-    com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
+    com.program.emplace_back(op_jump_abs{ .jump=begin_pos });
 
     // Fix up the breaks and continues
     const auto& control_flow = com.control_flow.top();
     for (const auto idx : control_flow.break_stmts) {
-        std::get<op_jump_rel>(com.program[idx]).jump = end_pos + 1 - idx; // Jump past end
+        std::get<op_jump_abs>(com.program[idx]).jump = com.program.size() + 1; // Jump past end
     }
     for (const auto idx : control_flow.continue_stmts) {
-        std::get<op_jump_rel>(com.program[idx]).jump = begin_pos - idx; // Jump to start
+        std::get<op_jump_abs>(com.program[idx]).jump = begin_pos; // Jump to start
     }
 }
 
@@ -1052,7 +1051,7 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
 void push_break(compiler& com)
 {
     destruct_on_break_or_continue(com);
-    const auto pos = append_op(com, op_jump_rel{});
+    const auto pos = append_op(com, op_jump_abs{});
     com.control_flow.top().break_stmts.insert(pos);
 }
 
@@ -1064,7 +1063,7 @@ void compile_stmt(compiler& com, const node_break_stmt&)
 void compile_stmt(compiler& com, const node_continue_stmt&)
 {
     destruct_on_break_or_continue(com);
-    const auto pos = append_op(com, op_jump_rel{});
+    const auto pos = append_op(com, op_jump_abs{});
     com.control_flow.top().continue_stmts.insert(pos);
 }
 
