@@ -159,16 +159,25 @@ auto call_destructor_named_var(compiler& com, const std::string& var, const type
 class scope_guard
 {
     compiler* d_com;
+    var_scope::scope_type d_type;
 
 public:
     scope_guard(compiler& com, var_scope::scope_type type = var_scope::scope_type::block)
         : d_com(&com)
+        , d_type(type)
     {
         current_vars(com).push_scope(type);
+        if (type == var_scope::scope_type::loop) {
+            com.control_flow.emplace();
+        }
     }
 
     ~scope_guard()
     {
+        if (d_type == var_scope::scope_type::loop) {
+            d_com->control_flow.pop();
+        }
+
         // destruct all variables in the current scope
         auto& scope = current_vars(*d_com).current_scope();
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
@@ -878,47 +887,83 @@ void compile_stmt(compiler& com, const node_sequence_stmt& node)
     }
 }
 
-auto compile_while_loop(compiler& com, const token& tok, std::function<type_name()> condition, std::function<void()> body) -> void
+auto compile_loop(compiler& com, std::function<void()> body) -> void
 {
     const auto scope = scope_guard{com, var_scope::scope_type::loop};
+    
+    const auto begin_pos = com.program.size();
+    {
+        const auto body_scope = scope_guard{com};
+        body();
+    }
+    com.program.emplace_back(op_jump_abs{ .jump=begin_pos });
 
-    const auto begin_pos = std::ssize(com.program);
-    const auto cond_type = condition();
-    tok.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
-
-    const auto jump_pos = append_op(com, op_jump_rel_if_false{});
-
-    com.control_flow.emplace();
-    body();
-
-    const auto end_pos = std::ssize(com.program);
-    com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
-
-    std::get<op_jump_rel_if_false>(com.program[jump_pos]).jump = end_pos + 1 - jump_pos;
-
+    // Fix up the breaks and continues
     const auto& control_flow = com.control_flow.top();
     for (const auto idx : control_flow.break_stmts) {
-        std::get<op_jump_rel>(com.program[idx]).jump = end_pos + 1 - idx; // Jump past end
+        std::get<op_jump_abs>(com.program[idx]).jump = com.program.size() + 1; // Jump past end
     }
     for (const auto idx : control_flow.continue_stmts) {
-        std::get<op_jump_rel>(com.program[idx]).jump = begin_pos - idx; // Jump to start
+        std::get<op_jump_abs>(com.program[idx]).jump = begin_pos; // Jump to start
     }
-    com.control_flow.pop();
 }
 
+void compile_stmt(compiler& com, const node_loop_stmt& node)
+{
+    compile_loop(com, [&] {
+        compile_stmt(com, *node.body);
+    });
+}
+
+void push_break(compiler& com);
+
+/*
+while <condition> {
+    <body>
+}
+
+becomes
+
+loop {
+    if !<condition> break;
+    <body>
+}
+*/
 void compile_stmt(compiler& com, const node_while_stmt& node)
 {
-    const auto condition_compiler = [&] {
-        return push_expr_val(com, *node.condition);
-    };
-
-    const auto body_compiler = [&] {
+    compile_loop(com, [&] {
+        // if !<condition> break;
+        const auto cond_type = push_expr_val(com, *node.condition);
+        node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
+        com.program.emplace_back(op_bool_not{});
+        const auto jump_pos = append_op(com, op_jump_rel_if_false{});
+        push_break(com);
+        std::get<op_jump_rel_if_false>(com.program[jump_pos]).jump = com.program.size() - jump_pos; // Jump past the end if false
+        
+        // <body>
         compile_stmt(com, *node.body);
-    };
-
-    compile_while_loop(com, node.token, condition_compiler, body_compiler);
+    });
 }
 
+/*
+for <name> in <iter> {
+    <body>
+}
+
+becomes
+
+{
+    <<create temporary var if iter is an rvalue>>
+    idx = 0u;
+    size := <<length of iter>>;
+    loop {
+        if idx == size break;
+        name := &iter[idx];
+        idx = idx + 1u;
+        <body>
+    }
+}
+*/
 void compile_stmt(compiler& com, const node_for_stmt& node)
 {
     const auto scope = scope_guard{com};
@@ -940,15 +985,14 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     push_literal(com, array_length(iter_type));
     declare_var(com, node.token, "#:size", u64_type());
 
-    const auto condition_compiler = [&] {
+    compile_loop(com, [&] {
+        // if idx == size break;
         load_variable(com, node.token, "#:idx");
         load_variable(com, node.token, "#:size");
-        com.program.emplace_back(op_u64_ne{});
-        return bool_type();
-    };
-
-    const auto body_compiler = [&] {
-        const auto scope = scope_guard{com};
+        com.program.emplace_back(op_u64_eq{});
+        const auto jump_pos = append_op(com, op_jump_rel_if_false{});
+        push_break(com);
+        std::get<op_jump_rel_if_false>(com.program[jump_pos]).jump = com.program.size() - jump_pos; // Jump past the end if false
 
         // name := &iter[idx];
         if (is_rvalue_expr(*node.iter)) {
@@ -968,10 +1012,9 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
         com.program.emplace_back(op_u64_add{});
         save_variable(com, node.token, "#:idx");
 
-        compile_stmt(com, *node.body);          
-    };
-
-    compile_while_loop(com, node.token, condition_compiler, body_compiler);
+        // main body
+        compile_stmt(com, *node.body);
+    });
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
@@ -1005,17 +1048,22 @@ void compile_stmt(compiler& com, const node_struct_stmt& node)
     }
 }
 
-void compile_stmt(compiler& com, const node_break_stmt&)
+void push_break(compiler& com)
 {
     destruct_on_break_or_continue(com);
-    const auto pos = append_op(com, op_jump_rel{});
+    const auto pos = append_op(com, op_jump_abs{});
     com.control_flow.top().break_stmts.insert(pos);
+}
+
+void compile_stmt(compiler& com, const node_break_stmt&)
+{
+    push_break(com);
 }
 
 void compile_stmt(compiler& com, const node_continue_stmt&)
 {
     destruct_on_break_or_continue(com);
-    const auto pos = append_op(com, op_jump_rel{});
+    const auto pos = append_op(com, op_jump_abs{});
     com.control_flow.top().continue_stmts.insert(pos);
 }
 

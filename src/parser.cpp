@@ -415,6 +415,16 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_loop_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_unique<node_stmt>();
+    auto& stmt = node->emplace<node_loop_stmt>();
+
+    stmt.token = tokens.consume_only(tk_loop);
+    stmt.body = parse_statement(tokens);
+    return node;
+}
+
 auto parse_while_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_unique<node_stmt>();
@@ -522,6 +532,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     }
     if (tokens.peek(tk_return)) {
         return parse_return_stmt(tokens);
+    }
+    if (tokens.peek(tk_loop)) {
+        return parse_loop_stmt(tokens);
     }
     if (tokens.peek(tk_while)) {
         return parse_while_stmt(tokens);

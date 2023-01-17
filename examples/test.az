@@ -1,7 +1,8 @@
-arr := [1, 2, 3];
-for x in arr {
+
+
+for x in [1, 2, 3] {
     println(*x);
 }
 
-x := 4;
-println(x);
+l := 5;
+println(l);

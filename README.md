@@ -34,13 +34,30 @@ An interpreted programming language written in C++. This started out as a stack-
     }
     ```
 
-* `while` loops (with optional `break` and `continue`):
+* basic `loop` loops (with `break` and `continue`):
+    ```rs
+    loop {
+        ...
+    }
+    ```
+
+* `while` loops:
 
     ```rs
     while <condition> {
         ...
     }
     ```
+
+* `for` loops (for arrays only for now):
+
+    ```rs
+    for <name> in <array> {
+        <body>
+    }
+    ```
+    NOTE: `name` is a pointer to the element in the array
+
 * `fn` function statements:
 
     ```rs
