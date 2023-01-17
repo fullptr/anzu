@@ -441,7 +441,7 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(tk_for);
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_in);
-    stmt.condition = parse_expression(tokens);
+    stmt.iter = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
     return node;
 }

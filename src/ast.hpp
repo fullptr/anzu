@@ -171,7 +171,7 @@ struct node_while_stmt
 struct node_for_stmt
 {
     std::string name;
-    node_expr_ptr condition;
+    node_expr_ptr iter;
     node_stmt_ptr body;
 
     anzu::token token;

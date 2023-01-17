@@ -30,7 +30,7 @@ struct var_scope
 {
     enum class scope_type
     {
-        seq_stmt,
+        block,
         while_stmt,
         function_body,
     };
@@ -74,7 +74,7 @@ public:
         return std::nullopt;
     }
 
-    auto push_scope(var_scope::scope_type type) -> void
+    auto push_scope(var_scope::scope_type type = var_scope::scope_type::block) -> void
     {
         d_scopes.emplace_back(type);
     }
@@ -293,6 +293,13 @@ auto load_variable(compiler& com, const token& tok, const std::string& name) -> 
     com.program.emplace_back(op_load{ .size=size });
 }
 
+auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
+{
+    const auto type = push_var_addr(com, tok, name);
+    const auto size = com.types.size_of(type);
+    com.program.emplace_back(op_save{ .size=size });
+}
+
 // Given a type and a field name, push the offset of the fields position relative to its
 // owner onto the stack
 auto push_field_offset(
@@ -450,6 +457,7 @@ auto destruct_on_break_or_continue(compiler& com) -> void
     for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
             call_destructor_named_var(com, name, info.type);
+            com.program.emplace_back(op_debug{std::format("destructing {}", name)});
         }
         if (scope.type == var_scope::scope_type::while_stmt) {
             return;
@@ -853,7 +861,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    current_vars(com).push_scope(var_scope::scope_type::seq_stmt);
+    current_vars(com).push_scope();
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
@@ -876,7 +884,12 @@ auto compile_while_loop(compiler& com, const token& tok, std::function<type_name
     const auto jump_pos = append_op(com, op_jump_rel_if_false{});
 
     com.control_flow.emplace();
+    current_vars(com).push_scope();
     body();
+    const auto scope_size_inner = current_vars(com).pop_scope();
+    if (scope_size_inner > 0) {
+        com.program.emplace_back(op_pop{scope_size_inner});
+    }
     const auto end_pos = std::ssize(com.program);
     com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
 
@@ -912,7 +925,61 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
 
 void compile_stmt(compiler& com, const node_for_stmt& node)
 {
-    
+    current_vars(com).push_scope();
+
+    const auto iter_type = type_of_expr(com, *node.iter);
+    node.token.assert(is_list_type(iter_type), "for-loops only supported for arrays");
+
+    // Need to create a temporary if we're using an rvalue
+    //if (is_rvalue_expr(*node.iter)) {
+        push_expr_val(com, *node.iter);
+        declare_var(com, node.token, "#:iter", iter_type);
+    //}
+
+    // idx := 0u;
+    push_literal(com, std::uint64_t{0});
+    declare_var(com, node.token, "#:idx", u64_type());
+
+    // size := lengthof(iter);
+    push_literal(com, array_length(iter_type));
+    declare_var(com, node.token, "#:size", u64_type());
+
+    const auto condition_compiler = [&] {
+        load_variable(com, node.token, "#:idx");
+        load_variable(com, node.token, "#:size");
+        com.program.emplace_back(op_u64_ne{});
+        return bool_type();
+    };
+
+    const auto body_compiler = [&] {
+        // name := &iter[idx];
+        //if (is_rvalue_expr(*node.iter)) {
+            push_var_addr(com, node.token, "#:iter");
+        //} else {
+        //    push_expr_ptr(com, *node.iter);
+        //}
+        load_variable(com, node.token, "#:idx");
+        push_literal(com, com.types.size_of(inner_type(iter_type)));
+        com.program.emplace_back(op_u64_mul{});
+        com.program.emplace_back(op_u64_add{});
+        declare_var(com, node.token, node.name, concrete_ptr_type(inner_type(iter_type)));
+
+        // idx = idx + 1;
+        load_variable(com, node.token, "#:idx");
+        push_literal(com, std::uint64_t{1});
+        com.program.emplace_back(op_u64_add{});
+        save_variable(com, node.token, "#:idx");
+
+        compile_stmt(com, *node.body);          
+    };
+
+    compile_while_loop(com, node.token, condition_compiler, body_compiler);
+
+    destruct_on_end_of_scope(com);
+    const auto scope_size = current_vars(com).pop_scope();
+    if (scope_size > 0) {
+        com.program.emplace_back(op_pop{scope_size});
+    }
 }
 
 void compile_stmt(compiler& com, const node_if_stmt& node)
