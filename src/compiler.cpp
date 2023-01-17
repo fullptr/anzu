@@ -885,7 +885,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void compile_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = scope_guard(com);
+    const auto scope = scope_guard{com};
     for (const auto& seq_node : node.sequence) {
         compile_stmt(com, *seq_node);
     }
@@ -902,11 +902,7 @@ auto compile_while_loop(compiler& com, const token& tok, std::function<type_name
     const auto jump_pos = append_op(com, op_jump_rel_if_false{});
 
     com.control_flow.emplace();
-
-    {
-        const auto inner_scope = scope_guard{com};
-        body();
-    }
+    body();
 
     const auto end_pos = std::ssize(com.program);
     com.program.emplace_back(op_jump_rel{ .jump=(begin_pos - end_pos) });
@@ -944,10 +940,10 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     node.token.assert(is_list_type(iter_type), "for-loops only supported for arrays");
 
     // Need to create a temporary if we're using an rvalue
-    //if (is_rvalue_expr(*node.iter)) {
+    if (is_rvalue_expr(*node.iter)) {
         push_expr_val(com, *node.iter);
         declare_var(com, node.token, "#:iter", iter_type);
-    //}
+    }
 
     // idx := 0u;
     push_literal(com, std::uint64_t{0});
@@ -965,12 +961,14 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
     };
 
     const auto body_compiler = [&] {
+        const auto scope = scope_guard{com};
+
         // name := &iter[idx];
-        //if (is_rvalue_expr(*node.iter)) {
+        if (is_rvalue_expr(*node.iter)) {
             push_var_addr(com, node.token, "#:iter");
-        //} else {
-        //    push_expr_ptr(com, *node.iter);
-        //}
+        } else {
+            push_expr_ptr(com, *node.iter);
+        }
         load_variable(com, node.token, "#:idx");
         push_literal(com, com.types.size_of(inner_type(iter_type)));
         com.program.emplace_back(op_u64_mul{});
