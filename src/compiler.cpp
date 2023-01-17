@@ -32,7 +32,6 @@ struct var_scope
     {
         block,
         while_stmt,
-        function_body,
     };
 
     scope_type type;
@@ -1114,7 +1113,7 @@ void compile_function_body(
     com.current_func.emplace(current_function{ .vars={}, .return_type=sig.return_type });
 
     {
-        const auto scope = scope_guard{com, var_scope::scope_type::function_body}; // Ensures destructors for params called
+        const auto scope = scope_guard{com}; // Ensures destructors for params called
 
         declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
         declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr

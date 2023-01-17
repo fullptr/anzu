@@ -1,18 +1,7 @@
-#arr := [1, 2, 3];
-#for x in arr {
-#    println(*x);
-#}
-#
-#x := 5;
-#println(x);
-
-{
-    arr := [1, 2, 3];
-    idx := 0u;
-    size := lengthof(arr);
-    while idx != size {
-        x := &arr[idx];
-        idx = idx + 1u;
-        println(*x);
-    }
+arr := [1, 2, 3];
+for x in arr {
+    println(*x);
 }
+
+x := 4;
+println(x);
