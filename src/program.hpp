@@ -110,17 +110,12 @@ struct op_deallocate
 {
 };
 
-struct op_jump_rel
-{
-    std::int64_t jump;
-};
-
-struct op_jump_abs
+struct op_jump
 {
     std::size_t jump;
 };
 
-struct op_jump_rel_if_false
+struct op_jump_if_false
 {
     std::size_t jump;
 };
@@ -219,9 +214,8 @@ struct op : std::variant<
     op_pop,
     op_allocate,
     op_deallocate,
-    op_jump_rel,
-    op_jump_rel_if_false,
-    op_jump_abs,
+    op_jump,
+    op_jump_if_false,
     op_return,
     op_function_call,
     op_builtin_call,
