@@ -86,8 +86,8 @@ auto to_string(const op& op_code) -> std::string
         [](op_pop op) { return std::format("POP({})", op.size); },
         [](op_allocate op) { return std::format("ALLOCATE({})", op.type_size); },
         [](op_deallocate op) { return std::string{"DEALLOCATE"}; },
-        [](op_jump_abs op) { return std::format("JUMP_ABS({})", op.jump); },
-        [](op_jump_abs_if_false op) { return std::format("JUMP_ABS_IF_FALSE({})", op.jump); },
+        [](op_jump op) { return std::format("JUMP({})", op.jump); },
+        [](op_jump_if_false op) { return std::format("JUMP_IF_FALSE({})", op.jump); },
         [](op_return op) { return std::format("RETURN({})", op.size); },
 
         [](const op_function_call& op) {
