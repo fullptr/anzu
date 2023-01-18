@@ -914,7 +914,7 @@ auto compile_loop(compiler& com, std::function<void()> body) -> void
     // Fix up the breaks and continues
     const auto& control_flow = com.control_flow.top();
     for (const auto idx : control_flow.break_stmts) {
-        std::get<op_jump_abs>(com.program[idx]).jump = com.program.size() + 1; // Jump past end
+        std::get<op_jump_abs>(com.program[idx]).jump = com.program.size(); // Jump past end
     }
     for (const auto idx : control_flow.continue_stmts) {
         std::get<op_jump_abs>(com.program[idx]).jump = begin_pos; // Jump to start
