@@ -1178,13 +1178,16 @@ auto make_key(compiler& com, const token& tok, const std::string& name, const si
     return key;
 }
 
-void compile_function_body(
+auto compile_function_body(
     compiler& com,
     const token& tok,
     const std::string& name,
-    const signature& sig,
-    const node_stmt_ptr& body)
+    const node_signature& node_sig,
+    const node_stmt_ptr& body
+)
+    -> signature
 {
+    const auto sig = resolve_sig(com, node_sig);
     const auto key = make_key(com, tok, name, sig);
 
     const auto begin_pos = append_op(com, op_jump{});
@@ -1218,6 +1221,7 @@ void compile_function_body(
     com.current_func.reset();
 
     std::get<op_jump>(com.program[begin_pos]).jump = com.program.size();
+    return sig;
 }
 
 void compile_stmt(compiler& com, const node_function_def_stmt& node)
@@ -1226,7 +1230,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
     com.function_names.insert(node.name);
-    compile_function_body(com, node.token, node.name, resolve_sig(com, node.sig), node.body);
+    compile_function_body(com, node.token, node.name, node.sig, node.body);
 }
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
@@ -1234,7 +1238,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     const auto expected = concrete_ptr_type(make_type(node.struct_name));
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
     const auto struct_type = make_type(node.struct_name);
-    const auto sig = resolve_sig(com, node.sig);
+    const auto sig = compile_function_body(com, node.token, name, node.sig, node.body);
 
     node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
 
@@ -1256,7 +1260,6 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
         node.token.assert_eq(sig.params.back().type, expected, "'assign' bad 2nd arg");
     }
 
-    compile_function_body(com, node.token, name, sig, node.body);
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)
