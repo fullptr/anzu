@@ -107,6 +107,14 @@ struct function_key
     auto operator==(const function_key&) const -> bool = default;
 };
 
+struct function_info
+{
+    std::string name;
+    signature   sig;
+    std::size_t ptr;
+    token       tok;
+};
+
 auto hash(const function_key& f) -> std::size_t
 {
     auto hash_value = std::hash<std::string>{}(f.name);
@@ -115,13 +123,6 @@ auto hash(const function_key& f) -> std::size_t
     }
     return hash_value;
 }
-
-struct function_val
-{
-    signature   sig;
-    std::size_t ptr;
-    token       tok;
-};
 
 struct current_function
 {
@@ -142,7 +143,7 @@ struct compiler
     program program;
 
     using function_hash = decltype([](const function_key& f) { return hash(f); });
-    std::unordered_map<function_key, function_val, function_hash> functions;
+    std::unordered_map<function_key, function_info, function_hash> functions;
     std::unordered_set<std::string> function_names;
 
     var_locations globals;
@@ -255,27 +256,17 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
 {
     // Function payload == old_base_ptr and old_prog_ptr
     auto args_size = 2 * sizeof(std::uint64_t);
-    for (const auto& arg : sig.params) {
-        args_size += com.types.size_of(arg.type);
+    for (const auto& param : sig.params) {
+        args_size += com.types.size_of(param);
     }
     return args_size;
 }
-
-struct function_info
-{
-    std::string name;
-    std::size_t ptr;
-    signature   sig;
-    token       tok;
-};
 
 auto get_function(const compiler& com, const function_key& key)
     -> std::optional<function_info>
 {
     if (const auto it = com.functions.find(key); it != com.functions.end()) {
-        const auto& [name, args] = it->first;
-        const auto& [sig, ptr, tok] = it->second;
-        return function_info{name, ptr, sig, tok};
+        return it->second;
     }
     return std::nullopt;
 }
@@ -405,8 +396,8 @@ void verify_sig(const token& tok, const signature& sig, const std::vector<type_n
     }
 
     for (const auto& [actual, expected] : zip(args, sig.params)) {
-        if (actual != expected.type) {
-            tok.error("'{}' does not match '{}'", actual, expected.type);
+        if (actual != expected) {
+            tok.error("'{}' does not match '{}'", actual, expected);
         }
     }
 }
@@ -415,7 +406,7 @@ auto make_constructor_sig(const compiler& com, const type_name& type) -> signatu
 {
     auto sig = signature{};
     for (const auto& field : com.types.fields_of(type)) {
-        sig.params.emplace_back(field.name, field.type);
+        sig.params.emplace_back(field.type);
     }
     sig.return_type = type;
     return sig;
@@ -1062,9 +1053,9 @@ auto make_key(compiler& com, const token& tok, const std::string& name, const si
     -> function_key
 {
     auto key = function_key{ .name=name };
-    for (const auto& arg : sig.params) {
-        verify_real_type(com, tok, arg.type);
-        key.args.push_back(arg.type);
+    for (const auto& param : sig.params) {
+        verify_real_type(com, tok, param);
+        key.args.push_back(param);
     }
     verify_real_type(com, tok, sig.return_type);
     return key;
@@ -1091,14 +1082,14 @@ auto compile_function_body(
         declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
         for (const auto& arg : node_sig.params) {
             const auto type = resolve_type(com, *arg.type);
-            sig.params.push_back({arg.name, type});
+            sig.params.push_back({type});
             declare_var(com, tok, arg.name, type);
         }
 
         sig.return_type = resolve_type(com, *node_sig.return_type);
         com.current_func->return_type = sig.return_type;
         const auto key = make_key(com, tok, name, sig);
-        com.functions[key] = { .sig=sig, .ptr=begin_pos, .tok=tok };
+        com.functions[key] = { .name=name, .sig=sig, .ptr=begin_pos, .tok=tok };
 
         compile_stmt(com, *body);
 
@@ -1141,7 +1132,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     // Verification code
     node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
 
-    const auto actual = sig.params.front().type;
+    const auto actual = sig.params.front();
     node.token.assert_eq(actual, expected, "'{}' bad 1st arg", node.function_name);
 
     // Special function extra checks
@@ -1156,7 +1147,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     else if (node.function_name == "assign") {
         node.token.assert_eq(sig.return_type, null_type(), "'assign' bad return type");
         node.token.assert_eq(sig.params.size(), 2, "'assign' bad number of args");
-        node.token.assert_eq(sig.params.back().type, expected, "'assign' bad 2nd arg");
+        node.token.assert_eq(sig.params.back(), expected, "'assign' bad 2nd arg");
     }
 
 }

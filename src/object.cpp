@@ -168,8 +168,7 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
 
 auto to_string(const signature& sig) -> std::string
 {
-    const auto proj = [](const auto& arg) { return arg.type; };
-    return std::format("({}) -> {}", format_comma_separated(sig.params, proj), sig.return_type);
+    return std::format("({}) -> {}", format_comma_separated(sig.params), sig.return_type);
 }
 
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool

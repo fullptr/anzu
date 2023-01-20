@@ -103,14 +103,7 @@ auto is_type_trivially_copyable(const type_name& type) -> bool;
 
 struct signature
 {
-    struct parameter
-    {
-        std::string name;
-        type_name   type;
-        auto operator==(const parameter&) const -> bool = default;
-    };
-
-    std::vector<parameter> params;
+    std::vector<type_name> params;
     type_name              return_type;
     auto operator==(const signature&) const -> bool = default;
 };
@@ -170,8 +163,8 @@ struct std::hash<anzu::signature>
     auto operator()(const anzu::signature& sig) const -> std::size_t
     {
         auto ret = anzu::hash(sig.return_type);
-        for (const auto& arg : sig.params) {
-            ret ^= anzu::hash(arg.type);
+        for (const auto& param : sig.params) {
+            ret ^= anzu::hash(param);
         }
         return ret;
     }
