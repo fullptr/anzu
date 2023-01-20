@@ -157,10 +157,10 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
 auto compile_stmt(compiler& com, const node_stmt& root) -> void;
 auto current_vars(compiler& com) -> var_locations&;
-auto type_of_expr(const compiler& com, const node_expr& node) -> type_name;
+auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
 
-auto resolve_type(const compiler& com, const node_type& type) -> type_name
+auto resolve_type(compiler& com, const node_type& type) -> type_name
 {
     return std::visit(overloaded {
         [&](const node_named_type& node) {
@@ -172,7 +172,7 @@ auto resolve_type(const compiler& com, const node_type& type) -> type_name
     }, type);
 }
 
-auto resolve_type_fields(const compiler& com, const node_type_fields& fields) -> type_fields
+auto resolve_type_fields(compiler& com, const node_type_fields& fields) -> type_fields
 {
     auto new_fields = type_fields{};
     for (const auto& f : fields) {
@@ -591,110 +591,14 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     return type;
 }
 
-auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
+// Gets the type of the expression by compiling it, then removes the added
+// op codes to leave the program unchanged before returning the type.
+auto type_of_expr(compiler& com, const node_expr& node) -> type_name
 {
-    return std::visit(overloaded{
-        [&](const node_literal_expr& expr) { return expr.value.type; },
-        [&](const node_unary_op_expr& expr) {
-            const auto type = type_of_expr(com, *expr.expr);
-            const auto op = expr.token.text;
-
-            const auto info = resolve_operation(type, op);
-            expr.token.assert(info.has_value(), "could not find op '{}{}'", op, type);
-            return info->return_type;
-        },
-        [&](const node_binary_op_expr& expr) {
-            const auto lhs = type_of_expr(com, *expr.lhs);
-            const auto rhs = type_of_expr(com, *expr.rhs);
-            const auto op = expr.token.text;
-
-            // Pointer arithmetic
-            if (is_ptr_type(lhs) && rhs == u64_type() && op == tk_add) {
-                return lhs;
-            }
-
-            const auto info = resolve_operation(lhs, rhs, op);
-            expr.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
-            return info->return_type;
-        },
-        [&](const node_function_call_expr& expr) {
-            if (com.types.contains(make_type(expr.function_name))) { // constructor
-                return make_type(expr.function_name);
-            }
-            auto key = function_key{};
-            key.name = expr.function_name;
-            key.args.reserve(expr.args.size());
-            for (const auto& arg : expr.args) {
-                key.args.push_back(type_of_expr(com, *arg));
-            }
-            auto it = com.functions.find(key);
-            if (it == com.functions.end()) {
-                expr.token.error("(1) could not find function '{}({})'", key.name, format_comma_separated(key.args));
-            }
-            return it->second.sig.return_type;
-        },
-        [&](const node_member_function_call_expr& expr) {
-            const auto obj_type = type_of_expr(com, *expr.expr);
-            auto key = function_key{};
-            key.name = std::format("{}::{}", obj_type, expr.function_name);
-            key.args.reserve(expr.args.size() + 1);
-            key.args.push_back(concrete_ptr_type(obj_type));
-            for (const auto& arg : expr.args) {
-                key.args.push_back(type_of_expr(com, *arg));
-            }
-            const auto it = com.functions.find(key);
-            if (it == com.functions.end()) {
-                const auto function_str = std::format("{}({})", key.name, format_comma_separated(key.args));
-                expr.token.error("(2) could not find function '{}'", function_str);
-            }
-            return it->second.sig.return_type;
-        },
-        [&](const node_list_expr& expr) {
-            return type_name{type_list{
-                .inner_type = type_of_expr(com, *expr.elements.front()),
-                .count = expr.elements.size()
-            }};
-        },
-        [&](const node_repeat_list_expr& expr) {
-            return type_name{type_list{
-                .inner_type = type_of_expr(com, *expr.value),
-                .count = expr.size
-            }};
-        },
-        [&](const node_addrof_expr& expr) {
-            return concrete_ptr_type(type_of_expr(com, *expr.expr));
-        },
-        [&](const node_sizeof_expr& expr) {
-            return u64_type();
-        },
-        [&](const node_variable_expr& expr) {
-            return get_var_type(com, expr.token, expr.name);
-        },
-        [&](const node_field_expr& expr) {
-            const auto type = type_of_expr(com, *expr.expr);
-            for (const auto& field : com.types.fields_of(type)) {
-                if (field.name == expr.field_name) {
-                    return field.type;
-                }
-            }
-            return i64_type();
-        },
-        [&](const node_deref_expr& expr) {
-            const auto ptype = type_of_expr(com, *expr.expr);
-            expr.token.assert(is_ptr_type(ptype), "cannot use deref operator on non-ptr type '{}'", ptype);
-            return inner_type(ptype);
-        },
-        [&](const node_subscript_expr& expr) {
-            const auto ltype = type_of_expr(com, *expr.expr);
-            if (!std::holds_alternative<type_list>(ltype)) {
-                expr.token.error("cannot use subscript operator on non-list type '{}'", ltype);
-            }
-            return *std::get<type_list>(ltype).inner_type;
-        },
-        [&](const node_new_expr& expr) {
-            return concrete_ptr_type(resolve_type(com, *expr.type));
-        }
-    }, node);
+    const auto program_size = com.program.size();
+    const auto type = push_expr_val(com, node);
+    com.program.resize(program_size);
+    return type;
 }
 
 auto push_expr_ptr(compiler& com, const node_variable_expr& node) -> type_name

@@ -159,9 +159,9 @@ fn println(v: vec2) -> null
     println("xl2 should have size 32 but length 2:");
     print("size: ");
     println(sizeof(xl2));
-    println(sizeof(xl2[0]));
+    println(sizeof(xl2[0u]));
     print("length: ");
-    println(sizeof(xl2) / sizeof(xl2[0]));
+    println(sizeof(xl2) / sizeof(xl2[0u]));
 }
 
 # Pointer Arithmetic
