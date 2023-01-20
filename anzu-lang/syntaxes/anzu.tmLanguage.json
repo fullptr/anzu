@@ -13,11 +13,11 @@
 		},
 		{
 			"name": "keyword.control.anzu",
-			"match": "\\b(if|else|while|break|continue|return|for)\\b"
+			"match": "\\b(if|else|while|loop|break|continue|return|for)\\b"
 		},
 		{
 			"name": "keyword.other.anzu",
-			"match": "\\b(in|fn|struct|sizeof|new|delete|default)\\b"
+			"match": "\\b(in|fn|struct|sizeof|typeof|new|delete|default)\\b"
 		},
 		{
 			"name": "storage.type.anzu",

@@ -153,17 +153,32 @@ struct compiler
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 };
 
+auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
+auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
+auto compile_stmt(compiler& com, const node_stmt& root) -> void;
 auto current_vars(compiler& com) -> var_locations&;
+auto type_of_expr(const compiler& com, const node_expr& node) -> type_name;
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
-auto parse_ast_type(const compiler& com, const node_type& type) -> type_name;
+
+auto resolve_type(const compiler& com, const node_type& type) -> type_name
+{
+    return std::visit(overloaded {
+        [&](const node_named_type& node) {
+            return node.type;
+        },
+        [&](const node_expr_type& node) {
+            return type_of_expr(com, *node.expr);
+        }
+    }, type);
+}
 
 auto resolve_sig(const compiler& com, const node_signature& sig) -> signature
 {
     auto new_sig = signature{};
-    new_sig.return_type = parse_ast_type(com, *sig.return_type);
+    new_sig.return_type = resolve_type(com, *sig.return_type);
     for (const auto& p : sig.params) {
         new_sig.params.emplace_back(
-            signature::parameter{ .name=p.name, .type=parse_ast_type(com, *p.type) }
+            signature::parameter{ .name=p.name, .type=resolve_type(com, *p.type) }
         );
     }
     return new_sig;
@@ -173,7 +188,7 @@ auto resolve_type_fields(const compiler& com, const node_type_fields& fields) ->
 {
     auto new_fields = type_fields{};
     for (const auto& f : fields) {
-        new_fields.emplace_back(field{ .name=f.name, .type=parse_ast_type(com, *f.type) });
+        new_fields.emplace_back(field{ .name=f.name, .type=resolve_type(com, *f.type) });
     }
     return new_fields;
 }
@@ -454,23 +469,6 @@ auto drop_fn(const type_name& type) -> function_key
     };
 }
 
-auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
-auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
-auto compile_stmt(compiler& com, const node_stmt& root) -> void;
-auto type_of_expr(const compiler& com, const node_expr& node) -> type_name;
-
-auto parse_ast_type(const compiler& com, const node_type& type) -> type_name
-{
-    return std::visit(overloaded {
-        [&](const node_named_type& node) {
-            return node.type;
-        },
-        [&](const node_expr_type& node) {
-            return type_of_expr(com, *node.expr);
-        }
-    }, type);
-}
-
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
 // a pointer to an object of the given type. This function compiles
 // code to destruct that object.
@@ -706,7 +704,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return *std::get<type_list>(ltype).inner_type;
         },
         [&](const node_new_expr& expr) {
-            return concrete_ptr_type(parse_ast_type(com, *expr.type));
+            return concrete_ptr_type(resolve_type(com, *expr.type));
         }
     }, node);
 }
@@ -912,7 +910,7 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
     const auto count = push_expr_val(com, *node.size);
     node.token.assert_eq(count, u64_type(), "invalid array size type");
-    const auto type = parse_ast_type(com, *node.type);
+    const auto type = resolve_type(com, *node.type);
     com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(type) });
     return concrete_ptr_type(type);
 }
