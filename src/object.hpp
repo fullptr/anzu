@@ -101,13 +101,6 @@ auto is_type_fundamental(const type_name& type) -> bool;
 
 auto is_type_trivially_copyable(const type_name& type) -> bool;
 
-struct signature
-{
-    std::vector<type_name> params;
-    type_name              return_type;
-    auto operator==(const signature&) const -> bool = default;
-};
-
 class type_store
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
@@ -126,7 +119,6 @@ auto to_string(const type_name& type) -> std::string;
 auto to_string(const type_list& type) -> std::string;
 auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
-auto to_string(const signature& sig) -> std::string;
 
 }
 
@@ -147,25 +139,5 @@ template <> struct std::formatter<anzu::type_name> : std::formatter<std::string>
 {
     auto format(const anzu::type_name& type, auto& ctx) {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
-    }
-};
-
-template <> struct std::formatter<anzu::signature> : std::formatter<std::string>
-{
-    auto format(const anzu::signature& type, auto& ctx) {
-        return std::formatter<std::string>::format(anzu::to_string(type), ctx);
-    }
-};
-
-template <>
-struct std::hash<anzu::signature>
-{
-    auto operator()(const anzu::signature& sig) const -> std::size_t
-    {
-        auto ret = anzu::hash(sig.return_type);
-        for (const auto& param : sig.params) {
-            ret ^= anzu::hash(param);
-        }
-        return ret;
     }
 };

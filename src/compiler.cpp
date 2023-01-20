@@ -381,6 +381,13 @@ auto push_adjust_ptr_to_field(
     return field_type;
 }
 
+struct signature
+{
+    std::vector<type_name> params;
+    type_name              return_type;
+};
+
+
 void verify_sig(const token& tok, const signature& sig, const std::vector<type_name>& args)
 {
     if (sig.params.size() != args.size()) {

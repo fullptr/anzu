@@ -166,11 +166,6 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
         || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)));
 }
 
-auto to_string(const signature& sig) -> std::string
-{
-    return std::format("({}) -> {}", format_comma_separated(sig.params), sig.return_type);
-}
-
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
 {
     if (d_classes.contains(name)) {
