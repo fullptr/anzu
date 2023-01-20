@@ -12,6 +12,51 @@ namespace anzu {
 struct node_expr;
 using node_expr_ptr = std::unique_ptr<node_expr>;
 
+struct node_type;
+using node_type_ptr = std::unique_ptr<node_type>;
+
+struct node_named_type
+{
+    type_name type;
+
+    anzu::token token;
+};
+
+struct node_expr_type
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
+struct node_type : std::variant<
+    node_named_type,
+    node_expr_type>
+{
+};
+
+struct node_signature
+{
+    struct parameter
+    {
+        std::string   name;
+        node_type_ptr type;
+        auto operator==(const parameter&) const -> bool = default;
+    };
+
+    std::vector<parameter> params;
+    node_type_ptr          return_type;
+    auto operator==(const node_signature&) const -> bool = default;
+};
+
+struct node_field
+{
+    std::string   name;
+    node_type_ptr type;
+    auto operator==(const node_field&) const -> bool = default;
+};
+using node_type_fields = std::vector<node_field>;
+
 struct node_literal_expr
 {
     anzu::object value;
@@ -112,7 +157,7 @@ struct node_subscript_expr
 
 struct node_new_expr
 {
-    type_name     type;
+    node_type_ptr type;
     node_expr_ptr size;
     
     anzu::token token;
@@ -188,7 +233,7 @@ struct node_if_stmt
 struct node_struct_stmt
 {
     std::string                name;
-    type_fields                fields;
+    node_type_fields           fields;
     std::vector<node_stmt_ptr> functions;
 
     anzu::token token;
@@ -222,19 +267,19 @@ struct node_assignment_stmt
 
 struct node_function_def_stmt
 {
-    std::string   name;
-    signature     sig;
-    node_stmt_ptr body;
+    std::string    name;
+    node_signature sig;
+    node_stmt_ptr  body;
 
     anzu::token token;
 };
 
 struct node_member_function_def_stmt
 {
-    std::string   struct_name;
-    std::string   function_name;
-    signature     sig;
-    node_stmt_ptr body;
+    std::string    struct_name;
+    std::string    function_name;
+    node_signature sig;
+    node_stmt_ptr  body;
 
     anzu::token token;
 };
@@ -279,7 +324,17 @@ struct node_stmt : std::variant<
 {
 };
 
-auto print_node(const anzu::node_expr& node, int indent = 0) -> void;
-auto print_node(const anzu::node_stmt& node, int indent = 0) -> void;
+auto print_node(const anzu::node_expr& root, int indent = 0) -> void;
+auto print_node(const anzu::node_stmt& root, int indent = 0) -> void;
+auto print_node(const anzu::node_type& root, int indent = 0) -> void;
+
+auto to_string(const node_type& node) -> std::string;
 
 }
+
+template <> struct std::formatter<anzu::node_type> : std::formatter<std::string>
+{
+    auto format(const anzu::node_type& type, auto& ctx) {
+        return std::formatter<std::string>::format(anzu::to_string(type), ctx);
+    }
+};

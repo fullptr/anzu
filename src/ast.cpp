@@ -86,7 +86,7 @@ auto print_node(const node_expr& root, int indent) -> void
             print_node(*node.index, indent + 1);
         },
         [&](const node_new_expr& node) {
-            print("{}New {}:\n", spaces, node.type);
+            print("{}New {}:\n", spaces, *node.type);
             print("{}- Size:\n", spaces);
             print_node(*node.size, indent + 1);
         }
@@ -138,7 +138,7 @@ auto print_node(const node_stmt& root, int indent) -> void
             print("{}- Name: {}\n", spaces, node.name);
             print("{}- Fields:\n", spaces);
             for (const auto& field : node.fields) {
-                print("{}  - {}: {}\n", spaces, field.name, field.type);
+                print("{}  - {}: {}\n", spaces, field.name, *field.type);
             }
             print("{}- MemberFunctions:\n", spaces);
             for (const auto& function : node.functions) {
@@ -167,17 +167,17 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_function_def_stmt& node) {
             print("{}Function: {} (", spaces, node.name);
             print_comma_separated(node.sig.params, [](const auto& arg) {
-                return std::format("{}: {}", arg.name, arg.type);
+                return std::format("{}: {}", arg.name, *arg.type);
             });
-            print(") -> {}\n", node.sig.return_type);
+            print(") -> {}\n", *node.sig.return_type);
             print_node(*node.body, indent + 1);
         },
         [&](const node_member_function_def_stmt& node) {
             print("{}MemberFunction: {}::{} (", spaces, node.struct_name, node.function_name);
             print_comma_separated(node.sig.params, [](const auto& arg) {
-                return std::format("{}: {}", arg.name, arg.type);
+                return std::format("{}: {}", arg.name, *arg.type);
             });
-            print(") -> {}\n", node.sig.return_type);
+            print(") -> {}\n", *node.sig.return_type);
             print_node(*node.body, indent + 1);
         },
         [&](const node_expression_stmt& node) {
@@ -195,6 +195,20 @@ auto print_node(const node_stmt& root, int indent) -> void
     }, root);
 }
 
+auto print_node(const anzu::node_type& root, int indent) -> void
+{
+    const auto spaces = std::string(4 * indent, ' ');
+    std::visit(overloaded {
+        [&](const node_named_type& node) {
+            print("{}NamedType:\n {}", spaces, node.type);
+        },
+        [&](const node_expr_type& node) {
+            print("{}ExprType:\n", spaces);
+            print_node(*node.expr, indent + 1);
+        }
+    }, root);
+}
+
 auto is_lvalue_expr(const node_expr& expr) -> bool
 {
     return std::holds_alternative<node_variable_expr>(expr)
@@ -206,6 +220,11 @@ auto is_lvalue_expr(const node_expr& expr) -> bool
 auto is_rvalue_expr(const node_expr& expr) -> bool
 {
     return !is_lvalue_expr(expr);
+}
+
+auto to_string(const node_type& node) -> std::string
+{
+    return "TODO: to_string(const node_type&)";
 }
 
 }

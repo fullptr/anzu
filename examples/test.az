@@ -1,4 +1,5 @@
 
-loop {
-    println("i love corinne");
-}
+x := 5;
+
+arr := new typeof(x) : 5u;
+delete arr;
