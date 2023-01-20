@@ -1187,22 +1187,27 @@ auto compile_function_body(
 )
     -> signature
 {
-    const auto sig = resolve_sig(com, node_sig);
-    const auto key = make_key(com, tok, name, sig);
-
+    auto sig = signature{};
     const auto begin_pos = append_op(com, op_jump{});
-    com.functions[key] = { .sig=sig, .ptr=begin_pos, .tok=tok };
 
-    com.current_func.emplace(current_function{ .vars={}, .return_type=sig.return_type });
+    com.current_func.emplace(current_function{ .vars={}, .return_type=null_type() });
 
     {
         const auto scope = scope_guard{com}; // Ensures destructors for params called
 
         declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
         declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
-        for (const auto& arg : sig.params) {
-            declare_var(com, tok, arg.name, arg.type);
+        for (const auto& arg : node_sig.params) {
+            const auto type = resolve_type(com, *arg.type);
+            sig.params.push_back({arg.name, type});
+            declare_var(com, tok, arg.name, type);
         }
+
+        sig.return_type = resolve_type(com, *node_sig.return_type);
+        com.current_func->return_type = sig.return_type;
+        const auto key = make_key(com, tok, name, sig);
+        com.functions[key] = { .sig=sig, .ptr=begin_pos, .tok=tok };
+
         compile_stmt(com, *body);
 
         if (!function_ends_with_return(*body)) {
@@ -1221,6 +1226,7 @@ auto compile_function_body(
     com.current_func.reset();
 
     std::get<op_jump>(com.program[begin_pos]).jump = com.program.size();
+    
     return sig;
 }
 
