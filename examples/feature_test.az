@@ -274,8 +274,8 @@ fn typeof_example(y: typeof(variable)) -> i64
 }
 println(typeof_example(3)); # no error here!
 
-#fn typeof_example2(a: u64) -> typeof(a)
-#{
-#    return a * a;
-#}
-#println(typeof_example2(6u));
+fn typeof_example2(a: u64) -> typeof(a)
+{
+    return a * a;
+}
+println(typeof_example2(6u));
