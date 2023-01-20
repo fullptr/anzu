@@ -1,9 +1,5 @@
 
 x := 5;
 
-fn foo(y: typeof(x))
-{
-    println(y);
-}
-
-foo(6u);
+arr := new typeof(x) : 5u;
+delete arr;
