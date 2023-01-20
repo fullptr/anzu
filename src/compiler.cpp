@@ -107,7 +107,7 @@ struct function_key
     auto operator==(const function_key&) const -> bool = default;
 };
 
-struct function_info
+struct function_val
 {
     std::string name;
     signature   sig;
@@ -136,14 +136,17 @@ struct control_flow_frame
     std::unordered_set<std::size_t> break_stmts;
 };
 
+using function_hash = decltype([](const function_key& f) { return hash(f); });
+using function_map = std::unordered_map<function_key, function_val, function_hash>;
+using function_iter = typename function_map::const_iterator;
+
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler
 {
     program program;
 
-    using function_hash = decltype([](const function_key& f) { return hash(f); });
-    std::unordered_map<function_key, function_info, function_hash> functions;
+    function_map functions;
     std::unordered_set<std::string> function_names;
 
     var_locations globals;
@@ -161,9 +164,9 @@ auto current_vars(compiler& com) -> var_locations&;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
 
-auto resolve_type(compiler& com, const node_type& type) -> type_name
+auto resolve_type(compiler& com, const token& tok, const node_type& type) -> type_name
 {
-    return std::visit(overloaded {
+    const auto resolved_type = std::visit(overloaded {
         [&](const node_named_type& node) {
             return node.type;
         },
@@ -171,13 +174,16 @@ auto resolve_type(compiler& com, const node_type& type) -> type_name
             return type_of_expr(com, *node.expr);
         }
     }, type);
+
+    tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", resolved_type);
+    return resolved_type;
 }
 
-auto resolve_type_fields(compiler& com, const node_type_fields& fields) -> type_fields
+auto resolve_type_fields(compiler& com, const token& tok, const node_type_fields& fields) -> type_fields
 {
     auto new_fields = type_fields{};
     for (const auto& f : fields) {
-        new_fields.emplace_back(field{ .name=f.name, .type=resolve_type(com, *f.type) });
+        new_fields.emplace_back(field{ .name=f.name, .type=resolve_type(com, tok, *f.type) });
     }
     return new_fields;
 }
@@ -246,11 +252,6 @@ auto current_vars(compiler& com) -> var_locations&
     return com.current_func ? com.current_func->vars : com.globals;
 }
 
-auto verify_real_type(const compiler& com, const token& tok, const type_name& t) -> void
-{
-    tok.assert(com.types.contains(t), "{} is not a recognised type", t);
-}
-
 // Returns the size of the parameter list in bytes + the function payload
 auto signature_args_size(const compiler& com, const signature& sig) -> std::size_t
 {
@@ -263,7 +264,7 @@ auto signature_args_size(const compiler& com, const signature& sig) -> std::size
 }
 
 auto get_function(const compiler& com, const function_key& key)
-    -> std::optional<function_info>
+    -> std::optional<function_val>
 {
     if (const auto it = com.functions.find(key); it != com.functions.end()) {
         return it->second;
@@ -793,7 +794,7 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
     const auto count = push_expr_val(com, *node.size);
     node.token.assert_eq(count, u64_type(), "invalid array size type");
-    const auto type = resolve_type(com, *node.type);
+    const auto type = resolve_type(com, node.token, *node.type);
     com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(type) });
     return concrete_ptr_type(type);
 }
@@ -967,10 +968,7 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
 void compile_stmt(compiler& com, const node_struct_stmt& node)
 {
     verify_unused_name(com, node.token, node.name);
-    const auto fields = resolve_type_fields(com, node.fields);
-    for (const auto& field : fields) {
-        verify_real_type(com, node.token, field.type);
-    }
+    const auto fields = resolve_type_fields(com, node.token, node.fields);
 
     com.types.add(make_type(node.name), fields);
     for (const auto& function : node.functions) {
@@ -1049,18 +1047,6 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     pop_object(com, assign->sig.return_type, node.token);
 }
 
-auto make_key(compiler& com, const token& tok, const std::string& name, const signature& sig)
-    -> function_key
-{
-    auto key = function_key{ .name=name };
-    for (const auto& param : sig.params) {
-        verify_real_type(com, tok, param);
-        key.args.push_back(param);
-    }
-    verify_real_type(com, tok, sig.return_type);
-    return key;
-}
-
 auto compile_function_body(
     compiler& com,
     const token& tok,
@@ -1081,14 +1067,14 @@ auto compile_function_body(
         declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
         declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
         for (const auto& arg : node_sig.params) {
-            const auto type = resolve_type(com, *arg.type);
+            const auto type = resolve_type(com, tok, *arg.type);
             sig.params.push_back({type});
             declare_var(com, tok, arg.name, type);
         }
 
-        sig.return_type = resolve_type(com, *node_sig.return_type);
+        sig.return_type = resolve_type(com, tok, *node_sig.return_type);
         com.current_func->return_type = sig.return_type;
-        const auto key = make_key(com, tok, name, sig);
+        const auto key = function_key{ .name=name, .args=sig.params };
         com.functions[key] = { .name=name, .sig=sig, .ptr=begin_pos, .tok=tok };
 
         compile_stmt(com, *body);
