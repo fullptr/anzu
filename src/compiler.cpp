@@ -155,6 +155,28 @@ struct compiler
 
 auto current_vars(compiler& com) -> var_locations&;
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
+auto parse_ast_type(const compiler& com, const node_type& type) -> type_name;
+
+auto resolve_sig(const compiler& com, const node_signature& sig) -> signature
+{
+    auto new_sig = signature{};
+    new_sig.return_type = parse_ast_type(com, *sig.return_type);
+    for (const auto& p : sig.params) {
+        new_sig.params.emplace_back(
+            signature::parameter{ .name=p.name, .type=parse_ast_type(com, *p.type) }
+        );
+    }
+    return new_sig;
+}
+
+auto resolve_type_fields(const compiler& com, const node_type_fields& fields) -> type_fields
+{
+    auto new_fields = type_fields{};
+    for (const auto& f : fields) {
+        new_fields.emplace_back(field{ .name=f.name, .type=parse_ast_type(com, *f.type) });
+    }
+    return new_fields;
+}
 
 class scope_guard
 {
@@ -437,6 +459,18 @@ auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
 auto compile_stmt(compiler& com, const node_stmt& root) -> void;
 auto type_of_expr(const compiler& com, const node_expr& node) -> type_name;
 
+auto parse_ast_type(const compiler& com, const node_type& type) -> type_name
+{
+    return std::visit(overloaded {
+        [&](const node_named_type& node) {
+            return node.type;
+        },
+        [&](const node_expr_type& node) {
+            return type_of_expr(com, *node.expr);
+        }
+    }, type);
+}
+
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
 // a pointer to an object of the given type. This function compiles
 // code to destruct that object.
@@ -672,7 +706,7 @@ auto type_of_expr(const compiler& com, const node_expr& node) -> type_name
             return *std::get<type_list>(ltype).inner_type;
         },
         [&](const node_new_expr& expr) {
-            return concrete_ptr_type(expr.type);
+            return concrete_ptr_type(parse_ast_type(com, *expr.type));
         }
     }, node);
 }
@@ -878,8 +912,9 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
     const auto count = push_expr_val(com, *node.size);
     node.token.assert_eq(count, u64_type(), "invalid array size type");
-    com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(node.type) });
-    return concrete_ptr_type(node.type);
+    const auto type = parse_ast_type(com, *node.type);
+    com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(type) });
+    return concrete_ptr_type(type);
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -1051,11 +1086,12 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
 void compile_stmt(compiler& com, const node_struct_stmt& node)
 {
     verify_unused_name(com, node.token, node.name);
-    for (const auto& field : node.fields) {
+    const auto fields = resolve_type_fields(com, node.fields);
+    for (const auto& field : fields) {
         verify_real_type(com, node.token, field.type);
     }
 
-    com.types.add(make_type(node.name), node.fields);
+    com.types.add(make_type(node.name), fields);
     for (const auto& function : node.functions) {
         compile_stmt(com, *function);
     }
@@ -1192,7 +1228,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
     com.function_names.insert(node.name);
-    compile_function_body(com, node.token, node.name, node.sig, node.body);
+    compile_function_body(com, node.token, node.name, resolve_sig(com, node.sig), node.body);
 }
 
 void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
@@ -1200,28 +1236,29 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     const auto expected = concrete_ptr_type(make_type(node.struct_name));
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
     const auto struct_type = make_type(node.struct_name);
+    const auto sig = resolve_sig(com, node.sig);
 
-    node.token.assert(node.sig.params.size() >= 1, "member functions must have at least one arg");
+    node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
 
-    const auto actual = node.sig.params.front().type;
+    const auto actual = sig.params.front().type;
     node.token.assert_eq(actual, expected, "'{}' bad 1st arg", node.function_name);
 
     // Special function extra checks
     if (node.function_name == "drop") {
-        node.token.assert_eq(node.sig.return_type, null_type(), "'drop' bad return type");
-        node.token.assert_eq(node.sig.params.size(), 1, "'drop' bad number of args");
+        node.token.assert_eq(sig.return_type, null_type(), "'drop' bad return type");
+        node.token.assert_eq(sig.params.size(), 1, "'drop' bad number of args");
     }
     else if (node.function_name == "copy") {
-        node.token.assert_eq(node.sig.return_type, make_type(node.struct_name), "'copy' bad return type");
-        node.token.assert_eq(node.sig.params.size(), 1, "'copy' bad number of args");
+        node.token.assert_eq(sig.return_type, make_type(node.struct_name), "'copy' bad return type");
+        node.token.assert_eq(sig.params.size(), 1, "'copy' bad number of args");
     }
     else if (node.function_name == "assign") {
-        node.token.assert_eq(node.sig.return_type, null_type(), "'assign' bad return type");
-        node.token.assert_eq(node.sig.params.size(), 2, "'assign' bad number of args");
-        node.token.assert_eq(node.sig.params.back().type, expected, "'assign' bad 2nd arg");
+        node.token.assert_eq(sig.return_type, null_type(), "'assign' bad return type");
+        node.token.assert_eq(sig.params.size(), 2, "'assign' bad number of args");
+        node.token.assert_eq(sig.params.back().type, expected, "'assign' bad 2nd arg");
     }
 
-    compile_function_body(com, node.token, name, node.sig, node.body);
+    compile_function_body(com, node.token, name, sig, node.body);
 }
 
 void compile_stmt(compiler& com, const node_return_stmt& node)
