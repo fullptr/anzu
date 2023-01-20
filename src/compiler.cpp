@@ -172,18 +172,6 @@ auto resolve_type(const compiler& com, const node_type& type) -> type_name
     }, type);
 }
 
-auto resolve_sig(const compiler& com, const node_signature& sig) -> signature
-{
-    auto new_sig = signature{};
-    new_sig.return_type = resolve_type(com, *sig.return_type);
-    for (const auto& p : sig.params) {
-        new_sig.params.emplace_back(
-            signature::parameter{ .name=p.name, .type=resolve_type(com, *p.type) }
-        );
-    }
-    return new_sig;
-}
-
 auto resolve_type_fields(const compiler& com, const node_type_fields& fields) -> type_fields
 {
     auto new_fields = type_fields{};
@@ -1246,6 +1234,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
     const auto struct_type = make_type(node.struct_name);
     const auto sig = compile_function_body(com, node.token, name, node.sig, node.body);
 
+    // Verification code
     node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
 
     const auto actual = sig.params.front().type;
