@@ -330,6 +330,16 @@ auto parse_type(tokenstream& tokens) -> type_name
 
 auto parse_type_node(tokenstream& tokens) -> node_type_ptr
 {
+    if (tokens.peek(tk_typeof)) {
+        auto node = std::make_unique<node_type>();
+        auto& inner = node->emplace<node_expr_type>();
+        inner.token = tokens.consume();
+        tokens.consume_only(tk_lparen);
+        inner.expr = parse_expression(tokens);
+        tokens.consume_only(tk_rparen);
+        return node;
+    }
+
     const auto type = parse_type(tokens);
     return std::make_unique<node_type>(node_named_type{type});
 }
