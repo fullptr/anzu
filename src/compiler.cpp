@@ -251,17 +251,6 @@ auto current_vars(compiler& com) -> var_locations&
     return com.current_func ? com.current_func->vars : com.globals;
 }
 
-// Returns the size of the parameter list in bytes + the function payload
-auto signature_args_size(const compiler& com, const std::vector<type_name>& params) -> std::size_t
-{
-    // Function payload == old_base_ptr and old_prog_ptr
-    auto args_size = 2 * sizeof(std::uint64_t);
-    for (const auto& param : params) {
-        args_size += com.types.size_of(param);
-    }
-    return args_size;
-}
-
 auto get_function(const compiler& com, const function_key& key)
     -> std::optional<function_val>
 {
@@ -284,9 +273,14 @@ auto push_function_call(
 )
     -> void
 {
+    auto args_size = 2 * sizeof(std::uint64_t);
+    for (const auto& param : params) {
+        args_size += com.types.size_of(param);
+    }
+
     com.program.emplace_back(op_function_call{
         .ptr=ptr + 1, // Jump into the function
-        .args_size=signature_args_size(com, params)
+        .args_size=args_size
     });
 }
 
