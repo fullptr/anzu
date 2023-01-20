@@ -91,7 +91,7 @@ auto to_string(const op& op_code) -> std::string
         [](op_return op) { return std::format("RETURN({})", op.size); },
 
         [](const op_function_call& op) {
-            const auto func_str = std::format("FUNCTION_CALL({})", op.name);
+            const auto func_str = std::format("FUNCTION_CALL");
             const auto jump_str = std::format("JUMP -> {}", op.ptr);
             return std::format(FORMAT2, func_str, jump_str);
         },

@@ -109,8 +109,7 @@ struct function_key
 
 struct function_val
 {
-    std::string name;
-    signature   sig;
+    type_name   return_type;
     std::size_t ptr;
     token       tok;
 };
@@ -253,11 +252,11 @@ auto current_vars(compiler& com) -> var_locations&
 }
 
 // Returns the size of the parameter list in bytes + the function payload
-auto signature_args_size(const compiler& com, const signature& sig) -> std::size_t
+auto signature_args_size(const compiler& com, const std::vector<type_name>& params) -> std::size_t
 {
     // Function payload == old_base_ptr and old_prog_ptr
     auto args_size = 2 * sizeof(std::uint64_t);
-    for (const auto& param : sig.params) {
+    for (const auto& param : params) {
         args_size += com.types.size_of(param);
     }
     return args_size;
@@ -280,16 +279,14 @@ auto push_function_call_begin(compiler& com) -> void
 
 auto push_function_call(
     compiler& com,
-    const std::string& name,
     std::size_t ptr,
-    const signature& sig
+    const std::vector<type_name>& params
 )
     -> void
 {
     com.program.emplace_back(op_function_call{
-        .name=name,
         .ptr=ptr + 1, // Jump into the function
-        .args_size=signature_args_size(com, sig)
+        .args_size=signature_args_size(com, params)
     });
 }
 
@@ -458,25 +455,27 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
     if (is_list_type(type)) {
         const auto etype = inner_type(type);
         const auto inner_size = com.types.size_of(etype);
+        const auto fn = drop_fn(etype);
 
-        if (const auto drop = get_function(com, drop_fn(etype))) {
+        if (const auto drop = get_function(com, fn)) {
             for (std::size_t i = array_length(type); i != 0;) {
                 --i;
                 push_function_call_begin(com);
                 push_object_ptr(drop->tok);
                 push_ptr_adjust(com, i * inner_size);
-                push_function_call(com, drop->name, drop->ptr, drop->sig);
+                push_function_call(com, drop->ptr, fn.args);
             }
         }
         return;
     }
 
-    if (const auto func = get_function(com, drop_fn(type)); func) {
+    const auto fn = drop_fn(type);
+    if (const auto func = get_function(com, fn); func) {
         // Push the args to the stack
         push_function_call_begin(com);
         push_object_ptr(func->tok);
-        push_function_call(com, func->name, func->ptr, func->sig);
-        com.program.emplace_back(op_pop{ .size = com.types.size_of(func->sig.return_type) });
+        push_function_call(com, func->ptr, fn.args);
+        com.program.emplace_back(op_pop{ .size = com.types.size_of(func->return_type) });
     }
 
     // Loop through the fields and call their destructors.
@@ -559,25 +558,27 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     else if (is_list_type(type)) {
         const auto etype = inner_type(type);
         const auto inner_size = com.types.size_of(etype);
+        const auto fn = copy_fn(etype);
 
-        const auto copy = get_function(com, copy_fn(etype));
+        const auto copy = get_function(com, fn);
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
 
         for (std::size_t i = 0; i != array_length(type); ++i) {
             push_function_call_begin(com);
             push_expr_ptr(com, expr);
             push_ptr_adjust(com, i * inner_size);
-            push_function_call(com, copy->name, copy->ptr, copy->sig);
+            push_function_call(com, copy->ptr, fn.args);
         }
     }
 
     else {
-        const auto copy = get_function(com, copy_fn(type));
+        const auto fn = copy_fn(type);
+        const auto copy = get_function(com, fn);
         tok.assert(copy.has_value(), "{} cannot be copied", type);
 
         push_function_call_begin(com);
         push_expr_ptr(com, expr);
-        push_function_call(com, copy->name, copy->ptr, copy->sig);
+        push_function_call(com, copy->ptr, fn.args);
     }
 
     return type;
@@ -702,8 +703,8 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         for (const auto& arg : node.args) {
             push_object_copy(com, *arg, node.token);
         }
-        push_function_call(com, func->name, func->ptr, func->sig);
-        return func->sig.return_type;
+        push_function_call(com, func->ptr, key.args);
+        return func->return_type;
     }
 
     // Otherwise, it must be a builtin function.
@@ -749,8 +750,8 @@ auto push_expr_val(compiler& com, const node_member_function_call_expr& node) ->
     for (const auto& arg : node.args) {
         push_object_copy(com, *arg, node.token);
     }
-    push_function_call(com, func->name, func->ptr, func->sig);
-    return func->sig.return_type;
+    push_function_call(com, func->ptr, key.args);
+    return func->return_type;
 }
 
 auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name
@@ -1018,8 +1019,9 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
     if (is_list_type(rhs)) {
         const auto etype = inner_type(rhs);
         const auto inner_size = com.types.size_of(etype);
+        const auto fn = assign_fn(etype);
 
-        const auto assign = get_function(com, assign_fn(etype));
+        const auto assign = get_function(com, fn);
         node.token.assert(assign.has_value(), "{} cannot be assigned", etype);
 
         for (std::size_t i = 0; i != array_length(rhs); ++i) {
@@ -1030,21 +1032,22 @@ void compile_stmt(compiler& com, const node_assignment_stmt& node)
             push_expr_ptr(com, *node.expr); // i-th element of src
             push_ptr_adjust(com, i * inner_size);
 
-            push_function_call(com, assign->name, assign->ptr, assign->sig);
-            pop_object(com, assign->sig.return_type, node.token);
+            push_function_call(com, assign->ptr, fn.args);
+            pop_object(com, assign->return_type, node.token);
         }
 
         return;
     }
 
-    const auto assign = get_function(com, assign_fn(rhs));
+    const auto fn = assign_fn(rhs);
+    const auto assign = get_function(com, fn);
     node.token.assert(assign.has_value(), "{} cannot be assigned", rhs);
 
     push_function_call_begin(com);
     push_expr_ptr(com, *node.position);
     push_expr_ptr(com, *node.expr);
-    push_function_call(com, assign->name, assign->ptr, assign->sig);
-    pop_object(com, assign->sig.return_type, node.token);
+    push_function_call(com, assign->ptr, fn.args);
+    pop_object(com, assign->return_type, node.token);
 }
 
 auto compile_function_body(
@@ -1075,7 +1078,7 @@ auto compile_function_body(
         sig.return_type = resolve_type(com, tok, *node_sig.return_type);
         com.current_func->return_type = sig.return_type;
         const auto key = function_key{ .name=name, .args=sig.params };
-        com.functions[key] = { .name=name, .sig=sig, .ptr=begin_pos, .tok=tok };
+        com.functions[key] = { .return_type=sig.return_type, .ptr=begin_pos, .tok=tok };
 
         compile_stmt(com, *body);
 
