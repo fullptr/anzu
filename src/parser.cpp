@@ -353,7 +353,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
-        auto param = node_signature::parameter{};
+        auto param = node_parameter{};
         param.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
         param.type = parse_type_node(tokens);
@@ -399,7 +399,7 @@ auto parse_member_function_def_stmt(
     
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&]{
-        auto param = node_signature::parameter{};
+        auto param = node_parameter{};
         param.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
         param.type = parse_type_node(tokens);

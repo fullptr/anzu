@@ -178,11 +178,11 @@ auto resolve_type(compiler& com, const token& tok, const node_type& type) -> typ
     return resolved_type;
 }
 
-auto resolve_type_fields(compiler& com, const token& tok, const node_type_fields& fields) -> type_fields
+auto resolve_type_fields(compiler& com, const token& tok, const std::vector<node_parameter>& params) -> type_fields
 {
     auto new_fields = type_fields{};
-    for (const auto& f : fields) {
-        new_fields.emplace_back(field{ .name=f.name, .type=resolve_type(com, tok, *f.type) });
+    for (const auto& p : params) {
+        new_fields.emplace_back(field{ .name=p.name, .type=resolve_type(com, tok, *p.type) });
     }
     return new_fields;
 }

@@ -35,27 +35,17 @@ struct node_type : std::variant<
 {
 };
 
-struct node_signature
-{
-    struct parameter
-    {
-        std::string   name;
-        node_type_ptr type;
-        auto operator==(const parameter&) const -> bool = default;
-    };
-
-    std::vector<parameter> params;
-    node_type_ptr          return_type;
-    auto operator==(const node_signature&) const -> bool = default;
-};
-
-struct node_field
+struct node_parameter
 {
     std::string   name;
     node_type_ptr type;
-    auto operator==(const node_field&) const -> bool = default;
 };
-using node_type_fields = std::vector<node_field>;
+
+struct node_signature
+{
+    std::vector<node_parameter> params;
+    node_type_ptr               return_type;
+};
 
 struct node_literal_expr
 {
@@ -232,9 +222,9 @@ struct node_if_stmt
 
 struct node_struct_stmt
 {
-    std::string                name;
-    node_type_fields           fields;
-    std::vector<node_stmt_ptr> functions;
+    std::string                 name;
+    std::vector<node_parameter> fields;
+    std::vector<node_stmt_ptr>  functions;
 
     anzu::token token;
 };
