@@ -19,7 +19,7 @@
 namespace anzu {
 namespace {
 
-static const auto global_namespace = make_type("::");
+static const auto global_namespace = make_type("<global>");
 
 struct var_info
 {
@@ -213,13 +213,6 @@ public:
     scope_guard(const scope_guard&) = delete;
     scope_guard& operator=(const scope_guard&) = delete;
 };
-
-void verify_unused_name(compiler& com, const token& tok, const std::string& name)
-{
-    const auto message = std::format("type '{}' already defined", name);
-    tok.assert(!com.types.contains(make_type(name)), message);
-    tok.assert(!com.functions[global_namespace].contains(name), message);
-}
 
 template <typename T>
 auto push_literal(compiler& com, const T& value) -> void
@@ -948,7 +941,9 @@ void push_stmt(compiler& com, const node_if_stmt& node)
 
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
-    verify_unused_name(com, node.token, node.name);
+    const auto message = std::format("type '{}' already defined", node.name);
+    node.token.assert(!com.types.contains(make_type(node.name)), message);
+    node.token.assert(!com.functions[global_namespace].contains(node.name), message);
 
     auto fields = type_fields{};
     for (const auto& p : node.fields) {
