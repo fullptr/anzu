@@ -114,11 +114,11 @@ struct function_val
     token       tok;
 };
 
-auto hash(const function_key& f) -> std::size_t
+auto hash(const type_names& params) -> std::size_t
 {
-    auto hash_value = std::hash<std::string>{}(f.name);
-    for (const auto& arg : f.args) {
-        hash_value ^= hash(arg);
+    auto hash_value = size_t{0};
+    for (const auto& param : params) {
+        hash_value ^= hash(param);
     }
     return hash_value;
 }
@@ -135,8 +135,8 @@ struct control_flow_frame
     std::unordered_set<std::size_t> break_stmts;
 };
 
-using function_hash = decltype([](const function_key& f) { return hash(f); });
-using function_map = std::unordered_map<function_key, function_val, function_hash>;
+using function_hash = decltype([](const type_names& f) { return hash(f); });
+using function_map = std::unordered_map<type_names, function_val, function_hash>;
 using function_iter = typename function_map::const_iterator;
 
 // Struct used to store information while compiling an AST. Contains the output program
@@ -145,8 +145,8 @@ struct compiler
 {
     program program;
 
-    function_map functions;
-    std::unordered_set<std::string> function_names;
+    // function_name -> signatures -> function_val
+    std::unordered_map<std::string, function_map> fns;
 
     var_locations globals;
     std::optional<current_function> current_func;
@@ -221,7 +221,7 @@ void verify_unused_name(compiler& com, const token& tok, const std::string& name
 {
     const auto message = std::format("type '{}' already defined", name);
     tok.assert(!com.types.contains(make_type(name)), message);
-    tok.assert(!com.function_names.contains(name), message);
+    tok.assert(!com.fns.contains(name), message);
 }
 
 template <typename T>
@@ -244,8 +244,10 @@ auto current_vars(compiler& com) -> var_locations&
 
 auto get_function(const compiler& com, const function_key& key) -> std::optional<function_val>
 {
-    if (const auto it = com.functions.find(key); it != com.functions.end()) {
-        return it->second;
+    if (const auto it = com.fns.find(key.name); it != com.fns.end()) {
+        if (const auto it2 = it->second.find(key.args); it2 != it->second.end()) {
+            return it2->second;
+        }
     }
     return std::nullopt;
 }
@@ -1067,7 +1069,7 @@ auto compile_function_body(
         sig.return_type = resolve_type(com, tok, *node_sig.return_type);
         com.current_func->return_type = sig.return_type;
         const auto key = function_key{ .name=name, .args=sig.params };
-        com.functions[key] = { .return_type=sig.return_type, .ptr=begin_pos + 1, .tok=tok };
+        com.fns[name][sig.params] = { .return_type=sig.return_type, .ptr=begin_pos + 1, .tok=tok };
 
         push_stmt(com, *body);
 
@@ -1096,15 +1098,15 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
     if (com.types.contains(make_type(node.name))) {
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
-    com.function_names.insert(node.name);
+    com.fns.emplace(node.name, function_map{});
     compile_function_body(com, node.token, node.name, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
-    const auto expected = concrete_ptr_type(make_type(node.struct_name));
-    const auto name = std::format("{}::{}", node.struct_name, node.function_name);
     const auto struct_type = make_type(node.struct_name);
+    const auto expected = concrete_ptr_type(struct_type);
+    const auto name = std::format("{}::{}", node.struct_name, node.function_name);
     const auto sig = compile_function_body(com, node.token, name, node.sig, node.body);
 
     // Verification code
@@ -1119,7 +1121,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
         node.token.assert_eq(sig.params.size(), 1, "'drop' bad number of args");
     }
     else if (node.function_name == "copy") {
-        node.token.assert_eq(sig.return_type, make_type(node.struct_name), "'copy' bad return type");
+        node.token.assert_eq(sig.return_type, struct_type, "'copy' bad return type");
         node.token.assert_eq(sig.params.size(), 1, "'copy' bad number of args");
     }
     else if (node.function_name == "assign") {
