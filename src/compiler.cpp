@@ -803,7 +803,7 @@ void push_stmt(compiler& com, const node_sequence_stmt& node)
     }
 }
 
-auto compile_loop(compiler& com, std::function<void()> body) -> void
+auto push_loop(compiler& com, std::function<void()> body) -> void
 {
     const auto scope = scope_guard{com, var_scope::scope_type::loop};
     
@@ -826,7 +826,7 @@ auto compile_loop(compiler& com, std::function<void()> body) -> void
 
 void push_stmt(compiler& com, const node_loop_stmt& node)
 {
-    compile_loop(com, [&] {
+    push_loop(com, [&] {
         push_stmt(com, *node.body);
     });
 }
@@ -847,7 +847,7 @@ loop {
 */
 void push_stmt(compiler& com, const node_while_stmt& node)
 {
-    compile_loop(com, [&] {
+    push_loop(com, [&] {
         // if !<condition> break;
         const auto cond_type = push_expr_val(com, *node.condition);
         node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
@@ -901,7 +901,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     push_literal(com, array_length(iter_type));
     declare_var(com, node.token, "#:size", u64_type());
 
-    compile_loop(com, [&] {
+    push_loop(com, [&] {
         // if idx == size break;
         load_variable(com, node.token, "#:idx");
         load_variable(com, node.token, "#:size");
