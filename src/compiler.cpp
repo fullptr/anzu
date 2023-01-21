@@ -833,7 +833,7 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
     });
 }
 
-void push_break(compiler& com);
+void push_break(compiler& com, const token& tok);
 
 /*
 while <condition> {
@@ -855,7 +855,7 @@ void push_stmt(compiler& com, const node_while_stmt& node)
         node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
         com.program.emplace_back(op_bool_not{});
         const auto jump_pos = append_op(com, op_jump_if_false{});
-        push_break(com);
+        push_break(com, node.token);
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
         
         // <body>
@@ -909,7 +909,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         load_variable(com, node.token, "#:size");
         com.program.emplace_back(op_u64_eq{});
         const auto jump_pos = append_op(com, op_jump_if_false{});
-        push_break(com);
+        push_break(com, node.token);
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
 
         // name := &iter[idx];
@@ -968,20 +968,22 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     }
 }
 
-void push_break(compiler& com)
+void push_break(compiler& com, const token& tok)
 {
+    tok.assert(!com.control_flow.empty(), "cannot use 'break' outside of a loop");
     destruct_on_break_or_continue(com);
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().break_stmts.insert(pos);
 }
 
-void push_stmt(compiler& com, const node_break_stmt&)
+void push_stmt(compiler& com, const node_break_stmt& node)
 {
-    push_break(com);
+    push_break(com, node.token);
 }
 
-void push_stmt(compiler& com, const node_continue_stmt&)
+void push_stmt(compiler& com, const node_continue_stmt& node)
 {
+    node.token.assert(!com.control_flow.empty(), "cannot use 'continue' outside of a loop");
     destruct_on_break_or_continue(com);
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().continue_stmts.insert(pos);
