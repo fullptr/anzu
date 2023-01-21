@@ -158,7 +158,7 @@ struct compiler
 
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
-auto compile_stmt(compiler& com, const node_stmt& root) -> void;
+auto push_stmt(compiler& com, const node_stmt& root) -> void;
 auto current_vars(compiler& com) -> var_locations&;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
@@ -176,15 +176,6 @@ auto resolve_type(compiler& com, const token& tok, const node_type& type) -> typ
 
     tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", resolved_type);
     return resolved_type;
-}
-
-auto resolve_type_fields(compiler& com, const token& tok, const std::vector<node_parameter>& params) -> type_fields
-{
-    auto new_fields = type_fields{};
-    for (const auto& p : params) {
-        new_fields.emplace_back(field{ .name=p.name, .type=resolve_type(com, tok, *p.type) });
-    }
-    return new_fields;
 }
 
 class scope_guard
@@ -251,8 +242,7 @@ auto current_vars(compiler& com) -> var_locations&
     return com.current_func ? com.current_func->vars : com.globals;
 }
 
-auto get_function(const compiler& com, const function_key& key)
-    -> std::optional<function_val>
+auto get_function(const compiler& com, const function_key& key) -> std::optional<function_val>
 {
     if (const auto it = com.functions.find(key); it != com.functions.end()) {
         return it->second;
@@ -266,22 +256,14 @@ auto push_function_call_begin(compiler& com) -> void
     push_literal(com, std::uint64_t{0}); // prog ptr
 }
 
-auto push_function_call(
-    compiler& com,
-    std::size_t ptr,
-    const std::vector<type_name>& params
-)
-    -> void
+auto push_function_call(compiler& com, std::size_t ptr, const std::vector<type_name>& params) -> void
 {
     auto args_size = 2 * sizeof(std::uint64_t);
     for (const auto& param : params) {
         args_size += com.types.size_of(param);
     }
 
-    com.program.emplace_back(op_function_call{
-        .ptr=ptr + 1, // Jump into the function
-        .args_size=args_size
-    });
+    com.program.emplace_back(op_function_call{ .ptr=ptr, .args_size=args_size });
 }
 
 template <typename T>
@@ -388,27 +370,29 @@ struct signature
 };
 
 
-void verify_sig(const token& tok, const signature& sig, const std::vector<type_name>& args)
+void verify_sig(
+    const token& tok,
+    const std::vector<type_name>& expected,
+    const std::vector<type_name>& actual)
 {
-    if (sig.params.size() != args.size()) {
-        tok.error("function expected {} args, got {}", sig.params.size(), args.size());
+    if (expected.size() != actual.size()) {
+        tok.error("function expected {} args, got {}", expected.size(), actual.size());
     }
 
-    for (const auto& [actual, expected] : zip(args, sig.params)) {
-        if (actual != expected) {
-            tok.error("'{}' does not match '{}'", actual, expected);
+    for (const auto& [expected_param, actual_param] : zip(expected, actual)) {
+        if (expected_param != actual_param) {
+            tok.error("'{}' does not match '{}'", actual_param, expected_param);
         }
     }
 }
 
-auto make_constructor_sig(const compiler& com, const type_name& type) -> signature
+auto get_constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
 {
-    auto sig = signature{};
+    auto params = std::vector<type_name>{};
     for (const auto& field : com.types.fields_of(type)) {
-        sig.params.emplace_back(field.type);
+        params.emplace_back(field.type);
     }
-    sig.return_type = type;
-    return sig;
+    return params;
 }
 
 auto function_ends_with_return(const node_stmt& node) -> bool
@@ -682,12 +666,12 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
     // there is currently nothing to do since the arguments are already pushed to
     // the stack.
     if (const auto type = make_type(node.function_name); com.types.contains(type)) {
-        const auto sig = make_constructor_sig(com, type);
-        std::vector<type_name> param_types;
+        const auto expected_params = get_constructor_params(com, type);
+        std::vector<type_name> actual_params;
         for (const auto& arg : node.args) {
-            param_types.emplace_back(push_object_copy(com, *arg, node.token));
+            actual_params.emplace_back(push_object_copy(com, *arg, node.token));
         }
-        verify_sig(node.token, sig, param_types);
+        verify_sig(node.token, expected_params, actual_params);
         return type;
     }
 
@@ -811,11 +795,11 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
     return type;
 }
 
-void compile_stmt(compiler& com, const node_sequence_stmt& node)
+void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
     const auto scope = scope_guard{com};
     for (const auto& seq_node : node.sequence) {
-        compile_stmt(com, *seq_node);
+        push_stmt(com, *seq_node);
     }
 }
 
@@ -840,10 +824,10 @@ auto compile_loop(compiler& com, std::function<void()> body) -> void
     }
 }
 
-void compile_stmt(compiler& com, const node_loop_stmt& node)
+void push_stmt(compiler& com, const node_loop_stmt& node)
 {
     compile_loop(com, [&] {
-        compile_stmt(com, *node.body);
+        push_stmt(com, *node.body);
     });
 }
 
@@ -861,7 +845,7 @@ loop {
     <body>
 }
 */
-void compile_stmt(compiler& com, const node_while_stmt& node)
+void push_stmt(compiler& com, const node_while_stmt& node)
 {
     compile_loop(com, [&] {
         // if !<condition> break;
@@ -873,7 +857,7 @@ void compile_stmt(compiler& com, const node_while_stmt& node)
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
         
         // <body>
-        compile_stmt(com, *node.body);
+        push_stmt(com, *node.body);
     });
 }
 
@@ -896,7 +880,7 @@ becomes
     }
 }
 */
-void compile_stmt(compiler& com, const node_for_stmt& node)
+void push_stmt(compiler& com, const node_for_stmt& node)
 {
     const auto scope = scope_guard{com};
 
@@ -945,21 +929,21 @@ void compile_stmt(compiler& com, const node_for_stmt& node)
         save_variable(com, node.token, "#:idx");
 
         // main body
-        compile_stmt(com, *node.body);
+        push_stmt(com, *node.body);
     });
 }
 
-void compile_stmt(compiler& com, const node_if_stmt& node)
+void push_stmt(compiler& com, const node_if_stmt& node)
 {
     const auto cond_type = push_expr_val(com, *node.condition);
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
 
     const auto jump_pos = append_op(com, op_jump_if_false{});
-    compile_stmt(com, *node.body);
+    push_stmt(com, *node.body);
 
     if (node.else_body) {
         const auto else_pos = append_op(com, op_jump{});
-        compile_stmt(com, *node.else_body);
+        push_stmt(com, *node.else_body);
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
         std::get<op_jump>(com.program[else_pos]).jump = com.program.size(); // Jump past the end if false
     } else {
@@ -967,14 +951,18 @@ void compile_stmt(compiler& com, const node_if_stmt& node)
     }
 }
 
-void compile_stmt(compiler& com, const node_struct_stmt& node)
+void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     verify_unused_name(com, node.token, node.name);
-    const auto fields = resolve_type_fields(com, node.token, node.fields);
+
+    auto fields = type_fields{};
+    for (const auto& p : node.fields) {
+        fields.emplace_back(field{ .name=p.name, .type=resolve_type(com, node.token, *p.type) });
+    }
 
     com.types.add(make_type(node.name), fields);
     for (const auto& function : node.functions) {
-        compile_stmt(com, *function);
+        push_stmt(com, *function);
     }
 }
 
@@ -985,25 +973,25 @@ void push_break(compiler& com)
     com.control_flow.top().break_stmts.insert(pos);
 }
 
-void compile_stmt(compiler& com, const node_break_stmt&)
+void push_stmt(compiler& com, const node_break_stmt&)
 {
     push_break(com);
 }
 
-void compile_stmt(compiler& com, const node_continue_stmt&)
+void push_stmt(compiler& com, const node_continue_stmt&)
 {
     destruct_on_break_or_continue(com);
     const auto pos = append_op(com, op_jump{});
     com.control_flow.top().continue_stmts.insert(pos);
 }
 
-auto compile_stmt(compiler& com, const node_declaration_stmt& node) -> void
+auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
     const auto type = push_object_copy(com, *node.expr, node.token);
     declare_var(com, node.token, node.name, type);
 }
 
-void compile_stmt(compiler& com, const node_assignment_stmt& node)
+void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = type_of_expr(com, *node.expr);
     const auto lhs = type_of_expr(com, *node.position);
@@ -1079,9 +1067,9 @@ auto compile_function_body(
         sig.return_type = resolve_type(com, tok, *node_sig.return_type);
         com.current_func->return_type = sig.return_type;
         const auto key = function_key{ .name=name, .args=sig.params };
-        com.functions[key] = { .return_type=sig.return_type, .ptr=begin_pos, .tok=tok };
+        com.functions[key] = { .return_type=sig.return_type, .ptr=begin_pos + 1, .tok=tok };
 
-        compile_stmt(com, *body);
+        push_stmt(com, *body);
 
         if (!function_ends_with_return(*body)) {
             // A function returning null does not need a final return statement, and in this case
@@ -1103,7 +1091,7 @@ auto compile_function_body(
     return sig;
 }
 
-void compile_stmt(compiler& com, const node_function_def_stmt& node)
+void push_stmt(compiler& com, const node_function_def_stmt& node)
 {
     if (com.types.contains(make_type(node.name))) {
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
@@ -1112,7 +1100,7 @@ void compile_stmt(compiler& com, const node_function_def_stmt& node)
     compile_function_body(com, node.token, node.name, node.sig, node.body);
 }
 
-void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
+void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto expected = concrete_ptr_type(make_type(node.struct_name));
     const auto name = std::format("{}::{}", node.struct_name, node.function_name);
@@ -1142,7 +1130,7 @@ void compile_stmt(compiler& com, const node_member_function_def_stmt& node)
 
 }
 
-void compile_stmt(compiler& com, const node_return_stmt& node)
+void push_stmt(compiler& com, const node_return_stmt& node)
 {
     node.token.assert(com.current_func.has_value(), "can only return within functions");
     destruct_on_return(com, &node);
@@ -1151,13 +1139,13 @@ void compile_stmt(compiler& com, const node_return_stmt& node)
     com.program.emplace_back(op_return{ .size=com.types.size_of(return_type) });
 }
 
-void compile_stmt(compiler& com, const node_expression_stmt& node)
+void push_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = push_expr_val(com, *node.expr);
     pop_object(com, type, node.token);
 }
 
-void compile_stmt(compiler& com, const node_delete_stmt& node)
+void push_stmt(compiler& com, const node_delete_stmt& node)
 {
     const auto type = push_expr_val(com, *node.expr);
     node.token.assert(is_ptr_type(type), "delete requires a ptr, got {}\n", type);
@@ -1169,9 +1157,9 @@ auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
     return std::visit([&](const auto& node) { return push_expr_val(com, node); }, expr);
 }
 
-auto compile_stmt(compiler& com, const node_stmt& root) -> void
+auto push_stmt(compiler& com, const node_stmt& root) -> void
 {
-    std::visit([&](const auto& node) { compile_stmt(com, node); }, root);
+    std::visit([&](const auto& node) { push_stmt(com, node); }, root);
 }
 
 }
@@ -1179,7 +1167,7 @@ auto compile_stmt(compiler& com, const node_stmt& root) -> void
 auto compile(const node_stmt_ptr& root) -> program
 {
     auto com = compiler{};
-    compile_stmt(com, *root);
+    push_stmt(com, *root);
     return com.program;
 }
 
