@@ -122,7 +122,6 @@ struct op_jump_if_false
 
 struct op_function_call
 {
-    std::string name;
     std::size_t ptr;
     std::size_t args_size;
 };
