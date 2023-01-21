@@ -44,6 +44,8 @@ struct type_name : public std::variant<
     using variant::variant;
 };
 
+using type_names = std::vector<type_name>;
+
 struct object
 {
     std::vector<std::byte> data;
