@@ -89,15 +89,7 @@ struct node_binary_op_expr
 
 struct node_function_call_expr
 {
-    std::string                function_name;
-    std::vector<node_expr_ptr> args;
-
-    anzu::token token;
-};
-
-struct node_member_function_call_expr
-{
-    node_expr_ptr              expr;
+    node_type_ptr              struct_type;
     std::string                function_name;
     std::vector<node_expr_ptr> args;
 
@@ -162,7 +154,6 @@ struct node_expr : std::variant<
     node_unary_op_expr,
     node_binary_op_expr,
     node_function_call_expr,
-    node_member_function_call_expr,
     node_list_expr,
     node_repeat_list_expr,
     node_addrof_expr,

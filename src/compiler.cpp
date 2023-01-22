@@ -160,8 +160,12 @@ auto current_vars(compiler& com) -> var_locations&;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
 
-auto resolve_type(compiler& com, const token& tok, const node_type& type) -> type_name
+auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) -> type_name
 {
+    if (!type) {
+        return global_namespace;
+    }
+
     const auto resolved_type = std::visit(overloaded {
         [&](const node_named_type& node) {
             return node.type;
@@ -169,7 +173,7 @@ auto resolve_type(compiler& com, const token& tok, const node_type& type) -> typ
         [&](const node_expr_type& node) {
             return type_of_expr(com, *node.expr);
         }
-    }, type);
+    }, *type);
 
     tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", resolved_type);
     return resolved_type;
@@ -673,7 +677,7 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         params.push_back(type_of_expr(com, *arg));
     }
     
-    if (const auto func = get_function(com, global_namespace, node.function_name, params); func.has_value()) {
+    if (const auto func = get_function(com, resolve_type(com, node.token, node.struct_type), node.function_name, params); func.has_value()) {
         push_function_call_begin(com);
         for (const auto& arg : node.args) {
             push_object_copy(com, *arg, node.token);
@@ -704,27 +708,6 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
 
     const auto function_str = std::format("{}", node.function_name);
     node.token.error("(3) could not find function '{}'", function_str);
-}
-
-auto push_expr_val(compiler& com, const node_member_function_call_expr& node) -> type_name
-{
-    const auto obj_type = type_of_expr(com, *node.expr);
-
-    auto params = type_names{};
-    params.push_back(concrete_ptr_type(obj_type));
-    for (const auto& arg : node.args) {
-        params.push_back(type_of_expr(com, *arg));
-    }
-    
-    const auto func = get_function(com, obj_type, node.function_name, params);
-    node.token.assert(func.has_value(), "(4) could not find function '{}::{}'", obj_type, node.function_name);
-    push_function_call_begin(com);
-    push_expr_ptr(com, *node.expr);
-    for (const auto& arg : node.args) {
-        push_object_copy(com, *arg, node.token);
-    }
-    push_function_call(com, func->ptr, params);
-    return func->return_type;
 }
 
 auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name
@@ -768,7 +751,7 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
     const auto count = push_expr_val(com, *node.size);
     node.token.assert_eq(count, u64_type(), "invalid array size type");
-    const auto type = resolve_type(com, node.token, *node.type);
+    const auto type = resolve_type(com, node.token, node.type);
     com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(type) });
     return concrete_ptr_type(type);
 }
@@ -947,7 +930,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 
     auto fields = type_fields{};
     for (const auto& p : node.fields) {
-        fields.emplace_back(field{ .name=p.name, .type=resolve_type(com, node.token, *p.type) });
+        fields.emplace_back(field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
     }
 
     com.types.add(make_type(node.name), fields);
@@ -1052,12 +1035,12 @@ auto compile_function_body(
         declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
         declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
         for (const auto& arg : node_sig.params) {
-            const auto type = resolve_type(com, tok, *arg.type);
+            const auto type = resolve_type(com, tok, arg.type);
             sig.params.push_back({type});
             declare_var(com, tok, arg.name, type);
         }
 
-        sig.return_type = resolve_type(com, tok, *node_sig.return_type);
+        sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.current_func->return_type = sig.return_type;
         com.functions[struct_type][name][sig.params] = { .return_type=sig.return_type, .ptr=begin_pos + 1, .tok=tok };
 

@@ -5,11 +5,6 @@ struct vector
     size:     u64;
     capacity: u64;
 
-    fn create() -> vector
-    {
-        return vector(new i64, 0u, 1u);
-    }
-
     fn at(self: &vector, idx: u64) -> i64
     {
         return *(self->data + idx);
