@@ -677,7 +677,8 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         params.push_back(type_of_expr(com, *arg));
     }
     
-    if (const auto func = get_function(com, resolve_type(com, node.token, node.struct_type), node.function_name, params); func.has_value()) {
+    const auto type = resolve_type(com, node.token, node.struct_type);
+    if (const auto func = get_function(com, type, node.function_name, params); func.has_value()) {
         push_function_call_begin(com);
         for (const auto& arg : node.args) {
             push_object_copy(com, *arg, node.token);
