@@ -10,10 +10,13 @@
 namespace anzu {
 
 struct node_expr;
-using node_expr_ptr = std::unique_ptr<node_expr>;
+using node_expr_ptr = std::shared_ptr<node_expr>;
 
 struct node_type;
-using node_type_ptr = std::unique_ptr<node_type>;
+using node_type_ptr = std::shared_ptr<node_type>;
+
+struct node_stmt;
+using node_stmt_ptr = std::shared_ptr<node_stmt>;
 
 struct node_named_type
 {
@@ -86,15 +89,7 @@ struct node_binary_op_expr
 
 struct node_function_call_expr
 {
-    std::string                function_name;
-    std::vector<node_expr_ptr> args;
-
-    anzu::token token;
-};
-
-struct node_member_function_call_expr
-{
-    node_expr_ptr              expr;
+    node_type_ptr              struct_type;
     std::string                function_name;
     std::vector<node_expr_ptr> args;
 
@@ -159,7 +154,6 @@ struct node_expr : std::variant<
     node_unary_op_expr,
     node_binary_op_expr,
     node_function_call_expr,
-    node_member_function_call_expr,
     node_list_expr,
     node_repeat_list_expr,
     node_addrof_expr,
@@ -173,12 +167,6 @@ struct node_expr : std::variant<
     node_subscript_expr>
 {
 };
-
-auto is_lvalue_expr(const node_expr& expr) -> bool;
-auto is_rvalue_expr(const node_expr& expr) -> bool;
-
-struct node_stmt;
-using node_stmt_ptr = std::unique_ptr<node_stmt>;
 
 struct node_sequence_stmt
 {
@@ -313,6 +301,9 @@ struct node_stmt : std::variant<
     node_delete_stmt>
 {
 };
+
+auto is_lvalue_expr(const node_expr& expr) -> bool;
+auto is_rvalue_expr(const node_expr& expr) -> bool;
 
 auto print_node(const anzu::node_expr& root, int indent = 0) -> void;
 auto print_node(const anzu::node_stmt& root, int indent = 0) -> void;

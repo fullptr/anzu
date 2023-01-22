@@ -138,10 +138,10 @@ static const auto bin_ops_table = precedence_table();
 
 auto parse_function_call(tokenstream& tokens) -> node_expr_ptr
 {
-    auto node = std::make_unique<node_expr>();
+    auto node = std::make_shared<node_expr>();
     auto& out = node->emplace<node_function_call_expr>();
     out.token = tokens.consume();
-
+    out.struct_type = nullptr;
     out.function_name = out.token.text;
     tokens.consume_only(tk_lparen);
     tokens.consume_comma_separated_list(tk_rparen, [&] {
@@ -152,17 +152,22 @@ auto parse_function_call(tokenstream& tokens) -> node_expr_ptr
 
 auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 {
-    auto new_node = std::make_unique<node_expr>();
+    auto new_node = std::make_shared<node_expr>();
     const auto tok = tokens.consume();
     if (tokens.peek_next(tk_lparen)) {
-        auto& expr = new_node->emplace<node_member_function_call_expr>();
+        auto addrof = std::make_shared<node_expr>();
+        auto& addrof_inner = addrof->emplace<node_addrof_expr>();
+        addrof_inner.expr = node;
+        addrof_inner.token = tok;
+        auto& expr = new_node->emplace<node_function_call_expr>();
         expr.token = tok;
+        expr.struct_type = std::make_shared<node_type>(node_expr_type{node});
         expr.function_name = tokens.consume().text;
         tokens.consume_only(tk_lparen);
+        expr.args.push_back(addrof);
         tokens.consume_comma_separated_list(tk_rparen, [&] {
             expr.args.push_back(parse_expression(tokens));
         });
-        expr.expr = std::move(node);
     } else {
         auto& expr = new_node->emplace<node_field_expr>();
         expr.token = tok;
@@ -174,7 +179,7 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 
 auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
 {
-    auto node = std::make_unique<node_expr>();
+    auto node = std::make_shared<node_expr>();
     
     if (tokens.consume_maybe(tk_lparen)) {
         node = parse_expression(tokens);
@@ -239,7 +244,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         if (tokens.consume_maybe(tk_colon)) {
             expr.size = parse_expression(tokens);
         } else {
-            expr.size = std::make_unique<node_expr>();
+            expr.size = std::make_shared<node_expr>();
             auto& inner = expr.size->emplace<node_literal_expr>();
             inner.value = parse_u64(token{.text="1u"});
         }
@@ -257,7 +262,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         
         // For x->y, parse as (*x).y by first wrapping x in a node_deref_expr
         else if (tokens.peek(tk_rarrow)) {
-            auto deref_node = std::make_unique<node_expr>();
+            auto deref_node = std::make_shared<node_expr>();
             auto& deref_inner = deref_node->emplace<node_deref_expr>();
             deref_inner.token = std::visit([](auto&& n) { return n.token; }, *node);
             deref_inner.expr = std::move(node);
@@ -266,7 +271,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         }
         
         else {
-            auto new_node = std::make_unique<node_expr>();
+            auto new_node = std::make_shared<node_expr>();
             auto& expr = new_node->emplace<node_subscript_expr>();
             expr.token = tokens.consume();
             expr.index = parse_expression(tokens);
@@ -288,7 +293,7 @@ auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr
 
     auto factor = parse_compound_factor(tokens, level - 1);
     while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().text)) {
-        auto node = std::make_unique<node_expr>();
+        auto node = std::make_shared<node_expr>();
         auto& expr = node->emplace<node_binary_op_expr>();
         expr.lhs = std::move(factor);
         expr.token = tokens.consume();
@@ -331,7 +336,7 @@ auto parse_type(tokenstream& tokens) -> type_name
 auto parse_type_node(tokenstream& tokens) -> node_type_ptr
 {
     if (tokens.peek(tk_typeof)) {
-        auto node = std::make_unique<node_type>();
+        auto node = std::make_shared<node_type>();
         auto& inner = node->emplace<node_expr_type>();
         inner.token = tokens.consume();
         tokens.consume_only(tk_lparen);
@@ -341,12 +346,12 @@ auto parse_type_node(tokenstream& tokens) -> node_type_ptr
     }
 
     const auto type = parse_type(tokens);
-    return std::make_unique<node_type>(node_named_type{type});
+    return std::make_shared<node_type>(node_named_type{type});
 }
 
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_function_def_stmt>();
 
     stmt.token = tokens.consume_only(tk_function);
@@ -362,7 +367,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.consume_maybe(tk_rarrow)) {
         stmt.sig.return_type = parse_type_node(tokens);
     } else {
-        stmt.sig.return_type = std::make_unique<node_type>(node_named_type{null_type()});
+        stmt.sig.return_type = std::make_shared<node_type>(node_named_type{null_type()});
     }
     stmt.body = parse_statement(tokens);
     return node;
@@ -373,7 +378,7 @@ auto parse_member_function_def_stmt(
 )
     -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_member_function_def_stmt>();
 
     stmt.token = tokens.consume_only(tk_function);
@@ -392,7 +397,7 @@ auto parse_member_function_def_stmt(
     //        stmt.token.error("can only =delete a function");
     //    }
     //    stmt.sig.return_type = null_type();
-    //    stmt.body = std::make_unique<node_stmt>(node_sequence_stmt{});
+    //    stmt.body = std::make_shared<node_stmt>(node_sequence_stmt{});
     //    tokens.consume_only(tk_semicolon);
     //    return node;
     //}
@@ -408,7 +413,7 @@ auto parse_member_function_def_stmt(
     if (tokens.consume_maybe(tk_rarrow)) {
         stmt.sig.return_type = parse_type_node(tokens);
     } else {
-        stmt.sig.return_type = std::make_unique<node_type>(node_named_type{null_type()});
+        stmt.sig.return_type = std::make_shared<node_type>(node_named_type{null_type()});
     }
     stmt.body = parse_statement(tokens);
     return node;
@@ -416,12 +421,12 @@ auto parse_member_function_def_stmt(
 
 auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_return_stmt>();
     
     stmt.token = tokens.consume_only(tk_return);
     if (tokens.peek(tk_semicolon)) {
-        stmt.return_value = std::make_unique<node_expr>();
+        stmt.return_value = std::make_shared<node_expr>();
         auto& ret_expr = stmt.return_value->emplace<node_literal_expr>();
         ret_expr.value = object{ .data={std::byte{0}}, .type=null_type() };
         ret_expr.token = stmt.token;
@@ -434,7 +439,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_loop_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_loop_stmt>();
 
     stmt.token = tokens.consume_only(tk_loop);
@@ -444,7 +449,7 @@ auto parse_loop_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_while_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_while_stmt>();
 
     stmt.token = tokens.consume_only(tk_while);
@@ -455,7 +460,7 @@ auto parse_while_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_for_stmt>();
 
     stmt.token = tokens.consume_only(tk_for);
@@ -468,7 +473,7 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_if_stmt>();
 
     stmt.token = tokens.consume_only(tk_if);
@@ -482,7 +487,7 @@ auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_struct_stmt>();
 
     stmt.token = tokens.consume_only(tk_struct);
@@ -506,7 +511,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_declaration_stmt>();
 
     stmt.name = parse_name(tokens);
@@ -518,7 +523,7 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_sequence_stmt>();
     
     stmt.token = tokens.consume_only(tk_lbrace);
@@ -531,7 +536,7 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_delete_stmt>();
 
     stmt.token = tokens.consume_only(tk_delete);
@@ -563,12 +568,12 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         return parse_if_stmt(tokens);
     }
     if (tokens.peek(tk_break)) {
-        auto ret = std::make_unique<node_stmt>(node_break_stmt{ tokens.consume() });
+        auto ret = std::make_shared<node_stmt>(node_break_stmt{ tokens.consume() });
         tokens.consume_only(tk_semicolon);
         return ret;
     }
     if (tokens.peek(tk_continue)) {
-        auto ret = std::make_unique<node_stmt>(node_continue_stmt{ tokens.consume() });
+        auto ret = std::make_shared<node_stmt>(node_continue_stmt{ tokens.consume() });
         tokens.consume_only(tk_semicolon);
         return ret;
     }
@@ -582,7 +587,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         return parse_delete_stmt(tokens);
     }
 
-    auto node = std::make_unique<node_stmt>();
+    auto node = std::make_shared<node_stmt>();
     auto expr = parse_expression(tokens);
     if (tokens.peek(tk_assign)) {
         auto& stmt = node->emplace<node_assignment_stmt>();
@@ -617,7 +622,7 @@ auto parse(const std::vector<token>& tokens) -> node_stmt_ptr
 {
     auto stream = tokenstream{tokens};
 
-    auto root = std::make_unique<node_stmt>();
+    auto root = std::make_shared<node_stmt>();
     auto& seq = root->emplace<node_sequence_stmt>();
     while (stream.valid()) {
         seq.sequence.push_back(parse_top_level_statement(stream));
