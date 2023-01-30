@@ -124,17 +124,10 @@ Utility Modules (in src/utility)
 -- views.hpp       : A collection of some helper views not in C++20
 ```
 
-# TODO
-## Focus
+# Next Features (In ordoer of prio)
+* Modules
+* Templates
+* Function Pointers
+* Filesystem Support
 * Const
-* Dynamic Allocation
-
-## Low Priority
-* Making the bytecode a true bytecode that can be saved to a file and read back in, with the compiler and runtime becoming separate programs
-* References
-* Less restriction on return statements in functions
-* Function pointers
-* Variants and match statement
-* Enums
-* Filesystem support
-* A better C++ API for implementing custom functions in C++
+* Variants
