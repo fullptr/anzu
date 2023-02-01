@@ -1,0 +1,9 @@
+struct string
+{
+
+};
+
+fn print_string(str: &string)
+{
+    println("string");
+}

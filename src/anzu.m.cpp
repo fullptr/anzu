@@ -29,20 +29,21 @@ auto main(const int argc, const char* argv[]) -> int
         return 1;
     }
 
-    const auto file_full = std::filesystem::canonical(argv[1]);
+    const auto file = std::filesystem::canonical(argv[1]);
+    const auto root = file.parent_path();
     const auto mode = std::string{argv[2]};
 
 
     // In lex and parse mode, only process the specified file, not the entire program.
     if (mode == "lex" || mode == "parse") {
-        anzu::print("Loading file '{}'\n", file_full.string());
+        anzu::print("Loading file '{}'\n", file.string());
         anzu::print("-> Lexing\n");
-        const auto tokens = anzu::lex(file_full);
+        const auto tokens = anzu::lex(file);
         if (mode == "lex") {
             print_tokens(tokens);
         } else {
             anzu::print("-> Parsing\n");
-            const auto mod = anzu::parse(file_full, tokens);
+            const auto mod = anzu::parse(file, tokens);
             print_node(*mod.root);
         }
         return 0;
@@ -52,19 +53,20 @@ auto main(const int argc, const char* argv[]) -> int
     // required modules. Pick one and compile, continue until all modules have been parsed
     auto parsed_program = std::map<std::filesystem::path, anzu::file_ast>{};
 
-    auto modules = std::set<std::filesystem::path>{file_full};
+    auto modules = std::set<std::filesystem::path>{file};
     while (!modules.empty()) {
-        const auto file = modules.extract(modules.begin()).value();
-        anzu::print("-> Lexing '{}'\n", file.string());
-        const auto tokens = anzu::lex(file);
-        anzu::print("-> Parsing '{}'\n", file.string());
-        auto ast = anzu::parse(file_full, tokens);
+        const auto curr = modules.extract(modules.begin()).value();
+        anzu::print("-> Processing '{}'\n", curr.lexically_relative(root).string());
+        anzu::print("    - Lexing\n");
+        const auto tokens = anzu::lex(curr);
+        anzu::print("    - Parsing\n");
+        auto ast = anzu::parse(curr, tokens);
         for (const auto& m : ast.required_modules) {
             if (!parsed_program.contains(m)) {
                 modules.emplace(m);
             }
         }
-        parsed_program.emplace(file, std::move(ast));
+        parsed_program.emplace(curr, std::move(ast));
     }
 
     if (mode == "discover") {
