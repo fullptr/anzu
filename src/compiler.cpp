@@ -1142,6 +1142,10 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 
 auto compile(const node_stmt_ptr& root) -> program
 {
+    if (!root) {
+        print("AST passed to compiler is a null pointer :(\n");
+        exit(1);
+    }
     auto com = compiler{};
     push_stmt(com, *root);
     return com.program;

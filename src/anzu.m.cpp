@@ -61,6 +61,7 @@ auto main(const int argc, const char* argv[]) -> int
                 modules.emplace(m);
             }
         }
+        parsed_program.emplace(file, std::move(ast));
     }
 
     anzu::print("-> Compiling\n");

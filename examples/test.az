@@ -9,4 +9,5 @@ struct foo
 
 f := foo();
 
-y := f.bar();
+y := f.bar(5);
+println(y);
