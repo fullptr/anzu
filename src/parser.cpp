@@ -627,7 +627,11 @@ auto parse(const std::vector<token>& tokens) -> file_ast
     while (stream.valid()) {
         while (stream.consume_maybe(tk_semicolon));
         if (stream.consume_maybe(tk_import)) {
-            mod.required_modules.emplace(parse_name(stream));
+            auto module_name = std::string{};
+            while (!stream.peek(tk_semicolon)) {
+                module_name += stream.consume().text;
+            }
+            mod.required_modules.emplace(module_name);
             stream.consume_only(tk_semicolon);
         } else {
             seq.sequence.push_back(parse_top_level_statement(stream));

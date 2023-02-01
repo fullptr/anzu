@@ -1,4 +1,4 @@
-import vector;
+import ./examples/recursion.az;
 
 struct foo
 {
@@ -12,3 +12,4 @@ f := foo();
 
 y := f.bar(5);
 println(y);
+println(fibb(10i32));

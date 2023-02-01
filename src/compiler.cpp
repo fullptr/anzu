@@ -13,6 +13,7 @@
 #include <tuple>
 #include <vector>
 #include <stack>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -1140,14 +1141,43 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 
 }
 
-auto compile(const node_stmt_ptr& root) -> program
+auto compiled_all_requirements(const file_ast& module, const std::set<std::string>& compiled) -> bool
 {
-    if (!root) {
-        print("AST passed to compiler is a null pointer :(\n");
-        exit(1);
+    for (const auto& requirement : module.required_modules) {
+        if (!compiled.contains(requirement)) {
+            return false;
+        }
     }
+    return true;
+}
+
+auto compile(const std::map<std::string, file_ast>& modules) -> program
+{
     auto com = compiler{};
-    push_stmt(com, *root);
+    auto done = std::set<std::string>{};
+    auto remaining = std::set<std::string>{}; 
+    for (const auto& [file, mod] : modules) {
+        remaining.emplace(file);
+    }
+    while (!remaining.empty()) {
+        const auto before = remaining.size();
+        std::erase_if(remaining, [&](const std::string& curr) {
+            const auto& mod = modules.at(curr);
+            if (compiled_all_requirements(mod, done)) {
+                print("    {}\n", curr);
+                push_stmt(com, *mod.root);
+                done.emplace(curr);
+                return true;
+            }
+            return false;
+        });
+        const auto after = remaining.size();
+        if (before == after) {
+            print("Cyclic dependency detected\n");
+            exit(1);
+        }
+    }
+
     return com.program;
 }
 
