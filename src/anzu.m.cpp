@@ -37,14 +37,14 @@ auto main(const int argc, const char* argv[]) -> int
     }
 
     anzu::print("-> Parsing\n");
-    const auto ast = anzu::parse(tokens);
+    const auto mod = anzu::parse(tokens);
     if (mode == "parse") {
-        print_node(*ast);
+        print_node(*mod.root);
         return 0;
     }
 
     anzu::print("-> Compiling\n");
-    const auto program = anzu::compile(ast);
+    const auto program = anzu::compile(mod.root);
     if (mode == "com") {
         anzu::print_program(program);
         return 0;

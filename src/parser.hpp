@@ -3,9 +3,17 @@
 #include "ast.hpp"
 
 #include <vector>
+#include <unordered_set>
+#include <string>
 
 namespace anzu {
 
-auto parse(const std::vector<anzu::token>& tokens) -> anzu::node_stmt_ptr;
+struct anzu_module
+{
+    node_stmt_ptr                   root;
+    std::unordered_set<std::string> required_modules;
+};
+
+auto parse(const std::vector<anzu::token>& tokens) -> anzu_module;
 
 }
