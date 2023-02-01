@@ -210,6 +210,10 @@ auto lex(const std::string& file) -> std::vector<anzu::token>
     // If a '//' comment symbol is hit, the rest of the line is ignored.
     std::vector<anzu::token> tokens;
     std::ifstream file_stream{file};
+    if (!file_stream) {
+        lexer_error(0, 0, "Could not find module {}\n", file);
+    }
+    
     std::string line;
     std::int64_t lineno = 1;
     while (std::getline(file_stream, line)) {

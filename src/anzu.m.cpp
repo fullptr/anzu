@@ -13,11 +13,12 @@ void print_usage()
     anzu::print("usage: anzu.exe <program_file> <option>\n\n");
     anzu::print("The Anzu Programming Language\n\n");
     anzu::print("options:\n");
-    anzu::print("    lex   - runs the lexer and prints the tokens\n");
-    anzu::print("    parse - runs the parser and prints the AST\n");
-    anzu::print("    com   - runs the compiler and prints the bytecode\n");
-    anzu::print("    debug - runs the program and prints each op code executed\n");
-    anzu::print("    run   - runs the program\n");
+    anzu::print("    lex      - runs the lexer and prints the tokens for a single file\n");
+    anzu::print("    parse    - runs the parser and prints the AST for a single file\n");
+    anzu::print("    discover - runs the parser and prints all modules\n");
+    anzu::print("    com      - runs the compiler and prints the bytecode\n");
+    anzu::print("    debug    - runs the program and prints each op code executed\n");
+    anzu::print("    run      - runs the program\n");
 }
 
 auto main(const int argc, const char* argv[]) -> int
@@ -62,6 +63,17 @@ auto main(const int argc, const char* argv[]) -> int
             }
         }
         parsed_program.emplace(file, std::move(ast));
+    }
+
+    if (mode == "discover") {
+        anzu::print("\nFound modules:\n");
+        for (const auto& [file, mod] : parsed_program) {
+            anzu::print("- {}\n", file);
+            for (const auto& dep : mod.required_modules) {
+                anzu::print("  | - {}\n", dep);
+            }
+        }
+        return 0;
     }
 
     anzu::print("-> Compiling\n");
