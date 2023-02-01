@@ -8,12 +8,12 @@
 
 namespace anzu {
 
-struct anzu_module
+struct file_ast
 {
     node_stmt_ptr                   root;
     std::unordered_set<std::string> required_modules;
 };
 
-auto parse(const std::vector<anzu::token>& tokens) -> anzu_module;
+auto parse(const std::vector<anzu::token>& tokens) -> file_ast;
 
 }

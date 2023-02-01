@@ -618,10 +618,10 @@ auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 
 }
 
-auto parse(const std::vector<token>& tokens) -> anzu_module
+auto parse(const std::vector<token>& tokens) -> file_ast
 {
     auto stream = tokenstream{tokens};
-    auto mod = anzu_module{};
+    auto mod = file_ast{};
     mod.root = std::make_shared<node_stmt>();
     auto& seq = mod.root->emplace<node_sequence_stmt>();
     while (stream.valid()) {

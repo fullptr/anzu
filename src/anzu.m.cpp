@@ -5,6 +5,8 @@
 #include "utility/print.hpp"
 
 #include <string>
+#include <map>
+#include <set>
 
 void print_usage()
 {
@@ -28,23 +30,41 @@ auto main(const int argc, const char* argv[]) -> int
     const auto file = std::string{argv[1]};
     const auto mode = std::string{argv[2]};
 
-    anzu::print("Loading file '{}'\n", file);
-    anzu::print("-> Lexing\n");
-    const auto tokens = anzu::lex(file);
-    if (mode == "lex") {
-        print_tokens(tokens);
+    // In lex and parse mode, only process the specified file, not the entire program.
+    if (mode == "lex" || mode == "parse") {
+        anzu::print("Loading file '{}'\n", file);
+        anzu::print("-> Lexing\n");
+        const auto tokens = anzu::lex(file);
+        if (mode == "lex") {
+            print_tokens(tokens);
+        } else {
+            anzu::print("-> Parsing\n");
+            const auto mod = anzu::parse(tokens);
+            print_node(*mod.root);
+        }
         return 0;
     }
 
-    anzu::print("-> Parsing\n");
-    const auto mod = anzu::parse(tokens);
-    if (mode == "parse") {
-        print_node(*mod.root);
-        return 0;
+    // Start with the specified file, lex and parse it, then check to see if it has any other
+    // required modules. Pick one and compile, continue until all modules have been parsed
+    auto parsed_program = std::map<std::string, anzu::file_ast>{};
+
+    auto modules = std::set<std::string>{file};
+    while (!modules.empty()) {
+        const auto file = modules.extract(modules.begin()).value();
+        anzu::print("-> Lexing '{}'\n", file);
+        const auto tokens = anzu::lex(file);
+        anzu::print("-> Parsing '{}'\n", file);
+        auto ast = anzu::parse(tokens);
+        for (const auto& m : ast.required_modules) {
+            if (!parsed_program.contains(m)) {
+                modules.emplace(m);
+            }
+        }
     }
 
     anzu::print("-> Compiling\n");
-    const auto program = anzu::compile(mod.root);
+    const auto program = anzu::compile(parsed_program[file].root);
     if (mode == "com") {
         anzu::print_program(program);
         return 0;

@@ -9,5 +9,4 @@ struct foo
 
 f := foo();
 
-f.bar();
-typeof(f)::bar(&f);
+y := f.bar();
