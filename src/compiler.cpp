@@ -707,9 +707,10 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         });
         return builtin.return_type;
     }
-
-    const auto function_str = std::format("{}", node.function_name);
-    node.token.error("(3) could not find function '{}'", function_str);
+    
+    const auto sig = format_comma_separated(params);
+    const auto function_str = std::format("{}({})", node.function_name, sig);
+    node.token.error("could not find function '{}'", function_str);
 }
 
 auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name

@@ -1,12 +1,12 @@
 # fibbonacci to demonstrate functions and recursion
 
-fn fibb(n: i32) -> i32
+fn fibb(n: i64) -> i64
 {
-    if n == 0i32 {
-        return 0i32;
-    } else if n == 1i32 {
-        return 1i32;
+    if n == 0 {
+        return 0;
+    } else if n == 1 {
+        return 1;
     }
 
-    return fibb(n - 1i32) + fibb(n - 2i32);
+    return fibb(n - 1) + fibb(n - 2);
 }
