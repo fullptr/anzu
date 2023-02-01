@@ -1,4 +1,4 @@
-import examples/recursion.az;
+import recursion.az;
 
 struct foo
 {

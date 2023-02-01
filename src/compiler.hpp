@@ -3,11 +3,12 @@
 #include "program.hpp"
 #include "parser.hpp"
 
+#include <filesystem>
 #include <map>
 #include <string>
 
 namespace anzu {
 
-auto compile(const std::map<std::string, file_ast>& moduiles) -> program;
+auto compile(const std::map<std::filesystem::path, file_ast>& moduiles) -> program;
 
 }

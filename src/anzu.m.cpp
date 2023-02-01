@@ -7,6 +7,7 @@
 #include <string>
 #include <map>
 #include <set>
+#include <filesystem>
 
 void print_usage()
 {
@@ -28,19 +29,20 @@ auto main(const int argc, const char* argv[]) -> int
         return 1;
     }
 
-    const auto file = std::string{argv[1]};
+    const auto file_full = std::filesystem::canonical(argv[1]);
     const auto mode = std::string{argv[2]};
+
 
     // In lex and parse mode, only process the specified file, not the entire program.
     if (mode == "lex" || mode == "parse") {
-        anzu::print("Loading file '{}'\n", file);
+        anzu::print("Loading file '{}'\n", file_full.string());
         anzu::print("-> Lexing\n");
-        const auto tokens = anzu::lex(file);
+        const auto tokens = anzu::lex(file_full);
         if (mode == "lex") {
             print_tokens(tokens);
         } else {
             anzu::print("-> Parsing\n");
-            const auto mod = anzu::parse(tokens);
+            const auto mod = anzu::parse(file_full, tokens);
             print_node(*mod.root);
         }
         return 0;
@@ -48,15 +50,15 @@ auto main(const int argc, const char* argv[]) -> int
 
     // Start with the specified file, lex and parse it, then check to see if it has any other
     // required modules. Pick one and compile, continue until all modules have been parsed
-    auto parsed_program = std::map<std::string, anzu::file_ast>{};
+    auto parsed_program = std::map<std::filesystem::path, anzu::file_ast>{};
 
-    auto modules = std::set<std::string>{file};
+    auto modules = std::set<std::filesystem::path>{file_full};
     while (!modules.empty()) {
         const auto file = modules.extract(modules.begin()).value();
-        anzu::print("-> Lexing '{}'\n", file);
+        anzu::print("-> Lexing '{}'\n", file.string());
         const auto tokens = anzu::lex(file);
-        anzu::print("-> Parsing '{}'\n", file);
-        auto ast = anzu::parse(tokens);
+        anzu::print("-> Parsing '{}'\n", file.string());
+        auto ast = anzu::parse(file_full, tokens);
         for (const auto& m : ast.required_modules) {
             if (!parsed_program.contains(m)) {
                 modules.emplace(m);
@@ -68,9 +70,9 @@ auto main(const int argc, const char* argv[]) -> int
     if (mode == "discover") {
         anzu::print("\nFound modules:\n");
         for (const auto& [file, mod] : parsed_program) {
-            anzu::print("- {}\n", file);
+            anzu::print("- {}\n", file.string());
             for (const auto& dep : mod.required_modules) {
-                anzu::print("  | - {}\n", dep);
+                anzu::print("  | - {}\n", dep.string());
             }
         }
         return 0;

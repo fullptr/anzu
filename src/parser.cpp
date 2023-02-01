@@ -618,7 +618,11 @@ auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 
 }
 
-auto parse(const std::vector<token>& tokens) -> file_ast
+auto parse(
+    const std::filesystem::path& file,
+    const std::vector<anzu::token>& tokens
+)
+    -> file_ast
 {
     auto stream = tokenstream{tokens};
     auto mod = file_ast{};
@@ -631,7 +635,7 @@ auto parse(const std::vector<token>& tokens) -> file_ast
             while (!stream.peek(tk_semicolon)) {
                 module_name += stream.consume().text;
             }
-            mod.required_modules.emplace(module_name);
+            mod.required_modules.emplace(std::filesystem::absolute(file.parent_path() / module_name));
             stream.consume_only(tk_semicolon);
         } else {
             seq.sequence.push_back(parse_top_level_statement(stream));

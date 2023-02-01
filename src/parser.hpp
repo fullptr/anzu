@@ -3,17 +3,22 @@
 #include "ast.hpp"
 
 #include <vector>
-#include <unordered_set>
+#include <set>
 #include <string>
+#include <filesystem>
 
 namespace anzu {
 
 struct file_ast
 {
-    node_stmt_ptr                   root;
-    std::unordered_set<std::string> required_modules;
+    node_stmt_ptr root;
+
+    std::set<std::filesystem::path> required_modules;
 };
 
-auto parse(const std::vector<anzu::token>& tokens) -> file_ast;
+auto parse(
+    const std::filesystem::path& file,
+    const std::vector<anzu::token>& token
+) -> file_ast;
 
 }

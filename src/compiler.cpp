@@ -1142,7 +1142,7 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 
 }
 
-auto compiled_all_requirements(const file_ast& module, const std::set<std::string>& compiled) -> bool
+auto compiled_all_requirements(const file_ast& module, const std::set<std::filesystem::path>& compiled) -> bool
 {
     for (const auto& requirement : module.required_modules) {
         if (!compiled.contains(requirement)) {
@@ -1152,20 +1152,20 @@ auto compiled_all_requirements(const file_ast& module, const std::set<std::strin
     return true;
 }
 
-auto compile(const std::map<std::string, file_ast>& modules) -> program
+auto compile(const std::map<std::filesystem::path, file_ast>& modules) -> program
 {
     auto com = compiler{};
-    auto done = std::set<std::string>{};
-    auto remaining = std::set<std::string>{}; 
+    auto done = std::set<std::filesystem::path>{};
+    auto remaining = std::set<std::filesystem::path>{}; 
     for (const auto& [file, mod] : modules) {
         remaining.emplace(file);
     }
     while (!remaining.empty()) {
         const auto before = remaining.size();
-        std::erase_if(remaining, [&](const std::string& curr) {
+        std::erase_if(remaining, [&](const std::filesystem::path& curr) {
             const auto& mod = modules.at(curr);
             if (compiled_all_requirements(mod, done)) {
-                print("    {}\n", curr);
+                print("    {}\n", curr.string());
                 push_stmt(com, *mod.root);
                 done.emplace(curr);
                 return true;

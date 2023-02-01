@@ -1,11 +1,11 @@
 #pragma once
 #include <vector>
-#include <string>
+#include <filesystem>
 
 #include "token.hpp"
 
 namespace anzu {
 
-auto lex(const std::string& file) -> std::vector<anzu::token>;
+auto lex(const std::filesystem::path& file) -> std::vector<anzu::token>;
 
 }

@@ -204,16 +204,16 @@ auto lex_line(
 
 }
 
-auto lex(const std::string& file) -> std::vector<anzu::token>
+auto lex(const std::filesystem::path& file) -> std::vector<anzu::token>
 {
     // Loop over the lines in the program, and then split each line into tokens.
     // If a '//' comment symbol is hit, the rest of the line is ignored.
     std::vector<anzu::token> tokens;
     std::ifstream file_stream{file};
     if (!file_stream) {
-        lexer_error(0, 0, "Could not find module {}\n", file);
+        lexer_error(0, 0, "Could not find module {}\n", file.string());
     }
-    
+
     std::string line;
     std::int64_t lineno = 1;
     while (std::getline(file_stream, line)) {
