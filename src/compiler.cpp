@@ -13,6 +13,7 @@
 #include <tuple>
 #include <vector>
 #include <stack>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -706,9 +707,10 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         });
         return builtin.return_type;
     }
-
-    const auto function_str = std::format("{}", node.function_name);
-    node.token.error("(3) could not find function '{}'", function_str);
+    
+    const auto sig = format_comma_separated(params);
+    const auto function_str = std::format("{}({})", node.function_name, sig);
+    node.token.error("could not find function '{}'", function_str);
 }
 
 auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name
@@ -1140,10 +1142,51 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 
 }
 
-auto compile(const node_stmt_ptr& root) -> program
+auto compiled_all_requirements(const file_ast& module, const std::set<std::filesystem::path>& compiled) -> bool
+{
+    for (const auto& requirement : module.required_modules) {
+        if (!compiled.contains(requirement)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+auto compile(
+    const std::filesystem::path& main_dir,
+    const std::map<std::filesystem::path, file_ast>& modules
+)
+    -> program
 {
     auto com = compiler{};
-    push_stmt(com, *root);
+    auto done = std::set<std::filesystem::path>{};
+    auto remaining = std::set<std::filesystem::path>{}; 
+    for (const auto& [file, mod] : modules) {
+        remaining.emplace(file);
+    }
+    while (!remaining.empty()) {
+        const auto before = remaining.size();
+        std::erase_if(remaining, [&](const std::filesystem::path& curr) {
+            const auto& mod = modules.at(curr);
+            if (compiled_all_requirements(mod, done)) {
+                print("    {}\n", curr.lexically_relative(main_dir).string());
+                push_stmt(com, *mod.root);
+                done.emplace(curr);
+                return true;
+            }
+            return false;
+        });
+        const auto after = remaining.size();
+        if (before == after) {
+            print("Cyclic dependency detected among the following files:");
+            for (const auto& mod : remaining) {
+                print(" {}", mod.lexically_relative(main_dir).string());
+            }
+            print("\n");
+            exit(1);
+        }
+    }
+
     return com.program;
 }
 

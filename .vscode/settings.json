@@ -79,6 +79,7 @@
         "*.rh": "cpp",
         "memory_resource": "cpp",
         "mutex": "cpp",
-        "numeric": "cpp"
+        "numeric": "cpp",
+        "filesystem": "cpp"
     }
 }

@@ -1,3 +1,5 @@
+import recursion.az;
+import nested/string.az;
 
 struct foo
 {
@@ -9,5 +11,6 @@ struct foo
 
 f := foo();
 
-f.bar();
-typeof(f)::bar(&f);
+y := f.bar(5);
+println(y);
+println(fibb(10));
