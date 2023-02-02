@@ -1152,7 +1152,11 @@ auto compiled_all_requirements(const file_ast& module, const std::set<std::files
     return true;
 }
 
-auto compile(const std::map<std::filesystem::path, file_ast>& modules) -> program
+auto compile(
+    const std::filesystem::path& main_dir,
+    const std::map<std::filesystem::path, file_ast>& modules
+)
+    -> program
 {
     auto com = compiler{};
     auto done = std::set<std::filesystem::path>{};
@@ -1165,7 +1169,7 @@ auto compile(const std::map<std::filesystem::path, file_ast>& modules) -> progra
         std::erase_if(remaining, [&](const std::filesystem::path& curr) {
             const auto& mod = modules.at(curr);
             if (compiled_all_requirements(mod, done)) {
-                print("    {}\n", curr.string());
+                print("    {}\n", curr.lexically_relative(main_dir).string());
                 push_stmt(com, *mod.root);
                 done.emplace(curr);
                 return true;
@@ -1174,7 +1178,11 @@ auto compile(const std::map<std::filesystem::path, file_ast>& modules) -> progra
         });
         const auto after = remaining.size();
         if (before == after) {
-            print("Cyclic dependency detected\n");
+            print("Cyclic dependency detected among the following files:");
+            for (const auto& mod : remaining) {
+                print(" {}", mod.lexically_relative(main_dir).string());
+            }
+            print("\n");
             exit(1);
         }
     }

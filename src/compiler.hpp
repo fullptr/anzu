@@ -9,6 +9,9 @@
 
 namespace anzu {
 
-auto compile(const std::map<std::filesystem::path, file_ast>& moduiles) -> program;
+auto compile(
+    const std::filesystem::path& main_dir,
+    const std::map<std::filesystem::path, file_ast>& modules
+) -> program;
 
 }
