@@ -2,3 +2,5 @@ fn print_string(str: char[])
 {
     return null;
 }
+
+print_string("abc");
