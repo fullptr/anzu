@@ -324,11 +324,16 @@ auto parse_type(tokenstream& tokens) -> type_name
     }
     auto type = type_name{type_simple{.name=tokens.consume().text}};
     while (tokens.consume_maybe(tk_lbracket)) {
-        auto new_type = type_name{type_list{
-            .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_i64())
-        }};
-        tokens.consume_only(tk_rbracket);
-        type = new_type;
+        if (tokens.consume_maybe(tk_rbracket)) {
+            auto new_type = type_name{type_span{ .inner_type=type }};
+            type = new_type;
+        } else {
+            auto new_type = type_name{type_list{
+                .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_i64())
+            }};
+            type = new_type;
+            tokens.consume_only(tk_rbracket);
+        }
     }
     return type;
 }

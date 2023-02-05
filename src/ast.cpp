@@ -215,7 +215,14 @@ auto is_rvalue_expr(const node_expr& expr) -> bool
 
 auto to_string(const node_type& node) -> std::string
 {
-    return "TODO: to_string(const node_type&)";
+    return std::visit(overloaded{
+        [&](const node_named_type& n) {
+            return to_string(n.type);
+        },
+        [&](const node_expr_type& n) {
+            return std::string{"typeof(TODO)"};
+        }
+    }, node);
 }
 
 }

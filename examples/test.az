@@ -1,16 +1,4 @@
-import recursion.az;
-import nested/string.az;
-
-struct foo
+fn print_string(str: char[])
 {
-    fn bar(self: &foo, x: i64) -> i64
-    {
-        return x;
-    }
+    return null;
 }
-
-f := foo();
-
-y := f.bar(5);
-println(y);
-println(fibb(10));
