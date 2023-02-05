@@ -125,8 +125,11 @@ Utility Modules (in src/utility)
 ```
 
 # Next Features (In ordoer of prio)
-* Modules (in progress)
-* Templates
+* Modules
+    - Basic Impl (Done)
+    - Namespacing (Todo)
+    - No Transitive Includes (Todo)
+* Slices/spans
 * Function Pointers
 * Filesystem Support
 * Const
