@@ -641,14 +641,6 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     const auto lhs = push_expr_val(com, *node.lhs);
     const auto rhs = push_expr_val(com, *node.rhs);
     const auto op = node.token.text;
-
-    // Pointer arithmetic, multiply the offset by the size of the type before adding
-    if (is_ptr_type(lhs) && rhs == u64_type() && op == tk_add) {
-        push_literal(com, com.types.size_of(inner_type(lhs)));
-        com.program.emplace_back(op_u64_mul{});
-        com.program.emplace_back(op_u64_add{});
-        return lhs;
-    }
     
     const auto info = resolve_operation(lhs, rhs, op);
     node.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);

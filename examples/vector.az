@@ -4,11 +4,6 @@ struct vector
     data:     i64[];
     size:     u64;
 
-    fn at(self: &vector, idx: u64) -> i64
-    {
-        return self->data[idx];
-    }
-
     fn push(self: &vector, val: i64) -> null
     {
         if (self->size == self->data.size()) {
@@ -34,7 +29,7 @@ struct vector
     fn pop(self: &vector) -> i64
     {
         self->size = self->size - 1u;
-        ret := self->at(self->size);
+        ret := self->data[self->size];
         return ret;
     }
 
@@ -68,6 +63,6 @@ v.push(8);
 
 idx := 0u;
 while idx != v.size() {
-    println(v.at(idx));
+    println(v.data[idx]);
     idx = idx + 1u;
 }

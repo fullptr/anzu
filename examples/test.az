@@ -1,4 +1,4 @@
 
-a1 := new i64 : 5u;
-a1[0u] = 5;
-delete a1;
+x := [1, 2, 3];
+p := &x;
+println(*(&p + 1u));
