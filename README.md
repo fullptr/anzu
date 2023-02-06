@@ -126,11 +126,11 @@ Utility Modules (in src/utility)
 
 # Next Features
 * Modules
-    - Basic impl (Done)
+    - ~~Basic impl~~
     - Namespacing
     - No transitive includes
 * Spans
-    - Basic impl (Done)
+    - ~~Basic impl~~
     - Have `new` and `delete` operate on spans instead of pointers for arrays (then ban pointer arithmetic).
     - `.remove_prefix(count)` and `.remove_suffix(count)` functions to trim a span.
     - A way to create subspans with syntax like `arr[0..2]` or `arr[0:2]`.
