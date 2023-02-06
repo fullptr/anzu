@@ -24,7 +24,7 @@ struct vector
                 idx = idx + 1u;
             }
 
-            delete &(self->data[0u]) : self->data.size();
+            delete self->data;
             self->data = newdata;
         }
         self->data[self->size] = val;
@@ -50,7 +50,7 @@ struct vector
 
     fn drop(self: &vector) -> null
     {
-        delete &(self->data[0u]) : self->data.size();
+        delete self->data;
     }
 }
 

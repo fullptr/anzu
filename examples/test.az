@@ -1,12 +1,3 @@
 
-
-str := "hello world";
-
-fn strprint(str: char[])
-{
-    for c in str {
-        print(*c);
-    }
-}
-
-strprint(str[]);
+a1 := new i64 : 3u;
+delete a1;
