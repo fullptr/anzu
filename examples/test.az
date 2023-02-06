@@ -1,8 +1,6 @@
 fn printegers(values: i64[])
 {
-    #for x in values {
-    #    println(*x);
-    #}
+    println(values[0u]);
 }
 
 x := [1, 2, 3, 4];

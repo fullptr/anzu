@@ -609,11 +609,6 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
     return etype;
 }
 
-auto push_expr_ptr(compiler& com, const node_span_expr& expr) -> type_name
-{
-    return null_type();
-}
-
 [[noreturn]] auto push_expr_ptr(compiler& com, const auto& node) -> type_name
 {
     node.token.error("cannot take address of a non-lvalue\n");
@@ -753,6 +748,15 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
     const auto size = com.types.size_of(type);
     push_literal(com, size);
     return u64_type();
+}
+
+auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
+{
+    const auto expr_type = type_of_expr(com, *node.expr);
+    node.token.assert(is_list_type(expr_type), "can only span an array");
+    push_expr_ptr(com, *node.expr);
+    push_literal(com, array_length(expr_type));
+    return concrete_span_type(inner_type(expr_type));
 }
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
