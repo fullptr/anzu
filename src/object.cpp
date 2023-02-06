@@ -11,6 +11,8 @@
 namespace anzu {
 namespace {
 
+static constexpr auto PTR_SIZE = std::size_t{8};
+
 auto format_error(const std::string& str) -> void
 {
     anzu::print("format error: could not format special chars in '{}'\n", str);
@@ -172,6 +174,11 @@ auto array_length(const type_name& t) -> std::size_t
     return {};
 }
 
+auto size_of_ptr() -> std::size_t
+{
+    return PTR_SIZE;
+}
+
 auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == i32_type()
@@ -240,7 +247,7 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             return size_of(*t.inner_type) * t.count;
         },
         [](const type_ptr&) {
-            return std::size_t{8};
+            return PTR_SIZE;
         },
         [](const type_span&) {
             return std::size_t{16};

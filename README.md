@@ -119,15 +119,24 @@ Utility Modules (in src/utility)
 -- overloaded.hpp  : A helper class to make std::visit simpler
 -- peekstream.hpp  : A data structure used in the lexer
 -- print.hpp       : Wrapper for std::format, similar to {fmt}
--- score_timer.hpp : An RAII class for timing a block of code
+-- scope_timer.hpp : An RAII class for timing a block of code
 -- value_ptr.hpp   : A value-semantic smart pointer
 -- views.hpp       : A collection of some helper views not in C++20
 ```
 
-# Next Features (In ordoer of prio)
+# Next Features
 * Modules (in progress)
+* Spans
+    - Basic impl (Done)
+    - Have `new` and `delete` operate on spans instead of pointers for arrays (then ban pointer arithmetic).
+    - `.remove_prefix(count)` and `.remove_suffix(count)` functions to trim a span.
+    - A way to create subspans with syntax like `arr[0..2]` or `arr[0:2]`.
+    - Runtime bounds checking for arrays and spans, possibly adding debug-only op codes.
+    - Create spans from other spans.
+    - Turn string literals into spans instead of char arrays.
 * Templates
 * Function Pointers
 * Filesystem Support
 * Const
 * Variants
+* Static storage for string literals

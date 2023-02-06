@@ -595,18 +595,29 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 {
-    const auto ltype = push_expr_ptr(com, *expr.expr);
-    expr.token.assert(is_list_type(ltype), "cannot use subscript operator on non-list type '{}'", ltype);
-    const auto etype = inner_type(ltype);
-    const auto etype_size = com.types.size_of(etype);
+    const auto expr_type = type_of_expr(com, *expr.expr);
 
-    // Push the offset (index * size) and add to the ptr
-    const auto itype = push_expr_val(com, *expr.index);
-    expr.token.assert_eq(itype, u64_type(), "subscript argument wrong type");
-    push_literal(com, etype_size);
+    const auto is_array = is_list_type(expr_type);
+    const auto is_span = is_span_type(expr_type);
+    expr.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
+
+    push_expr_ptr(com, *expr.expr);
+
+    // If we are a span, we want the address that it holds rather than its own address,
+    // so switch the pointer by loading what it's pointing at.
+    if (is_span_type(expr_type)) {
+        com.program.emplace_back(op_load{ .size=size_of_ptr()});
+    }
+
+    // Offset pointer by (index * size)
+    const auto inner = inner_type(expr_type);
+    const auto inner_size = com.types.size_of(inner);
+    const auto index = push_expr_val(com, *expr.index);
+    expr.token.assert_eq(index, u64_type(), "subscript argument wrong type");
+    push_literal(com, inner_size);
     com.program.emplace_back(op_u64_mul{});
     com.program.emplace_back(op_u64_add{}); // modify ptr
-    return etype;
+    return inner;
 }
 
 [[noreturn]] auto push_expr_ptr(compiler& com, const auto& node) -> type_name
@@ -688,7 +699,17 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         return func->return_type;
     }
 
-    // Otherwise, it must be a builtin function.
+    // It may be a .size member function on a span, TODO: make it easier to add builtin member functions
+    // first arg is a pointer to a span, so need to deref with inner_type before checking if its a span
+    if (node.function_name == "size" && node.args.size() == 1 && is_span_type(inner_type(type_of_expr(com, *node.args[0])))) {
+        push_expr_val(com, *node.args[0]); // push pointer to span
+        push_literal(com, size_of_ptr());
+        com.program.emplace_back(op_u64_add{}); // offset to the size value
+        com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
+        return u64_type();
+    }
+
+    // Otherwise, it must be a builtin function or member function.
     // Push the args to the stack
     auto param_types = std::vector<type_name>{};
     auto args_size = std::size_t{0};
@@ -753,7 +774,7 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 {
     const auto expr_type = type_of_expr(com, *node.expr);
-    node.token.assert(is_list_type(expr_type), "can only span an array");
+    node.token.assert(is_list_type(expr_type), "can only span arrays, not {}", expr_type);
     push_expr_ptr(com, *node.expr);
     push_literal(com, array_length(expr_type));
     return concrete_span_type(inner_type(expr_type));
@@ -868,7 +889,10 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     const auto scope = scope_guard{com};
 
     const auto iter_type = type_of_expr(com, *node.iter);
-    node.token.assert(is_list_type(iter_type), "for-loops only supported for arrays");
+
+    const auto is_array = is_list_type(iter_type);
+    const auto is_lvalue_span = is_span_type(iter_type) && is_lvalue_expr(*node.iter);
+    node.token.assert(is_array || is_lvalue_span, "for-loops only supported for arrays and lvalue spans");
 
     // Need to create a temporary if we're using an rvalue
     if (is_rvalue_expr(*node.iter)) {
@@ -881,8 +905,17 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     declare_var(com, node.token, "#:idx", u64_type());
 
     // size := length of iter;
-    push_literal(com, array_length(iter_type));
-    declare_var(com, node.token, "#:size", u64_type());
+    if (is_list_type(iter_type)) {
+        push_literal(com, array_length(iter_type));
+        declare_var(com, node.token, "#:size", u64_type());
+    } else {
+        node.token.assert(is_lvalue_expr(*node.iter), "for-loops only supported for lvalue spans");
+        push_expr_ptr(com, *node.iter); // push pointer to span
+        push_literal(com, size_of_ptr());
+        com.program.emplace_back(op_u64_add{}); // offset to the size value
+        com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
+        declare_var(com, node.token, "#:size", u64_type());
+    }
 
     push_loop(com, [&] {
         // if idx == size break;
@@ -894,10 +927,15 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = com.program.size(); // Jump past the end if false
 
         // name := &iter[idx];
+        const auto iter_type = type_of_expr(com, *node.iter);
+        const auto inner = inner_type(iter_type);
         if (is_rvalue_expr(*node.iter)) {
             push_var_addr(com, node.token, "#:iter");
         } else {
             push_expr_ptr(com, *node.iter);
+            if (is_span_type(iter_type)) {
+                com.program.emplace_back(op_load{ .size=com.types.size_of(concrete_ptr_type(inner))});
+            }
         }
         load_variable(com, node.token, "#:idx");
         push_literal(com, com.types.size_of(inner_type(iter_type)));

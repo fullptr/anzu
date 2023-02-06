@@ -1,7 +1,12 @@
-fn printegers(values: i64[])
+
+
+str := "hello world";
+
+fn strprint(str: char[])
 {
-    println(values[0u]);
+    for c in str {
+        print(*c);
+    }
 }
 
-x := [1, 2, 3, 4];
-printegers(x[]);
+strprint(str[]);
