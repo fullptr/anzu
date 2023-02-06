@@ -1,6 +1,9 @@
-fn print_string(str: char[])
+fn printegers(values: i64[])
 {
-    return null;
+    #for x in values {
+    #    println(*x);
+    #}
 }
 
-print_string("abc");
+x := [1, 2, 3, 4];
+printegers(x[]);

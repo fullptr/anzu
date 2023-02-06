@@ -271,13 +271,22 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         }
         
         else {
+            const auto token = tokens.consume();
             auto new_node = std::make_shared<node_expr>();
-            auto& expr = new_node->emplace<node_subscript_expr>();
-            expr.token = tokens.consume();
-            expr.index = parse_expression(tokens);
-            tokens.consume_only(tk_rbracket);
-            expr.expr = std::move(node);
-            node = std::move(new_node);
+            if (tokens.peek(tk_rbracket)) {
+                auto& expr = new_node->emplace<node_span_expr>();
+                expr.token = token;
+                expr.expr = std::move(node);
+                node = std::move(new_node);
+                tokens.consume_only(tk_rbracket);
+            } else {
+                auto& expr = new_node->emplace<node_subscript_expr>();
+                expr.token = token;
+                expr.index = parse_expression(tokens);
+                expr.expr = std::move(node);
+                node = std::move(new_node);
+                tokens.consume_only(tk_rbracket);
+            }
         }
     }
 

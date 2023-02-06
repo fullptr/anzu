@@ -609,6 +609,11 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
     return etype;
 }
 
+auto push_expr_ptr(compiler& com, const node_span_expr& expr) -> type_name
+{
+    return null_type();
+}
+
 [[noreturn]] auto push_expr_ptr(compiler& com, const auto& node) -> type_name
 {
     node.token.error("cannot take address of a non-lvalue\n");
