@@ -186,6 +186,8 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_delete_stmt& node) {
             print("{}Delete:\n", spaces);
             print_node(*node.expr, indent + 1);
+            print("{}- Size:\n", spaces);
+            print_node(*node.size, indent + 1);
         }
     }, root);
 }

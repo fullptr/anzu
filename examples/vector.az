@@ -25,7 +25,7 @@ struct vector
                 idx = idx + 1u;
             }
 
-            delete self->data;
+            delete self->data : self->capcity;
             self->data = newdata;
             self->capacity = new_cap;
         }
@@ -52,7 +52,7 @@ struct vector
 
     fn drop(self: &vector) -> null
     {
-        delete self->data;
+        delete self->data : self->capacity;
     }
 }
 

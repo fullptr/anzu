@@ -287,6 +287,7 @@ struct node_return_stmt
 struct node_delete_stmt
 {
     node_expr_ptr expr;
+    node_expr_ptr size;
 
     anzu::token token;
 };

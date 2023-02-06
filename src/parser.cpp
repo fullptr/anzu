@@ -555,6 +555,13 @@ auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.token = tokens.consume_only(tk_delete);
     stmt.expr = parse_expression(tokens);
+    if (tokens.consume_maybe(tk_colon)) {
+        stmt.size = parse_expression(tokens);
+    } else {
+        stmt.size = std::make_shared<node_expr>();
+        auto& inner = stmt.size->emplace<node_literal_expr>();
+        inner.value = parse_u64(token{.text="1u"});
+    }
     tokens.consume_only(tk_semicolon);
 
     return node;
