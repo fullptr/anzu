@@ -786,7 +786,8 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
     node.token.assert_eq(count, u64_type(), "invalid array size type");
     const auto type = resolve_type(com, node.token, node.type);
     com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(type) });
-    return concrete_ptr_type(type);
+    push_expr_val(com, *node.size); // push the size again to make the second half of the span
+    return concrete_span_type(type);
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
