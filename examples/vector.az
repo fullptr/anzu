@@ -1,19 +1,13 @@
 
 struct vector
 {
-    data:     &i64;
+    data:     i64[];
     size:     u64;
-    capacity: u64;
-
-    fn at(self: &vector, idx: u64) -> i64
-    {
-        return *(self->data + idx);
-    }
 
     fn push(self: &vector, val: i64) -> null
     {
-        if (self->size == self->capacity) {
-            new_cap := 2u * self->capacity;
+        if (self->size == self->data.size()) {
+            new_cap := 2u * self->data.size();
             if new_cap == 0u {
                 new_cap = 1u;
             }
@@ -21,22 +15,21 @@ struct vector
 
             idx := 0u;
             while idx != self->size {
-                *(newdata + idx) = *(self->data + idx);
+                newdata[idx] = self->data[idx];
                 idx = idx + 1u;
             }
 
             delete self->data;
             self->data = newdata;
-            self->capacity = new_cap;
         }
-        *(self->data + self->size) = val;
+        self->data[self->size] = val;
         self->size = self->size + 1u;
     }
 
     fn pop(self: &vector) -> i64
     {
         self->size = self->size - 1u;
-        ret := self->at(self->size);
+        ret := self->data[self->size];
         return ret;
     }
 
@@ -47,7 +40,7 @@ struct vector
 
     fn capacity(self: &vector) -> u64
     {
-        return self->capacity;
+        return self->data.size();
     }
 
     fn drop(self: &vector) -> null
@@ -59,7 +52,7 @@ struct vector
 fn new_vector() -> vector
 {
     # We don't have nullptr yet, so we must allocate some space here for now
-    return vector(new i64, 0u, 1u);
+    return vector(new i64 : 1u, 0u);
 }
 
 v := new_vector();
@@ -70,6 +63,6 @@ v.push(8);
 
 idx := 0u;
 while idx != v.size() {
-    println(v.at(idx));
+    println(v.data[idx]);
     idx = idx + 1u;
 }

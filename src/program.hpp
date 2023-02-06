@@ -101,13 +101,24 @@ struct op_pop
     std::size_t size;
 };
 
-struct op_allocate
+struct op_alloc_span
 {
     std::size_t type_size;
 };
 
-struct op_deallocate
+struct op_dealloc_span
 {
+    std::size_t type_size;
+};
+
+struct op_alloc_ptr
+{
+    std::size_t type_size;
+};
+
+struct op_dealloc_ptr
+{
+    std::size_t type_size;
 };
 
 struct op_jump
@@ -211,8 +222,10 @@ struct op : std::variant<
     op_load,
     op_save,
     op_pop,
-    op_allocate,
-    op_deallocate,
+    op_alloc_span,
+    op_dealloc_span,
+    op_alloc_ptr,
+    op_dealloc_ptr,
     op_jump,
     op_jump_if_false,
     op_return,

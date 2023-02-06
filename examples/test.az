@@ -1,12 +1,4 @@
 
-
-str := "hello world";
-
-fn strprint(str: char[])
-{
-    for c in str {
-        print(*c);
-    }
-}
-
-strprint(str[]);
+x := [1, 2, 3];
+p := &x;
+println(*(&p + 1u));

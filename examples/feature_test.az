@@ -164,39 +164,6 @@ fn println(v: vec2) -> null
     println(sizeof(xl2) / sizeof(xl2[0u]));
 }
 
-# Pointer Arithmetic
-struct span
-{
-    p: &vec2;
-    size: u64;
-
-    fn copy(self: &span) -> span
-    {
-        return span(self->p, self->size);
-    }
-
-    fn assign(self: &span, other: &span)
-    {
-        other->p = self->p;
-        other->size = self->size;
-    }
-}
-
-fn test_ptr_arithmetic(s: span) -> null
-{
-    idx := 0u;
-    while idx != s.size {
-        println(*(s.p + idx));
-        idx = idx + 1u;
-    }
-    *(s.p + 1u) = vec2(10, 20);
-}
-
-list_of_vec2s := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
-my_span := span(&list_of_vec2s[0u], 3u);
-
-test_ptr_arithmetic(my_span);
-
 # Member functions
 fn square(x: f64) -> f64
 {

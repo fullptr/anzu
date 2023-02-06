@@ -244,9 +244,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         if (tokens.consume_maybe(tk_colon)) {
             expr.size = parse_expression(tokens);
         } else {
-            expr.size = std::make_shared<node_expr>();
-            auto& inner = expr.size->emplace<node_literal_expr>();
-            inner.value = parse_u64(token{.text="1u"});
+            expr.size = nullptr;
         }
     }
     else {
@@ -555,6 +553,13 @@ auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.token = tokens.consume_only(tk_delete);
     stmt.expr = parse_expression(tokens);
+    if (tokens.consume_maybe(tk_colon)) {
+        stmt.size = parse_expression(tokens);
+    } else {
+        stmt.size = std::make_shared<node_expr>();
+        auto& inner = stmt.size->emplace<node_literal_expr>();
+        inner.value = parse_u64(token{.text="1u"});
+    }
     tokens.consume_only(tk_semicolon);
 
     return node;

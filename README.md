@@ -131,7 +131,7 @@ Utility Modules (in src/utility)
     - No transitive includes
 * Spans
     - ~~Basic impl~~
-    - Have `new` and `delete` operate on spans instead of pointers for arrays (then ban pointer arithmetic).
+    - ~~Have `new` and `delete` operate on spans instead of pointers for arrays (then ban pointer arithmetic).~~
     - `.remove_prefix(count)` and `.remove_suffix(count)` functions to trim a span.
     - A way to create subspans with syntax like `arr[0..2]` or `arr[0:2]`.
     - Runtime bounds checking for arrays and spans, possibly adding debug-only op codes.

@@ -641,14 +641,6 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     const auto lhs = push_expr_val(com, *node.lhs);
     const auto rhs = push_expr_val(com, *node.rhs);
     const auto op = node.token.text;
-
-    // Pointer arithmetic, multiply the offset by the size of the type before adding
-    if (is_ptr_type(lhs) && rhs == u64_type() && op == tk_add) {
-        push_literal(com, com.types.size_of(inner_type(lhs)));
-        com.program.emplace_back(op_u64_mul{});
-        com.program.emplace_back(op_u64_add{});
-        return lhs;
-    }
     
     const auto info = resolve_operation(lhs, rhs, op);
     node.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
@@ -782,10 +774,17 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
-    const auto count = push_expr_val(com, *node.size);
-    node.token.assert_eq(count, u64_type(), "invalid array size type");
+    if (node.size) {
+        const auto count = push_expr_val(com, *node.size);
+        node.token.assert_eq(count, u64_type(), "invalid array size type");
+        const auto type = resolve_type(com, node.token, node.type);
+        com.program.emplace_back(op_alloc_span{ .type_size=com.types.size_of(type) });
+        push_expr_val(com, *node.size); // push the size again to make the second half of the span
+        return concrete_span_type(type);
+    }
+
     const auto type = resolve_type(com, node.token, node.type);
-    com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(type) });
+    com.program.emplace_back(op_alloc_ptr{ .type_size=com.types.size_of(type) });
     return concrete_ptr_type(type);
 }
 
@@ -1172,9 +1171,16 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 
 void push_stmt(compiler& com, const node_delete_stmt& node)
 {
-    const auto type = push_expr_val(com, *node.expr);
-    node.token.assert(is_ptr_type(type), "delete requires a ptr, got {}\n", type);
-    com.program.emplace_back(op_deallocate{});
+    const auto type = type_of_expr(com, *node.expr);
+    if (is_span_type(type)) {
+        push_expr_val(com, *node.expr);
+        com.program.emplace_back(op_dealloc_span{ .type_size=com.types.size_of(inner_type(type)) });
+    } else if (is_ptr_type(type)) {
+        push_expr_val(com, *node.expr);
+        com.program.emplace_back(op_dealloc_ptr{ .type_size=com.types.size_of(inner_type(type)) });
+    } else {
+        node.token.error("can only call delete spans and pointers, not {}", type);
+    }
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
