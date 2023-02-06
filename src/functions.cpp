@@ -151,14 +151,14 @@ static const auto builtins = construct_builtin_map();
 auto is_builtin(const std::string& name, const std::vector<type_name>& args) -> bool
 {
     // Hack, generalise later
-    if (name.starts_with("print") &&
+    if ((name == "print" || name == "println") &&
         args.size() == 1 &&
         std::holds_alternative<type_list>(args[0]) &&
         inner_type(args[0]) == char_type()
     ) {
         return true;
     }
-    else if (name.starts_with("print") &&
+    else if ((name == "print" || name == "println") &&
         args.size() == 1 &&
         std::holds_alternative<type_ptr>(args[0])
     ) {
@@ -170,7 +170,7 @@ auto is_builtin(const std::string& name, const std::vector<type_name>& args) -> 
 auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) -> builtin_val
 {
     // Hack, generalise later
-    if (name.starts_with("print") &&
+    if ((name == "print" || name == "println") &&
         args.size() == 1 &&
         std::holds_alternative<type_list>(args[0]) &&
         inner_type(args[0]) == char_type()
@@ -193,7 +193,7 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
             .return_type = null_type()
         };
     }
-    else if (name.starts_with("print") &&
+    else if ((name == "print" || name == "println") &&
         args.size() == 1 &&
         std::holds_alternative<type_ptr>(args[0])
     ) {

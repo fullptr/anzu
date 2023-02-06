@@ -80,6 +80,10 @@ auto print_node(const node_expr& root, int indent) -> void
             print("{}New {}:\n", spaces, *node.type);
             print("{}- Size:\n", spaces);
             print_node(*node.size, indent + 1);
+        },
+        [&](const node_span_expr& node) {
+            print("{}Span:\n", spaces);
+            print_node(*node.expr, indent + 1);
         }
     }, root);
 }
@@ -215,7 +219,14 @@ auto is_rvalue_expr(const node_expr& expr) -> bool
 
 auto to_string(const node_type& node) -> std::string
 {
-    return "TODO: to_string(const node_type&)";
+    return std::visit(overloaded{
+        [&](const node_named_type& n) {
+            return to_string(n.type);
+        },
+        [&](const node_expr_type& n) {
+            return std::string{"typeof(TODO)"};
+        }
+    }, node);
 }
 
 }

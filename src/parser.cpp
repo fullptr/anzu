@@ -271,13 +271,22 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         }
         
         else {
+            const auto token = tokens.consume();
             auto new_node = std::make_shared<node_expr>();
-            auto& expr = new_node->emplace<node_subscript_expr>();
-            expr.token = tokens.consume();
-            expr.index = parse_expression(tokens);
-            tokens.consume_only(tk_rbracket);
-            expr.expr = std::move(node);
-            node = std::move(new_node);
+            if (tokens.peek(tk_rbracket)) {
+                auto& expr = new_node->emplace<node_span_expr>();
+                expr.token = token;
+                expr.expr = std::move(node);
+                node = std::move(new_node);
+                tokens.consume_only(tk_rbracket);
+            } else {
+                auto& expr = new_node->emplace<node_subscript_expr>();
+                expr.token = token;
+                expr.index = parse_expression(tokens);
+                expr.expr = std::move(node);
+                node = std::move(new_node);
+                tokens.consume_only(tk_rbracket);
+            }
         }
     }
 
@@ -324,11 +333,16 @@ auto parse_type(tokenstream& tokens) -> type_name
     }
     auto type = type_name{type_simple{.name=tokens.consume().text}};
     while (tokens.consume_maybe(tk_lbracket)) {
-        auto new_type = type_name{type_list{
-            .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_i64())
-        }};
-        tokens.consume_only(tk_rbracket);
-        type = new_type;
+        if (tokens.consume_maybe(tk_rbracket)) {
+            auto new_type = type_name{type_span{ .inner_type=type }};
+            type = new_type;
+        } else {
+            auto new_type = type_name{type_list{
+                .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_i64())
+            }};
+            type = new_type;
+            tokens.consume_only(tk_rbracket);
+        }
     }
     return type;
 }

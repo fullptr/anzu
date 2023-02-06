@@ -11,6 +11,8 @@
 namespace anzu {
 namespace {
 
+static constexpr auto PTR_SIZE = std::size_t{8};
+
 auto format_error(const std::string& str) -> void
 {
     anzu::print("format error: could not format special chars in '{}'\n", str);
@@ -44,6 +46,11 @@ auto to_string(const type_ptr& type) -> std::string
     return std::format("&{}", to_string(*type.inner_type));
 }
 
+auto to_string(const type_span& type) -> std::string
+{
+    return std::format("{}[]", to_string(*type.inner_type));
+}
+
 auto hash(const type_name& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
@@ -61,8 +68,14 @@ auto hash(const type_list& type) -> std::size_t
 
 auto hash(const type_ptr& type) -> std::size_t
 {
-    static const auto ptr_offset = std::hash<std::string_view>{}("ptr_offset");
-    return hash(*type.inner_type) ^ ptr_offset;
+    static const auto base = std::hash<std::string_view>{}("type_ptr");
+    return hash(*type.inner_type) ^ base;
+}
+
+auto hash(const type_span& type) -> std::size_t
+{
+    static const auto base = std::hash<std::string_view>{}("type_span");
+    return hash(*type.inner_type) ^ base;
 }
 
 auto i32_type() -> type_name
@@ -125,6 +138,16 @@ auto is_ptr_type(const type_name& t) -> bool
     return std::holds_alternative<type_ptr>(t);
 }
 
+auto concrete_span_type(const type_name& t) -> type_name
+{
+    return {type_span{ .inner_type = { t } }};
+}
+
+auto is_span_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_span>(t);
+}
+
 auto inner_type(const type_name& t) -> type_name
 {
     if (is_list_type(t)) {
@@ -132,6 +155,9 @@ auto inner_type(const type_name& t) -> type_name
     }
     if (is_ptr_type(t)) {
         return *std::get<type_ptr>(t).inner_type;
+    }
+    if (is_span_type(t)) {
+        return *std::get<type_span>(t).inner_type; 
     }
     print("OH NO MY TYPE\n");
     std::exit(1);
@@ -146,6 +172,11 @@ auto array_length(const type_name& t) -> std::size_t
     print("OH NO MY TYPE\n");
     std::exit(1);
     return {};
+}
+
+auto size_of_ptr() -> std::size_t
+{
+    return PTR_SIZE;
 }
 
 auto is_type_fundamental(const type_name& type) -> bool
@@ -163,7 +194,8 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
 {
     return is_type_fundamental(type)
         || is_ptr_type(type)
-        || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)));
+        || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)))
+        || is_span_type(type);
 }
 
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
@@ -180,7 +212,8 @@ auto type_store::contains(const type_name& type) const -> bool
     return d_classes.contains(type)
         || is_type_fundamental(type)
         || is_list_type(type)
-        || is_ptr_type(type);
+        || is_ptr_type(type)
+        || is_span_type(type);
 }
 
 auto type_store::size_of(const type_name& type) const -> std::size_t
@@ -190,10 +223,10 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         std::exit(1);
     }
 
-    if (is_ptr_type(type)) {
-        return 8; // Two unsigned ints, ptr and size
+    if (type == null_type() || type == char_type() || type == bool_type()) {
+        return 1;
     }
-
+    
     if (type == i32_type()) {
         return 4;
     }
@@ -202,10 +235,6 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         return 8;
     }
 
-    if (is_type_fundamental(type)) {
-        return 1;
-    }
-    
     return std::visit(overloaded{
         [&](const type_simple& t) {
             auto size = std::size_t{0};
@@ -218,7 +247,10 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             return size_of(*t.inner_type) * t.count;
         },
         [](const type_ptr&) {
-            return std::size_t{1};
+            return PTR_SIZE;
+        },
+        [](const type_span&) {
+            return std::size_t{16};
         }
     }, type);
 }

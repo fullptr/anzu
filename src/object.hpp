@@ -36,10 +36,17 @@ struct type_ptr
     auto operator==(const type_ptr&) const -> bool = default;
 };
 
+struct type_span
+{
+    value_ptr<type_name> inner_type;
+    auto operator==(const type_span&) const -> bool = default;
+};
+
 struct type_name : public std::variant<
     type_simple,
     type_list,
-    type_ptr>
+    type_ptr,
+    type_span>
 {
     using variant::variant;
 };
@@ -74,6 +81,7 @@ struct type_info
 auto hash(const type_name& type) -> std::size_t;
 auto hash(const type_list& type) -> std::size_t;
 auto hash(const type_ptr& type) -> std::size_t;
+auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
 
 auto i32_type() -> type_name;
@@ -91,6 +99,11 @@ auto is_list_type(const type_name& t) -> bool;
 
 auto concrete_ptr_type(const type_name& t) -> type_name;
 auto is_ptr_type(const type_name& t) -> bool;
+
+auto concrete_span_type(const type_name& t) -> type_name;
+auto is_span_type(const type_name& t) -> bool;
+
+auto size_of_ptr() -> std::size_t;
 
 // Extracts the single inner type of the given t. Undefined if the given t is not a compound
 // type with a single subtype.
@@ -120,6 +133,7 @@ auto to_string(const object& object) -> std::string;
 auto to_string(const type_name& type) -> std::string;
 auto to_string(const type_list& type) -> std::string;
 auto to_string(const type_ptr& type) -> std::string;
+auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
 
 }
