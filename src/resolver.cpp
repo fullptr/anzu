@@ -12,7 +12,11 @@ auto resolve_operation(
     if (lhs != rhs) return std::nullopt;
 
     const auto& type = lhs;
-    if (type == i32_type()) {
+    if (type == char_type()) {
+        if (operation == tk_eq) return op_info{ {op_char_eq{}}, bool_type() }; 
+        if (operation == tk_ne) return op_info{ {op_char_ne{}}, bool_type() };
+    }
+    else if (type == i32_type()) {
         if (operation == tk_add) return op_info{ {op_i32_add{}}, type };
         if (operation == tk_sub) return op_info{ {op_i32_sub{}}, type };
         if (operation == tk_mul) return op_info{ {op_i32_mul{}}, type };
