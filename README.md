@@ -125,7 +125,10 @@ Utility Modules (in src/utility)
 ```
 
 # Next Features
-* Modules (in progress)
+* Modules
+    - Basic impl (Done)
+    - Namespacing
+    - No transitive includes
 * Spans
     - Basic impl (Done)
     - Have `new` and `delete` operate on spans instead of pointers for arrays (then ban pointer arithmetic).
