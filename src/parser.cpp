@@ -244,9 +244,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         if (tokens.consume_maybe(tk_colon)) {
             expr.size = parse_expression(tokens);
         } else {
-            expr.size = std::make_shared<node_expr>();
-            auto& inner = expr.size->emplace<node_literal_expr>();
-            inner.value = parse_u64(token{.text="1u"});
+            expr.size = nullptr;
         }
     }
     else {

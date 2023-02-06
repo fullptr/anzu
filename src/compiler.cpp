@@ -782,12 +782,18 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
-    const auto count = push_expr_val(com, *node.size);
-    node.token.assert_eq(count, u64_type(), "invalid array size type");
+    if (node.size) {
+        const auto count = push_expr_val(com, *node.size);
+        node.token.assert_eq(count, u64_type(), "invalid array size type");
+        const auto type = resolve_type(com, node.token, node.type);
+        com.program.emplace_back(op_alloc_span{ .type_size=com.types.size_of(type) });
+        push_expr_val(com, *node.size); // push the size again to make the second half of the span
+        return concrete_span_type(type);
+    }
+
     const auto type = resolve_type(com, node.token, node.type);
-    com.program.emplace_back(op_allocate{ .type_size=com.types.size_of(type) });
-    push_expr_val(com, *node.size); // push the size again to make the second half of the span
-    return concrete_span_type(type);
+    com.program.emplace_back(op_alloc_ptr{ .type_size=com.types.size_of(type) });
+    return concrete_ptr_type(type);
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -1173,9 +1179,16 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 
 void push_stmt(compiler& com, const node_delete_stmt& node)
 {
-    const auto type = push_expr_val(com, *node.expr);
-    node.token.assert(is_span_type(type), "delete requires a span, got {}\n", type);
-    com.program.emplace_back(op_deallocate{ .type_size=com.types.size_of(inner_type(type)) });
+    const auto type = type_of_expr(com, *node.expr);
+    if (is_span_type(type)) {
+        push_expr_val(com, *node.expr);
+        com.program.emplace_back(op_dealloc_span{ .type_size=com.types.size_of(inner_type(type)) });
+    } else if (is_ptr_type(type)) {
+        push_expr_val(com, *node.expr);
+        com.program.emplace_back(op_dealloc_ptr{ .type_size=com.types.size_of(inner_type(type)) });
+    } else {
+        node.token.error("can only call delete spans and pointers, not {}", type);
+    }
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
