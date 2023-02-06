@@ -25,7 +25,7 @@ struct vector
                 idx = idx + 1u;
             }
 
-            delete self->data : self->capcity;
+            delete self->data : self->capacity;
             self->data = newdata;
             self->capacity = new_cap;
         }

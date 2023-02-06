@@ -1173,8 +1173,9 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 void push_stmt(compiler& com, const node_delete_stmt& node)
 {
     const auto type = push_expr_val(com, *node.expr);
+    const auto count = push_expr_val(com, *node.size);
     node.token.assert(is_ptr_type(type), "delete requires a ptr, got {}\n", type);
-    com.program.emplace_back(op_deallocate{});
+    com.program.emplace_back(op_deallocate{ .type_size=com.types.size_of(type) });
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
