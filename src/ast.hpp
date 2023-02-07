@@ -294,6 +294,13 @@ struct node_delete_stmt
     anzu::token token;
 };
 
+struct node_assert_stmt
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
 struct node_stmt : std::variant<
     node_sequence_stmt,
     node_loop_stmt,
@@ -309,7 +316,8 @@ struct node_stmt : std::variant<
     node_function_def_stmt,
     node_expression_stmt,
     node_return_stmt,
-    node_delete_stmt>
+    node_delete_stmt,
+    node_assert_stmt>
 {
 };
 

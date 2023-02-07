@@ -198,6 +198,10 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.expr, indent + 1);
             print("{}- Size:\n", spaces);
             print_node(*node.size, indent + 1);
+        },
+        [&](const node_assert_stmt& node) {
+            print("{}Assert:\n", spaces);
+            print_node(*node.expr, indent + 1);
         }
     }, root);
 }

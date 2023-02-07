@@ -1229,6 +1229,15 @@ void push_stmt(compiler& com, const node_delete_stmt& node)
     }
 }
 
+void push_stmt(compiler& com, const node_assert_stmt& node)
+{
+    if (com.debug) {
+        const auto expr = push_expr_val(com, *node.expr);
+        node.token.assert_eq(expr, bool_type(), "assertion must be a boolean expr");
+        com.program.emplace_back(op_assert{"assertion failed!"});
+    }
+}
+
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
 {
     return std::visit([&](const auto& node) { return push_expr_val(com, node); }, expr);
