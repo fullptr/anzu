@@ -611,10 +611,17 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
     }
 
     // Bounds checking on the subscript, it's unsigned so only need to check upper bound
-    if (com.debug && is_array) {
+    if (com.debug) {
         const auto index = push_expr_val(com, *expr.index);
         expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-        push_literal(com, array_length(expr_type));
+        if (is_array) {
+            push_literal(com, array_length(expr_type));
+        } else {
+            push_expr_ptr(com, *expr.expr);
+            push_literal(com, size_of_ptr());
+            com.program.emplace_back(op_u64_add{}); // offset to the size value
+            com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
+        }
         com.program.emplace_back(op_u64_lt{});
         com.program.emplace_back(op_assert{"index out of range"});
     }
@@ -1231,10 +1238,13 @@ void push_stmt(compiler& com, const node_delete_stmt& node)
 
 void push_stmt(compiler& com, const node_assert_stmt& node)
 {
+    const auto expr = type_of_expr(com, *node.expr);
+    node.token.assert_eq(expr, bool_type(), "bad assertion expression");
+
     if (com.debug) {
-        const auto expr = push_expr_val(com, *node.expr);
-        node.token.assert_eq(expr, bool_type(), "assertion must be a boolean expr");
-        com.program.emplace_back(op_assert{"assertion failed!"});
+        push_expr_val(com, *node.expr);
+        const auto message = std::format("line {}", node.token.line);
+        com.program.emplace_back(op_assert{message});
     }
 }
 
