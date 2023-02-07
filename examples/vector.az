@@ -1,8 +1,8 @@
 
 struct vector
 {
-    data:     i64[];
-    size:     u64;
+    data: i64[];
+    size: u64;
 
     fn push(self: &vector, val: i64) -> null
     {

@@ -86,6 +86,14 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_span_expr& node) {
             print("{}Span:\n", spaces);
             print_node(*node.expr, indent + 1);
+            if (node.lower_bound) {
+                print("{}LowerBound:\n", spaces);
+                print_node(*node.lower_bound, indent + 1);
+            }
+            if (node.upper_bound) {
+                print("{}LowerBound:\n", spaces);
+                print_node(*node.upper_bound, indent + 1);
+            }
         }
     }, root);
 }

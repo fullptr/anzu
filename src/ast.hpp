@@ -151,6 +151,8 @@ struct node_new_expr
 struct node_span_expr
 {
     node_expr_ptr expr;
+    node_expr_ptr lower_bound;
+    node_expr_ptr upper_bound;
     
     anzu::token token;
 };
