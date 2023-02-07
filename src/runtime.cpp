@@ -46,7 +46,7 @@ auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
 
 auto runtime_error(std::string_view message)
 {
-    anzu::print("Program panicked! message: {}\n", message);
+    anzu::print("Runtime assertion failed! {}\n", message);
     std::exit(1);
 }
 
@@ -246,8 +246,8 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             print(op.message);
             ++ctx.prog_ptr;
         },
-        [&](const op_panic_if& op) {
-            if (pop_value<bool>(ctx.stack)) {
+        [&](const op_assert& op) {
+            if (!pop_value<bool>(ctx.stack)) {
                 runtime_error(op.message);
             }
             ++ctx.prog_ptr;

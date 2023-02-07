@@ -154,7 +154,7 @@ struct op_debug
     std::string message;
 };
 
-struct op_panic_if
+struct op_assert
 {
     std::string message;
 };
@@ -236,7 +236,7 @@ struct op : std::variant<
     op_return,
     op_function_call,
     op_builtin_call,
-    op_panic_if,
+    op_assert,
     op_debug
 >
 {};

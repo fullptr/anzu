@@ -1,8 +1,6 @@
 
 x := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-p := x[2u:7u];
+p := x[20u];
 
-for val in p {
-    println(*val);
-}
+println(p);

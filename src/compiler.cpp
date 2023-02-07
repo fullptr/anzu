@@ -610,11 +610,20 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
         com.program.emplace_back(op_load{ .size=size_of_ptr()});
     }
 
+    // Bounds checking on the subscript, it's unsigned so only need to check upper bound
+    if (com.debug && is_array) {
+        const auto index = push_expr_val(com, *expr.index);
+        expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
+        push_literal(com, array_length(expr_type));
+        com.program.emplace_back(op_u64_lt{});
+        com.program.emplace_back(op_assert{"index out of range"});
+    }
+
     // Offset pointer by (index * size)
     const auto inner = inner_type(expr_type);
     const auto inner_size = com.types.size_of(inner);
     const auto index = push_expr_val(com, *expr.index);
-    expr.token.assert_eq(index, u64_type(), "subscript argument wrong type");
+    expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
     push_literal(com, inner_size);
     com.program.emplace_back(op_u64_mul{});
     com.program.emplace_back(op_u64_add{}); // modify ptr
@@ -770,18 +779,24 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         node.token.error("a span must either have both bounds set, or neither");
     }
 
-    // Bounds checking
-    if (com.debug) {
-        const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
-        const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
-        node.token.assert_eq(upper_bound_type, u64_type(), "subspan indices must be u64");
-        node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
-        com.program.emplace_back(op_u64_lt{});
-        com.program.emplace_back(op_panic_if{"upper bound is less than lower bound"});
-    }
-
     const auto expr_type = type_of_expr(com, *node.expr);
     node.token.assert(is_list_type(expr_type), "can only span arrays, not {}", expr_type);
+
+    // Bounds checking
+    if (com.debug && node.lower_bound && node.upper_bound) {
+        const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
+        const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
+        node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
+        node.token.assert_eq(upper_bound_type, u64_type(), "subspan indices must be u64");
+        com.program.emplace_back(op_u64_lt{});
+        com.program.emplace_back(op_assert{"lower bound must be stricly less than the upper bound"});
+
+        push_expr_val(com, *node.upper_bound);
+        push_literal(com, array_length(expr_type));
+        com.program.emplace_back(op_u64_lt{});
+        com.program.emplace_back(op_assert{"upper bound must be strictly less than the array size"});
+    }
+
     push_expr_ptr(com, *node.expr);
     if (node.lower_bound) {// move first index of span up
         push_literal(com, com.types.size_of(inner_type(expr_type)));
