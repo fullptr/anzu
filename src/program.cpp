@@ -98,7 +98,8 @@ auto to_string(const op& op_code) -> std::string
             return std::format(FORMAT2, func_str, jump_str);
         },
         [](const op_builtin_call& op) { return std::format("BUILTIN_CALL({})", op.name); },
-        [](const op_debug& op) { return std::format("DEBUG({})", op.message); }
+        [](const op_debug& op) { return std::format("DEBUG({})", op.message); },
+        [](const op_panic_if& op) { return std::format("PANIC_IF({})", op.message); }
     }, op_code);
 }
 

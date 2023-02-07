@@ -44,6 +44,12 @@ auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
     }
 }
 
+auto runtime_error(std::string_view message)
+{
+    anzu::print("Program panicked! message: {}\n", message);
+    std::exit(1);
+}
+
 template <typename Type, template <typename> typename Op>
 auto unary_op(runtime_context& ctx) -> void
 {
@@ -239,7 +245,12 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_debug& op) {
             print(op.message);
             ++ctx.prog_ptr;
-        }
+        },
+        [&](const op_panic_if& op) {
+            if (pop_value<bool>(ctx.stack)) {
+                runtime_error(op.message);
+            }
+        },
     }, op_code);
 }
 
