@@ -277,12 +277,22 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
                 expr.expr = std::move(node);
                 node = std::move(new_node);
                 tokens.consume_only(tk_rbracket);
-            } else {
-                auto& expr = new_node->emplace<node_subscript_expr>();
-                expr.token = token;
-                expr.index = parse_expression(tokens);
-                expr.expr = std::move(node);
-                node = std::move(new_node);
+            } else { // either a subspan or subscript access
+                const auto inner_expr = parse_expression(tokens);
+                if (tokens.consume_maybe(tk_colon)) { // subspan
+                    auto& expr = new_node->emplace<node_span_expr>();
+                    expr.token = token;
+                    expr.expr = std::move(node);
+                    expr.lower_bound = std::move(inner_expr);
+                    expr.upper_bound = parse_expression(tokens);
+                    node = std::move(new_node);
+                } else { // subscript access
+                    auto& expr = new_node->emplace<node_subscript_expr>();
+                    expr.token = token;
+                    expr.index = std::move(inner_expr);
+                    expr.expr = std::move(node);
+                    node = std::move(new_node);
+                }
                 tokens.consume_only(tk_rbracket);
             }
         }
@@ -565,6 +575,17 @@ auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_assert_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_shared<node_stmt>();
+    auto& stmt = node->emplace<node_assert_stmt>();
+
+    stmt.token = tokens.consume_only(tk_assert);
+    stmt.expr = parse_expression(tokens);
+    tokens.consume_only(tk_semicolon);
+    return node;
+}
+
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
     while (tokens.consume_maybe(tk_semicolon));
@@ -604,6 +625,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     }
     if (tokens.peek(tk_delete)) {
         return parse_delete_stmt(tokens);
+    }
+    if (tokens.peek(tk_assert)) {
+        return parse_assert_stmt(tokens);
     }
 
     auto node = std::make_shared<node_stmt>();

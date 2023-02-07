@@ -151,6 +151,8 @@ struct node_new_expr
 struct node_span_expr
 {
     node_expr_ptr expr;
+    node_expr_ptr lower_bound;
+    node_expr_ptr upper_bound;
     
     anzu::token token;
 };
@@ -292,6 +294,13 @@ struct node_delete_stmt
     anzu::token token;
 };
 
+struct node_assert_stmt
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
 struct node_stmt : std::variant<
     node_sequence_stmt,
     node_loop_stmt,
@@ -307,7 +316,8 @@ struct node_stmt : std::variant<
     node_function_def_stmt,
     node_expression_stmt,
     node_return_stmt,
-    node_delete_stmt>
+    node_delete_stmt,
+    node_assert_stmt>
 {
 };
 

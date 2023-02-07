@@ -132,9 +132,8 @@ Utility Modules (in src/utility)
 * Spans
     - ~~Basic impl~~
     - ~~Have `new` and `delete` operate on spans instead of pointers for arrays (then ban pointer arithmetic).~~
-    - `.remove_prefix(count)` and `.remove_suffix(count)` functions to trim a span.
-    - A way to create subspans with syntax like `arr[0..2]` or `arr[0:2]`.
-    - Runtime bounds checking for arrays and spans, possibly adding debug-only op codes.
+    - ~~A way to create subspans with syntax like `arr[0..2]` or `arr[0:2]`.~~
+    - ~~Runtime bounds checking for arrays and spans, possibly adding debug-only op codes.~~
     - Create spans from other spans.
     - Turn string literals into spans instead of char arrays.
 * Templates

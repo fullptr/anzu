@@ -26,6 +26,7 @@ constexpr auto tk_default   = sv{"default"};
 constexpr auto tk_loop      = sv{"loop"};
 constexpr auto tk_typeof    = sv{"typeof"};
 constexpr auto tk_import    = sv{"import"};
+constexpr auto tk_assert    = sv{"assert"};
 
 // Builtin Types
 constexpr auto tk_i32       = sv{"i32"};
