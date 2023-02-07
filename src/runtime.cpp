@@ -250,6 +250,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             if (pop_value<bool>(ctx.stack)) {
                 runtime_error(op.message);
             }
+            ++ctx.prog_ptr;
         },
     }, op_code);
 }

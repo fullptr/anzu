@@ -142,6 +142,7 @@ using function_iter = typename function_param_map::const_iterator;
 struct compiler
 {
     program program;
+    bool debug = false;
 
     // namespace (type_name) -> function_name -> signatures -> function_info
     std::unordered_map<type_name, function_map, type_name_hash> functions;
@@ -770,12 +771,14 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     }
 
     // Bounds checking
-    const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
-    const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
-    node.token.assert_eq(upper_bound_type, u64_type(), "subspan indices must be u64");
-    node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
-    com.program.emplace_back(op_u64_lt{});
-    com.program.emplace_back(op_panic_if{"upper bound is less than lower bound"});
+    if (com.debug) {
+        const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
+        const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
+        node.token.assert_eq(upper_bound_type, u64_type(), "subspan indices must be u64");
+        node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
+        com.program.emplace_back(op_u64_lt{});
+        com.program.emplace_back(op_panic_if{"upper bound is less than lower bound"});
+    }
 
     const auto expr_type = type_of_expr(com, *node.expr);
     node.token.assert(is_list_type(expr_type), "can only span arrays, not {}", expr_type);
@@ -1235,11 +1238,13 @@ auto compiled_all_requirements(const file_ast& module, const std::set<std::files
 
 auto compile(
     const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, file_ast>& modules
+    const std::map<std::filesystem::path, file_ast>& modules,
+    const bool debug
 )
     -> program
 {
     auto com = compiler{};
+    com.debug = debug;
     auto done = std::set<std::filesystem::path>{};
     auto remaining = std::set<std::filesystem::path>{}; 
     for (const auto& [file, mod] : modules) {
