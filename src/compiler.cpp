@@ -144,6 +144,8 @@ struct compiler
     program program;
     bool debug = false;
 
+    std::vector<char> read_only_data;
+
     // namespace (type_name) -> function_name -> signatures -> function_info
     std::unordered_map<type_name, function_map, type_name_hash> functions;
 
@@ -649,6 +651,10 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
+    // Handle string literals differently; put them into read only memory
+    if (is_list_type(node.value.type) && inner_type(node.value.type) == char_type()) {
+        print("String literal!\n");
+    }
     com.program.emplace_back(op_load_bytes{node.value.data});
     return node.value.type;
 }
