@@ -649,17 +649,16 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
     return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
 }
 
-auto to_string(const std::vector<std::byte>& vec) -> std::string
-{
-    auto ret = std::string{};
-    for (const auto b : vec) {
-        ret += static_cast<char>(b);
-    }
-    return ret;
-}
-
 auto subvector_find(const std::vector<std::byte>& sub, const std::vector<std::byte>& all) -> std::size_t
 {
+    const auto to_string = [](const std::vector<std::byte>& vec) {
+        auto ret = std::string{};
+        for (const auto b : vec) {
+            ret += static_cast<char>(b);
+        }
+        return ret;
+    };
+
     const auto substr = to_string(sub);
     const auto allstr = to_string(all);
     return allstr.find(substr);
@@ -1127,7 +1126,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         node.token.assert_eq(lhs, rhs, "invalid assignment");
 
         // this is a hack for now until we have the concept of const. when we have const,
-        // we can make it part of the type system and make it a compile time error, 
+        // we can turn this into a compile time error
         com.program.emplace_back(op_assert_writable{}); // verify we can write to the pointer
 
         com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
