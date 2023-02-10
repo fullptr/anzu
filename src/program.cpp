@@ -106,7 +106,7 @@ auto to_string(const op& op_code) -> std::string
 auto print_program(const anzu::program& program) -> void
 {
     int lineno = 0;
-    for (const auto& op : program) {
+    for (const auto& op : program.code) {
         anzu::print("{:>4} - {}\n", lineno++, op);
     }
 }

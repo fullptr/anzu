@@ -141,10 +141,10 @@ using function_iter = typename function_param_map::const_iterator;
 // as well as information such as function definitions.
 struct compiler
 {
-    program program;
-    bool debug = false;
-
+    std::vector<op>   program;
     std::vector<char> read_only_data;
+
+    bool debug = false;
 
     // namespace (type_name) -> function_name -> signatures -> function_info
     std::unordered_map<type_name, function_map, type_name_hash> functions;
@@ -1313,7 +1313,7 @@ auto compile(
         }
     }
 
-    return com.program;
+    return { com.program, com.read_only_data };
 }
 
 }

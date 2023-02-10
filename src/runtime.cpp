@@ -237,8 +237,8 @@ auto run_program(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
-    while (ctx.prog_ptr < program.size()) {
-        apply_op(ctx, program[ctx.prog_ptr]);
+    while (ctx.prog_ptr < program.code.size()) {
+        apply_op(ctx, program.code[ctx.prog_ptr]);
     }
 
     if (ctx.allocator.bytes_allocated() > 0) {
@@ -251,10 +251,10 @@ auto run_program_debug(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
-    while (ctx.prog_ptr < program.size()) {
-        const auto& op = program[ctx.prog_ptr];
+    while (ctx.prog_ptr < program.code.size()) {
+        const auto& op = program.code[ctx.prog_ptr];
         anzu::print("{:>4} - {}\n", ctx.prog_ptr, op);
-        apply_op(ctx, program[ctx.prog_ptr]);
+        apply_op(ctx, program.code[ctx.prog_ptr]);
         anzu::print("Stack: {}\n", format_comma_separated(ctx.stack));
         anzu::print("Heap: allocated={}\n", ctx.allocator.bytes_allocated());
     }
