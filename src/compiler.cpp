@@ -649,14 +649,43 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
     return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
 }
 
+auto to_string(const std::vector<std::byte>& vec) -> std::string
+{
+    auto ret = std::string{};
+    for (const auto b : vec) {
+        ret += static_cast<char>(b);
+    }
+    return ret;
+}
+
+auto subvector_find(const std::vector<std::byte>& sub, const std::vector<std::byte>& all) -> std::size_t
+{
+    const auto substr = to_string(sub);
+    const auto allstr = to_string(all);
+    return allstr.find(substr);
+}
+
+// Fetches the given literal from read only memory, or adds it if it is not there, and
+// returns the pointer.
+auto fetch_from_read_only(compiler& com, const node_literal_expr& node) -> std::size_t
+{
+    const auto index = subvector_find(node.value.data, com.read_only_data);
+    if (index != std::string::npos) {
+        return set_rom_bit(index);
+    }
+    const auto ptr = set_rom_bit(com.read_only_data.size());
+    for (const auto b : node.value.data) {
+        com.read_only_data.push_back(b);
+    }
+    return set_rom_bit(ptr);
+}
+
 auto push_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
     // Handle string literals differently; put them into read only memory
     if (is_list_type(node.value.type) && inner_type(node.value.type) == char_type()) {
-        const auto ptr = set_rom_bit(com.read_only_data.size());
-        for (const auto b : node.value.data) {
-            com.read_only_data.push_back(b);
-        }
+        const auto ptr = fetch_from_read_only(com, node);
+
         // Push the span onto the stack
         const auto ptr_bytes = as_bytes(ptr);
         const auto size_bytes = as_bytes(node.value.data.size());
@@ -722,6 +751,9 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         push_function_call(com, func->ptr, params);
         return func->return_type;
     }
+
+    // BUG: This will match ANY call a size function, and if the type of the argument is not a list,
+    // ptr or span, inner_type is not defined and we fail compilation.
 
     // It may be a .size member function on a span, TODO: make it easier to add builtin member functions
     // first arg is a pointer to a span, so need to deref with inner_type before checking if its a span

@@ -107,8 +107,14 @@ auto print_program(const anzu::program& program) -> void
 {
     int lineno = 0;
     for (const auto& op : program.code) {
-        anzu::print("{:>4} - {}\n", lineno++, op);
+        print("{:>4} - {}\n", lineno++, op);
     }
+
+    print("ROM:\n");
+    for (const auto b : program.rom) {
+        print("{}", static_cast<char>(b));
+    }
+    print("\n");
 }
 
 }
