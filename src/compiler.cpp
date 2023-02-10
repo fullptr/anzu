@@ -141,8 +141,8 @@ using function_iter = typename function_param_map::const_iterator;
 // as well as information such as function definitions.
 struct compiler
 {
-    std::vector<op>   program;
-    std::vector<char> read_only_data;
+    std::vector<op>        program;
+    std::vector<std::byte> read_only_data;
 
     bool debug = false;
 
@@ -653,7 +653,16 @@ auto push_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
     // Handle string literals differently; put them into read only memory
     if (is_list_type(node.value.type) && inner_type(node.value.type) == char_type()) {
-        print("String literal!\n");
+        const auto ptr = set_rom_bit(com.read_only_data.size());
+        for (const auto b : node.value.data) {
+            com.read_only_data.push_back(b);
+        }
+        // Push the span onto the stack
+        const auto ptr_bytes = as_bytes(ptr);
+        const auto size_bytes = as_bytes(node.value.data.size());
+        com.program.emplace_back(op_load_bytes{{ptr_bytes.begin(), ptr_bytes.end()}});
+        com.program.emplace_back(op_load_bytes{{size_bytes.begin(), size_bytes.end()}});
+        return concrete_span_type(char_type());
     }
     com.program.emplace_back(op_load_bytes{node.value.data});
     return node.value.type;

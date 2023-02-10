@@ -1,6 +1,9 @@
 
 fn print_string(str: char[]) {
-    
+    for c in str {
+        print(*c);
+    }
+    println("");
 }
 
 print_string("hello");

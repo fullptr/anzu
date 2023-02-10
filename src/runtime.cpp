@@ -132,7 +132,14 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 for (std::size_t i = 0; i != op.size; ++i) {
                     ctx.stack.push_back(ctx.heap[heap_ptr + i]);
                 }
-            } else {
+            }
+            else if (is_rom_ptr(ptr)) {
+                const auto rom_ptr = unset_rom_bit(ptr);
+                for (std::size_t i = 0; i != op.size; ++i) {
+                    ctx.stack.push_back(ctx.rom[rom_ptr + i]);
+                }
+            }
+            else {
                 for (std::size_t i = 0; i != op.size; ++i) {
                     ctx.stack.push_back(ctx.stack[ptr + i]);
                 }
@@ -145,10 +152,15 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
 
             if (is_heap_ptr(ptr)) {
                 const auto heap_ptr = unset_heap_bit(ptr);
-                //runtime_assert(ptr + op.size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
                 std::memcpy(&ctx.heap[heap_ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
                 ctx.stack.resize(ctx.stack.size() - op.size);
-            } else {
+            }
+            else if (is_rom_ptr(ptr)) {
+                const auto rom_ptr = unset_rom_bit(ptr);
+                std::memcpy(&ctx.rom[rom_ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
+                ctx.stack.resize(ctx.stack.size() - op.size);
+            }
+            else {
                 runtime_assert(ptr + op.size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
                 if (ptr + op.size < ctx.stack.size()) {
                     std::memcpy(&ctx.stack[ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
@@ -244,6 +256,7 @@ auto run_program(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
+    ctx.rom = program.rom;
     while (ctx.prog_ptr < program.code.size()) {
         apply_op(ctx, program.code[ctx.prog_ptr]);
     }
@@ -258,6 +271,7 @@ auto run_program_debug(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
+    ctx.rom = program.rom;
     while (ctx.prog_ptr < program.code.size()) {
         const auto& op = program.code[ctx.prog_ptr];
         anzu::print("{:>4} - {}\n", ctx.prog_ptr, op);

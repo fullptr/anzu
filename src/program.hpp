@@ -250,8 +250,8 @@ struct op : std::variant<
 
 struct program
 {
-    std::vector<op>   code;
-    std::vector<char> rom;
+    std::vector<op>        code;
+    std::vector<std::byte> rom;
 };
 
 auto to_string(const op& op_code) -> std::string;

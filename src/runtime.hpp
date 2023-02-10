@@ -14,6 +14,7 @@ struct runtime_context
 
     std::vector<std::byte> stack;
     std::vector<std::byte> heap;
+    std::vector<std::byte> rom;
 
     memory_allocator allocator;
 
