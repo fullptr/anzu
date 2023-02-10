@@ -1105,6 +1105,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
             push_function_call_begin(com);
 
             push_expr_ptr(com, *node.position); // i-th element of dst
+            com.program.emplace_back(op_assert_writable{});
             push_ptr_adjust(com, i * inner_size);
             push_expr_ptr(com, *node.expr); // i-th element of src
             push_ptr_adjust(com, i * inner_size);
@@ -1122,6 +1123,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 
     push_function_call_begin(com);
     push_expr_ptr(com, *node.position);
+    com.program.emplace_back(op_assert_writable{});
     push_expr_ptr(com, *node.expr);
     push_function_call(com, assign->ptr, params);
     pop_object(com, assign->return_type, node.token);
