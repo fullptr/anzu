@@ -91,7 +91,6 @@ auto to_string(const op& op_code) -> std::string
         [](op_jump op) { return std::format("JUMP({})", op.jump); },
         [](op_jump_if_false op) { return std::format("JUMP_IF_FALSE({})", op.jump); },
         [](op_return op) { return std::format("RETURN({})", op.size); },
-
         [](const op_function_call& op) {
             const auto func_str = std::format("FUNCTION_CALL");
             const auto jump_str = std::format("JUMP -> {}", op.ptr);
@@ -99,7 +98,8 @@ auto to_string(const op& op_code) -> std::string
         },
         [](const op_builtin_call& op) { return std::format("BUILTIN_CALL({})", op.name); },
         [](const op_debug& op) { return std::format("DEBUG({})", op.message); },
-        [](const op_assert& op) { return std::format("ASSERT({})", op.message); }
+        [](const op_assert& op) { return std::format("ASSERT({})", op.message); },
+        [](op_assert_writable) { return std::string{"ASSERT_WRITABLE"}; }
     }, op_code);
 }
 

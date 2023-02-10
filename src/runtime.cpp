@@ -229,6 +229,13 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             }
             ++ctx.prog_ptr;
         },
+        [&](op_assert_writable) {
+            const auto ptr = read_top<std::uint64_t>(ctx.stack);
+            if (is_rom_ptr(ptr)) {
+                runtime_error("cannot assign into read only memory");
+            }
+            ++ctx.prog_ptr;
+        }
     }, op_code);
 }
 

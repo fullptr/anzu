@@ -1084,6 +1084,11 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         const auto rhs = push_expr_val(com, *node.expr);
         const auto lhs = push_expr_ptr(com, *node.position);
         node.token.assert_eq(lhs, rhs, "invalid assignment");
+
+        // this is a hack for now until we have the concept of const. when we have const,
+        // we can make it part of the type system and make it a compile time error, 
+        com.program.emplace_back(op_assert_writable{}); // verify we can write to the pointer
+
         com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
         return;
     }

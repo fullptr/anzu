@@ -30,6 +30,14 @@ auto pop_value(std::vector<std::byte>& mem) -> T
 }
 
 template <typename T>
+auto read_top(std::vector<std::byte>& mem) -> T
+{
+    auto ret = T{};
+    std::memcpy(&ret, &mem[mem.size() - sizeof(T)], sizeof(T));
+    return ret;
+}
+
+template <typename T>
 auto write_value(std::vector<std::byte>& mem, std::size_t ptr, const T& value) -> void
 {
     std::memcpy(&mem[ptr], &value, sizeof(T));
