@@ -666,14 +666,14 @@ auto subvector_find(const std::vector<std::byte>& sub, const std::vector<std::by
 
 // Fetches the given literal from read only memory, or adds it if it is not there, and
 // returns the pointer.
-auto fetch_from_read_only(compiler& com, const node_literal_expr& node) -> std::size_t
+auto insert_into_rom(compiler& com, const std::vector<std::byte>& data) -> std::size_t
 {
-    const auto index = subvector_find(node.value.data, com.read_only_data);
+    const auto index = subvector_find(data, com.read_only_data);
     if (index != std::string::npos) {
         return set_rom_bit(index);
     }
     const auto ptr = set_rom_bit(com.read_only_data.size());
-    for (const auto b : node.value.data) {
+    for (const auto b : data) {
         com.read_only_data.push_back(b);
     }
     return set_rom_bit(ptr);
@@ -683,7 +683,7 @@ auto push_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
     // Handle string literals differently; put them into read only memory
     if (is_list_type(node.value.type) && inner_type(node.value.type) == char_type()) {
-        const auto ptr = fetch_from_read_only(com, node);
+        const auto ptr = insert_into_rom(com, node.value.data);
 
         // Push the span onto the stack
         const auto ptr_bytes = as_bytes(ptr);
