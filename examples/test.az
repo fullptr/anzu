@@ -1,2 +1,1 @@
 import stdlib.az;
-println("hello world");
