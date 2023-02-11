@@ -96,6 +96,7 @@ auto to_string(const op& op_code) -> std::string
             const auto jump_str = std::format("JUMP -> {}", op.ptr);
             return std::format(FORMAT2, func_str, jump_str);
         },
+        [](op_call op) { return std::format("CALL({})", op.args_size); },
         [](const op_builtin_call& op) { return std::format("BUILTIN_CALL({})", op.name); },
         [](const op_debug& op) { return std::format("DEBUG({})", op.message); },
         [](const op_assert& op) { return std::format("ASSERT({})", op.message); },

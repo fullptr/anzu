@@ -1,1 +1,6 @@
 import stdlib.az;
+
+
+fn foo() {}
+
+x := foo;

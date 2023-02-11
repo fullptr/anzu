@@ -42,11 +42,19 @@ struct type_span
     auto operator==(const type_span&) const -> bool = default;
 };
 
+struct type_function_ptr
+{
+    std::vector<type_name> param_types;
+    value_ptr<type_name>   return_type;
+    auto operator==(const type_function_ptr&) const -> bool = default;
+};
+
 struct type_name : public std::variant<
     type_simple,
     type_list,
     type_ptr,
-    type_span>
+    type_span,
+    type_function_ptr>
 {
     using variant::variant;
 };
@@ -83,6 +91,7 @@ auto hash(const type_list& type) -> std::size_t;
 auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
+auto hash(const type_function_ptr& type) -> std::size_t;
 
 auto i32_type() -> type_name;
 auto i64_type() -> type_name;
@@ -135,6 +144,7 @@ auto to_string(const type_list& type) -> std::string;
 auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
+auto to_string(const type_function_ptr& type) -> std::string;
 
 // Runtime pointer helpers to determine if the pointer is in stack, heap or read-only memory.
 static constexpr auto heap_bit = std::uint64_t{1} << 63;

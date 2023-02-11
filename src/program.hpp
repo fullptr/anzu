@@ -26,6 +26,85 @@ struct op_push_local_addr
     std::size_t offset;
 };
 
+struct op_load
+{
+    std::size_t size;
+};
+
+struct op_save
+{
+    std::size_t size;
+};
+
+struct op_pop
+{
+    std::size_t size;
+};
+
+struct op_alloc_span
+{
+    std::size_t type_size;
+};
+
+struct op_dealloc_span
+{
+    std::size_t type_size;
+};
+
+struct op_alloc_ptr
+{
+    std::size_t type_size;
+};
+
+struct op_dealloc_ptr
+{
+    std::size_t type_size;
+};
+
+struct op_jump
+{
+    std::size_t jump;
+};
+
+struct op_jump_if_false
+{
+    std::size_t jump;
+};
+
+struct op_function_call
+{
+    std::size_t ptr;
+    std::size_t args_size;
+};
+
+// Same as op_function_call, but fetches the pointer from the stack
+struct op_call
+{
+    std::size_t args_size;
+};
+
+struct op_builtin_call
+{
+    std::string      name;
+    builtin_function ptr;
+    std::size_t      args_size;
+};
+
+struct op_return
+{
+    std::size_t size;
+};
+
+struct op_debug
+{
+    std::string message;
+};
+
+struct op_assert
+{
+    std::string message;
+};
+
 struct op_char_eq {};
 struct op_char_ne {};
 
@@ -86,83 +165,25 @@ struct op_i32_neg {};
 struct op_i64_neg {};
 struct op_f64_neg {};
 
-struct op_load
-{
-    std::size_t size;
-};
-
-struct op_save
-{
-    std::size_t size;
-};
-
-struct op_pop
-{
-    std::size_t size;
-};
-
-struct op_alloc_span
-{
-    std::size_t type_size;
-};
-
-struct op_dealloc_span
-{
-    std::size_t type_size;
-};
-
-struct op_alloc_ptr
-{
-    std::size_t type_size;
-};
-
-struct op_dealloc_ptr
-{
-    std::size_t type_size;
-};
-
-struct op_jump
-{
-    std::size_t jump;
-};
-
-struct op_jump_if_false
-{
-    std::size_t jump;
-};
-
-struct op_function_call
-{
-    std::size_t ptr;
-    std::size_t args_size;
-};
-
-struct op_builtin_call
-{
-    std::string      name;
-    builtin_function ptr;
-    std::size_t      args_size;
-};
-
-struct op_return
-{
-    std::size_t size;
-};
-
-struct op_debug
-{
-    std::string message;
-};
-
-struct op_assert
-{
-    std::string message;
-};
-
 struct op : std::variant<
     op_load_bytes,
     op_push_global_addr,
     op_push_local_addr,
+    op_load,
+    op_save,
+    op_pop,
+    op_alloc_span,
+    op_dealloc_span,
+    op_alloc_ptr,
+    op_dealloc_ptr,
+    op_jump,
+    op_jump_if_false,
+    op_return,
+    op_function_call,
+    op_call,
+    op_builtin_call,
+    op_assert,
+    op_debug,
 
     op_char_eq,
     op_char_ne,
@@ -222,22 +243,7 @@ struct op : std::variant<
 
     op_i32_neg,
     op_i64_neg,
-    op_f64_neg,
-
-    op_load,
-    op_save,
-    op_pop,
-    op_alloc_span,
-    op_dealloc_span,
-    op_alloc_ptr,
-    op_dealloc_ptr,
-    op_jump,
-    op_jump_if_false,
-    op_return,
-    op_function_call,
-    op_builtin_call,
-    op_assert,
-    op_debug
+    op_f64_neg
 >
 {};
 
