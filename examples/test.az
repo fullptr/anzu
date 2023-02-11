@@ -1,3 +1,2 @@
-
-x := "hello world";
-x[0u] = 'd';
+import stdlib.az;
+println("hello world");
