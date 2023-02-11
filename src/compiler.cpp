@@ -672,7 +672,7 @@ auto insert_into_rom(compiler& com, const std::vector<std::byte>& data) -> std::
     if (index != std::string::npos) {
         return set_rom_bit(index);
     }
-    const auto ptr = set_rom_bit(com.read_only_data.size());
+    const auto ptr = com.read_only_data.size();
     for (const auto b : data) {
         com.read_only_data.push_back(b);
     }
