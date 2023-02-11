@@ -156,9 +156,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 ctx.stack.resize(ctx.stack.size() - op.size);
             }
             else if (is_rom_ptr(ptr)) {
-                const auto rom_ptr = unset_rom_bit(ptr);
-                std::memcpy(&ctx.rom[rom_ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
-                ctx.stack.resize(ctx.stack.size() - op.size);
+                runtime_error("cannot assign into read only memory");
             }
             else {
                 runtime_assert(ptr + op.size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
@@ -238,13 +236,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](const op_assert& op) {
             if (!pop_value<bool>(ctx.stack)) {
                 runtime_error(op.message);
-            }
-            ++ctx.prog_ptr;
-        },
-        [&](op_assert_writable) {
-            const auto ptr = read_top<std::uint64_t>(ctx.stack);
-            if (is_rom_ptr(ptr)) {
-                runtime_error("cannot assign into read only memory");
             }
             ++ctx.prog_ptr;
         }

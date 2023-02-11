@@ -159,12 +159,6 @@ struct op_assert
     std::string message;
 };
 
-// TODO: This is a temporary solution until we have const in the language, for now
-// we will make writing into read only memory a runtime error, when we have const then
-// read only memory can be of type const char[]
-struct op_assert_writable
-{};
-
 struct op : std::variant<
     op_load_bytes,
     op_push_global_addr,
@@ -243,7 +237,6 @@ struct op : std::variant<
     op_function_call,
     op_builtin_call,
     op_assert,
-    op_assert_writable,
     op_debug
 >
 {};

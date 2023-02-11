@@ -11,3 +11,5 @@ fn print(str: char[]) {
         print(*c);
     }
 }
+
+println("hello world");
