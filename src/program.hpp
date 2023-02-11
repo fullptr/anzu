@@ -241,7 +241,11 @@ struct op : std::variant<
 >
 {};
 
-using program = std::vector<op>;
+struct program
+{
+    std::vector<op>        code;
+    std::vector<std::byte> rom;
+};
 
 auto to_string(const op& op_code) -> std::string;
 auto print_program(const anzu::program& program) -> void;

@@ -153,13 +153,6 @@ auto is_builtin(const std::string& name, const std::vector<type_name>& args) -> 
     // Hack, generalise later
     if ((name == "print" || name == "println") &&
         args.size() == 1 &&
-        std::holds_alternative<type_list>(args[0]) &&
-        inner_type(args[0]) == char_type()
-    ) {
-        return true;
-    }
-    else if ((name == "print" || name == "println") &&
-        args.size() == 1 &&
         std::holds_alternative<type_ptr>(args[0])
     ) {
         return true;
@@ -171,29 +164,6 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
 {
     // Hack, generalise later
     if ((name == "print" || name == "println") &&
-        args.size() == 1 &&
-        std::holds_alternative<type_list>(args[0]) &&
-        inner_type(args[0]) == char_type()
-    ) {
-        const auto newline = name == "println";
-        const auto length = std::get<type_list>(args[0]).count;
-        return builtin_val{
-            .ptr = [=](std::vector<std::byte>& mem) -> void {
-                auto it = mem.end();
-                std::advance(it, -1 * length);
-                for (; it != mem.end(); ++it) {
-                    print("{}", static_cast<char>(*it));
-                }
-                if (newline) {
-                    print("\n");
-                }
-                pop_n(mem, length);
-                mem.push_back(std::byte{0}); // Return null
-            },
-            .return_type = null_type()
-        };
-    }
-    else if ((name == "print" || name == "println") &&
         args.size() == 1 &&
         std::holds_alternative<type_ptr>(args[0])
     ) {

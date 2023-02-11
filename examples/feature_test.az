@@ -1,4 +1,5 @@
 # tests all language features, here is a comment
+import stdlib.az;
 
 # declaring variables from literals
 {

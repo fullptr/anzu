@@ -141,7 +141,9 @@ using function_iter = typename function_param_map::const_iterator;
 // as well as information such as function definitions.
 struct compiler
 {
-    program program;
+    std::vector<op>        program;
+    std::vector<std::byte> read_only_data;
+
     bool debug = false;
 
     // namespace (type_name) -> function_name -> signatures -> function_info
@@ -647,8 +649,49 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
     return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
 }
 
+auto subvector_find(const std::vector<std::byte>& sub, const std::vector<std::byte>& all) -> std::size_t
+{
+    const auto to_string = [](const std::vector<std::byte>& vec) {
+        auto ret = std::string{};
+        for (const auto b : vec) {
+            ret += static_cast<char>(b);
+        }
+        return ret;
+    };
+
+    const auto substr = to_string(sub);
+    const auto allstr = to_string(all);
+    return allstr.find(substr);
+}
+
+// Fetches the given literal from read only memory, or adds it if it is not there, and
+// returns the pointer.
+auto insert_into_rom(compiler& com, const std::vector<std::byte>& data) -> std::size_t
+{
+    const auto index = subvector_find(data, com.read_only_data);
+    if (index != std::string::npos) {
+        return set_rom_bit(index);
+    }
+    const auto ptr = com.read_only_data.size();
+    for (const auto b : data) {
+        com.read_only_data.push_back(b);
+    }
+    return set_rom_bit(ptr);
+}
+
 auto push_expr_val(compiler& com, const node_literal_expr& node) -> type_name
 {
+    // Handle string literals differently; put them into read only memory
+    if (is_list_type(node.value.type) && inner_type(node.value.type) == char_type()) {
+        const auto ptr = insert_into_rom(com, node.value.data);
+
+        // Push the span onto the stack
+        const auto ptr_bytes = as_bytes(ptr);
+        const auto size_bytes = as_bytes(node.value.data.size());
+        com.program.emplace_back(op_load_bytes{{ptr_bytes.begin(), ptr_bytes.end()}});
+        com.program.emplace_back(op_load_bytes{{size_bytes.begin(), size_bytes.end()}});
+        return concrete_span_type(char_type());
+    }
     com.program.emplace_back(op_load_bytes{node.value.data});
     return node.value.type;
 }
@@ -707,6 +750,9 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         push_function_call(com, func->ptr, params);
         return func->return_type;
     }
+
+    // BUG: This will match ANY call a size function, and if the type of the argument is not a list,
+    // ptr or span, inner_type is not defined and we fail compilation.
 
     // It may be a .size member function on a span, TODO: make it easier to add builtin member functions
     // first arg is a pointer to a span, so need to deref with inner_type before checking if its a span
@@ -1078,6 +1124,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         const auto rhs = push_expr_val(com, *node.expr);
         const auto lhs = push_expr_ptr(com, *node.position);
         node.token.assert_eq(lhs, rhs, "invalid assignment");
+
         com.program.emplace_back(op_save{ .size=com.types.size_of(lhs) });
         return;
     }
@@ -1307,7 +1354,7 @@ auto compile(
         }
     }
 
-    return com.program;
+    return { com.program, com.read_only_data };
 }
 
 }

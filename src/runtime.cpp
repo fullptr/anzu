@@ -11,29 +11,6 @@
 #include <utility>
 
 namespace anzu {
-namespace {
-
-constexpr auto top_bit = (std::numeric_limits<std::uint64_t>::max() / 2) + 1;
-
-auto set_top_bit(std::uint64_t x) -> std::uint64_t
-{
-    constexpr auto top_bit = std::uint64_t{1} << 63;
-    return x | top_bit; 
-}
-
-auto unset_top_bit(std::uint64_t x) -> std::uint64_t
-{
-    constexpr auto top_bit = std::uint64_t{1} << 63;
-    return x & ~top_bit; 
-}
-
-auto get_top_bit(std::uint64_t x) -> bool
-{
-    constexpr auto top_bit = std::uint64_t{1} << 63;
-    return x & top_bit;
-}
-
-}
 
 template <typename ...Args>
 auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
@@ -150,12 +127,19 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_load op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
             
-            if (get_top_bit(ptr)) {
-                const auto heap_ptr = unset_top_bit(ptr);
+            if (is_heap_ptr(ptr)) {
+                const auto heap_ptr = unset_heap_bit(ptr);
                 for (std::size_t i = 0; i != op.size; ++i) {
                     ctx.stack.push_back(ctx.heap[heap_ptr + i]);
                 }
-            } else {
+            }
+            else if (is_rom_ptr(ptr)) {
+                const auto rom_ptr = unset_rom_bit(ptr);
+                for (std::size_t i = 0; i != op.size; ++i) {
+                    ctx.stack.push_back(ctx.rom[rom_ptr + i]);
+                }
+            }
+            else {
                 for (std::size_t i = 0; i != op.size; ++i) {
                     ctx.stack.push_back(ctx.stack[ptr + i]);
                 }
@@ -166,12 +150,15 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_save op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
 
-            if (get_top_bit(ptr)) {
-                const auto heap_ptr = unset_top_bit(ptr);
-                //runtime_assert(ptr + op.size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
+            if (is_heap_ptr(ptr)) {
+                const auto heap_ptr = unset_heap_bit(ptr);
                 std::memcpy(&ctx.heap[heap_ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
                 ctx.stack.resize(ctx.stack.size() - op.size);
-            } else {
+            }
+            else if (is_rom_ptr(ptr)) {
+                runtime_error("cannot assign into read only memory");
+            }
+            else {
                 runtime_assert(ptr + op.size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
                 if (ptr + op.size < ctx.stack.size()) {
                     std::memcpy(&ctx.stack[ptr], &ctx.stack[ctx.stack.size() - op.size], op.size);
@@ -188,25 +175,25 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         [&](op_alloc_span op) {
             const auto count = pop_value<std::uint64_t>(ctx.stack);
             const auto ptr = ctx.allocator.allocate(count * op.type_size);
-            push_value(ctx.stack, set_top_bit(ptr));
+            push_value(ctx.stack, set_heap_bit(ptr));
             ++ctx.prog_ptr;
         },
         [&](op_dealloc_span op) {
             const auto count = pop_value<std::uint64_t>(ctx.stack);
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-            runtime_assert(get_top_bit(ptr), "cannot delete a span to stack memory\n");
-            ctx.allocator.deallocate(unset_top_bit(ptr), count * op.type_size);
+            runtime_assert(is_heap_ptr(ptr), "cannot delete a span to stack memory\n");
+            ctx.allocator.deallocate(unset_heap_bit(ptr), count * op.type_size);
             ++ctx.prog_ptr;
         },
         [&](op_alloc_ptr op) {
             const auto ptr = ctx.allocator.allocate(op.type_size);
-            push_value(ctx.stack, set_top_bit(ptr));
+            push_value(ctx.stack, set_heap_bit(ptr));
             ++ctx.prog_ptr;
         },
         [&](op_dealloc_ptr op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-            runtime_assert(get_top_bit(ptr), "cannot delete a pointer to stack memory\n");
-            ctx.allocator.deallocate(unset_top_bit(ptr), op.type_size);
+            runtime_assert(is_heap_ptr(ptr), "cannot delete a pointer to stack memory\n");
+            ctx.allocator.deallocate(unset_heap_bit(ptr), op.type_size);
             ++ctx.prog_ptr;
         },
         [&](op_jump op) {
@@ -251,7 +238,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 runtime_error(op.message);
             }
             ++ctx.prog_ptr;
-        },
+        }
     }, op_code);
 }
 
@@ -260,8 +247,9 @@ auto run_program(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
-    while (ctx.prog_ptr < program.size()) {
-        apply_op(ctx, program[ctx.prog_ptr]);
+    ctx.rom = program.rom;
+    while (ctx.prog_ptr < program.code.size()) {
+        apply_op(ctx, program.code[ctx.prog_ptr]);
     }
 
     if (ctx.allocator.bytes_allocated() > 0) {
@@ -274,10 +262,11 @@ auto run_program_debug(const anzu::program& program) -> void
     const auto timer = scope_timer{};
 
     runtime_context ctx;
-    while (ctx.prog_ptr < program.size()) {
-        const auto& op = program[ctx.prog_ptr];
+    ctx.rom = program.rom;
+    while (ctx.prog_ptr < program.code.size()) {
+        const auto& op = program.code[ctx.prog_ptr];
         anzu::print("{:>4} - {}\n", ctx.prog_ptr, op);
-        apply_op(ctx, program[ctx.prog_ptr]);
+        apply_op(ctx, program.code[ctx.prog_ptr]);
         anzu::print("Stack: {}\n", format_comma_separated(ctx.stack));
         anzu::print("Heap: allocated={}\n", ctx.allocator.bytes_allocated());
     }
