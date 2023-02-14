@@ -436,40 +436,47 @@ auto drop_fn_params(const type_name& type) -> type_names
 using compile_obj_ptr_cb = std::function<void(const token&)>;
 auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb push_object_ptr) -> void
 {
-    if (is_list_type(type)) {
-        const auto etype = inner_type(type);
-        const auto inner_size = com.types.size_of(etype);
-        const auto params = drop_fn_params(etype);
-
-        if (const auto drop = get_function(com, etype, "drop", params)) {
-            for (std::size_t i = array_length(type); i != 0;) {
-                --i;
+    std::visit(overloaded{
+        [&](const type_simple&) {
+            const auto params = drop_fn_params(type);
+            if (const auto func = get_function(com, type, "drop", params); func) {
+                // Push the args to the stack
                 push_function_call_begin(com);
-                push_object_ptr(drop->tok);
-                push_ptr_adjust(com, i * inner_size);
-                push_function_call(com, drop->ptr, params);
+                push_object_ptr(func->tok);
+                push_function_call(com, func->ptr, params);
+                com.program.emplace_back(op_pop{ .size = com.types.size_of(func->return_type) });
             }
+
+            // Loop through the fields and call their destructors.
+            const auto fields = com.types.fields_of(type);
+            for (const auto& field : fields | std::views::reverse) {
+                call_destructor(com, field.type, [&](const token& tok) {
+                    push_object_ptr(tok);
+                    push_adjust_ptr_to_field(com, tok, field.type, field.name);
+                });
+            }
+        },
+        [&](const type_list& list_type) {
+            const auto inner_size = com.types.size_of(*list_type.inner_type);
+            const auto params = drop_fn_params(*list_type.inner_type);
+
+            if (const auto drop = get_function(com, *list_type.inner_type, "drop", params)) {
+                for (std::size_t i = array_length(type); i != 0;) {
+                    --i;
+                    push_function_call_begin(com);
+                    push_object_ptr(drop->tok);
+                    push_ptr_adjust(com, i * inner_size);
+                    push_function_call(com, drop->ptr, params);
+                }
+            }
+        },
+        [&](const type_ptr&) {
+            // pointers have no destructors
+        },
+        [&](const type_span&) {
+            // spans have no destructors
         }
-        return;
-    }
-
-    const auto params = drop_fn_params(type);
-    if (const auto func = get_function(com, type, "drop", params); func) {
-        // Push the args to the stack
-        push_function_call_begin(com);
-        push_object_ptr(func->tok);
-        push_function_call(com, func->ptr, params);
-        com.program.emplace_back(op_pop{ .size = com.types.size_of(func->return_type) });
-    }
-
-    // Loop through the fields and call their destructors.
-    const auto fields = com.types.fields_of(type);
-    for (const auto& field : fields | std::views::reverse) {
-        call_destructor(com, field.type, [&](const token& tok) {
-            push_object_ptr(tok);
-            push_adjust_ptr_to_field(com, tok, field.type, field.name);
-        });
-    }
+    }, type);
 }
 
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void
@@ -1220,9 +1227,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
     if (com.types.contains(make_type(node.name))) {
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
-    const auto global_scope = global_namespace;
-    com.functions[global_scope][node.name] = {};
-    compile_function_body(com, node.token, global_scope, node.name, node.sig, node.body);
+    compile_function_body(com, node.token, global_namespace, node.name, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)

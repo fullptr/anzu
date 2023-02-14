@@ -127,7 +127,7 @@ fn println(v: vec2) -> null
     print(v.x);
     print(", ");
     print(v.y);
-    println("}");
+    println('}');
 }
 
 # Attribute access
@@ -247,3 +247,22 @@ fn typeof_example2(a: u64) -> typeof(a)
     return a * a;
 }
 println(typeof_example2(6u));
+
+
+
+# test destructors
+struct destructible
+{
+    val: i64;
+
+    fn drop(self: &destructible)
+    {
+        print("dropping ");
+        println(self->val);
+    }
+}
+
+{
+    a := destructible(1);
+    b := destructible(2);
+}

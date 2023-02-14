@@ -218,25 +218,24 @@ auto type_store::contains(const type_name& type) const -> bool
 
 auto type_store::size_of(const type_name& type) const -> std::size_t
 {
-    if (!contains(type)) {
-        print("unknown type '{}'\n", type);
-        std::exit(1);
-    }
-
-    if (type == null_type() || type == char_type() || type == bool_type()) {
-        return 1;
-    }
-    
-    if (type == i32_type()) {
-        return 4;
-    }
-
-    if (type == i64_type() || type == f64_type() || type == u64_type()) {
-        return 8;
-    }
-
     return std::visit(overloaded{
-        [&](const type_simple& t) {
+        [&](const type_simple& t) -> std::size_t {
+            if (type == null_type() || type == char_type() || type == bool_type()) {
+                return 1;
+            }
+            
+            if (type == i32_type()) {
+                return 4;
+            }
+
+            if (type == i64_type() || type == f64_type() || type == u64_type()) {
+                return 8;
+            }
+
+            if (!d_classes.contains(type)) {
+                print("unknown type '{}'\n", type);
+                std::exit(1);
+            }
             auto size = std::size_t{0};
             for (const auto& field : fields_of(type)) {
                 size += size_of(field.type);
@@ -246,11 +245,11 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         [&](const type_list& t) {
             return size_of(*t.inner_type) * t.count;
         },
-        [](const type_ptr&) {
+        [&](const type_ptr&) {
             return PTR_SIZE;
         },
-        [](const type_span&) {
-            return std::size_t{16};
+        [&](const type_span&) {
+            return PTR_SIZE + size_of(u64_type());
         }
     }, type);
 }
