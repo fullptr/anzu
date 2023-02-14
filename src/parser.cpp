@@ -253,22 +253,26 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.value = parse_literal(tokens);
     }
 
-    while (tokens.peek(tk_fullstop) || tokens.peek(tk_rarrow) || tokens.peek(tk_lbracket)) {
+    // Handle postfix expressions, such as field access, arrow access and subscripts.
+    while (true) {
         if (tokens.peek(tk_fullstop)) {
             parse_member_access(tokens, node);
+            continue;
         }
-        
+
         // For x->y, parse as (*x).y by first wrapping x in a node_deref_expr
-        else if (tokens.peek(tk_rarrow)) {
+        if (tokens.peek(tk_rarrow)) {
             auto deref_node = std::make_shared<node_expr>();
             auto& deref_inner = deref_node->emplace<node_deref_expr>();
             deref_inner.token = std::visit([](auto&& n) { return n.token; }, *node);
             deref_inner.expr = std::move(node);
             node = std::move(deref_node);
             parse_member_access(tokens, node);
+            continue;
         }
-        
-        else {
+
+        // Subscript expression or a subspan access
+        if (tokens.peek(tk_lbracket)) {
             const auto token = tokens.consume();
             auto new_node = std::make_shared<node_expr>();
             if (tokens.peek(tk_rbracket)) {
@@ -295,7 +299,15 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
                 }
                 tokens.consume_only(tk_rbracket);
             }
+            continue;
         }
+
+        // Callable expressions
+        if (tokens.peek(tk_lparen)) {
+            
+        }
+
+        break;
     }
 
     return node;

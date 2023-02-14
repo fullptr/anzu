@@ -845,6 +845,12 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
     node.token.error("could not find function '{}'", function_str);
 }
 
+auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
+{
+    const auto& type = type_of_expr(com, *node.expr);
+    node.token.assert(is_function_ptr_type(type), "can only call function pointers");
+}
+
 auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name
 {
     node.token.assert(!node.elements.empty(), "currently do not support empty list literals");
