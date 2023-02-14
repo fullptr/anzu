@@ -274,6 +274,18 @@ auto push_function_call(compiler& com, std::size_t ptr, const std::vector<type_n
     com.program.emplace_back(op_function_call{ .ptr=ptr, .args_size=args_size });
 }
 
+auto load_variable(compiler& com, const token& tok, const std::string& name) -> void;
+auto push_function_ptr_call(compiler& com, const std::string& ptr_name, const std::vector<type_name>& params) -> void
+{
+    auto args_size = 2 * sizeof(std::uint64_t);
+    for (const auto& param : params) {
+        args_size += com.types.size_of(param);
+    }
+
+    load_variable(com, token{}, ptr_name);
+    com.program.emplace_back(op_call{ .args_size=args_size });
+}
+
 template <typename T>
 auto append_op(compiler& com, T&& op) -> std::size_t
 {
@@ -370,9 +382,11 @@ void verify_sig(
         tok.error("function expected {} args, got {}", expected.size(), actual.size());
     }
 
+    auto arg_index = std::size_t{0};
     for (const auto& [expected_param, actual_param] : zip(expected, actual)) {
         if (expected_param != actual_param) {
-            tok.error("'{}' does not match '{}'", actual_param, expected_param);
+            tok.error("arg {} type '{}' does not match '{}'", arg_index, actual_param, expected_param);
+            ++arg_index;
         }
     }
 }
@@ -769,6 +783,23 @@ auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_n
         }
         push_function_call(com, func->ptr, params);
         return func->return_type;
+    }
+
+    // If the function name is actually a variable name and a function pointer, then
+    // load the function pointer and call that
+    if (auto it = current_vars(com).find(node.function_name); it.has_value()) {
+        if (is_function_ptr_type(it->type)) {
+            const auto& sig = std::get<type_function_ptr>(it->type);
+            push_function_call_begin(com);
+            auto actual_types = std::vector<type_name>{};
+            for (const auto& arg : node.args) {
+                const auto type = push_object_copy(com, *arg, node.token);
+                actual_types.push_back(type);
+            }
+            verify_sig(node.token, sig.param_types, actual_types);
+            push_function_ptr_call(com, node.function_name, params);
+            return *sig.return_type;
+        }
     }
 
     // BUG: This will match ANY call a size function, and if the type of the argument is not a list,
