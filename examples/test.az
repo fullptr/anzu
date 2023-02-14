@@ -4,3 +4,10 @@ import stdlib.az;
 fn one() { println(1); }
 fn two() { println(2); }
 fn three() { println(3); }
+
+x := [one, two, three];
+x[0u]();
+for func in x {
+    f := *func;
+    f();
+}

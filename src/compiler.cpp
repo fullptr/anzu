@@ -584,6 +584,11 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_variable_expr& node) -> type_name
 {
+    auto& global_fns = com.functions[global_namespace];
+    if (auto it = global_fns.find(node.name); it != global_fns.end()) {
+        node.token.error("cannot take address of a function pointer");
+    }
+
     return push_var_addr(com, node.token, node.name);
 }
 
