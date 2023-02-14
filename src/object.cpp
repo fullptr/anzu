@@ -162,6 +162,11 @@ auto is_span_type(const type_name& t) -> bool
     return std::holds_alternative<type_span>(t);
 }
 
+auto is_function_ptr_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_function_ptr>(t);
+}
+
 auto inner_type(const type_name& t) -> type_name
 {
     if (is_list_type(t)) {
@@ -208,6 +213,7 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
 {
     return is_type_fundamental(type)
         || is_ptr_type(type)
+        || is_function_ptr_type(type)
         || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)))
         || is_span_type(type);
 }
@@ -230,6 +236,7 @@ auto type_store::contains(const type_name& type) const -> bool
         || is_span_type(type);
 }
 
+// TODO: Refactor this mess
 auto type_store::size_of(const type_name& type) const -> std::size_t
 {
     return std::visit(overloaded{

@@ -289,23 +289,6 @@ void declare_var(compiler& com, const token& tok, const std::string& name, const
     }
 }
 
-auto get_var_type(const compiler& com, const token& tok, const std::string& name) -> type_name
-{
-    if (com.current_func) {
-        auto& locals = com.current_func->vars;
-        if (const auto info = locals.find(name); info.has_value()) {
-            return info->type;
-        }
-    }
-    
-    auto& globals = com.globals;
-    if (const auto info = globals.find(name); info.has_value()) {
-        return info->type;
-    }
-
-    tok.error("could not find variable '{}'\n", name);
-}
-
 auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
 {
     if (com.current_func) {
@@ -588,6 +571,36 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_variable_expr& node) -> type_name
 {
     return push_var_addr(com, node.token, node.name);
+}
+
+// I think this is a bit of a hack; when pushing the value of a function pointer, we need
+// to do it in a special way. TODO: I think this messes with the idea that variable nodes
+// are lvalues, so that may cause trouble; we should find out how.
+auto push_expr_val(compiler& com, const node_variable_expr& node) -> type_name
+{
+    auto& global_fns = com.functions[global_namespace];
+    if (auto it = global_fns.find(node.name); it != global_fns.end()) {
+        // We are dealing with a function, so return a function pointer provided
+        // this isn't an overloaded function
+        if (it->second.size() > 1) {
+            node.token.error("cannot get function pointer to an overloaded function\n");
+        }
+        const auto& [key, value] = *it->second.begin();
+        push_literal(com, value.ptr);
+
+        // next, construct the return type.
+        const auto ptr_type = type_function_ptr{
+            .param_types = key,
+            .return_type = make_value<type_name>(value.return_type)
+        };
+        return ptr_type;
+    }
+
+    // This is the default logic for pushing an lvalue.
+    const auto type = push_expr_ptr(com, node);
+    const auto size = com.types.size_of(type);
+    com.program.emplace_back(op_load{ .size=size });
+    return type;
 }
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
@@ -1068,7 +1081,7 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     push_stmt(com, *node.body);
 
     if (node.else_body) {
-        const auto else_pos = append_op(com, op_jump{});
+        const auto else_pos = append_op( com, op_jump{});
         push_stmt(com, *node.else_body);
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
         std::get<op_jump>(com.program[else_pos]).jump = com.program.size(); // Jump past the end if false
@@ -1198,6 +1211,9 @@ auto compile_function_body(
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.current_func->return_type = sig.return_type;
+        if (com.functions[struct_type][name].contains(sig.params)) {
+            tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
+        }
         com.functions[struct_type][name][sig.params] = { .return_type=sig.return_type, .ptr=begin_pos + 1, .tok=tok };
 
         push_stmt(com, *body);

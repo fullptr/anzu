@@ -1,6 +1,6 @@
 import stdlib.az;
 
-
-fn foo() {}
+fn foo(x: f64) -> f64 { return 5.0; }
+fn bar(x: f64) -> f64 { return 5.0; }
 
 x := foo;

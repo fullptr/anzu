@@ -112,6 +112,8 @@ auto is_ptr_type(const type_name& t) -> bool;
 auto concrete_span_type(const type_name& t) -> type_name;
 auto is_span_type(const type_name& t) -> bool;
 
+auto is_function_ptr_type(const type_name& t) -> bool;
+
 auto size_of_ptr() -> std::size_t;
 
 // Extracts the single inner type of the given t. Undefined if the given t is not a compound
