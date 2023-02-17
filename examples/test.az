@@ -7,7 +7,7 @@ fn three() { println(3); }
 
 x := [one, two, three];
 x[0u]();
+
 for func in x {
-    f := *func;
-    f();
+    (*func)();
 }
