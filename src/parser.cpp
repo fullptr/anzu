@@ -358,6 +358,16 @@ auto parse_type(tokenstream& tokens) -> type_name
     if (tokens.consume_maybe(tk_ampersand)) {
         return {type_ptr{ .inner_type={parse_type(tokens)} }};
     }
+    if (tokens.consume_maybe(tk_lparen)) {
+        auto ret = type_function_ptr{};
+        tokens.consume_comma_separated_list(tk_rparen, [&]{
+            ret.param_types.push_back(parse_type(tokens));
+        });
+        tokens.consume_only(tk_rarrow);
+        ret.return_type = make_value<type_name>(parse_type(tokens));
+        return ret;
+    }
+
     auto type = type_name{type_simple{.name=tokens.consume().text}};
     while (tokens.consume_maybe(tk_lbracket)) {
         if (tokens.consume_maybe(tk_rbracket)) {

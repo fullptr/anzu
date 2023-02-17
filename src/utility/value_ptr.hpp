@@ -9,6 +9,7 @@ class value_ptr
     std::unique_ptr<T> d_value;
 
 public:
+    value_ptr() : d_value{nullptr} {}
     value_ptr(T* value) : d_value(std::unique_ptr<T>(value)) {}
     value_ptr(const value_ptr& other) : d_value(std::make_unique<T>(*other)) {}
     value_ptr(const T& val) : d_value(std::make_unique<T>(val)) {}

@@ -233,6 +233,7 @@ auto type_store::contains(const type_name& type) const -> bool
         || is_type_fundamental(type)
         || is_list_type(type)
         || is_ptr_type(type)
+        || is_function_ptr_type(type)
         || is_span_type(type);
 }
 
