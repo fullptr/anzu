@@ -13,65 +13,65 @@
 namespace anzu {
 namespace {
 
-auto builtin_sqrt(std::vector<std::byte>& mem) -> void
+auto builtin_sqrt(runtime_context& ctx) -> void
 {
-    auto val = pop_value<double>(mem);
-    push_value(mem, std::sqrt(val));
+    auto val = pop_value<double>(ctx.stack);
+    push_value(ctx.stack, std::sqrt(val));
 }
 
-auto builtin_print_char(std::vector<std::byte>& mem) -> void
+auto builtin_print_char(runtime_context& ctx) -> void
 {
-    print("{}", static_cast<char>(mem.back()));
-    mem.back() = std::byte{0}; // returns null
+    print("{}", static_cast<char>(ctx.stack.back()));
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_char(std::vector<std::byte>& mem) -> void
+auto builtin_println_char(runtime_context& ctx) -> void
 {
-    print("{}\n", static_cast<char>(mem.back()));
-    mem.back() = std::byte{0}; // returns null
+    print("{}\n", static_cast<char>(ctx.stack.back()));
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_bool(std::vector<std::byte>& mem) -> void
+auto builtin_print_bool(runtime_context& ctx) -> void
 {
-    print("{}", mem.back() == std::byte{1});
-    mem.back() = std::byte{0}; // returns null
+    print("{}", ctx.stack.back() == std::byte{1});
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_bool(std::vector<std::byte>& mem) -> void
+auto builtin_println_bool(runtime_context& ctx) -> void
 {
-    print("{}\n", mem.back() == std::byte{1});
-    mem.back() = std::byte{0}; // returns null
+    print("{}\n", ctx.stack.back() == std::byte{1});
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_null(std::vector<std::byte>& mem) -> void
+auto builtin_print_null(runtime_context& ctx) -> void
 {
     print("null");
-    mem.back() = std::byte{0}; // returns null
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_null(std::vector<std::byte>& mem) -> void
+auto builtin_println_null(runtime_context& ctx) -> void
 {
     print("null\n");
-    mem.back() = std::byte{0}; // returns null
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
 template <typename T>
-auto builtin_print(std::vector<std::byte>& mem) -> void
+auto builtin_print(runtime_context& ctx) -> void
 {
-    print("{}", pop_value<T>(mem));
-    mem.push_back(std::byte{0}); // returns null
+    print("{}", pop_value<T>(ctx.stack));
+    ctx.stack.push_back(std::byte{0}); // returns null
 }
 
 template <typename T>
-auto builtin_println(std::vector<std::byte>& mem) -> void
+auto builtin_println(runtime_context& ctx) -> void
 {
-    print("{}\n", pop_value<T>(mem));
-    mem.push_back(std::byte{0}); // returns null
+    print("{}\n", pop_value<T>(ctx.stack));
+    ctx.stack.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_fopen(std::vector<std::byte>& mem) -> void
+auto builtin_fopen(runtime_context& ctx) -> void
 {
-    
+
 }
 
 }
@@ -181,13 +181,13 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
     ) {
         const auto newline = name == "println";
         return builtin_val{
-            .ptr = [=](std::vector<std::byte>& mem) -> void {
-                const auto ptr = pop_value<std::uint64_t>(mem);
+            .ptr = [=](runtime_context& ctx) -> void {
+                const auto ptr = pop_value<std::uint64_t>(ctx.stack);
                 print("{}", ptr);
                 if (newline) {
                     print("\n");
                 }
-                mem.push_back(std::byte{0}); // Return null
+                ctx.stack.push_back(std::byte{0}); // Return null
             },
             .return_type = null_type()
         };
