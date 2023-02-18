@@ -69,6 +69,11 @@ auto builtin_println(std::vector<std::byte>& mem) -> void
     mem.push_back(std::byte{0}); // returns null
 }
 
+auto builtin_fopen(std::vector<std::byte>& mem) -> void
+{
+    
+}
+
 }
 
 auto construct_builtin_map() -> builtin_map
@@ -141,6 +146,13 @@ auto construct_builtin_map() -> builtin_map
     builtins.emplace(
         builtin_key{ .name = "println", .args = { i64_type() } },
         builtin_val{ .ptr = builtin_println<std::int64_t>, .return_type = null_type() }
+    );
+
+    const auto char_span = concrete_span_type(char_type());
+
+    builtins.emplace(
+        builtin_key{ .name = "fopen", .args = { char_span, char_span }},
+        builtin_val{ . ptr = builtin_fopen, .return_type = u64_type() }
     );
 
     return builtins;
