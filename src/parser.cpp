@@ -292,11 +292,12 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             auto new_node = std::make_shared<node_expr>();
             auto& inner = new_node->emplace<node_call_expr>();
             inner.token = tokens.consume();
-            inner.expr = std::move(node);
+            inner.expr = node;
             tokens.consume_comma_separated_list(tk_rparen, [&] {
                 inner.args.push_back(parse_expression(tokens));
             });
-            node = std::move(new_node);
+            node = new_node;
+            continue;
         }
 
         break;

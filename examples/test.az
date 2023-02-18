@@ -5,9 +5,10 @@ fn three() { println(3); }
 
 x := [one, two, three];
 
-for func in x {
-    (*func)();
+fn call_and_ret(fun: () -> null) -> () -> null
+{
+    fun();
+    return fun;
 }
 
-f := one;
-faz();
+call_and_ret(one)();

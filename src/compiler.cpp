@@ -821,7 +821,10 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
     // Otherwise, the expression must be a function pointer.
     const auto type = type_of_expr(com, *node.expr);
-    node.token.assert(is_function_ptr_type(type), "can only call function pointers");
+    node.token.assert(
+        is_function_ptr_type(type),
+        "unable to call non-callable type {}", type
+    );
 
     const auto& sig = std::get<type_function_ptr>(type);
 
