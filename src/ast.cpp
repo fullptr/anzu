@@ -14,8 +14,8 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_literal_expr& node) {
             print("{}Literal: {}\n", spaces, node.value);
         },
-        [&](const node_variable_expr& node) {
-            print("{}Variable: {}\n", spaces, node.name);
+        [&](const node_name_expr& node) {
+            print("{}Name: {}\n", spaces, node.name);
         },
         [&](const node_field_expr& node) {
             print("{}Field: \n", spaces);
@@ -39,13 +39,16 @@ auto print_node(const node_expr& root, int indent) -> void
         },
         [&](const node_function_call_expr& node) {
             print("{}FunctionCall: {}\n", spaces, node.function_name);
+            if (node.struct_type) {
+                print("{}- Struct type: {}\n", spaces, *node.struct_type);
+            }
             print("{}- Args:\n", spaces);
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
             }
         },
         [&](const node_call_expr& node) {
-            print("{}Call: {}\n", spaces);
+            print("{}Call:\n", spaces);
             print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
             print("{}- Args:\n", spaces);
@@ -231,7 +234,7 @@ auto print_node(const anzu::node_type& root, int indent) -> void
 
 auto is_lvalue_expr(const node_expr& expr) -> bool
 {
-    return std::holds_alternative<node_variable_expr>(expr)
+    return std::holds_alternative<node_name_expr>(expr)
         || std::holds_alternative<node_field_expr>(expr)
         || std::holds_alternative<node_deref_expr>(expr)
         || std::holds_alternative<node_subscript_expr>(expr);
@@ -249,7 +252,7 @@ auto to_string(const node_type& node) -> std::string
             return to_string(n.type);
         },
         [&](const node_expr_type& n) {
-            return std::string{"typeof(TODO)"};
+            return std::string{"typeof(<expr>)"};
         }
     }, node);
 }

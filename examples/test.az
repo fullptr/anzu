@@ -1,14 +1,7 @@
-import stdlib.az;
-
-fn do_twice(func: () -> null) -> null
-{
-    func();
-    func();
-}
-
 
 fn one() { println(1); }
 fn two() { println(2); }
 fn three() { println(3); }
 
-do_twice(one);
+x := [one, two, three];
+x[1u]();

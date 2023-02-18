@@ -159,10 +159,12 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         auto& addrof_inner = addrof->emplace<node_addrof_expr>();
         addrof_inner.expr = node;
         addrof_inner.token = tok;
-        auto& expr = new_node->emplace<node_function_call_expr>();
+        auto& expr = new_node->emplace<node_call_expr>();
+        expr.expr = std::make_shared<node_expr>(node_name_expr{
+            .struct_name = std::make_shared<node_type>(node_expr_type{node}),
+            .name = tokens.consume().text
+        });
         expr.token = tok;
-        expr.struct_type = std::make_shared<node_type>(node_expr_type{node});
-        expr.function_name = tokens.consume().text;
         tokens.consume_only(tk_lparen);
         expr.args.push_back(addrof);
         tokens.consume_comma_separated_list(tk_rparen, [&] {
@@ -229,11 +231,8 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
-    else if (tokens.peek_next(tk_lparen)) {
-        node = parse_function_call(tokens);
-    }
     else if (tokens.curr().type == token_type::name) {
-        auto& expr = node->emplace<node_variable_expr>();
+        auto& expr = node->emplace<node_name_expr>();
         expr.token = tokens.consume();
         expr.name = expr.token.text;
     }
