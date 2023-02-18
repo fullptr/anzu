@@ -1,2 +1,4 @@
 
-x := "hello world";
+file := fopen("temp.txt", "w");
+fputs(file, "this should go into the file");
+fclose(file);

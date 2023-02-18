@@ -17,10 +17,22 @@ auto pop_char_span(runtime_context& ctx) -> std::string
 {
     const auto size = pop_value<std::uint64_t>(ctx.stack);
     const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-    const auto begin = &ctx.rom[ptr];
-    auto ret = std::string{};
-    //ret.resize(size);
-    //std::memcpy(ret.data(), begin, size);
+    
+    auto ret = std::string(size, ' ');
+    ret.resize(size);
+    
+    if (is_heap_ptr(ptr)) {
+        const auto index = unset_heap_bit(ptr);
+        std::memcpy(ret.data(), &ctx.heap[index], size);
+    }
+    else if (is_rom_ptr(ptr)) {
+        const auto index = unset_rom_bit(ptr);
+        std::memcpy(ret.data(), &ctx.rom[index], size);
+    }
+    else {
+        const auto index = ptr;
+        std::memcpy(ret.data(), &ctx.stack[index], size);
+    }
     return ret;
 }
 
@@ -80,14 +92,29 @@ auto builtin_println(runtime_context& ctx) -> void
     ctx.stack.push_back(std::byte{0}); // returns null
 }
 
+static_assert(sizeof(std::FILE*) == sizeof(std::uint64_t));
+
 auto builtin_fopen(runtime_context& ctx) -> void
 {
     const auto mode = pop_char_span(ctx);
     const auto file = pop_char_span(ctx);
-    for (size_t i = 0; i != 8; ++i) {
-        ctx.stack.push_back(std::byte{0});
-    }
-    print("##{}-{}##\n", file, mode);
+    const auto ptr = std::fopen(file.c_str(), mode.c_str());
+    push_value<std::FILE*>(ctx.stack, ptr);
+}
+
+auto builtin_fclose(runtime_context& ctx) -> void
+{
+    const auto ptr = pop_value<std::FILE*>(ctx.stack);
+    std::fclose(ptr);
+    ctx.stack.push_back(std::byte{0}); // returns null
+}
+
+auto builtin_fputs(runtime_context& ctx) -> void
+{
+    const auto data = pop_char_span(ctx);
+    const auto ptr = pop_value<std::FILE*>(ctx.stack);
+    std::fputs(data.c_str(), ptr);
+    ctx.stack.push_back(std::byte{0}); // returns null
 }
 
 }
@@ -168,7 +195,17 @@ auto construct_builtin_map() -> builtin_map
 
     builtins.emplace(
         builtin_key{ .name = "fopen", .args = { char_span, char_span }},
-        builtin_val{ . ptr = builtin_fopen, .return_type = u64_type() }
+        builtin_val{ .ptr = builtin_fopen, .return_type = u64_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "fclose", .args = { u64_type() }},
+        builtin_val{ .ptr = builtin_fclose, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "fputs", .args = { u64_type(), char_span }},
+        builtin_val{ .ptr = builtin_fputs, .return_type = null_type() }
     );
 
     return builtins;
