@@ -1,4 +1,2 @@
+import stdlib.az;
 
-file := fopen("temp.txt", "w");
-fputs(file, "this should go into the file");
-fclose(file);

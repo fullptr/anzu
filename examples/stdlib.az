@@ -11,3 +11,23 @@ fn print(str: char[]) {
         print(*c);
     }
 }
+
+struct file
+{
+    handle: u64;
+
+    fn drop(self: &file)
+    {
+        fclose(self->handle);
+    }
+
+    fn write(self: &file, str: char[])
+    {
+        fputs(self->handle, str);
+    }
+}
+
+fn open_file(filename: char[], mode: char[]) -> file
+{
+    return file(fopen(filename, mode));
+}
