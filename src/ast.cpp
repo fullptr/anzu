@@ -37,16 +37,6 @@ auto print_node(const node_expr& root, int indent) -> void
             print("{}- Rhs:\n", spaces);
             print_node(*node.rhs, indent + 1);
         },
-        [&](const node_function_call_expr& node) {
-            print("{}FunctionCall: {}\n", spaces, node.function_name);
-            if (node.struct_type) {
-                print("{}- Struct type: {}\n", spaces, *node.struct_type);
-            }
-            print("{}- Args:\n", spaces);
-            for (const auto& arg : node.args) {
-                print_node(*arg, indent + 1);
-            }
-        },
         [&](const node_call_expr& node) {
             print("{}Call:\n", spaces);
             print("{}- Expr:\n", spaces);

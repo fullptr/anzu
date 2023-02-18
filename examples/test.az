@@ -4,4 +4,10 @@ fn two() { println(2); }
 fn three() { println(3); }
 
 x := [one, two, three];
-x[1u]();
+
+for func in x {
+    (*func)();
+}
+
+f := one;
+f();

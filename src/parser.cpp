@@ -136,20 +136,6 @@ auto precedence_table()
 }
 static const auto bin_ops_table = precedence_table();
 
-auto parse_function_call(tokenstream& tokens) -> node_expr_ptr
-{
-    auto node = std::make_shared<node_expr>();
-    auto& out = node->emplace<node_function_call_expr>();
-    out.token = tokens.consume();
-    out.struct_type = nullptr;
-    out.function_name = out.token.text;
-    tokens.consume_only(tk_lparen);
-    tokens.consume_comma_separated_list(tk_rparen, [&] {
-        out.args.push_back(parse_expression(tokens));
-    });
-    return node;
-}
-
 auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 {
     auto new_node = std::make_shared<node_expr>();

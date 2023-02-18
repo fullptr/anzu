@@ -88,15 +88,6 @@ struct node_binary_op_expr
     anzu::token token;
 };
 
-struct node_function_call_expr
-{
-    node_type_ptr              struct_type;
-    std::string                function_name;
-    std::vector<node_expr_ptr> args;
-
-    anzu::token token;
-};
-
 struct node_call_expr
 {
     node_expr_ptr expr;
@@ -171,7 +162,6 @@ struct node_expr : std::variant<
     node_literal_expr,
     node_unary_op_expr,
     node_binary_op_expr,
-    node_function_call_expr,
     node_call_expr,
     node_list_expr,
     node_repeat_list_expr,
