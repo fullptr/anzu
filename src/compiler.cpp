@@ -817,8 +817,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             });
             return builtin.return_type;
         }
-
-        node.token.error("could not find function '{}'", inner.name);
     }
 
     // Otherwise, the expression must be a function pointer.

@@ -10,4 +10,4 @@ for func in x {
 }
 
 f := one;
-f();
+faz();
