@@ -13,6 +13,17 @@
 namespace anzu {
 namespace {
 
+auto pop_char_span(runtime_context& ctx) -> std::string
+{
+    const auto size = pop_value<std::uint64_t>(ctx.stack);
+    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+    const auto begin = &ctx.rom[ptr];
+    auto ret = std::string{};
+    //ret.resize(size);
+    //std::memcpy(ret.data(), begin, size);
+    return ret;
+}
+
 auto builtin_sqrt(runtime_context& ctx) -> void
 {
     auto val = pop_value<double>(ctx.stack);
@@ -71,7 +82,12 @@ auto builtin_println(runtime_context& ctx) -> void
 
 auto builtin_fopen(runtime_context& ctx) -> void
 {
-
+    const auto mode = pop_char_span(ctx);
+    const auto file = pop_char_span(ctx);
+    for (size_t i = 0; i != 8; ++i) {
+        ctx.stack.push_back(std::byte{0});
+    }
+    print("##{}-{}##\n", file, mode);
 }
 
 }
