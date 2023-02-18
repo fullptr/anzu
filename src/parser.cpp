@@ -160,9 +160,9 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         auto& expr = new_node->emplace<node_field_expr>();
         expr.token = tok;
         expr.field_name = tokens.consume().text;
-        expr.expr = std::move(node);
+        expr.expr = node;
     }
-    node = std::move(new_node);
+    node = new_node;
 }
 
 auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
@@ -179,13 +179,13 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         if (tokens.consume_maybe(tk_semicolon)) {
             auto& expr = node->emplace<node_repeat_list_expr>();
             expr.token = tok;
-            expr.value = std::move(first);
+            expr.value = first;
             expr.size = tokens.consume_u64();
             tokens.consume_only(tk_rbracket);
         } else {
             auto& expr = node->emplace<node_list_expr>();
             expr.token = tok;
-            expr.elements.push_back(std::move(first));
+            expr.elements.push_back(first);
             if (tokens.consume_maybe(tk_comma)) {
                 tokens.consume_comma_separated_list(tk_rbracket, [&] {
                     expr.elements.push_back(parse_expression(tokens));
@@ -250,8 +250,8 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             auto deref_node = std::make_shared<node_expr>();
             auto& deref_inner = deref_node->emplace<node_deref_expr>();
             deref_inner.token = std::visit([](auto&& n) { return n.token; }, *node);
-            deref_inner.expr = std::move(node);
-            node = std::move(deref_node);
+            deref_inner.expr = node;
+            node = deref_node;
             parse_member_access(tokens, node);
             continue;
         }
@@ -263,24 +263,24 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             if (tokens.peek(tk_rbracket)) {
                 auto& expr = new_node->emplace<node_span_expr>();
                 expr.token = token;
-                expr.expr = std::move(node);
-                node = std::move(new_node);
+                expr.expr = node;
+                node = new_node;
                 tokens.consume_only(tk_rbracket);
             } else { // either a subspan or subscript access
                 const auto inner_expr = parse_expression(tokens);
                 if (tokens.consume_maybe(tk_colon)) { // subspan
                     auto& expr = new_node->emplace<node_span_expr>();
                     expr.token = token;
-                    expr.expr = std::move(node);
-                    expr.lower_bound = std::move(inner_expr);
+                    expr.expr = node;
+                    expr.lower_bound = inner_expr;
                     expr.upper_bound = parse_expression(tokens);
-                    node = std::move(new_node);
+                    node = new_node;
                 } else { // subscript access
                     auto& expr = new_node->emplace<node_subscript_expr>();
                     expr.token = token;
-                    expr.index = std::move(inner_expr);
-                    expr.expr = std::move(node);
-                    node = std::move(new_node);
+                    expr.index = inner_expr;
+                    expr.expr = node;
+                    node = new_node;
                 }
                 tokens.consume_only(tk_rbracket);
             }
@@ -317,10 +317,10 @@ auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr
     while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().text)) {
         auto node = std::make_shared<node_expr>();
         auto& expr = node->emplace<node_binary_op_expr>();
-        expr.lhs = std::move(factor);
+        expr.lhs = factor;
         expr.token = tokens.consume();
         expr.rhs = parse_compound_factor(tokens, level - 1);
-        factor = std::move(node);
+        factor = node;
     }
     return factor;
 }
@@ -399,7 +399,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         param.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
         param.type = parse_type_node(tokens);
-        stmt.sig.params.push_back(std::move(param));
+        stmt.sig.params.push_back(param);
     });    
     if (tokens.consume_maybe(tk_rarrow)) {
         stmt.sig.return_type = parse_type_node(tokens);
@@ -445,7 +445,7 @@ auto parse_member_function_def_stmt(
         param.name = parse_name(tokens);
         tokens.consume_only(tk_colon);
         param.type = parse_type_node(tokens);
-        stmt.sig.params.push_back(std::move(param));
+        stmt.sig.params.push_back(param);
     });
     if (tokens.consume_maybe(tk_rarrow)) {
         stmt.sig.return_type = parse_type_node(tokens);
@@ -650,13 +650,13 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.peek(tk_assign)) {
         auto& stmt = node->emplace<node_assignment_stmt>();
         stmt.token = tokens.consume();
-        stmt.position = std::move(expr);
+        stmt.position = expr;
         stmt.expr = parse_expression(tokens);
         tokens.consume_only(tk_semicolon);
     } else {
         auto& stmt = node->emplace<node_expression_stmt>();
         stmt.token = std::visit([](auto&& n) { return n.token; }, *expr);
-        stmt.expr = std::move(expr);
+        stmt.expr = expr;
         tokens.consume_only(tk_semicolon);
     }
     return node;
