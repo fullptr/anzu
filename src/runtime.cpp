@@ -63,67 +63,6 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             push_value(ctx.stack, ctx.base_ptr + op.offset);
             ++ctx.prog_ptr;
         },
-
-        [&](op_char_eq) { binary_op<char, std::equal_to>(ctx); },
-        [&](op_char_ne) { binary_op<char, std::not_equal_to>(ctx); },
-
-        [&](op_i32_add) { binary_op<std::int32_t, std::plus>(ctx); },
-        [&](op_i32_sub) { binary_op<std::int32_t, std::minus>(ctx); },
-        [&](op_i32_mul) { binary_op<std::int32_t, std::multiplies>(ctx); },
-        [&](op_i32_div) { binary_op<std::int32_t, std::divides>(ctx); },
-        [&](op_i32_mod) { binary_op<std::int32_t, std::modulus>(ctx); },
-        [&](op_i32_eq)  { binary_op<std::int32_t, std::equal_to>(ctx); },
-        [&](op_i32_ne)  { binary_op<std::int32_t, std::not_equal_to>(ctx); },
-        [&](op_i32_lt)  { binary_op<std::int32_t, std::less>(ctx); },
-        [&](op_i32_le)  { binary_op<std::int32_t, std::less_equal>(ctx); },
-        [&](op_i32_gt)  { binary_op<std::int32_t, std::greater>(ctx); },
-        [&](op_i32_ge)  { binary_op<std::int32_t, std::greater_equal>(ctx); },
-
-        [&](op_i64_add) { binary_op<std::int64_t, std::plus>(ctx); },
-        [&](op_i64_sub) { binary_op<std::int64_t, std::minus>(ctx); },
-        [&](op_i64_mul) { binary_op<std::int64_t, std::multiplies>(ctx); },
-        [&](op_i64_div) { binary_op<std::int64_t, std::divides>(ctx); },
-        [&](op_i64_mod) { binary_op<std::int64_t, std::modulus>(ctx); },
-        [&](op_i64_eq)  { binary_op<std::int64_t, std::equal_to>(ctx); },
-        [&](op_i64_ne)  { binary_op<std::int64_t, std::not_equal_to>(ctx); },
-        [&](op_i64_lt)  { binary_op<std::int64_t, std::less>(ctx); },
-        [&](op_i64_le)  { binary_op<std::int64_t, std::less_equal>(ctx); },
-        [&](op_i64_gt)  { binary_op<std::int64_t, std::greater>(ctx); },
-        [&](op_i64_ge)  { binary_op<std::int64_t, std::greater_equal>(ctx); },
-
-        [&](op_u64_add) { binary_op<std::uint64_t, std::plus>(ctx); },
-        [&](op_u64_sub) { binary_op<std::uint64_t, std::minus>(ctx); },
-        [&](op_u64_mul) { binary_op<std::uint64_t, std::multiplies>(ctx); },
-        [&](op_u64_div) { binary_op<std::uint64_t, std::divides>(ctx); },
-        [&](op_u64_mod) { binary_op<std::uint64_t, std::modulus>(ctx); },
-        [&](op_u64_eq)  { binary_op<std::uint64_t, std::equal_to>(ctx); },
-        [&](op_u64_ne)  { binary_op<std::uint64_t, std::not_equal_to>(ctx); },
-        [&](op_u64_lt)  { binary_op<std::uint64_t, std::less>(ctx); },
-        [&](op_u64_le)  { binary_op<std::uint64_t, std::less_equal>(ctx); },
-        [&](op_u64_gt)  { binary_op<std::uint64_t, std::greater>(ctx); },
-        [&](op_u64_ge)  { binary_op<std::uint64_t, std::greater_equal>(ctx); },
-
-        [&](op_f64_add) { binary_op<double, std::plus>(ctx); },
-        [&](op_f64_sub) { binary_op<double, std::minus>(ctx); },
-        [&](op_f64_mul) { binary_op<double, std::multiplies>(ctx); },
-        [&](op_f64_div) { binary_op<double, std::divides>(ctx); },
-        [&](op_f64_eq)  { binary_op<double, std::equal_to>(ctx); },
-        [&](op_f64_ne)  { binary_op<double, std::not_equal_to>(ctx); },
-        [&](op_f64_lt)  { binary_op<double, std::less>(ctx); },
-        [&](op_f64_le)  { binary_op<double, std::less_equal>(ctx); },
-        [&](op_f64_gt)  { binary_op<double, std::greater>(ctx); },
-        [&](op_f64_ge)  { binary_op<double, std::greater_equal>(ctx); },
-
-        [&](op_bool_and) { binary_op<bool, std::logical_and>(ctx); },
-        [&](op_bool_or)  { binary_op<bool, std::logical_or>(ctx); },
-        [&](op_bool_eq)  { binary_op<bool, std::equal_to>(ctx); },
-        [&](op_bool_ne)  { binary_op<bool, std::not_equal_to>(ctx); },
-        [&](op_bool_not) { unary_op<bool, std::logical_not>(ctx); },
-
-        [&](op_i32_neg) { unary_op<std::int32_t, std::negate>(ctx); },
-        [&](op_i64_neg) { unary_op<std::int64_t, std::negate>(ctx); },
-        [&](op_f64_neg) { unary_op<double, std::negate>(ctx); },
-
         [&](op_load op) {
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
             
@@ -225,6 +164,17 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.base_ptr = new_base_ptr;
             ctx.prog_ptr = op.ptr; // Jump into the function
         },
+        [&](op_call op) {
+            const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+            // Store the old base_ptr and prog_ptr so that they can be restored at the end of
+            // the function.
+            const auto new_base_ptr = ctx.stack.size() - op.args_size;
+            write_value(ctx.stack, new_base_ptr, ctx.base_ptr);
+            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr + 1); // Pos after function call
+            
+            ctx.base_ptr = new_base_ptr;
+            ctx.prog_ptr = ptr; // Jump into the function
+        },
         [&](const op_builtin_call& op) {
             op.ptr(ctx.stack);
             ++ctx.prog_ptr;
@@ -238,7 +188,66 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
                 runtime_error(op.message);
             }
             ++ctx.prog_ptr;
-        }
+        },
+        [&](op_char_eq) { binary_op<char, std::equal_to>(ctx); },
+        [&](op_char_ne) { binary_op<char, std::not_equal_to>(ctx); },
+
+        [&](op_i32_add) { binary_op<std::int32_t, std::plus>(ctx); },
+        [&](op_i32_sub) { binary_op<std::int32_t, std::minus>(ctx); },
+        [&](op_i32_mul) { binary_op<std::int32_t, std::multiplies>(ctx); },
+        [&](op_i32_div) { binary_op<std::int32_t, std::divides>(ctx); },
+        [&](op_i32_mod) { binary_op<std::int32_t, std::modulus>(ctx); },
+        [&](op_i32_eq)  { binary_op<std::int32_t, std::equal_to>(ctx); },
+        [&](op_i32_ne)  { binary_op<std::int32_t, std::not_equal_to>(ctx); },
+        [&](op_i32_lt)  { binary_op<std::int32_t, std::less>(ctx); },
+        [&](op_i32_le)  { binary_op<std::int32_t, std::less_equal>(ctx); },
+        [&](op_i32_gt)  { binary_op<std::int32_t, std::greater>(ctx); },
+        [&](op_i32_ge)  { binary_op<std::int32_t, std::greater_equal>(ctx); },
+
+        [&](op_i64_add) { binary_op<std::int64_t, std::plus>(ctx); },
+        [&](op_i64_sub) { binary_op<std::int64_t, std::minus>(ctx); },
+        [&](op_i64_mul) { binary_op<std::int64_t, std::multiplies>(ctx); },
+        [&](op_i64_div) { binary_op<std::int64_t, std::divides>(ctx); },
+        [&](op_i64_mod) { binary_op<std::int64_t, std::modulus>(ctx); },
+        [&](op_i64_eq)  { binary_op<std::int64_t, std::equal_to>(ctx); },
+        [&](op_i64_ne)  { binary_op<std::int64_t, std::not_equal_to>(ctx); },
+        [&](op_i64_lt)  { binary_op<std::int64_t, std::less>(ctx); },
+        [&](op_i64_le)  { binary_op<std::int64_t, std::less_equal>(ctx); },
+        [&](op_i64_gt)  { binary_op<std::int64_t, std::greater>(ctx); },
+        [&](op_i64_ge)  { binary_op<std::int64_t, std::greater_equal>(ctx); },
+
+        [&](op_u64_add) { binary_op<std::uint64_t, std::plus>(ctx); },
+        [&](op_u64_sub) { binary_op<std::uint64_t, std::minus>(ctx); },
+        [&](op_u64_mul) { binary_op<std::uint64_t, std::multiplies>(ctx); },
+        [&](op_u64_div) { binary_op<std::uint64_t, std::divides>(ctx); },
+        [&](op_u64_mod) { binary_op<std::uint64_t, std::modulus>(ctx); },
+        [&](op_u64_eq)  { binary_op<std::uint64_t, std::equal_to>(ctx); },
+        [&](op_u64_ne)  { binary_op<std::uint64_t, std::not_equal_to>(ctx); },
+        [&](op_u64_lt)  { binary_op<std::uint64_t, std::less>(ctx); },
+        [&](op_u64_le)  { binary_op<std::uint64_t, std::less_equal>(ctx); },
+        [&](op_u64_gt)  { binary_op<std::uint64_t, std::greater>(ctx); },
+        [&](op_u64_ge)  { binary_op<std::uint64_t, std::greater_equal>(ctx); },
+
+        [&](op_f64_add) { binary_op<double, std::plus>(ctx); },
+        [&](op_f64_sub) { binary_op<double, std::minus>(ctx); },
+        [&](op_f64_mul) { binary_op<double, std::multiplies>(ctx); },
+        [&](op_f64_div) { binary_op<double, std::divides>(ctx); },
+        [&](op_f64_eq)  { binary_op<double, std::equal_to>(ctx); },
+        [&](op_f64_ne)  { binary_op<double, std::not_equal_to>(ctx); },
+        [&](op_f64_lt)  { binary_op<double, std::less>(ctx); },
+        [&](op_f64_le)  { binary_op<double, std::less_equal>(ctx); },
+        [&](op_f64_gt)  { binary_op<double, std::greater>(ctx); },
+        [&](op_f64_ge)  { binary_op<double, std::greater_equal>(ctx); },
+
+        [&](op_bool_and) { binary_op<bool, std::logical_and>(ctx); },
+        [&](op_bool_or)  { binary_op<bool, std::logical_or>(ctx); },
+        [&](op_bool_eq)  { binary_op<bool, std::equal_to>(ctx); },
+        [&](op_bool_ne)  { binary_op<bool, std::not_equal_to>(ctx); },
+        [&](op_bool_not) { unary_op<bool, std::logical_not>(ctx); },
+
+        [&](op_i32_neg) { unary_op<std::int32_t, std::negate>(ctx); },
+        [&](op_i64_neg) { unary_op<std::int64_t, std::negate>(ctx); },
+        [&](op_f64_neg) { unary_op<double, std::negate>(ctx); }
     }, op_code);
 }
 

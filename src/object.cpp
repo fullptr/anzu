@@ -51,6 +51,11 @@ auto to_string(const type_span& type) -> std::string
     return std::format("{}[]", to_string(*type.inner_type));
 }
 
+auto to_string(const type_function_ptr& type) -> std::string
+{
+    return std::format("({}) -> {}", format_comma_separated(type.param_types), *type.return_type);
+}
+
 auto hash(const type_name& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
@@ -76,6 +81,15 @@ auto hash(const type_span& type) -> std::size_t
 {
     static const auto base = std::hash<std::string_view>{}("type_span");
     return hash(*type.inner_type) ^ base;
+}
+
+auto hash(const type_function_ptr& type) -> std::size_t
+{
+    auto val = hash(*type.return_type);
+    for (const auto& param : type.param_types) {
+        val ^= hash(param);
+    }
+    return val;
 }
 
 auto i32_type() -> type_name
@@ -148,6 +162,11 @@ auto is_span_type(const type_name& t) -> bool
     return std::holds_alternative<type_span>(t);
 }
 
+auto is_function_ptr_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_function_ptr>(t);
+}
+
 auto inner_type(const type_name& t) -> type_name
 {
     if (is_list_type(t)) {
@@ -194,6 +213,7 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
 {
     return is_type_fundamental(type)
         || is_ptr_type(type)
+        || is_function_ptr_type(type)
         || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)))
         || is_span_type(type);
 }
@@ -213,9 +233,11 @@ auto type_store::contains(const type_name& type) const -> bool
         || is_type_fundamental(type)
         || is_list_type(type)
         || is_ptr_type(type)
+        || is_function_ptr_type(type)
         || is_span_type(type);
 }
 
+// TODO: Refactor this mess
 auto type_store::size_of(const type_name& type) const -> std::size_t
 {
     return std::visit(overloaded{
@@ -250,6 +272,9 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         },
         [&](const type_span&) {
             return PTR_SIZE + size_of(u64_type());
+        },
+        [](const type_function_ptr&) {
+            return PTR_SIZE;
         }
     }, type);
 }

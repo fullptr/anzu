@@ -1,1 +1,14 @@
-import stdlib.az;
+
+fn one() { println(1); }
+fn two() { println(2); }
+fn three() { println(3); }
+
+x := [one, two, three];
+
+fn call_and_ret(fun: () -> null) -> () -> null
+{
+    fun();
+    return fun;
+}
+
+call_and_ret(one)();

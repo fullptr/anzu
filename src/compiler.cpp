@@ -289,23 +289,6 @@ void declare_var(compiler& com, const token& tok, const std::string& name, const
     }
 }
 
-auto get_var_type(const compiler& com, const token& tok, const std::string& name) -> type_name
-{
-    if (com.current_func) {
-        auto& locals = com.current_func->vars;
-        if (const auto info = locals.find(name); info.has_value()) {
-            return info->type;
-        }
-    }
-    
-    auto& globals = com.globals;
-    if (const auto info = globals.find(name); info.has_value()) {
-        return info->type;
-    }
-
-    tok.error("could not find variable '{}'\n", name);
-}
-
 auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
 {
     if (com.current_func) {
@@ -387,9 +370,11 @@ void verify_sig(
         tok.error("function expected {} args, got {}", expected.size(), actual.size());
     }
 
+    auto arg_index = std::size_t{0};
     for (const auto& [expected_param, actual_param] : zip(expected, actual)) {
         if (expected_param != actual_param) {
-            tok.error("'{}' does not match '{}'", actual_param, expected_param);
+            tok.error("arg {} type '{}' does not match '{}'", arg_index, actual_param, expected_param);
+            ++arg_index;
         }
     }
 }
@@ -475,6 +460,9 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
         },
         [&](const type_span&) {
             // spans have no destructors
+        },
+        [&](const type_function_ptr&) {
+            // functions pointers have no destructors
         }
     }, type);
 }
@@ -504,8 +492,8 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
 {
     auto return_variable = std::string{"#"};
     auto skip_return_destructor = true;
-    if (node && std::holds_alternative<node_variable_expr>(*node->return_value)) {
-        return_variable = std::get<node_variable_expr>(*node->return_value).name;
+    if (node && std::holds_alternative<node_name_expr>(*node->return_value)) {
+        return_variable = std::get<node_name_expr>(*node->return_value).name;
     }
     for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
@@ -585,9 +573,44 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name
     return type;
 }
 
-auto push_expr_ptr(compiler& com, const node_variable_expr& node) -> type_name
+auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
+    auto& global_fns = com.functions[global_namespace];
+    if (auto it = global_fns.find(node.name); it != global_fns.end()) {
+        node.token.error("cannot take address of a function pointer");
+    }
+
     return push_var_addr(com, node.token, node.name);
+}
+
+// I think this is a bit of a hack; when pushing the value of a function pointer, we need
+// to do it in a special way. TODO: I think this messes with the idea that variable nodes
+// are lvalues, so that may cause trouble; we should find out how.
+auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
+{
+    auto& global_fns = com.functions[global_namespace];
+    if (auto it = global_fns.find(node.name); it != global_fns.end()) {
+        // We are dealing with a function, so return a function pointer provided
+        // this isn't an overloaded function
+        if (it->second.size() > 1) {
+            node.token.error("cannot get function pointer to an overloaded function\n");
+        }
+        const auto& [key, value] = *it->second.begin();
+        push_literal(com, value.ptr);
+
+        // next, construct the return type.
+        const auto ptr_type = type_function_ptr{
+            .param_types = key,
+            .return_type = make_value<type_name>(value.return_type)
+        };
+        return ptr_type;
+    }
+
+    // This is the default logic for pushing an lvalue.
+    const auto type = push_expr_ptr(com, node);
+    const auto size = com.types.size_of(type);
+    com.program.emplace_back(op_load{ .size=size });
+    return type;
 }
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
@@ -724,76 +747,107 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.assert(info.has_value(), "could not find op '{}{}'", op, type);
     com.program.emplace_back(info->op_code);
     return info->return_type;
-} 
+}
 
-auto push_expr_val(compiler& com, const node_function_call_expr& node) -> type_name
+auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 {
-    // If this is the name of a simple type, then this is a constructor call, so
-    // there is currently nothing to do since the arguments are already pushed to
-    // the stack.
-    if (const auto type = make_type(node.function_name); com.types.contains(type)) {
-        const auto expected_params = get_constructor_params(com, type);
-        std::vector<type_name> actual_params;
-        for (const auto& arg : node.args) {
-            actual_params.emplace_back(push_object_copy(com, *arg, node.token));
+    // First, handle the cases where the thing we are trying to call is a name.
+    if (std::holds_alternative<node_name_expr>(*node.expr)) {
+        auto& inner = std::get<node_name_expr>(*node.expr);
+
+        // First, it might be a constructor call
+        const auto type = make_type(inner.name);
+        if (inner.struct_name == nullptr && com.types.contains(type)) {
+            const auto expected_params = get_constructor_params(com, type);
+            std::vector<type_name> actual_params;
+            for (const auto& arg : node.args) {
+                actual_params.emplace_back(push_object_copy(com, *arg, node.token));
+            }
+            verify_sig(node.token, expected_params, actual_params);
+            return type;
         }
-        verify_sig(node.token, expected_params, actual_params);
-        return type;
-    }
 
-    // Otherwise, it may be a custom function.
-    auto params = type_names{};
-    params.reserve(node.args.size());
-    for (const auto& arg : node.args) {
-        params.push_back(type_of_expr(com, *arg));
-    }
-    
-    const auto type = resolve_type(com, node.token, node.struct_type);
-    if (const auto func = get_function(com, type, node.function_name, params); func.has_value()) {
-        push_function_call_begin(com);
+        // Second, it might be a function call
+        auto params = type_names{};
+        params.reserve(node.args.size());
         for (const auto& arg : node.args) {
-            push_object_copy(com, *arg, node.token);
+            params.push_back(type_of_expr(com, *arg));
         }
-        push_function_call(com, func->ptr, params);
-        return func->return_type;
+        
+        const auto struct_type = resolve_type(com, node.token, inner.struct_name);
+        if (const auto func = get_function(com, struct_type, inner.name, params); func) {
+            push_function_call_begin(com);
+            for (const auto& arg : node.args) {
+                push_object_copy(com, *arg, node.token);
+            }
+            push_function_call(com, func->ptr, params);
+            return func->return_type;
+        }
+
+        // Third, it might be a .size member function on a span, TODO: make it easier to add
+        // builtin member functions first arg is a pointer to a span, so need to deref with
+        // inner_type before checking if its a span. BUG: This will match ANY call a size
+        // function, and if the type of the argument is not a list, ptr or span, inner_type is
+        // not defined and we fail compilation.
+        if (inner.name == "size" && node.args.size() == 1 &&
+            is_span_type(inner_type(type_of_expr(com, *node.args[0]))))
+        {
+            push_expr_val(com, *node.args[0]); // push pointer to span
+            push_literal(com, size_of_ptr());
+            com.program.emplace_back(op_u64_add{}); // offset to the size value
+            com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
+            return u64_type();
+        }
+
+        // Fourth, it might be a builtin function
+        auto param_types = std::vector<type_name>{};
+        auto args_size = std::size_t{0};
+        for (const auto& arg : node.args) {
+            param_types.emplace_back(push_object_copy(com, *arg, node.token));
+            args_size += com.types.size_of(param_types.back());
+        }
+
+        if (is_builtin(inner.name, param_types)) {
+            const auto& builtin = fetch_builtin(inner.name, param_types);
+
+            com.program.emplace_back(op_builtin_call{
+                .name=inner.name,
+                .ptr=builtin.ptr,
+                .args_size=args_size
+            });
+            return builtin.return_type;
+        }
     }
 
-    // BUG: This will match ANY call a size function, and if the type of the argument is not a list,
-    // ptr or span, inner_type is not defined and we fail compilation.
+    // Otherwise, the expression must be a function pointer.
+    const auto type = type_of_expr(com, *node.expr);
+    node.token.assert(
+        is_function_ptr_type(type),
+        "unable to call non-callable type {}", type
+    );
 
-    // It may be a .size member function on a span, TODO: make it easier to add builtin member functions
-    // first arg is a pointer to a span, so need to deref with inner_type before checking if its a span
-    if (node.function_name == "size" && node.args.size() == 1 && is_span_type(inner_type(type_of_expr(com, *node.args[0])))) {
-        push_expr_val(com, *node.args[0]); // push pointer to span
-        push_literal(com, size_of_ptr());
-        com.program.emplace_back(op_u64_add{}); // offset to the size value
-        com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
-        return u64_type();
-    }
+    const auto& sig = std::get<type_function_ptr>(type);
 
-    // Otherwise, it must be a builtin function or member function.
-    // Push the args to the stack
-    auto param_types = std::vector<type_name>{};
-    auto args_size = std::size_t{0};
+    push_function_call_begin(com);
+    auto actual_types = std::vector<type_name>{};
     for (const auto& arg : node.args) {
-        param_types.emplace_back(push_object_copy(com, *arg, node.token));
-        args_size += com.types.size_of(param_types.back());
+        const auto type = push_object_copy(com, *arg, node.token);
+        actual_types.push_back(type);
+    }
+    verify_sig(node.token, sig.param_types, actual_types);
+
+    auto args_size = 2 * sizeof(std::uint64_t);
+    for (const auto& param_type : actual_types) {
+        args_size += com.types.size_of(param_type);
     }
 
-    if (is_builtin(node.function_name, param_types)) {
-        const auto& builtin = fetch_builtin(node.function_name, param_types);
+    // push the function pointer
+    push_expr_val(com, *node.expr);
 
-        com.program.emplace_back(op_builtin_call{
-            .name=node.function_name,
-            .ptr=builtin.ptr,
-            .args_size=args_size
-        });
-        return builtin.return_type;
-    }
-    
-    const auto sig = format_comma_separated(params);
-    const auto function_str = std::format("{}({})", node.function_name, sig);
-    node.token.error("could not find function '{}'", function_str);
+    // and call!
+    com.program.emplace_back(op_call{ .args_size = args_size });
+
+    return *sig.return_type;
 }
 
 auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name
@@ -1068,7 +1122,7 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     push_stmt(com, *node.body);
 
     if (node.else_body) {
-        const auto else_pos = append_op(com, op_jump{});
+        const auto else_pos = append_op( com, op_jump{});
         push_stmt(com, *node.else_body);
         std::get<op_jump_if_false>(com.program[jump_pos]).jump = else_pos + 1; // Jump into the else block if false
         std::get<op_jump>(com.program[else_pos]).jump = com.program.size(); // Jump past the end if false
@@ -1198,6 +1252,9 @@ auto compile_function_body(
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.current_func->return_type = sig.return_type;
+        if (com.functions[struct_type][name].contains(sig.params)) {
+            tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
+        }
         com.functions[struct_type][name][sig.params] = { .return_type=sig.return_type, .ptr=begin_pos + 1, .tok=tok };
 
         push_stmt(com, *body);

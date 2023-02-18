@@ -57,8 +57,9 @@ struct node_literal_expr
     anzu::token token;
 };
 
-struct node_variable_expr
+struct node_name_expr
 {
+    node_type_ptr struct_name = nullptr;
     std::string name;
 
     anzu::token token;
@@ -87,10 +88,9 @@ struct node_binary_op_expr
     anzu::token token;
 };
 
-struct node_function_call_expr
+struct node_call_expr
 {
-    node_type_ptr              struct_type;
-    std::string                function_name;
+    node_expr_ptr expr;
     std::vector<node_expr_ptr> args;
 
     anzu::token token;
@@ -162,7 +162,7 @@ struct node_expr : std::variant<
     node_literal_expr,
     node_unary_op_expr,
     node_binary_op_expr,
-    node_function_call_expr,
+    node_call_expr,
     node_list_expr,
     node_repeat_list_expr,
     node_addrof_expr,
@@ -170,7 +170,7 @@ struct node_expr : std::variant<
     node_new_expr,
 
     // Lvalue expressions
-    node_variable_expr,
+    node_name_expr,
     node_field_expr,
     node_deref_expr,
     node_subscript_expr,

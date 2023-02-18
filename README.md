@@ -136,8 +136,8 @@ Utility Modules (in src/utility)
     - ~~Runtime bounds checking for arrays and spans, possibly adding debug-only op codes.~~
     - Create spans from other spans.
     - Turn string literals into spans instead of char arrays.
-* Templates
-* Function Pointers
+* Templates/Generics
+* ~~Function Pointers~~
 * Filesystem Support
 * Const
 * Variants
