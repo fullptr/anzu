@@ -13,60 +13,133 @@
 namespace anzu {
 namespace {
 
-auto builtin_sqrt(std::vector<std::byte>& mem) -> void
+auto resolve_ptr(runtime_context& ctx, std::uint64_t ptr) -> std::byte*
 {
-    auto val = pop_value<double>(mem);
-    push_value(mem, std::sqrt(val));
+    if (is_heap_ptr(ptr)) {
+        const auto index = unset_heap_bit(ptr);
+        return &ctx.heap[index];
+    }
+    if (is_rom_ptr(ptr)) {
+        const auto index = unset_rom_bit(ptr);
+        return &ctx.rom[index];
+    }
+    const auto index = ptr;
+    return &ctx.stack[index];
 }
 
-auto builtin_print_char(std::vector<std::byte>& mem) -> void
+auto pop_char_span(runtime_context& ctx) -> std::string
 {
-    print("{}", static_cast<char>(mem.back()));
-    mem.back() = std::byte{0}; // returns null
+    const auto size = pop_value<std::uint64_t>(ctx.stack);
+    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+    const auto real_ptr = resolve_ptr(ctx, ptr);
+    
+    auto ret = std::string(size, ' ');
+    std::memcpy(ret.data(), real_ptr, size);
+    return ret;
 }
 
-auto builtin_println_char(std::vector<std::byte>& mem) -> void
+auto builtin_sqrt(runtime_context& ctx) -> void
 {
-    print("{}\n", static_cast<char>(mem.back()));
-    mem.back() = std::byte{0}; // returns null
+    auto val = pop_value<double>(ctx.stack);
+    push_value(ctx.stack, std::sqrt(val));
 }
 
-auto builtin_print_bool(std::vector<std::byte>& mem) -> void
+auto builtin_print_char(runtime_context& ctx) -> void
 {
-    print("{}", mem.back() == std::byte{1});
-    mem.back() = std::byte{0}; // returns null
+    print("{}", static_cast<char>(ctx.stack.back()));
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_bool(std::vector<std::byte>& mem) -> void
+auto builtin_println_char(runtime_context& ctx) -> void
 {
-    print("{}\n", mem.back() == std::byte{1});
-    mem.back() = std::byte{0}; // returns null
+    print("{}\n", static_cast<char>(ctx.stack.back()));
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_null(std::vector<std::byte>& mem) -> void
+auto builtin_print_bool(runtime_context& ctx) -> void
+{
+    print("{}", ctx.stack.back() == std::byte{1});
+    ctx.stack.back() = std::byte{0}; // returns null
+}
+
+auto builtin_println_bool(runtime_context& ctx) -> void
+{
+    print("{}\n", ctx.stack.back() == std::byte{1});
+    ctx.stack.back() = std::byte{0}; // returns null
+}
+
+auto builtin_print_null(runtime_context& ctx) -> void
 {
     print("null");
-    mem.back() = std::byte{0}; // returns null
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_null(std::vector<std::byte>& mem) -> void
+auto builtin_println_null(runtime_context& ctx) -> void
 {
     print("null\n");
-    mem.back() = std::byte{0}; // returns null
+    ctx.stack.back() = std::byte{0}; // returns null
 }
 
 template <typename T>
-auto builtin_print(std::vector<std::byte>& mem) -> void
+auto builtin_print(runtime_context& ctx) -> void
 {
-    print("{}", pop_value<T>(mem));
-    mem.push_back(std::byte{0}); // returns null
+    print("{}", pop_value<T>(ctx.stack));
+    ctx.stack.push_back(std::byte{0}); // returns null
 }
 
 template <typename T>
-auto builtin_println(std::vector<std::byte>& mem) -> void
+auto builtin_println(runtime_context& ctx) -> void
 {
-    print("{}\n", pop_value<T>(mem));
-    mem.push_back(std::byte{0}); // returns null
+    print("{}\n", pop_value<T>(ctx.stack));
+    ctx.stack.push_back(std::byte{0}); // returns null
+}
+
+auto builtin_print_char_span(runtime_context& ctx) -> void
+{
+    const auto size = pop_value<std::uint64_t>(ctx.stack);
+    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+    const auto real_ptr = resolve_ptr(ctx, ptr);
+    for (std::size_t i = 0; i != size; ++i) {
+        print("{}", static_cast<char>(real_ptr[i]));
+    }
+    ctx.stack.push_back(std::byte{0}); // returns null
+}
+
+auto builtin_println_char_span(runtime_context& ctx) -> void
+{
+    const auto size = pop_value<std::uint64_t>(ctx.stack);
+    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+    const auto real_ptr = resolve_ptr(ctx, ptr);
+    for (std::size_t i = 0; i != size; ++i) {
+        print("{}", static_cast<char>(real_ptr[i]));
+    }
+    print("\n");
+    ctx.stack.push_back(std::byte{0}); // returns null
+}
+
+static_assert(sizeof(std::FILE*) == sizeof(std::uint64_t));
+
+auto builtin_fopen(runtime_context& ctx) -> void
+{
+    const auto mode = pop_char_span(ctx);
+    const auto file = pop_char_span(ctx);
+    const auto ptr = std::fopen(file.c_str(), mode.c_str());
+    push_value<std::FILE*>(ctx.stack, ptr);
+}
+
+auto builtin_fclose(runtime_context& ctx) -> void
+{
+    const auto ptr = pop_value<std::FILE*>(ctx.stack);
+    std::fclose(ptr);
+    ctx.stack.push_back(std::byte{0}); // returns null
+}
+
+auto builtin_fputs(runtime_context& ctx) -> void
+{
+    const auto data = pop_char_span(ctx);
+    const auto ptr = pop_value<std::FILE*>(ctx.stack);
+    std::fputs(data.c_str(), ptr);
+    ctx.stack.push_back(std::byte{0}); // returns null
 }
 
 }
@@ -143,6 +216,32 @@ auto construct_builtin_map() -> builtin_map
         builtin_val{ .ptr = builtin_println<std::int64_t>, .return_type = null_type() }
     );
 
+    const auto char_span = concrete_span_type(char_type());
+
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { char_span } },
+        builtin_val{ .ptr = builtin_print_char_span, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { char_span } },
+        builtin_val{ .ptr = builtin_println_char_span, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "fopen", .args = { char_span, char_span }},
+        builtin_val{ .ptr = builtin_fopen, .return_type = u64_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "fclose", .args = { u64_type() }},
+        builtin_val{ .ptr = builtin_fclose, .return_type = null_type() }
+    );
+
+    builtins.emplace(
+        builtin_key{ .name = "fputs", .args = { u64_type(), char_span }},
+        builtin_val{ .ptr = builtin_fputs, .return_type = null_type() }
+    );
+
     return builtins;
 }
 
@@ -169,13 +268,13 @@ auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) 
     ) {
         const auto newline = name == "println";
         return builtin_val{
-            .ptr = [=](std::vector<std::byte>& mem) -> void {
-                const auto ptr = pop_value<std::uint64_t>(mem);
+            .ptr = [=](runtime_context& ctx) -> void {
+                const auto ptr = pop_value<std::uint64_t>(ctx.stack);
                 print("{}", ptr);
                 if (newline) {
                     print("\n");
                 }
-                mem.push_back(std::byte{0}); // Return null
+                ctx.stack.push_back(std::byte{0}); // Return null
             },
             .return_type = null_type()
         };

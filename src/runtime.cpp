@@ -176,7 +176,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            op.ptr(ctx.stack);
+            op.ptr(ctx);
             ++ctx.prog_ptr;
         },
         [&](const op_debug& op) {

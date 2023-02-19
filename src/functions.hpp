@@ -8,7 +8,8 @@
 
 namespace anzu {
 
-using builtin_function = std::function<void(std::vector<std::byte>&)>;
+struct runtime_context;
+using builtin_function = std::function<void(runtime_context&)>;
 
 struct builtin_key
 {
