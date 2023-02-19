@@ -139,6 +139,8 @@ Utility Modules (in src/utility)
 * Templates/Generics
 * ~~Function Pointers~~
 * Filesystem Support
+    - ~~opening/closing/writing~~
+    - reading/readlines
 * Const
 * Variants
 * ~~Static storage for string literals~~
