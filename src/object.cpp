@@ -198,6 +198,11 @@ auto size_of_ptr() -> std::size_t
     return PTR_SIZE;
 }
 
+auto size_of_span() -> std::size_t
+{
+    return 2 * PTR_SIZE; // actually a pointer + a size, but they are both 8 bytes
+}
+
 auto is_type_fundamental(const type_name& type) -> bool
 {
     return type == i32_type()
@@ -268,13 +273,13 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             return size_of(*t.inner_type) * t.count;
         },
         [&](const type_ptr&) {
-            return PTR_SIZE;
+            return size_of_ptr();
         },
         [&](const type_span&) {
-            return PTR_SIZE + size_of(u64_type());
+            return size_of_span();
         },
         [](const type_function_ptr&) {
-            return PTR_SIZE;
+            return size_of_ptr();
         }
     }, type);
 }

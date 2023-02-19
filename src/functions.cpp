@@ -13,26 +13,28 @@
 namespace anzu {
 namespace {
 
+auto resolve_ptr(runtime_context& ctx, std::uint64_t ptr) -> std::byte*
+{
+    if (is_heap_ptr(ptr)) {
+        const auto index = unset_heap_bit(ptr);
+        return &ctx.heap[index];
+    }
+    if (is_rom_ptr(ptr)) {
+        const auto index = unset_rom_bit(ptr);
+        return &ctx.rom[index];
+    }
+    const auto index = ptr;
+    return &ctx.stack[index];
+}
+
 auto pop_char_span(runtime_context& ctx) -> std::string
 {
     const auto size = pop_value<std::uint64_t>(ctx.stack);
     const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+    const auto real_ptr = resolve_ptr(ctx, ptr);
     
     auto ret = std::string(size, ' ');
-    ret.resize(size);
-    
-    if (is_heap_ptr(ptr)) {
-        const auto index = unset_heap_bit(ptr);
-        std::memcpy(ret.data(), &ctx.heap[index], size);
-    }
-    else if (is_rom_ptr(ptr)) {
-        const auto index = unset_rom_bit(ptr);
-        std::memcpy(ret.data(), &ctx.rom[index], size);
-    }
-    else {
-        const auto index = ptr;
-        std::memcpy(ret.data(), &ctx.stack[index], size);
-    }
+    std::memcpy(ret.data(), real_ptr, size);
     return ret;
 }
 
@@ -89,6 +91,29 @@ template <typename T>
 auto builtin_println(runtime_context& ctx) -> void
 {
     print("{}\n", pop_value<T>(ctx.stack));
+    ctx.stack.push_back(std::byte{0}); // returns null
+}
+
+auto builtin_print_char_span(runtime_context& ctx) -> void
+{
+    const auto size = pop_value<std::uint64_t>(ctx.stack);
+    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+    const auto real_ptr = resolve_ptr(ctx, ptr);
+    for (std::size_t i = 0; i != size; ++i) {
+        print("{}", static_cast<char>(real_ptr[i]));
+    }
+    ctx.stack.push_back(std::byte{0}); // returns null
+}
+
+auto builtin_println_char_span(runtime_context& ctx) -> void
+{
+    const auto size = pop_value<std::uint64_t>(ctx.stack);
+    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+    const auto real_ptr = resolve_ptr(ctx, ptr);
+    for (std::size_t i = 0; i != size; ++i) {
+        print("{}", static_cast<char>(real_ptr[i]));
+    }
+    print("\n");
     ctx.stack.push_back(std::byte{0}); // returns null
 }
 
@@ -192,6 +217,15 @@ auto construct_builtin_map() -> builtin_map
     );
 
     const auto char_span = concrete_span_type(char_type());
+
+    builtins.emplace(
+        builtin_key{ .name = "print", .args = { char_span } },
+        builtin_val{ .ptr = builtin_print_char_span, .return_type = null_type() }
+    );
+    builtins.emplace(
+        builtin_key{ .name = "println", .args = { char_span } },
+        builtin_val{ .ptr = builtin_println_char_span, .return_type = null_type() }
+    );
 
     builtins.emplace(
         builtin_key{ .name = "fopen", .args = { char_span, char_span }},

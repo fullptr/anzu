@@ -1,17 +1,4 @@
 
-fn println(str: char[]) {
-    for c in str {
-        print(*c);
-    }
-    print('\n');
-}
-
-fn print(str: char[]) {
-    for c in str {
-        print(*c);
-    }
-}
-
 struct file
 {
     handle: u64;
