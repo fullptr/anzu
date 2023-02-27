@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <optional>
+#include <iterator>
 
 namespace anzu {
 namespace {
@@ -204,23 +205,104 @@ auto lex_line(
 
 }
 
-auto lex(const std::filesystem::path& file) -> std::vector<anzu::token>
+struct lex_context
+{
+    std::string::const_iterator start;
+    std::string::const_iterator curr;
+    std::string::const_iterator end;
+
+    std::size_t line = 1;
+    std::size_t col = 0;
+};
+
+auto advance(lex_context& ctx) -> void
+{
+    ++ctx.curr;
+    ++ctx.col;
+}
+
+auto skip_whitespace(lex_context& ctx) -> void
+{
+    while (ctx.curr != ctx.end) {
+        const char c = *ctx.curr;
+        switch (c) {
+            case ' ':
+            case '\r':
+            case '\t': {
+                advance(ctx);
+            } break;
+            case '\n': {
+                ++ctx.curr;
+                ++ctx.line;
+                ctx.col = 0;
+            } break;
+            case '#': {
+                while (ctx.curr != ctx.end && *ctx.curr != '\n') {
+                    advance(ctx);
+                }
+            } break;
+            default: {
+                return;
+            }
+        }
+    }
+}
+
+auto make_token(const lex_context& ctx, lex_token_type type) -> lex_token
+{
+    return lex_token{
+        .text = {ctx.start, ctx.curr},
+        .line = ctx.line,
+        .col = ctx.col,
+        .type = type
+    };
+}
+
+auto scan_token(lex_context& ctx) -> lex_token
+{
+    skip_whitespace(ctx);
+    ctx.start = ctx.curr;
+
+    if (ctx.curr == ctx.end) return make_token(ctx, lex_token_type::eof);
+
+    return make_token(ctx, lex_token_type::placeholder);
+}
+
+auto lex(const std::filesystem::path& file) -> lex_result
 {
     // Loop over the lines in the program, and then split each line into tokens.
     // If a '//' comment symbol is hit, the rest of the line is ignored.
     std::vector<anzu::token> tokens;
-    std::ifstream file_stream{file};
-    if (!file_stream) {
+    std::ifstream ifs{file};
+    if (!ifs) {
         lexer_error(0, 0, "Could not find module {}\n", file.string());
     }
 
-    std::string line;
-    std::int64_t lineno = 1;
-    while (std::getline(file_stream, line)) {
-        lex_line(tokens, line, lineno);
-        ++lineno;
+    auto result = lex_result{};
+    result.source_code = std::string{std::istreambuf_iterator<char>{ifs}, {}};
+
+    auto line = std::size_t{1};
+    auto col = std::size_t{0};
+    auto curr = result.source_code.begin();
+    const auto end = result.source_code.begin();
+
+    auto ctx = lex_context{
+        .start = result.source_code.begin(),
+        .curr = result.source_code.begin(),
+        .end = result.source_code.end()
+    };
+    while (ctx.curr != ctx.end) {
+        result.tokens.push_back(scan_token(ctx));
     }
-    return tokens;
+    return result;
+}
+
+auto print_tokens(const lex_result& res) -> void
+{
+    for (const auto& token : res.tokens) {
+        const auto text = std::format("'{}'", token.text);
+        anzu::print("{:<10} - {:<20} {:<5} {:<5}\n", static_cast<int>(token.type), text, token.line, token.col);
+    }
 }
 
 }

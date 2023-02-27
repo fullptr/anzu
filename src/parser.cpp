@@ -128,9 +128,10 @@ auto precedence_table()
     auto table = std::array<std::unordered_set<std::string_view>, 6>{};
     table[0] = {tk_or};
     table[1] = {tk_and};
-    table[2] = {tk_lt, tk_le, tk_gt, tk_ge, tk_eq, tk_ne};
-    table[3] = {tk_add, tk_sub};
-    table[4] = {tk_mul, tk_div, tk_mod};
+    table[2] = {tk_eq, tk_ne};
+    table[3] = {tk_lt, tk_le, tk_gt, tk_ge};
+    table[4] = {tk_add, tk_sub};
+    table[5] = {tk_mul, tk_div, tk_mod};
     return table;
 }
 static const auto bin_ops_table = precedence_table();
