@@ -14,7 +14,11 @@ enum class lex_token_type
 {
     eof,
     placeholder,
+    number,
+    identifier,
 };
+
+auto to_string(lex_token_type tt) -> std::string_view;
 
 struct lex_token
 {
