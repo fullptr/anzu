@@ -126,12 +126,11 @@ auto parse_literal(tokenstream& tokens) -> object
 auto precedence_table()
 {
     auto table = std::array<std::unordered_set<std::string_view>, 6>{};
-    table[0] = {};
-    table[1] = {tk_mul, tk_div, tk_mod};
-    table[2] = {tk_add, tk_sub};
-    table[3] = {tk_lt, tk_le, tk_gt, tk_ge, tk_eq, tk_ne};
-    table[4] = {tk_and};
-    table[5] = {tk_or};
+    table[0] = {tk_or};
+    table[1] = {tk_and};
+    table[2] = {tk_lt, tk_le, tk_gt, tk_ge, tk_eq, tk_ne};
+    table[3] = {tk_add, tk_sub};
+    table[4] = {tk_mul, tk_div, tk_mod};
     return table;
 }
 static const auto bin_ops_table = precedence_table();
@@ -309,17 +308,17 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
 // Level is the precendence level, the lower the number, the tighter the factors bind.
 auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr_ptr
 {
-    if (level == 0) {
+    if (level == std::ssize(bin_ops_table) - 1) {
         return parse_single_factor(tokens);
     }
 
-    auto factor = parse_compound_factor(tokens, level - 1);
+    auto factor = parse_compound_factor(tokens, level + 1);
     while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().text)) {
         auto node = std::make_shared<node_expr>();
         auto& expr = node->emplace<node_binary_op_expr>();
         expr.lhs = factor;
         expr.token = tokens.consume();
-        expr.rhs = parse_compound_factor(tokens, level - 1);
+        expr.rhs = parse_compound_factor(tokens, level + 1);
         factor = node;
     }
     return factor;
@@ -327,7 +326,7 @@ auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 {
-    return parse_compound_factor(tokens, std::ssize(bin_ops_table) - 1i64);
+    return parse_compound_factor(tokens, 0);
 }
 
 auto parse_name(tokenstream& tokens)
