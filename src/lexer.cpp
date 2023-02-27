@@ -34,7 +34,7 @@ struct lex_context
     std::string::const_iterator end;
 
     std::size_t line = 1;
-    std::size_t col = 0;
+    std::size_t col = 1;
 };
 
 auto valid(const lex_context& ctx) -> bool
@@ -59,8 +59,38 @@ auto advance(lex_context& ctx) -> char
     return *(ctx.curr++);
 }
 
-auto identifier_type(const lex_context& ctx) -> lex_token_type {
-    return lex_token_type::placeholder;
+// TODO: We can make this more efficient, but it's fine for now
+auto identifier_type(const lex_context& ctx) -> lex_token_type
+{
+    const auto token = std::string_view{ctx.start, ctx.curr};
+    if (token == "assert") return lex_token_type::kw_assert;
+    if (token == "bool") return lex_token_type::kw_bool;
+    if (token == "break") return lex_token_type::kw_break;
+    if (token == "char") return lex_token_type::kw_char;
+    if (token == "continue") return lex_token_type::kw_continue;
+    if (token == "default") return lex_token_type::kw_default;
+    if (token == "delete") return lex_token_type::kw_delete;
+    if (token == "else") return lex_token_type::kw_else;
+    if (token == "f64") return lex_token_type::kw_f64;
+    if (token == "false") return lex_token_type::kw_false;
+    if (token == "for") return lex_token_type::kw_for;
+    if (token == "function") return lex_token_type::kw_function;
+    if (token == "i32") return lex_token_type::kw_i32;
+    if (token == "i64") return lex_token_type::kw_i64;
+    if (token == "if") return lex_token_type::kw_if;
+    if (token == "import") return lex_token_type::kw_import;
+    if (token == "in") return lex_token_type::kw_in;
+    if (token == "loop") return lex_token_type::kw_loop;
+    if (token == "new") return lex_token_type::kw_new;
+    if (token == "null") return lex_token_type::kw_null;
+    if (token == "return") return lex_token_type::kw_return;
+    if (token == "sizeof") return lex_token_type::kw_sizeof;
+    if (token == "struct") return lex_token_type::kw_struct;
+    if (token == "true") return lex_token_type::kw_true;
+    if (token == "typeof") return lex_token_type::kw_typeof;
+    if (token == "u64") return lex_token_type::kw_u64;
+    if (token == "while") return lex_token_type::kw_while;
+    return lex_token_type::identifier;
 }
 
 auto skip_whitespace(lex_context& ctx) -> void
@@ -74,9 +104,9 @@ auto skip_whitespace(lex_context& ctx) -> void
                 advance(ctx);
             } break;
             case '\n': {
-                ++ctx.curr;
+                advance(ctx);
                 ++ctx.line;
-                ctx.col = 0;
+                ctx.col = 1;
             } break;
             case '#': {
                 while (valid(ctx) && peek(ctx) != '\n') {
@@ -92,10 +122,11 @@ auto skip_whitespace(lex_context& ctx) -> void
 
 auto make_token(const lex_context& ctx, lex_token_type type) -> lex_token
 {
+    const auto text = std::string_view{ctx.start, ctx.curr};
     return lex_token{
-        .text = {ctx.start, ctx.curr},
+        .text = text,
         .line = ctx.line,
-        .col = ctx.col,
+        .col = ctx.col - text.size(), // ctx.col is currently the end of the token
         .type = type
     };
 }
@@ -177,6 +208,33 @@ auto to_string(lex_token_type tt) -> std::string_view
         case lex_token_type::placeholder: return "placeholder";
         case lex_token_type::number: return "number";
         case lex_token_type::identifier: return "identifier";
+        case lex_token_type::kw_assert: return "assert";
+        case lex_token_type::kw_bool: return "bool";
+        case lex_token_type::kw_break: return "break";
+        case lex_token_type::kw_char: return "char";
+        case lex_token_type::kw_continue: return "continue";
+        case lex_token_type::kw_default: return "default";
+        case lex_token_type::kw_delete: return "delete";
+        case lex_token_type::kw_else: return "else";
+        case lex_token_type::kw_f64: return "f64";
+        case lex_token_type::kw_false: return "false";
+        case lex_token_type::kw_for: return "for";
+        case lex_token_type::kw_function: return "function";
+        case lex_token_type::kw_i32: return "i32";
+        case lex_token_type::kw_i64: return "i64";
+        case lex_token_type::kw_if: return "if";
+        case lex_token_type::kw_import: return "import";
+        case lex_token_type::kw_in: return "in";
+        case lex_token_type::kw_loop: return "loop";
+        case lex_token_type::kw_new: return "new";
+        case lex_token_type::kw_null: return "null";
+        case lex_token_type::kw_return: return "return";
+        case lex_token_type::kw_sizeof: return "sizeof";
+        case lex_token_type::kw_struct: return "struct";
+        case lex_token_type::kw_true: return "true";
+        case lex_token_type::kw_typeof: return "typeof";
+        case lex_token_type::kw_u64: return "u64";
+        case lex_token_type::kw_while: return "while";
         default: return "::unknown::";
     }
 }
