@@ -38,13 +38,13 @@ auto main(const int argc, const char* argv[]) -> int
     if (mode == "lex" || mode == "parse") {
         anzu::print("Loading file '{}'\n", file.string());
         anzu::print("-> Lexing\n");
-        const auto lex_result = anzu::lex(file);
+        auto lex_result = anzu::lex(file);
         if (mode == "lex") {
             print_tokens(lex_result);
         } else {
-            //anzu::print("-> Parsing\n");
-            //const auto mod = anzu::parse(file, tokens);
-            //print_node(*mod.root);
+            anzu::print("-> Parsing\n");
+            const auto mod = anzu::parse(std::move(lex_result));
+            print_node(*mod.root);
         }
         return 0;
     }

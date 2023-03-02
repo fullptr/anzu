@@ -115,19 +115,17 @@ class tokenstream
     std::vector<lex_token>::const_iterator d_curr;
     std::vector<lex_token>::const_iterator d_end;
 
-    using value_type = typename std::vector<lex_token>::value_type;
-
 public:
     tokenstream(const std::vector<lex_token>& tokens);
 
     auto valid() const -> bool { return d_curr != d_end; }
     auto has_next() const -> bool { return valid() && std::next(d_curr) != d_end; }
 
-    auto curr() const -> const value_type& { return *d_curr; }
-    auto next() const -> const value_type& { return *std::next(d_curr); }
+    auto curr() const -> const lex_token& { return *d_curr; }
+    auto next() const -> const lex_token& { return *std::next(d_curr); }
     auto position() const -> std::int64_t { return std::distance(d_begin, d_curr) + 1; }
 
-    auto consume() -> value_type
+    auto consume() -> lex_token
     {
         auto ret = curr();
         ++d_curr;
@@ -138,6 +136,8 @@ public:
     auto consume_only(lex_token_type tt) -> lex_token;
     auto consume_i64() -> std::int64_t;
     auto consume_u64() -> std::uint64_t;
+    auto peek(lex_token_type tt) -> bool;
+    auto peek_next(lex_token_type tt) -> bool;
 
     template <typename Func>
     auto consume_comma_separated_list(lex_token_type tt, Func&& callback) -> void
@@ -152,9 +152,6 @@ public:
         }
         consume_only(tt);
     }
-
-    auto peek(lex_token_type tt) -> bool;
-    auto peek_next(lex_token_type tt) -> bool;
 };
 
 using token = lex_token;

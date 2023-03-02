@@ -675,16 +675,15 @@ auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 
 }
 
-auto parse(
-    const std::filesystem::path& file,
-    const std::vector<anzu::token>& tokens
-)
-    -> file_ast
+auto parse(lex_result&& lex_res) -> parse_result
 {
-    auto stream = tokenstream{tokens};
-    auto mod = file_ast{};
-    mod.root = std::make_shared<node_stmt>();
-    auto& seq = mod.root->emplace<node_sequence_stmt>();
+    auto res = parse_result{};
+    res.source_file = std::move(lex_res.source_file);
+    res.source_code = std::move(lex_res.source_code);
+
+    auto stream = tokenstream{lex_res.tokens};
+    res.root = std::make_shared<node_stmt>();
+    auto& seq = res.root->emplace<node_sequence_stmt>();
     while (stream.valid()) {
         while (stream.consume_maybe(token_type::semicolon));
         if (stream.consume_maybe(token_type::kw_import)) {
@@ -692,13 +691,15 @@ auto parse(
             while (!stream.peek(token_type::semicolon)) {
                 module_name += stream.consume().text;
             }
-            mod.required_modules.emplace(std::filesystem::absolute(file.parent_path() / module_name));
+            res.required_modules.emplace(
+                std::filesystem::absolute(res.source_file.parent_path() / module_name)
+            );
             stream.consume_only(token_type::semicolon);
         } else {
             seq.sequence.push_back(parse_top_level_statement(stream));
         }
     }
-    return mod;
+    return res;
 }
 
 }
