@@ -1,6 +1,5 @@
 #pragma once
 #include "vocabulary.hpp"
-#include "utility/peekstream.hpp"
 
 #include <string>
 #include <format>
@@ -110,32 +109,52 @@ struct lex_token
 
 auto print_tokens(const std::vector<anzu::lex_token>& tokens) -> void;
 
-class tokenstream : public anzu::peekstream<std::vector<lex_token>>
+class tokenstream
 {
+    std::vector<lex_token>::const_iterator d_begin;
+    std::vector<lex_token>::const_iterator d_curr;
+    std::vector<lex_token>::const_iterator d_end;
+
+    using value_type = typename std::vector<lex_token>::value_type;
+
 public:
     tokenstream(const std::vector<lex_token>& tokens);
-    auto consume_maybe(std::string_view text) -> bool;
-    auto consume_only(std::string_view text) -> lex_token;
+
+    auto valid() const -> bool { return d_curr != d_end; }
+    auto has_next() const -> bool { return valid() && std::next(d_curr) != d_end; }
+
+    auto curr() const -> const value_type& { return *d_curr; }
+    auto next() const -> const value_type& { return *std::next(d_curr); }
+    auto position() const -> std::int64_t { return std::distance(d_begin, d_curr) + 1; }
+
+    auto consume() -> value_type
+    {
+        auto ret = curr();
+        ++d_curr;
+        return ret;
+    }
+
+    auto consume_maybe(lex_token_type tt) -> bool;
+    auto consume_only(lex_token_type tt) -> lex_token;
     auto consume_i64() -> std::int64_t;
     auto consume_u64() -> std::uint64_t;
 
     template <typename Func>
-    auto consume_comma_separated_list(std::string_view sentinel, Func&& callback) -> void
+    auto consume_comma_separated_list(lex_token_type tt, Func&& callback) -> void
     {
-        if (consume_maybe(sentinel)) { // Empty list
+        if (consume_maybe(tt)) { // Empty list
             return;
         }
         callback(); // Parse first
-        while (!peek(sentinel)) {
+        while (!peek(tt)) {
             consume_only(tk_comma);
             callback();
         }
-        consume_only(sentinel);
+        consume_only(tt);
     }
 
-    // TODO: Rename these and the peekstream functions to be more consistent
-    auto peek(std::string_view text) -> bool;
-    auto peek_next(std::string_view text) -> bool;
+    auto peek(lex_token_type tt) -> bool;
+    auto peek_next(lex_token_type tt) -> bool;
 };
 
 using token = lex_token;

@@ -2,7 +2,6 @@
 #include "object.hpp"
 #include "vocabulary.hpp"
 #include "utility/print.hpp"
-#include "utility/peekstream.hpp"
 
 #include <algorithm>
 #include <ranges>

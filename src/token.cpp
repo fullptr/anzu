@@ -20,15 +20,17 @@ auto print_tokens(const std::vector<anzu::token>& tokens) -> void
 }
 
 tokenstream::tokenstream(const std::vector<token>& tokens)
-    : peekstream{tokens}
+    : d_begin(tokens.cbegin())
+    , d_curr(tokens.cbegin())
+    , d_end(tokens.cend())
 {}
 
-auto tokenstream::consume_maybe(std::string_view text) -> bool
+auto tokenstream::consume_maybe(lex_token_type tt) -> bool
 {
     return false; // todo
 }
 
-auto tokenstream::consume_only(std::string_view text) -> token
+auto tokenstream::consume_only(lex_token_type tt) -> token
 {
     return consume(); // todo
 }
@@ -43,12 +45,12 @@ auto tokenstream::consume_u64() -> std::uint64_t
     return 0; // todo
 }
 
-auto tokenstream::peek(std::string_view text) -> bool
+auto tokenstream::peek(lex_token_type tt) -> bool
 {
     return false; // todo
 }
 
-auto tokenstream::peek_next(std::string_view text) -> bool
+auto tokenstream::peek_next(lex_token_type tt) -> bool
 {
     return false; // todo
 }

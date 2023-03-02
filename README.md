@@ -117,7 +117,6 @@ Common Modules
 
 Utility Modules (in src/utility)
 -- overloaded.hpp  : A helper class to make std::visit simpler
--- peekstream.hpp  : A data structure used in the lexer
 -- print.hpp       : Wrapper for std::format, similar to {fmt}
 -- scope_timer.hpp : An RAII class for timing a block of code
 -- value_ptr.hpp   : A value-semantic smart pointer
