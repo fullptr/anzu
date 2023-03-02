@@ -27,32 +27,57 @@ tokenstream::tokenstream(const std::vector<token>& tokens)
 
 auto tokenstream::consume_maybe(lex_token_type tt) -> bool
 {
-    return false; // todo
+    if (valid() && curr().type == tt) {
+        consume();
+        return true;
+    }
+    return false;
 }
 
 auto tokenstream::consume_only(lex_token_type tt) -> token
 {
-    return consume(); // todo
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected '{}'\n", tt);
+        std::exit(1);
+    }
+    if (curr().type != tt) {
+        curr().error("expected {}, got '{}'\n", tt, curr().type);
+    }
+    return consume();
 }
 
 auto tokenstream::consume_i64() -> std::int64_t
 {
-    return 0; // todo
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected an int\n");
+        std::exit(1);
+    }
+    if (curr().type != token_type::number) {
+        curr().error("expected {}, got '{}'\n", token_type::number, curr().type);
+    }
+    return std::stoll(std::string{consume().text}); // todo - use from_chars
 }
 
 auto tokenstream::consume_u64() -> std::uint64_t
 {
-    return 0; // todo
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected a uint\n");
+        std::exit(1);
+    }
+    if (curr().type != token_type::number) {
+        curr().error("expected u64, got '{}'\n", token_type::number, curr().type);
+    }
+    return std::stoull(std::string{consume().text}); // todo - use from_chars
 }
 
 auto tokenstream::peek(lex_token_type tt) -> bool
 {
-    return false; // todo
+    return valid() && curr().type == tt;
 }
 
 auto tokenstream::peek_next(lex_token_type tt) -> bool
 {
-    return false; // todo
+    return has_next() && next().type == tt;
 }
 
 auto to_string(lex_token_type tt) -> std::string_view
