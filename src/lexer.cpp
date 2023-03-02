@@ -186,7 +186,7 @@ auto make_token(const lex_context& ctx, lex_token_type type) -> lex_token
 
 auto make_identifier(lex_context& ctx) -> lex_token
 {
-    while (std::isalpha(peek(ctx)) || std::isdigit(peek(ctx))) advance(ctx);
+    while (std::isalpha(peek(ctx)) || std::isdigit(peek(ctx)) || peek(ctx) == '_') advance(ctx);
     return make_token(ctx, identifier_type(ctx));
 }
 
