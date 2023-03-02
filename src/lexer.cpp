@@ -201,8 +201,9 @@ auto make_char(lex_context& ctx) -> lex_token
     advance(ctx); // closing quote
 
     // TODO: Allow for escaped characters
-    if (std::distance(ctx.start, ctx.end) != 1) {
-        lexer_error(ctx.line, ctx.col, "Char literal is not one character!");
+    // check is 3 because it includes the two single quotes
+    if (const auto size = std::distance(ctx.start, ctx.curr); size != 3) {
+        lexer_error(ctx.line, ctx.col, "Char literal is not one character! Got {} ({})", size);
     }
 
     return make_token(ctx, lex_token_type::character);
