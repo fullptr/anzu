@@ -227,7 +227,10 @@ auto make_char(lex_context& ctx) -> lex_token
         lexer_error(ctx.line, ctx.col, "Char literal is not one character! Got {} ({})", size);
     }
 
-    return make_token(ctx, lex_token_type::character);
+    auto tok = make_token(ctx, lex_token_type::character);
+    tok.text.remove_prefix(1); // remove leading "
+    tok.text.remove_suffix(1); // remove trailing "
+    return tok;
 }
 
 auto make_string(lex_context& ctx) -> lex_token
@@ -243,7 +246,10 @@ auto make_string(lex_context& ctx) -> lex_token
     if (!valid(ctx)) lexer_error(ctx.line, ctx.col, "Unterminated string");
     advance(ctx); // closing quote
 
-    return make_token(ctx, lex_token_type::string);
+    auto tok = make_token(ctx, lex_token_type::string);
+    tok.text.remove_prefix(1); // remove leading "
+    tok.text.remove_suffix(1); // remove trailing "
+    return tok;
 }
 
 auto scan_token(lex_context& ctx) -> lex_token

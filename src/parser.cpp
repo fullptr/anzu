@@ -75,11 +75,8 @@ auto parse_f64(const token& tok) -> object
 
 auto parse_char(const token& tok) -> object
 {
-    auto view = tok.text;
-    view.remove_prefix(1); // remove leading '
-    view.remove_suffix(1); // remove trailing '
-    tok.assert_eq(view.size(), 1, "failed to parse char");
-    const auto bytes = as_bytes(view.front());
+    tok.assert_eq(tok.text.size(), 1, "failed to parse char, wrong size");
+    const auto bytes = as_bytes(tok.text.front());
     return object{ .data={bytes.begin(), bytes.end()}, .type=char_type() };
 }
 
