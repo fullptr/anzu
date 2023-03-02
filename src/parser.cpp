@@ -75,8 +75,11 @@ auto parse_f64(const token& tok) -> object
 
 auto parse_char(const token& tok) -> object
 {
-    tok.assert_eq(tok.text.size(), 1, "failed to parse char");
-    const auto bytes = as_bytes(tok.text.front());
+    auto view = tok.text;
+    view.remove_prefix(1); // remove leading '
+    view.remove_suffix(1); // remove trailing '
+    tok.assert_eq(view.size(), 1, "failed to parse char");
+    const auto bytes = as_bytes(view.front());
     return object{ .data={bytes.begin(), bytes.end()}, .type=char_type() };
 }
 
@@ -177,7 +180,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     else if (tokens.peek(token_type::left_bracket)) {
         const auto tok = tokens.consume();
         auto first = parse_expression(tokens);
-        if (tokens.consume_maybe(token_type::colon)) {
+        if (tokens.consume_maybe(token_type::semicolon)) {
             auto& expr = node->emplace<node_repeat_list_expr>();
             expr.token = tok;
             expr.value = first;
@@ -401,7 +404,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         param.type = parse_type_node(tokens);
         stmt.sig.params.push_back(param);
     });    
-    if (tokens.consume_maybe(token_type::kw_return)) {
+    if (tokens.consume_maybe(token_type::arrow)) {
         stmt.sig.return_type = parse_type_node(tokens);
     } else {
         stmt.sig.return_type = std::make_shared<node_type>(node_named_type{null_type()});
@@ -529,8 +532,8 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.token = tokens.consume_only(token_type::kw_struct);
     stmt.name = parse_name(tokens);
-    tokens.consume_only(token_type::left_bracket);
-    while (!tokens.consume_maybe(token_type::right_bracket)) {
+    tokens.consume_only(token_type::left_brace);
+    while (!tokens.consume_maybe(token_type::right_brace)) {
         if (tokens.peek(token_type::kw_function)) {
             stmt.functions.emplace_back(parse_member_function_def_stmt(stmt.name, tokens));
         } else {

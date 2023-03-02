@@ -98,7 +98,7 @@ auto identifier_type(const lex_context& ctx) -> lex_token_type
     if (token == "f64")      return lex_token_type::kw_f64;
     if (token == "false")    return lex_token_type::kw_false;
     if (token == "for")      return lex_token_type::kw_for;
-    if (token == "function") return lex_token_type::kw_function;
+    if (token == "fn")       return lex_token_type::kw_function;
     if (token == "i32")      return lex_token_type::kw_i32;
     if (token == "i64")      return lex_token_type::kw_i64;
     if (token == "if")       return lex_token_type::kw_if;
