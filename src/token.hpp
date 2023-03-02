@@ -10,8 +10,6 @@ namespace anzu {
 
 enum class lex_token_type
 {
-    eof,
-    placeholder,
     int32,
     int64,
     uint64,

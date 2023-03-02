@@ -84,12 +84,25 @@ auto tokenstream::peek_next(lex_token_type tt) -> bool
 auto to_string(lex_token_type tt) -> std::string_view
 {
     switch (tt) {
-        case lex_token_type::placeholder:         return "placeholder";
+        case lex_token_type::ampersand_ampersand: return "&&";       
+        case lex_token_type::ampersand:           return "&";        
+        case lex_token_type::arrow:               return "->";       
+        case lex_token_type::bang_equal:          return "!=";       
+        case lex_token_type::bang:                return "!";        
+        case lex_token_type::bar_bar:             return "||";       
+        case lex_token_type::bar:                 return "|";        
+        case lex_token_type::colon_equal:         return ":=";       
+        case lex_token_type::colon:               return ":";        
+        case lex_token_type::comma:               return ",";        
+        case lex_token_type::dot:                 return ".";        
+        case lex_token_type::equal_equal:         return "==";       
+        case lex_token_type::equal:               return "=";        
+        case lex_token_type::float64:             return "float64";
+        case lex_token_type::greater_equal:       return ">=";       
+        case lex_token_type::greater:             return ">";
+        case lex_token_type::identifier:          return "identifier";
         case lex_token_type::int32:               return "int32";
         case lex_token_type::int64:               return "int64";
-        case lex_token_type::uint64:              return "uint64";
-        case lex_token_type::float64:             return "float64";
-        case lex_token_type::identifier:          return "identifier";
         case lex_token_type::kw_assert:           return "assert";
         case lex_token_type::kw_bool:             return "bool";
         case lex_token_type::kw_break:            return "break";
@@ -117,35 +130,21 @@ auto to_string(lex_token_type tt) -> std::string_view
         case lex_token_type::kw_typeof:           return "typeof";
         case lex_token_type::kw_u64:              return "u64";
         case lex_token_type::kw_while:            return "while";
-        case lex_token_type::left_paren:          return "(";        
-        case lex_token_type::right_paren:         return ")";        
         case lex_token_type::left_brace:          return "{";        
-        case lex_token_type::right_brace:         return "}";        
-        case lex_token_type::semicolon:           return ";";        
-        case lex_token_type::comma:               return ",";        
-        case lex_token_type::dot:                 return ".";        
-        case lex_token_type::minus:               return "-";        
-        case lex_token_type::plus:                return "+";        
-        case lex_token_type::slash:               return "/";        
-        case lex_token_type::star:                return "*";        
-        case lex_token_type::bang_equal:          return "!=";       
-        case lex_token_type::bang:                return "!";        
-        case lex_token_type::equal_equal:         return "==";       
-        case lex_token_type::equal:               return "=";        
+        case lex_token_type::left_bracket:        return "[";        
+        case lex_token_type::left_paren:          return "(";        
         case lex_token_type::less_equal:          return "<=";       
         case lex_token_type::less:                return "<";        
-        case lex_token_type::greater_equal:       return ">=";       
-        case lex_token_type::greater:             return ">";
-        case lex_token_type::ampersand:           return "&";        
-        case lex_token_type::ampersand_ampersand: return "&&";       
-        case lex_token_type::colon_equal:         return ":=";       
-        case lex_token_type::colon:               return ":";        
-        case lex_token_type::left_bracket:        return "[";        
-        case lex_token_type::right_bracket:       return "]";        
+        case lex_token_type::minus:               return "-";        
         case lex_token_type::percent:             return "%";        
-        case lex_token_type::bar_bar:             return "||";       
-        case lex_token_type::bar:                 return "|";        
-        case lex_token_type::arrow:               return "->";       
+        case lex_token_type::plus:                return "+";        
+        case lex_token_type::right_brace:         return "}";        
+        case lex_token_type::right_bracket:       return "]";        
+        case lex_token_type::right_paren:         return ")";        
+        case lex_token_type::semicolon:           return ";";        
+        case lex_token_type::slash:               return "/";        
+        case lex_token_type::star:                return "*";        
+        case lex_token_type::uint64:              return "uint64";
         default: return "::unknown::";
     }
 }

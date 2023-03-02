@@ -290,7 +290,7 @@ auto scan_token(lex_context& ctx) -> lex_token
             return make_string(ctx);
     }
 
-    return make_token(ctx, lex_token_type::placeholder);
+    lexer_error(ctx.line, ctx.col, "Unknown token");
 }
 
 auto lex(const std::filesystem::path& file) -> lex_result

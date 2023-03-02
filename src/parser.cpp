@@ -87,7 +87,6 @@ auto parse_type_node(tokenstream& tokens) -> node_type_ptr;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
-    print("parsing literal from {}\n", tokens.curr().type);
     if (tokens.curr().type == token_type::int32) {
         return parse_i32(tokens.consume());
     }
@@ -322,7 +321,6 @@ auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr
         expr.token = tokens.consume();
         expr.rhs = parse_compound_factor(tokens, level + 1);
         factor = node;
-        print_node(*node);
     }
     return factor;
 }
@@ -556,7 +554,6 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     stmt.token = tokens.consume_only(token_type::colon_equal);
     stmt.expr = parse_expression(tokens);
-    print("next token = {} {}\n", tokens.curr().type, tokens.curr().text);
     tokens.consume_only(token_type::semicolon);
     return node;
 }
