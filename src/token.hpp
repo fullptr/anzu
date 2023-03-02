@@ -3,6 +3,7 @@
 
 #include <string>
 #include <format>
+#include <source_location>
 #include <vector>
 
 namespace anzu {
@@ -11,8 +12,10 @@ enum class lex_token_type
 {
     eof,
     placeholder,
-    number,
-    floating_point,
+    int32,
+    int64,
+    uint64,
+    float64,
     identifier,
     string,
     character,
@@ -133,7 +136,7 @@ public:
     }
 
     auto consume_maybe(lex_token_type tt) -> bool;
-    auto consume_only(lex_token_type tt) -> lex_token;
+    auto consume_only(lex_token_type tt, std::source_location loc = std::source_location::current()) -> lex_token;
     auto consume_i64() -> std::int64_t;
     auto consume_u64() -> std::uint64_t;
     auto peek(lex_token_type tt) -> bool;

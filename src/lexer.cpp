@@ -66,6 +66,23 @@ auto match(lex_context& ctx, char expected) -> bool
     return true;
 }
 
+auto match(lex_context& ctx, std::string_view expected) -> bool
+{
+    auto original_curr = ctx.curr; // so we can roll back if we dont match
+    for (char c : expected) {
+        if (!valid(ctx)) {
+            ctx.curr = original_curr;
+            return false;
+        }
+        if (peek(ctx) != c) {
+            ctx.curr = original_curr;
+            return false;
+        }
+        advance(ctx);
+    }
+    return true;
+}
+
 // TODO: We can make this more efficient, but it's fine for now
 auto identifier_type(const lex_context& ctx) -> lex_token_type
 {
@@ -179,12 +196,16 @@ auto make_number(lex_context& ctx) -> lex_token
 
     // look for any fractional part
     if (peek(ctx) == '.' && std::isdigit(peek_next(ctx))) {
-        advance(ctx); // consume the .
+        advance(ctx); // consume the '.'
         while (std::isdigit(peek(ctx))) advance(ctx);
-        return make_token(ctx, lex_token_type::floating_point);
+        return make_token(ctx, lex_token_type::float64);
     }
 
-    return make_token(ctx, lex_token_type::number);
+    if (match(ctx, "u64")) return make_token(ctx, lex_token_type::uint64);
+    if (match(ctx, "u")) return make_token(ctx, lex_token_type::uint64);
+    if (match(ctx, "i32")) return make_token(ctx, lex_token_type::int32);
+    if (match(ctx, "i64")) return make_token(ctx, lex_token_type::int64); // for completeness
+    return make_token(ctx, lex_token_type::int64);
 }
 
 auto make_char(lex_context& ctx) -> lex_token
@@ -227,14 +248,11 @@ auto make_string(lex_context& ctx) -> lex_token
 
 auto scan_token(lex_context& ctx) -> lex_token
 {
-    skip_whitespace(ctx);
     ctx.start = ctx.curr;
     
     const auto c = advance(ctx);
     if (std::isalpha(c)) return make_identifier(ctx);
     if (std::isdigit(c)) return make_number(ctx);
-
-    if (ctx.curr == ctx.end) return make_token(ctx, lex_token_type::eof);
 
     switch (c) {
         case '(': return make_token(ctx, lex_token_type::left_paren);
@@ -302,8 +320,11 @@ auto lex(const std::filesystem::path& file) -> lex_result
         .curr = result.source_code->begin(),
         .end = result.source_code->end()
     };
+
+    skip_whitespace(ctx);
     while (ctx.curr != ctx.end) {
         result.tokens.push_back(scan_token(ctx));
+        skip_whitespace(ctx);
     }
     return result;
 }

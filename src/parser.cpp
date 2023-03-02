@@ -29,7 +29,7 @@ auto parse_i32(const token& tok) -> object
 
 auto parse_i64(const token& tok) -> object
 {
-    auto text = std::string_view{tok.text};
+    auto text = tok.text;
 
     if (text.ends_with(tk_i64)) {
         text.remove_suffix(tk_i64.size());
@@ -87,16 +87,17 @@ auto parse_type_node(tokenstream& tokens) -> node_type_ptr;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
-    if (tokens.curr().type == token_type::number) { // todo
+    print("parsing literal from {}\n", tokens.curr().type);
+    if (tokens.curr().type == token_type::int32) {
         return parse_i32(tokens.consume());
     }
-    if (tokens.curr().type == token_type::number) { // todo
+    if (tokens.curr().type == token_type::int64) {
         return parse_i64(tokens.consume());
     }
-    if (tokens.curr().type == token_type::number) { // todo
+    if (tokens.curr().type == token_type::uint64) {
         return parse_u64(tokens.consume());
     }
-    if (tokens.curr().type == token_type::floating_point) {
+    if (tokens.curr().type == token_type::float64) {
         return parse_f64(tokens.consume());
     }
     if (tokens.curr().type == token_type::character) {
@@ -125,13 +126,14 @@ auto parse_literal(tokenstream& tokens) -> object
 
 auto precedence_table()
 {
-    auto table = std::array<std::unordered_set<std::string_view>, 6>{};
-    table[0] = {tk_or};
-    table[1] = {tk_and};
-    table[2] = {tk_eq, tk_ne};
-    table[3] = {tk_lt, tk_le, tk_gt, tk_ge};
-    table[4] = {tk_add, tk_sub};
-    table[5] = {tk_mul, tk_div, tk_mod};
+    using tt = lex_token_type;
+    auto table = std::array<std::unordered_set<tt>, 6>{};
+    table[0] = {tt::bar_bar}; // or
+    table[1] = {tt::ampersand_ampersand}; // and
+    table[2] = {tt::equal_equal, tt::bang_equal}; // == !=
+    table[3] = {tt::less, tt::less_equal, tt::greater, tt::greater_equal}; // < <= > >=
+    table[4] = {tt::plus, tt::minus}; // + -
+    table[5] = {tt::star, tt::slash, tt::percent}; // * / %
     return table;
 }
 static const auto bin_ops_table = precedence_table();
@@ -176,7 +178,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     else if (tokens.peek(token_type::left_bracket)) {
         const auto tok = tokens.consume();
         auto first = parse_expression(tokens);
-        if (tokens.consume_maybe(token_type::semicolon)) {
+        if (tokens.consume_maybe(token_type::colon)) {
             auto& expr = node->emplace<node_repeat_list_expr>();
             expr.token = tok;
             expr.value = first;
@@ -308,18 +310,19 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
 // Level is the precendence level, the lower the number, the tighter the factors bind.
 auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr_ptr
 {
-    if (level == std::ssize(bin_ops_table) - 1) {
+    if (level == std::ssize(bin_ops_table)) {
         return parse_single_factor(tokens);
     }
 
     auto factor = parse_compound_factor(tokens, level + 1);
-    while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().text)) {
+    while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().type)) {
         auto node = std::make_shared<node_expr>();
         auto& expr = node->emplace<node_binary_op_expr>();
         expr.lhs = factor;
         expr.token = tokens.consume();
         expr.rhs = parse_compound_factor(tokens, level + 1);
         factor = node;
+        print_node(*node);
     }
     return factor;
 }
@@ -553,6 +556,7 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.name = parse_name(tokens);
     stmt.token = tokens.consume_only(token_type::colon_equal);
     stmt.expr = parse_expression(tokens);
+    print("next token = {} {}\n", tokens.curr().type, tokens.curr().text);
     tokens.consume_only(token_type::semicolon);
     return node;
 }

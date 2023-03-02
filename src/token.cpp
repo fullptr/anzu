@@ -2,6 +2,7 @@
 #include "utility/print.hpp"
 
 #include <format>
+#include <source_location>
 
 namespace anzu {
 
@@ -34,14 +35,14 @@ auto tokenstream::consume_maybe(lex_token_type tt) -> bool
     return false;
 }
 
-auto tokenstream::consume_only(lex_token_type tt) -> token
+auto tokenstream::consume_only(lex_token_type tt, std::source_location loc) -> token
 {
     if (!valid()) {
         anzu::print("[ERROR] (EOF) expected '{}'\n", tt);
         std::exit(1);
     }
     if (curr().type != tt) {
-        curr().error("expected {}, got '{}'\n", tt, curr().type);
+        curr().error("expected '{}', got '{}' [PARSER:{}]\n", tt, curr().type, loc.line());
     }
     return consume();
 }
@@ -52,8 +53,8 @@ auto tokenstream::consume_i64() -> std::int64_t
         anzu::print("[ERROR] (EOF) expected an int\n");
         std::exit(1);
     }
-    if (curr().type != token_type::number) {
-        curr().error("expected {}, got '{}'\n", token_type::number, curr().type);
+    if (curr().type != token_type::int64) {
+        curr().error("expected {}, got '{}'\n", token_type::int64, curr().type);
     }
     return std::stoll(std::string{consume().text}); // todo - use from_chars
 }
@@ -64,8 +65,8 @@ auto tokenstream::consume_u64() -> std::uint64_t
         anzu::print("[ERROR] (EOF) expected a uint\n");
         std::exit(1);
     }
-    if (curr().type != token_type::number) {
-        curr().error("expected u64, got '{}'\n", token_type::number, curr().type);
+    if (curr().type != token_type::uint64) {
+        curr().error("expected u64, got '{}'\n", token_type::uint64, curr().type);
     }
     return std::stoull(std::string{consume().text}); // todo - use from_chars
 }
@@ -83,10 +84,11 @@ auto tokenstream::peek_next(lex_token_type tt) -> bool
 auto to_string(lex_token_type tt) -> std::string_view
 {
     switch (tt) {
-        case lex_token_type::eof:                 return "eof";
         case lex_token_type::placeholder:         return "placeholder";
-        case lex_token_type::number:              return "number";
-        case lex_token_type::floating_point:      return "floating_point";
+        case lex_token_type::int32:               return "int32";
+        case lex_token_type::int64:               return "int64";
+        case lex_token_type::uint64:              return "uint64";
+        case lex_token_type::float64:             return "float64";
         case lex_token_type::identifier:          return "identifier";
         case lex_token_type::kw_assert:           return "assert";
         case lex_token_type::kw_bool:             return "bool";

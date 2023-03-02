@@ -1,9 +1,5 @@
 
-x := 3 * (4 + 5);
-println(x);
+x := 5 + 2;
 
-if (foo) {
-    while (true) {
-        
-    }
-}
+
+
