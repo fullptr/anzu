@@ -4,9 +4,7 @@
 
 namespace anzu {
 
-auto resolve_operation(
-    const type_name& lhs, const type_name& rhs, const std::string& operation
-)
+auto resolve_operation(const type_name& lhs, const type_name& rhs, std::string_view operation)
     -> std::optional<op_info>
 {
     if (lhs != rhs) return std::nullopt;
@@ -80,9 +78,7 @@ auto resolve_operation(
     return std::nullopt;
 }
 
-auto resolve_operation(
-    const type_name& type, const std::string& operation
-)
+auto resolve_operation(const type_name& type, std::string_view operation)
     -> std::optional<op_info>
 {
     if (type == i32_type()) {

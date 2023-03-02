@@ -13,8 +13,10 @@ enum class lex_token_type
     eof,
     placeholder,
     number,
+    floating_point,
     identifier,
     string,
+    character,
     kw_assert,
     kw_bool,
     kw_break,
@@ -137,11 +139,12 @@ public:
 };
 
 using token = lex_token;
+using token_type = lex_token_type;
     
 }
 
-template <> struct std::formatter<anzu::lex_token_type> : std::formatter<std::string> {
+template <> struct std::formatter<anzu::lex_token_type> : std::formatter<std::string_view> {
     auto format(const anzu::lex_token_type& tt, auto& ctx) {
-        return std::formatter<std::string>::format(to_string(tt), ctx);
+        return std::formatter<std::string_view>::format(to_string(tt), ctx);
     }
 };

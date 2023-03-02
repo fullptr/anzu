@@ -87,16 +87,16 @@ auto parse_type_node(tokenstream& tokens) -> node_type_ptr;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
-    if (tokens.curr().type == token_type::i32) {
+    if (tokens.curr().type == token_type::number) { // todo
         return parse_i32(tokens.consume());
     }
-    if (tokens.curr().type == token_type::i64) {
+    if (tokens.curr().type == token_type::number) { // todo
         return parse_i64(tokens.consume());
     }
-    if (tokens.curr().type == token_type::u64) {
+    if (tokens.curr().type == token_type::number) { // todo
         return parse_u64(tokens.consume());
     }
-    if (tokens.curr().type == token_type::f64) {
+    if (tokens.curr().type == token_type::floating_point) {
         return parse_f64(tokens.consume());
     }
     if (tokens.curr().type == token_type::character) {
@@ -148,7 +148,7 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         auto& expr = new_node->emplace<node_call_expr>();
         expr.expr = std::make_shared<node_expr>(node_name_expr{
             .struct_name = std::make_shared<node_type>(node_expr_type{node}),
-            .name = tokens.consume().text
+            .name = std::string{tokens.consume().text}
         });
         expr.token = tok;
         tokens.consume_only(tk_lparen);
@@ -217,7 +217,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
-    else if (tokens.curr().type == token_type::name) {
+    else if (tokens.curr().type == token_type::identifier) {
         auto& expr = node->emplace<node_name_expr>();
         expr.token = tokens.consume();
         expr.name = expr.token.text;
@@ -333,7 +333,7 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 auto parse_name(tokenstream& tokens)
 {
     const auto token = tokens.consume();
-    if (token.type != token_type::name) {
+    if (token.type != token_type::identifier) {
         token.error("'{}' is not a valid name", token.text);
     }
     return token.text;   
@@ -354,14 +354,14 @@ auto parse_type(tokenstream& tokens) -> type_name
         return ret;
     }
 
-    auto type = type_name{type_simple{.name=tokens.consume().text}};
+    auto type = type_name{type_simple{.name=std::string{tokens.consume().text}}};
     while (tokens.consume_maybe(tk_lbracket)) {
         if (tokens.consume_maybe(tk_rbracket)) {
             auto new_type = type_name{type_span{ .inner_type=type }};
             type = new_type;
         } else {
             auto new_type = type_name{type_list{
-                .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_i64())
+                .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_u64())
             }};
             type = new_type;
             tokens.consume_only(tk_rbracket);
