@@ -1369,7 +1369,7 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 
 }
 
-auto compiled_all_requirements(const file_ast& module, const std::set<std::filesystem::path>& compiled) -> bool
+auto compiled_all_requirements(const parse_result& module, const std::set<std::filesystem::path>& compiled) -> bool
 {
     for (const auto& requirement : module.required_modules) {
         if (!compiled.contains(requirement)) {
@@ -1381,7 +1381,7 @@ auto compiled_all_requirements(const file_ast& module, const std::set<std::files
 
 auto compile(
     const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, file_ast>& modules,
+    const std::map<std::filesystem::path, parse_result>& modules,
     const bool debug
 )
     -> program
