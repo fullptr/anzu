@@ -111,13 +111,13 @@ auto parse_literal(tokenstream& tokens) -> object
         tokens.consume();
         return ret;
     }
-    if (tokens.consume_maybe(tk_true)) {
+    if (tokens.consume_maybe(token_type::kw_true)) {
         return object{ .data{std::byte{1}}, .type=bool_type() };
     }
-    if (tokens.consume_maybe(tk_false)) {
+    if (tokens.consume_maybe(token_type::kw_false)) {
         return object{ .data{std::byte{0}}, .type=bool_type() };
     }
-    if (tokens.consume_maybe(tk_null)) {
+    if (tokens.consume_maybe(token_type::kw_null)) {
         return object{ .data{std::byte{0}}, .type=null_type() };
     }
     tokens.curr().error("failed to parse literal ({})", tokens.curr().text);
@@ -140,7 +140,7 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 {
     auto new_node = std::make_shared<node_expr>();
     const auto tok = tokens.consume();
-    if (tokens.peek_next(tk_lparen)) {
+    if (tokens.peek_next(token_type::left_paren)) {
         auto addrof = std::make_shared<node_expr>();
         auto& addrof_inner = addrof->emplace<node_addrof_expr>();
         addrof_inner.expr = node;
@@ -151,9 +151,9 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
             .name = std::string{tokens.consume().text}
         });
         expr.token = tok;
-        tokens.consume_only(tk_lparen);
+        tokens.consume_only(token_type::left_paren);
         expr.args.push_back(addrof);
-        tokens.consume_comma_separated_list(tk_rparen, [&] {
+        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.args.push_back(parse_expression(tokens));
         });
     } else {
@@ -169,50 +169,50 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
 {
     auto node = std::make_shared<node_expr>();
     
-    if (tokens.consume_maybe(tk_lparen)) {
+    if (tokens.consume_maybe(token_type::left_paren)) {
         node = parse_expression(tokens);
-        tokens.consume_only(tk_rparen);
+        tokens.consume_only(token_type::right_paren);
     }
-    else if (tokens.peek(tk_lbracket)) {
+    else if (tokens.peek(token_type::left_bracket)) {
         const auto tok = tokens.consume();
         auto first = parse_expression(tokens);
-        if (tokens.consume_maybe(tk_semicolon)) {
+        if (tokens.consume_maybe(token_type::semicolon)) {
             auto& expr = node->emplace<node_repeat_list_expr>();
             expr.token = tok;
             expr.value = first;
             expr.size = tokens.consume_u64();
-            tokens.consume_only(tk_rbracket);
+            tokens.consume_only(token_type::right_bracket);
         } else {
             auto& expr = node->emplace<node_list_expr>();
             expr.token = tok;
             expr.elements.push_back(first);
-            if (tokens.consume_maybe(tk_comma)) {
-                tokens.consume_comma_separated_list(tk_rbracket, [&] {
+            if (tokens.consume_maybe(token_type::comma)) {
+                tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
                     expr.elements.push_back(parse_expression(tokens));
                 });
             } else {
-                tokens.consume_only(tk_rbracket);
+                tokens.consume_only(token_type::right_bracket);
             }
         }
     }
-    else if (tokens.peek(tk_sub) || tokens.peek(tk_bang)) {
+    else if (tokens.peek(token_type::minus) || tokens.peek(token_type::bang)) {
         auto& expr = node->emplace<node_unary_op_expr>();
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
-    else if (tokens.peek(tk_ampersand)) {
+    else if (tokens.peek(token_type::ampersand)) {
         auto& expr = node->emplace<node_addrof_expr>();
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
-    else if (tokens.peek(tk_sizeof)) {
+    else if (tokens.peek(token_type::kw_sizeof)) {
         auto& expr = node->emplace<node_sizeof_expr>();
         expr.token = tokens.consume();
-        tokens.consume_only(tk_lparen);
+        tokens.consume_only(token_type::left_paren);
         expr.expr = parse_expression(tokens);
-        tokens.consume_only(tk_rparen);
+        tokens.consume_only(token_type::right_paren);
     }
-    else if (tokens.peek(tk_mul)) {
+    else if (tokens.peek(token_type::star)) {
         auto& expr = node->emplace<node_deref_expr>();
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
@@ -222,11 +222,11 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.name = expr.token.text;
     }
-    else if (tokens.peek(tk_new)) {
+    else if (tokens.peek(token_type::kw_new)) {
         auto& expr = node->emplace<node_new_expr>();
         expr.token = tokens.consume();
         expr.type = parse_type_node(tokens);
-        if (tokens.consume_maybe(tk_colon)) {
+        if (tokens.consume_maybe(token_type::colon)) {
             expr.size = parse_expression(tokens);
         } else {
             expr.size = nullptr;
@@ -240,13 +240,13 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
 
     // Handle postfix expressions, such as field access, arrow access and subscripts.
     while (true) {
-        if (tokens.peek(tk_fullstop)) {
+        if (tokens.peek(token_type::dot)) {
             parse_member_access(tokens, node);
             continue;
         }
 
         // For x->y, parse as (*x).y by first wrapping x in a node_deref_expr
-        if (tokens.peek(tk_rarrow)) {
+        if (tokens.peek(token_type::arrow)) {
             auto deref_node = std::make_shared<node_expr>();
             auto& deref_inner = deref_node->emplace<node_deref_expr>();
             deref_inner.token = std::visit([](auto&& n) { return n.token; }, *node);
@@ -257,18 +257,17 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         }
 
         // Subscript expression or a subspan access
-        if (tokens.peek(tk_lbracket)) {
+        if (tokens.peek(token_type::left_bracket)) {
             const auto token = tokens.consume();
             auto new_node = std::make_shared<node_expr>();
-            if (tokens.peek(tk_rbracket)) {
+            if (tokens.consume_maybe(token_type::right_bracket)) {
                 auto& expr = new_node->emplace<node_span_expr>();
                 expr.token = token;
                 expr.expr = node;
                 node = new_node;
-                tokens.consume_only(tk_rbracket);
             } else { // either a subspan or subscript access
                 const auto inner_expr = parse_expression(tokens);
-                if (tokens.consume_maybe(tk_colon)) { // subspan
+                if (tokens.consume_maybe(token_type::colon)) { // subspan
                     auto& expr = new_node->emplace<node_span_expr>();
                     expr.token = token;
                     expr.expr = node;
@@ -282,18 +281,18 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
                     expr.expr = node;
                     node = new_node;
                 }
-                tokens.consume_only(tk_rbracket);
+                tokens.consume_only(token_type::right_bracket);
             }
             continue;
         }
 
         // Callable expressions
-        if (tokens.peek(tk_lparen)) {
+        if (tokens.peek(token_type::left_paren)) {
             auto new_node = std::make_shared<node_expr>();
             auto& inner = new_node->emplace<node_call_expr>();
             inner.token = tokens.consume();
             inner.expr = node;
-            tokens.consume_comma_separated_list(tk_rparen, [&] {
+            tokens.consume_comma_separated_list(token_type::right_paren, [&] {
                 inner.args.push_back(parse_expression(tokens));
             });
             node = new_node;
@@ -341,22 +340,22 @@ auto parse_name(tokenstream& tokens)
 
 auto parse_type(tokenstream& tokens) -> type_name
 {
-    if (tokens.consume_maybe(tk_ampersand)) {
+    if (tokens.consume_maybe(token_type::ampersand)) {
         return {type_ptr{ .inner_type={parse_type(tokens)} }};
     }
-    if (tokens.consume_maybe(tk_lparen)) {
+    if (tokens.consume_maybe(token_type::left_paren)) {
         auto ret = type_function_ptr{};
-        tokens.consume_comma_separated_list(tk_rparen, [&]{
+        tokens.consume_comma_separated_list(token_type::right_paren, [&]{
             ret.param_types.push_back(parse_type(tokens));
         });
-        tokens.consume_only(tk_rarrow);
+        tokens.consume_only(token_type::arrow);
         ret.return_type = make_value<type_name>(parse_type(tokens));
         return ret;
     }
 
     auto type = type_name{type_simple{.name=std::string{tokens.consume().text}}};
-    while (tokens.consume_maybe(tk_lbracket)) {
-        if (tokens.consume_maybe(tk_rbracket)) {
+    while (tokens.consume_maybe(token_type::left_bracket)) {
+        if (tokens.consume_maybe(token_type::right_bracket)) {
             auto new_type = type_name{type_span{ .inner_type=type }};
             type = new_type;
         } else {
@@ -364,7 +363,7 @@ auto parse_type(tokenstream& tokens) -> type_name
                 .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_u64())
             }};
             type = new_type;
-            tokens.consume_only(tk_rbracket);
+            tokens.consume_only(token_type::right_bracket);
         }
     }
     return type;
@@ -372,13 +371,13 @@ auto parse_type(tokenstream& tokens) -> type_name
 
 auto parse_type_node(tokenstream& tokens) -> node_type_ptr
 {
-    if (tokens.peek(tk_typeof)) {
+    if (tokens.peek(token_type::kw_typeof)) {
         auto node = std::make_shared<node_type>();
         auto& inner = node->emplace<node_expr_type>();
         inner.token = tokens.consume();
-        tokens.consume_only(tk_lparen);
+        tokens.consume_only(token_type::left_paren);
         inner.expr = parse_expression(tokens);
-        tokens.consume_only(tk_rparen);
+        tokens.consume_only(token_type::right_paren);
         return node;
     }
 
@@ -391,17 +390,17 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_function_def_stmt>();
 
-    stmt.token = tokens.consume_only(tk_function);
+    stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.name = parse_name(tokens);
-    tokens.consume_only(tk_lparen);
-    tokens.consume_comma_separated_list(tk_rparen, [&]{
+    tokens.consume_only(token_type::left_paren);
+    tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};
         param.name = parse_name(tokens);
-        tokens.consume_only(tk_colon);
+        tokens.consume_only(token_type::colon);
         param.type = parse_type_node(tokens);
         stmt.sig.params.push_back(param);
     });    
-    if (tokens.consume_maybe(tk_rarrow)) {
+    if (tokens.consume_maybe(token_type::kw_return)) {
         stmt.sig.return_type = parse_type_node(tokens);
     } else {
         stmt.sig.return_type = std::make_shared<node_type>(node_named_type{null_type()});
@@ -418,7 +417,7 @@ auto parse_member_function_def_stmt(
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_member_function_def_stmt>();
 
-    stmt.token = tokens.consume_only(tk_function);
+    stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.struct_name = struct_name;
     stmt.function_name = parse_name(tokens);
 
@@ -435,19 +434,19 @@ auto parse_member_function_def_stmt(
     //    }
     //    stmt.sig.return_type = null_type();
     //    stmt.body = std::make_shared<node_stmt>(node_sequence_stmt{});
-    //    tokens.consume_only(tk_semicolon);
+    //    tokens.consume_only(token_type::semicolon);
     //    return node;
     //}
     
-    tokens.consume_only(tk_lparen);
-    tokens.consume_comma_separated_list(tk_rparen, [&]{
+    tokens.consume_only(token_type::left_paren);
+    tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};
         param.name = parse_name(tokens);
-        tokens.consume_only(tk_colon);
+        tokens.consume_only(token_type::colon);
         param.type = parse_type_node(tokens);
         stmt.sig.params.push_back(param);
     });
-    if (tokens.consume_maybe(tk_rarrow)) {
+    if (tokens.consume_maybe(token_type::arrow)) {
         stmt.sig.return_type = parse_type_node(tokens);
     } else {
         stmt.sig.return_type = std::make_shared<node_type>(node_named_type{null_type()});
@@ -461,8 +460,8 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_return_stmt>();
     
-    stmt.token = tokens.consume_only(tk_return);
-    if (tokens.peek(tk_semicolon)) {
+    stmt.token = tokens.consume_only(token_type::kw_return);
+    if (tokens.peek(token_type::semicolon)) {
         stmt.return_value = std::make_shared<node_expr>();
         auto& ret_expr = stmt.return_value->emplace<node_literal_expr>();
         ret_expr.value = object{ .data={std::byte{0}}, .type=null_type() };
@@ -470,7 +469,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     } else {
         stmt.return_value = parse_expression(tokens);
     }
-    tokens.consume_only(tk_semicolon);
+    tokens.consume_only(token_type::semicolon);
     return node;
 }
 
@@ -479,7 +478,7 @@ auto parse_loop_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_loop_stmt>();
 
-    stmt.token = tokens.consume_only(tk_loop);
+    stmt.token = tokens.consume_only(token_type::kw_loop);
     stmt.body = parse_statement(tokens);
     return node;
 }
@@ -489,7 +488,7 @@ auto parse_while_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_while_stmt>();
 
-    stmt.token = tokens.consume_only(tk_while);
+    stmt.token = tokens.consume_only(token_type::kw_while);
     stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
     return node;
@@ -500,9 +499,9 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_for_stmt>();
 
-    stmt.token = tokens.consume_only(tk_for);
+    stmt.token = tokens.consume_only(token_type::kw_for);
     stmt.name = parse_name(tokens);
-    tokens.consume_only(tk_in);
+    tokens.consume_only(token_type::kw_in);
     stmt.iter = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
     return node;
@@ -513,10 +512,10 @@ auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_if_stmt>();
 
-    stmt.token = tokens.consume_only(tk_if);
+    stmt.token = tokens.consume_only(token_type::kw_if);
     stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
-    if (tokens.consume_maybe(tk_else)) {
+    if (tokens.consume_maybe(token_type::kw_else)) {
         stmt.else_body = parse_statement(tokens);
     }
     return node;
@@ -527,19 +526,19 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_struct_stmt>();
 
-    stmt.token = tokens.consume_only(tk_struct);
+    stmt.token = tokens.consume_only(token_type::kw_struct);
     stmt.name = parse_name(tokens);
-    tokens.consume_only(tk_lbrace);
-    while (!tokens.consume_maybe(tk_rbrace)) {
-        if (tokens.peek(tk_function)) {
+    tokens.consume_only(token_type::left_bracket);
+    while (!tokens.consume_maybe(token_type::right_bracket)) {
+        if (tokens.peek(token_type::kw_function)) {
             stmt.functions.emplace_back(parse_member_function_def_stmt(stmt.name, tokens));
         } else {
             stmt.fields.emplace_back();
             auto& f = stmt.fields.back();
             f.name = parse_name(tokens);
-            tokens.consume_only(tk_colon);
+            tokens.consume_only(token_type::colon);
             f.type = parse_type_node(tokens);
-            tokens.consume_only(tk_semicolon);
+            tokens.consume_only(token_type::semicolon);
         }
     }
 
@@ -552,9 +551,9 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_declaration_stmt>();
 
     stmt.name = parse_name(tokens);
-    stmt.token = tokens.consume_only(tk_declare);
+    stmt.token = tokens.consume_only(token_type::colon_equal);
     stmt.expr = parse_expression(tokens);
-    tokens.consume_only(tk_semicolon);
+    tokens.consume_only(token_type::semicolon);
     return node;
 }
 
@@ -563,8 +562,8 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_sequence_stmt>();
     
-    stmt.token = tokens.consume_only(tk_lbrace);
-    while (!tokens.consume_maybe(tk_rbrace)) {
+    stmt.token = tokens.consume_only(token_type::left_brace);
+    while (!tokens.consume_maybe(token_type::right_brace)) {
         stmt.sequence.push_back(parse_statement(tokens));
     }
 
@@ -576,16 +575,16 @@ auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_delete_stmt>();
 
-    stmt.token = tokens.consume_only(tk_delete);
+    stmt.token = tokens.consume_only(token_type::kw_delete);
     stmt.expr = parse_expression(tokens);
-    if (tokens.consume_maybe(tk_colon)) {
+    if (tokens.consume_maybe(token_type::colon)) {
         stmt.size = parse_expression(tokens);
     } else {
         stmt.size = std::make_shared<node_expr>();
         auto& inner = stmt.size->emplace<node_literal_expr>();
         inner.value = parse_u64(token{.text="1u"});
     }
-    tokens.consume_only(tk_semicolon);
+    tokens.consume_only(token_type::semicolon);
 
     return node;
 }
@@ -595,80 +594,80 @@ auto parse_assert_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_assert_stmt>();
 
-    stmt.token = tokens.consume_only(tk_assert);
+    stmt.token = tokens.consume_only(token_type::kw_assert);
     stmt.expr = parse_expression(tokens);
-    tokens.consume_only(tk_semicolon);
+    tokens.consume_only(token_type::semicolon);
     return node;
 }
 
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    while (tokens.consume_maybe(tk_semicolon));
-    if (tokens.peek(tk_function) || tokens.peek(tk_struct)) {
+    while (tokens.consume_maybe(token_type::semicolon));
+    if (tokens.peek(token_type::kw_function) || tokens.peek(token_type::kw_struct)) {
         tokens.curr().error("functions and structs can only be declared in the global scope");
     }
-    if (tokens.peek(tk_return)) {
+    if (tokens.peek(token_type::kw_return)) {
         return parse_return_stmt(tokens);
     }
-    if (tokens.peek(tk_loop)) {
+    if (tokens.peek(token_type::kw_loop)) {
         return parse_loop_stmt(tokens);
     }
-    if (tokens.peek(tk_while)) {
+    if (tokens.peek(token_type::kw_while)) {
         return parse_while_stmt(tokens);
     }
-    if (tokens.peek(tk_for)) {
+    if (tokens.peek(token_type::kw_for)) {
         return parse_for_stmt(tokens);
     }
-    if (tokens.peek(tk_if)) {
+    if (tokens.peek(token_type::kw_if)) {
         return parse_if_stmt(tokens);
     }
-    if (tokens.peek(tk_break)) {
+    if (tokens.peek(token_type::kw_break)) {
         auto ret = std::make_shared<node_stmt>(node_break_stmt{ tokens.consume() });
-        tokens.consume_only(tk_semicolon);
+        tokens.consume_only(token_type::semicolon);
         return ret;
     }
-    if (tokens.peek(tk_continue)) {
+    if (tokens.peek(token_type::kw_continue)) {
         auto ret = std::make_shared<node_stmt>(node_continue_stmt{ tokens.consume() });
-        tokens.consume_only(tk_semicolon);
+        tokens.consume_only(token_type::semicolon);
         return ret;
     }
-    if (tokens.peek_next(tk_declare)) { // <name> ':=' <expr>
+    if (tokens.peek_next(token_type::colon_equal)) { // <name> ':=' <expr>
         return parse_declaration_stmt(tokens);
     }
-    if (tokens.peek(tk_lbrace)) {
+    if (tokens.peek(token_type::left_brace)) {
         return parse_braced_statement_list(tokens);
     }
-    if (tokens.peek(tk_delete)) {
+    if (tokens.peek(token_type::kw_delete)) {
         return parse_delete_stmt(tokens);
     }
-    if (tokens.peek(tk_assert)) {
+    if (tokens.peek(token_type::kw_assert)) {
         return parse_assert_stmt(tokens);
     }
 
     auto node = std::make_shared<node_stmt>();
     auto expr = parse_expression(tokens);
-    if (tokens.peek(tk_assign)) {
+    if (tokens.peek(token_type::equal)) {
         auto& stmt = node->emplace<node_assignment_stmt>();
         stmt.token = tokens.consume();
         stmt.position = expr;
         stmt.expr = parse_expression(tokens);
-        tokens.consume_only(tk_semicolon);
+        tokens.consume_only(token_type::semicolon);
     } else {
         auto& stmt = node->emplace<node_expression_stmt>();
         stmt.token = std::visit([](auto&& n) { return n.token; }, *expr);
         stmt.expr = expr;
-        tokens.consume_only(tk_semicolon);
+        tokens.consume_only(token_type::semicolon);
     }
     return node;
 }
 
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    while (tokens.consume_maybe(tk_semicolon));
-    if (tokens.peek(tk_function)) {
+    while (tokens.consume_maybe(token_type::semicolon));
+    if (tokens.peek(token_type::kw_function)) {
         return parse_function_def_stmt(tokens);
     }
-    if (tokens.peek(tk_struct)) {
+    if (tokens.peek(token_type::kw_struct)) {
         return parse_struct_stmt(tokens);
     }
     return parse_statement(tokens);
@@ -687,14 +686,14 @@ auto parse(
     mod.root = std::make_shared<node_stmt>();
     auto& seq = mod.root->emplace<node_sequence_stmt>();
     while (stream.valid()) {
-        while (stream.consume_maybe(tk_semicolon));
-        if (stream.consume_maybe(tk_import)) {
+        while (stream.consume_maybe(token_type::semicolon));
+        if (stream.consume_maybe(token_type::kw_import)) {
             auto module_name = std::string{};
-            while (!stream.peek(tk_semicolon)) {
+            while (!stream.peek(token_type::semicolon)) {
                 module_name += stream.consume().text;
             }
             mod.required_modules.emplace(std::filesystem::absolute(file.parent_path() / module_name));
-            stream.consume_only(tk_semicolon);
+            stream.consume_only(token_type::semicolon);
         } else {
             seq.sequence.push_back(parse_top_level_statement(stream));
         }

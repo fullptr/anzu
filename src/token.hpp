@@ -147,7 +147,7 @@ public:
         }
         callback(); // Parse first
         while (!peek(tt)) {
-            consume_only(tk_comma);
+            consume_only(lex_token_type::comma);
             callback();
         }
         consume_only(tt);
