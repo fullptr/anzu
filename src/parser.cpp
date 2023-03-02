@@ -1,7 +1,6 @@
 #include "parser.hpp"
 #include "object.hpp"
 #include "functions.hpp"
-#include "vocabulary.hpp"
 
 #include <unordered_set>
 #include <string_view>
@@ -14,14 +13,14 @@ namespace {
 
 auto parse_i32(const token& tok) -> object
 {
-    auto text = std::string_view{tok.text};
+    auto text = tok.text;
 
-    tok.assert(text.ends_with(tk_i32), "expected suffix '{}'\n", tk_i32);
-    text.remove_suffix(tk_i32.size());
+    tok.assert(text.ends_with(i32_sv), "expected suffix '{}'\n", i32_sv);
+    text.remove_suffix(i32_sv.size());
     
     auto result = std::int32_t{};
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, tk_i32);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, i32_sv);
 
     const auto bytes = as_bytes(result);
     return object{ .data={bytes.begin(), bytes.end()}, .type=i32_type() };
@@ -31,13 +30,13 @@ auto parse_i64(const token& tok) -> object
 {
     auto text = tok.text;
 
-    if (text.ends_with(tk_i64)) {
-        text.remove_suffix(tk_i64.size());
+    if (text.ends_with(i64_sv)) {
+        text.remove_suffix(i64_sv.size());
     }
 
     auto result = std::int64_t{};
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, tk_i64);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, i64_sv);
 
     const auto bytes = as_bytes(result);
     return object{ .data={bytes.begin(), bytes.end()}, .type=i64_type() };
@@ -47,15 +46,15 @@ auto parse_u64(const token& tok) -> object
 {
     auto text = std::string_view{tok.text};
 
-    if (text.ends_with(tk_u64)) {
-        text.remove_suffix(tk_u64.size());
+    if (text.ends_with(u64_sv)) {
+        text.remove_suffix(u64_sv.size());
     } else if (text.ends_with('u')) {
         text.remove_suffix(1);
     }
 
     auto result = std::uint64_t{};
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, tk_u64);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, u64_sv);
 
     const auto bytes = as_bytes(result);
     return object{ .data={bytes.begin(), bytes.end()}, .type=u64_type() };
@@ -67,7 +66,7 @@ auto parse_f64(const token& tok) -> object
 
     auto result = double{};
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, tk_f64);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, f64_sv);
 
     const auto bytes = as_bytes(result);
     return object{ .data={bytes.begin(), bytes.end()}, .type=f64_type() };

@@ -113,7 +113,6 @@ Common Modules
 -- functions.hpp   : Definitions of builtin functions
 -- object.hpp      : Definition of an object in anzu
 -- type.hpp        : Definition of a type in anzu
--- vocabulary.hpp  : Definitions of keywords and symbols
 
 Utility Modules (in src/utility)
 -- overloaded.hpp  : A helper class to make std::visit simpler

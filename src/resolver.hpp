@@ -1,6 +1,7 @@
 #pragma once
 #include "object.hpp"
 #include "program.hpp"
+#include "token.hpp"
 
 #include <optional>
 
@@ -12,12 +13,10 @@ struct op_info
     type_name return_type;
 };
 
-auto resolve_operation(
-    const type_name& lhs, const type_name& rhs, std::string_view operation
-) -> std::optional<op_info>;
+auto resolve_operation(const type_name& lhs, const type_name& rhs, lex_token_type op)
+    -> std::optional<op_info>;
 
-auto resolve_operation(
-    const type_name& type, std::string_view operation
-) -> std::optional<op_info>;
+auto resolve_operation(const type_name& type, lex_token_type op)
+    -> std::optional<op_info>;
 
 }

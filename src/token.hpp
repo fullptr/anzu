@@ -1,6 +1,4 @@
 #pragma once
-#include "vocabulary.hpp"
-
 #include <string>
 #include <format>
 #include <source_location>

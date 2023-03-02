@@ -11,6 +11,14 @@
 
 namespace anzu {
 
+static constexpr auto i32_sv = std::string_view{"i32"};
+static constexpr auto i64_sv = std::string_view{"i64"};
+static constexpr auto u64_sv = std::string_view{"u64"};
+static constexpr auto f64_sv = std::string_view{"f64"};
+static constexpr auto char_sv = std::string_view{"char"};
+static constexpr auto bool_sv = std::string_view{"bool"};
+static constexpr auto null_sv = std::string_view{"null"};
+
 // Want these to be equivalent since we want uints available in the runtime but we also want
 // to use it as indexes into C++ vectors which use size_t.
 static_assert(std::is_same_v<std::uint64_t, std::size_t>);
