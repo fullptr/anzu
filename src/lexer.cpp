@@ -57,14 +57,6 @@ auto advance(lex_context& ctx) -> char
     return *(ctx.curr++);
 }
 
-auto match(lex_context& ctx, char expected) -> bool
-{
-    if (!valid(ctx)) return false;
-    if (peek(ctx) != expected) return false;
-    advance(ctx);
-    return true;
-}
-
 auto match(lex_context& ctx, std::string_view expected) -> bool
 {
     auto original_curr = ctx.curr; // so we can roll back if we dont match
@@ -175,12 +167,9 @@ auto skip_whitespace(lex_context& ctx) -> void
 auto make_token(const lex_context& ctx, lex_token_type type) -> lex_token
 {
     const auto text = std::string_view{ctx.start, ctx.curr};
-    return lex_token{
-        .text = text,
-        .line = ctx.line,
-        .col = ctx.col - text.size(), // ctx.col is currently the end of the token
-        .type = type
-    };
+
+    // ctx.col is currently the end of the token, hence the offset to the front
+    return lex_token{ .text=text, .line=ctx.line, .col=(ctx.col - text.size()), .type=type };
 }
 
 auto make_identifier(lex_context& ctx) -> lex_token
@@ -191,7 +180,7 @@ auto make_identifier(lex_context& ctx) -> lex_token
 
 auto make_number(lex_context& ctx) -> lex_token
 {
-    while (std::isdigit(*ctx.curr)) advance(ctx);
+    while (std::isdigit(peek(ctx))) advance(ctx);
 
     // look for any fractional part
     if (peek(ctx) == '.' && std::isdigit(peek_next(ctx))) {
@@ -207,9 +196,9 @@ auto make_number(lex_context& ctx) -> lex_token
     return make_token(ctx, lex_token_type::int64);
 }
 
-auto make_char(lex_context& ctx) -> lex_token
+auto make_literal(lex_context& ctx, char delimiter, lex_token_type tt) -> lex_token
 {
-    while (valid(ctx) && peek(ctx) != '\'') {
+    while (valid(ctx) && peek(ctx) != delimiter) {
         if (peek(ctx) == '\n') {
             ctx.line++;
             ctx.col = 1;
@@ -220,13 +209,7 @@ auto make_char(lex_context& ctx) -> lex_token
     if (!valid(ctx)) lexer_error(ctx.line, ctx.col, "Unterminated string");
     advance(ctx); // closing quote
 
-    // TODO: Allow for escaped characters
-    // check is 3 because it includes the two single quotes
-    if (const auto size = std::distance(ctx.start, ctx.curr); size != 3) {
-        lexer_error(ctx.line, ctx.col, "Char literal is not one character! Got {} ({})", size);
-    }
-
-    auto tok = make_token(ctx, lex_token_type::character);
+    auto tok = make_token(ctx, tt);
     tok.text.remove_prefix(1); // remove leading "
     tok.text.remove_suffix(1); // remove trailing "
     return tok;
@@ -234,20 +217,15 @@ auto make_char(lex_context& ctx) -> lex_token
 
 auto make_string(lex_context& ctx) -> lex_token
 {
-    while (valid(ctx) && peek(ctx) != '"') {
-        if (peek(ctx) == '\n') {
-            ctx.line++;
-            ctx.col = 1;
-        }
-        advance(ctx);
+    return make_literal(ctx, '"', lex_token_type::string);
+}
+
+auto make_char(lex_context& ctx) -> lex_token
+{
+    const auto tok = make_literal(ctx, '\'', lex_token_type::character);
+    if (const auto size = tok.text.size(); size != 1) {
+        lexer_error(ctx.line, ctx.col, "Char literal is not one character! Got {} ({})", size);
     }
-
-    if (!valid(ctx)) lexer_error(ctx.line, ctx.col, "Unterminated string");
-    advance(ctx); // closing quote
-
-    auto tok = make_token(ctx, lex_token_type::string);
-    tok.text.remove_prefix(1); // remove leading "
-    tok.text.remove_suffix(1); // remove trailing "
     return tok;
 }
 
@@ -270,25 +248,25 @@ auto scan_token(lex_context& ctx) -> lex_token
         case ',': return make_token(ctx, lex_token_type::comma);
         case '.': return make_token(ctx, lex_token_type::dot);
         case '-': return make_token(ctx,
-            match(ctx, '>') ? lex_token_type::arrow : lex_token_type::minus);
+            match(ctx, ">") ? lex_token_type::arrow : lex_token_type::minus);
         case '+': return make_token(ctx, lex_token_type::plus);
         case '/': return make_token(ctx, lex_token_type::slash);
         case '*': return make_token(ctx, lex_token_type::star);
         case '%': return make_token(ctx, lex_token_type::percent);
         case '!': return make_token(ctx,
-            match(ctx, '=') ? lex_token_type::bang_equal : lex_token_type::bang);
+            match(ctx, "=") ? lex_token_type::bang_equal : lex_token_type::bang);
         case '=': return make_token(ctx,
-            match(ctx, '=') ? lex_token_type::equal_equal : lex_token_type::equal);
+            match(ctx, "=") ? lex_token_type::equal_equal : lex_token_type::equal);
         case '<': return make_token(ctx,
-            match(ctx, '=') ? lex_token_type::less_equal : lex_token_type::less);
+            match(ctx, "=") ? lex_token_type::less_equal : lex_token_type::less);
         case '>': return make_token(ctx,
-            match(ctx, '=') ? lex_token_type::greater_equal : lex_token_type::greater);
+            match(ctx, "=") ? lex_token_type::greater_equal : lex_token_type::greater);
         case ':': return make_token(ctx,
-            match(ctx, '=') ? lex_token_type::colon_equal : lex_token_type::colon);
+            match(ctx, "=") ? lex_token_type::colon_equal : lex_token_type::colon);
         case '|': return make_token(ctx,
-            match(ctx, '|') ? lex_token_type::bar_bar : lex_token_type::bar);
+            match(ctx, "|") ? lex_token_type::bar_bar : lex_token_type::bar);
         case '&': return make_token(ctx,
-            match(ctx, '&') ? lex_token_type::ampersand_ampersand : lex_token_type::ampersand);
+            match(ctx, "&") ? lex_token_type::ampersand_ampersand : lex_token_type::ampersand);
         case '\'':
             return make_char(ctx);
         case '"':
