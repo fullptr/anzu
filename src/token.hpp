@@ -6,7 +6,7 @@
 
 namespace anzu {
 
-enum class lex_token_type
+enum class token_type
 {
     int32,
     int64,
@@ -73,14 +73,14 @@ enum class lex_token_type
     arrow,
 };
 
-auto to_string(lex_token_type tt) -> std::string_view;
+auto to_string(token_type tt) -> std::string_view;
 
-struct lex_token
+struct token
 {
     std::string_view text;
     std::size_t      line;
     std::size_t      col;
-    lex_token_type   type;
+    token_type       type;
 
     [[noreturn]] void error(std::string_view msg) const;
 
@@ -106,60 +106,57 @@ struct lex_token
     }
 };
 
-auto print_tokens(const std::vector<anzu::lex_token>& tokens) -> void;
+auto print_tokens(const std::vector<anzu::token>& tokens) -> void;
 
 class tokenstream
 {
-    std::vector<lex_token>::const_iterator d_begin;
-    std::vector<lex_token>::const_iterator d_curr;
-    std::vector<lex_token>::const_iterator d_end;
+    std::vector<token>::const_iterator d_begin;
+    std::vector<token>::const_iterator d_curr;
+    std::vector<token>::const_iterator d_end;
 
 public:
-    tokenstream(const std::vector<lex_token>& tokens);
+    tokenstream(const std::vector<token>& tokens);
 
     auto valid() const -> bool { return d_curr != d_end; }
     auto has_next() const -> bool { return valid() && std::next(d_curr) != d_end; }
 
-    auto curr() const -> const lex_token& { return *d_curr; }
-    auto next() const -> const lex_token& { return *std::next(d_curr); }
+    auto curr() const -> const token& { return *d_curr; }
+    auto next() const -> const token& { return *std::next(d_curr); }
     auto position() const -> std::int64_t { return std::distance(d_begin, d_curr) + 1; }
 
-    auto consume() -> lex_token
+    auto consume() -> token
     {
         auto ret = curr();
         ++d_curr;
         return ret;
     }
 
-    auto consume_maybe(lex_token_type tt) -> bool;
-    auto consume_only(lex_token_type tt, std::source_location loc = std::source_location::current()) -> lex_token;
+    auto consume_maybe(token_type tt) -> bool;
+    auto consume_only(token_type tt, std::source_location loc = std::source_location::current()) -> token;
     auto consume_i64() -> std::int64_t;
     auto consume_u64() -> std::uint64_t;
-    auto peek(lex_token_type tt) -> bool;
-    auto peek_next(lex_token_type tt) -> bool;
+    auto peek(token_type tt) -> bool;
+    auto peek_next(token_type tt) -> bool;
 
     template <typename Func>
-    auto consume_comma_separated_list(lex_token_type tt, Func&& callback) -> void
+    auto consume_comma_separated_list(token_type tt, Func&& callback) -> void
     {
         if (consume_maybe(tt)) { // Empty list
             return;
         }
         callback(); // Parse first
         while (!peek(tt)) {
-            consume_only(lex_token_type::comma);
+            consume_only(token_type::comma);
             callback();
         }
         consume_only(tt);
     }
 };
-
-using token = lex_token;
-using token_type = lex_token_type;
     
 }
 
-template <> struct std::formatter<anzu::lex_token_type> : std::formatter<std::string_view> {
-    auto format(const anzu::lex_token_type& tt, auto& ctx) {
+template <> struct std::formatter<anzu::token_type> : std::formatter<std::string_view> {
+    auto format(const anzu::token_type& tt, auto& ctx) {
         return std::formatter<std::string_view>::format(to_string(tt), ctx);
     }
 };

@@ -3,10 +3,10 @@
 
 namespace anzu {
 
-auto resolve_operation(const type_name& lhs, const type_name& rhs, lex_token_type op)
+auto resolve_operation(const type_name& lhs, const type_name& rhs, token_type op)
     -> std::optional<op_info>
 {
-    using tt = lex_token_type;
+    using tt = token_type;
 
     if (lhs != rhs) return std::nullopt;
 
@@ -84,10 +84,10 @@ auto resolve_operation(const type_name& lhs, const type_name& rhs, lex_token_typ
     return std::nullopt;
 }
 
-auto resolve_operation(const type_name& type, lex_token_type op)
+auto resolve_operation(const type_name& type, token_type op)
     -> std::optional<op_info>
 {
-    using tt = lex_token_type;
+    using tt = token_type;
 
     if (type == i32_type()) {
         if (op == tt::minus) return op_info{ {op_i32_neg{}}, type };

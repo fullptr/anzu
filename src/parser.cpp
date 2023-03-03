@@ -124,7 +124,7 @@ auto parse_literal(tokenstream& tokens) -> object
 
 auto precedence_table()
 {
-    using tt = lex_token_type;
+    using tt = token_type;
     auto table = std::array<std::unordered_set<tt>, 6>{};
     table[0] = {tt::bar_bar}; // or
     table[1] = {tt::ampersand_ampersand}; // and

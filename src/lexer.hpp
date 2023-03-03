@@ -15,7 +15,7 @@ struct lex_result
 {
     std::filesystem::path        source_file;
     std::unique_ptr<std::string> source_code;
-    std::vector<lex_token>       tokens;
+    std::vector<token>       tokens;
 };
 
 auto lex(const std::filesystem::path& file) -> lex_result;

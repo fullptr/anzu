@@ -13,10 +13,10 @@ struct op_info
     type_name return_type;
 };
 
-auto resolve_operation(const type_name& lhs, const type_name& rhs, lex_token_type op)
+auto resolve_operation(const type_name& lhs, const type_name& rhs, token_type op)
     -> std::optional<op_info>;
 
-auto resolve_operation(const type_name& type, lex_token_type op)
+auto resolve_operation(const type_name& type, token_type op)
     -> std::optional<op_info>;
 
 }
