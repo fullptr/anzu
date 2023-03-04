@@ -93,9 +93,9 @@ auto parse_literal(tokenstream& tokens) -> object
         case token_type::uint64:    return parse_u64(token);
         case token_type::float64:   return parse_f64(token);
         case token_type::character: return parse_char(token);
-        case token_type::kw_true:   return object{ .data{std::byte{1}}, .type=bool_type() };
-        case token_type::kw_false:  return object{ .data{std::byte{0}}, .type=bool_type() };
-        case token_type::kw_null:   return object{ .data{std::byte{0}}, .type=null_type() };
+        case token_type::kw_true:   return object{ .data={std::byte{1}}, .type=bool_type() };
+        case token_type::kw_false:  return object{ .data={std::byte{0}}, .type=bool_type() };
+        case token_type::kw_null:   return object{ .data={std::byte{0}}, .type=null_type() };
         case token_type::string: {
             auto ret = object{};
             for (char c : token.text) {
@@ -203,7 +203,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
         expr.token = tokens.consume();
         expr.expr = parse_single_factor(tokens);
     }
-    else if (tokens.curr().type == token_type::identifier) {
+    else if (tokens.peek(token_type::identifier)) {
         auto& expr = node->emplace<node_name_expr>();
         expr.token = tokens.consume();
         expr.name = expr.token.text;
@@ -395,9 +395,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
-auto parse_member_function_def_stmt(
-    const std::string& struct_name, tokenstream& tokens
-)
+auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream& tokens)
     -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
@@ -405,24 +403,7 @@ auto parse_member_function_def_stmt(
 
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.struct_name = struct_name;
-    stmt.function_name = parse_name(tokens);
-
-    // TODO: Reimplement the = delete/default logic 
-    //if (tokens.consume_maybe(tk_assign)) {
-    //    stmt.token.assert(
-    //        stmt.function_name == "copy" || stmt.function_name == "assign",
-    //        "only copy and assign can be deleted or defaulted"
-    //    );
-    //    if (tokens.consume_maybe(tk_delete)) { // deleted
-    //        stmt.sig.special = signature::special_type::deleted;
-    //    } else {
-    //        stmt.token.error("can only =delete a function");
-    //    }
-    //    stmt.sig.return_type = null_type();
-    //    stmt.body = std::make_shared<node_stmt>(node_sequence_stmt{});
-    //    tokens.consume_only(token_type::semicolon);
-    //    return node;
-    //}
+    stmt.function_name = parse_name(tokens); 
     
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{
@@ -586,48 +567,43 @@ auto parse_assert_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_break_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto ret = std::make_shared<node_stmt>(node_break_stmt{ tokens.consume() });
+    tokens.consume_only(token_type::semicolon);
+    return ret;
+}
+
+auto parse_continue_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto ret = std::make_shared<node_stmt>(node_continue_stmt{ tokens.consume() });
+    tokens.consume_only(token_type::semicolon);
+    return ret;
+}
+
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
     while (tokens.consume_maybe(token_type::semicolon));
-    if (tokens.peek(token_type::kw_function) || tokens.peek(token_type::kw_struct)) {
-        tokens.curr().error("functions and structs can only be declared in the global scope");
+    if (!tokens.valid()) return nullptr;
+
+    const auto& curr = tokens.curr();
+    switch (curr.type) {
+        case token_type::kw_function: curr.error("functions can only exist in global scope");
+        case token_type::kw_struct:   curr.error("structs can only exist in global scope");
+        case token_type::kw_return:   return parse_return_stmt(tokens);
+        case token_type::kw_loop:     return parse_loop_stmt(tokens);
+        case token_type::kw_while:    return parse_while_stmt(tokens);
+        case token_type::kw_for:      return parse_for_stmt(tokens);
+        case token_type::kw_if:       return parse_if_stmt(tokens);
+        case token_type::kw_delete:   return parse_delete_stmt(tokens);
+        case token_type::kw_assert:   return parse_assert_stmt(tokens);
+        case token_type::kw_break:    return parse_break_stmt(tokens);
+        case token_type::kw_continue: return parse_continue_stmt(tokens);
+        case token_type::left_brace:  return parse_braced_statement_list(tokens);
     }
-    if (tokens.peek(token_type::kw_return)) {
-        return parse_return_stmt(tokens);
-    }
-    if (tokens.peek(token_type::kw_loop)) {
-        return parse_loop_stmt(tokens);
-    }
-    if (tokens.peek(token_type::kw_while)) {
-        return parse_while_stmt(tokens);
-    }
-    if (tokens.peek(token_type::kw_for)) {
-        return parse_for_stmt(tokens);
-    }
-    if (tokens.peek(token_type::kw_if)) {
-        return parse_if_stmt(tokens);
-    }
-    if (tokens.peek(token_type::kw_break)) {
-        auto ret = std::make_shared<node_stmt>(node_break_stmt{ tokens.consume() });
-        tokens.consume_only(token_type::semicolon);
-        return ret;
-    }
-    if (tokens.peek(token_type::kw_continue)) {
-        auto ret = std::make_shared<node_stmt>(node_continue_stmt{ tokens.consume() });
-        tokens.consume_only(token_type::semicolon);
-        return ret;
-    }
-    if (tokens.peek_next(token_type::colon_equal)) { // <name> ':=' <expr>
+
+    if (tokens.peek(token_type::identifier) && tokens.peek_next(token_type::colon_equal)) {
         return parse_declaration_stmt(tokens);
-    }
-    if (tokens.peek(token_type::left_brace)) {
-        return parse_braced_statement_list(tokens);
-    }
-    if (tokens.peek(token_type::kw_delete)) {
-        return parse_delete_stmt(tokens);
-    }
-    if (tokens.peek(token_type::kw_assert)) {
-        return parse_assert_stmt(tokens);
     }
 
     auto node = std::make_shared<node_stmt>();
