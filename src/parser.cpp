@@ -626,13 +626,14 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 {
     while (tokens.consume_maybe(token_type::semicolon));
-    if (tokens.peek(token_type::kw_function)) {
-        return parse_function_def_stmt(tokens);
+    if (!tokens.valid()) return nullptr;
+
+    const auto& curr = tokens.curr();
+    switch (curr.type) {
+        case token_type::kw_function: return parse_function_def_stmt(tokens);
+        case token_type::kw_struct:   return parse_struct_stmt(tokens);
+        default:                      return parse_statement(tokens);
     }
-    if (tokens.peek(token_type::kw_struct)) {
-        return parse_struct_stmt(tokens);
-    }
-    return parse_statement(tokens);
 }
 
 }
