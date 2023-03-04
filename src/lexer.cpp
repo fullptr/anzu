@@ -289,14 +289,8 @@ auto lex(const std::filesystem::path& file) -> lex_result
     auto result = lex_result{};
     result.source_file = file;
     result.source_code = std::make_unique<std::string>(
-        std::istreambuf_iterator<char>{ifs},
-        std::istreambuf_iterator<char>{}
+        std::istreambuf_iterator<char>{ifs}, std::istreambuf_iterator<char>{}
     );
-
-    auto line = std::size_t{1};
-    auto col = std::size_t{0};
-    auto curr = result.source_code->begin();
-    const auto end = result.source_code->begin();
 
     auto ctx = lex_context{
         .start = result.source_code->begin(),
