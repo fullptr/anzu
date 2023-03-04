@@ -86,40 +86,26 @@ auto parse_type_node(tokenstream& tokens) -> node_type_ptr;
 
 auto parse_literal(tokenstream& tokens) -> object
 {
-    if (tokens.curr().type == token_type::int32) {
-        return parse_i32(tokens.consume());
-    }
-    if (tokens.curr().type == token_type::int64) {
-        return parse_i64(tokens.consume());
-    }
-    if (tokens.curr().type == token_type::uint64) {
-        return parse_u64(tokens.consume());
-    }
-    if (tokens.curr().type == token_type::float64) {
-        return parse_f64(tokens.consume());
-    }
-    if (tokens.curr().type == token_type::character) {
-        return parse_char(tokens.consume());
-    }
-    if (tokens.curr().type == token_type::string) {
-        auto ret = object{};
-        for (char c : tokens.curr().text) {
-            ret.data.push_back(static_cast<std::byte>(c));
+    const auto token = tokens.consume();
+    switch (token.type) {
+        case token_type::int32:     return parse_i32(token);
+        case token_type::int64:     return parse_i64(token);
+        case token_type::uint64:    return parse_u64(token);
+        case token_type::float64:   return parse_f64(token);
+        case token_type::character: return parse_char(token);
+        case token_type::kw_true:   return object{ .data{std::byte{1}}, .type=bool_type() };
+        case token_type::kw_false:  return object{ .data{std::byte{0}}, .type=bool_type() };
+        case token_type::kw_null:   return object{ .data{std::byte{0}}, .type=null_type() };
+        case token_type::string: {
+            auto ret = object{};
+            for (char c : token.text) {
+                ret.data.push_back(static_cast<std::byte>(c));
+            }
+            ret.type = concrete_list_type(char_type(), token.text.size());
+            return ret;
         }
-        ret.type = concrete_list_type(char_type(), tokens.curr().text.size());
-        tokens.consume();
-        return ret;
     }
-    if (tokens.consume_maybe(token_type::kw_true)) {
-        return object{ .data{std::byte{1}}, .type=bool_type() };
-    }
-    if (tokens.consume_maybe(token_type::kw_false)) {
-        return object{ .data{std::byte{0}}, .type=bool_type() };
-    }
-    if (tokens.consume_maybe(token_type::kw_null)) {
-        return object{ .data{std::byte{0}}, .type=null_type() };
-    }
-    tokens.curr().error("failed to parse literal ({})", tokens.curr().text);
+    token.error("failed to parse literal ({})", token.text);
 };
 
 auto precedence_table()
