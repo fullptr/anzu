@@ -608,13 +608,12 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         stmt.token = tokens.consume();
         stmt.position = expr;
         stmt.expr = parse_expression(tokens);
-        tokens.consume_only(token_type::semicolon);
     } else {
         auto& stmt = node->emplace<node_expression_stmt>();
         stmt.token = std::visit([](auto&& n) { return n.token; }, *expr);
         stmt.expr = expr;
-        tokens.consume_only(token_type::semicolon);
     }
+    tokens.consume_only(token_type::semicolon);
     return node;
 }
 
