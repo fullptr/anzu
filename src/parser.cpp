@@ -154,141 +154,136 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
 {
     auto node = std::make_shared<node_expr>();
-    
-    if (tokens.consume_maybe(token_type::left_paren)) {
-        node = parse_expression(tokens);
-        tokens.consume_only(token_type::right_paren);
-    }
-    else if (tokens.peek(token_type::left_bracket)) {
-        const auto tok = tokens.consume();
-        auto first = parse_expression(tokens);
-        if (tokens.consume_maybe(token_type::semicolon)) {
-            auto& expr = node->emplace<node_repeat_list_expr>();
-            expr.token = tok;
-            expr.value = first;
-            expr.size = tokens.consume_u64();
-            tokens.consume_only(token_type::right_bracket);
-        } else {
-            auto& expr = node->emplace<node_list_expr>();
-            expr.token = tok;
-            expr.elements.push_back(first);
-            if (tokens.consume_maybe(token_type::comma)) {
-                tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
-                    expr.elements.push_back(parse_expression(tokens));
-                });
-            } else {
+
+    switch (tokens.curr().type) {
+        case token_type::left_paren: {
+            tokens.consume();
+            node = parse_expression(tokens);
+            tokens.consume_only(token_type::right_paren);
+        } break;
+        case token_type::left_bracket: {
+            const auto tok = tokens.consume();
+            auto first = parse_expression(tokens);
+            if (tokens.consume_maybe(token_type::semicolon)) {
+                auto& expr = node->emplace<node_repeat_list_expr>();
+                expr.token = tok;
+                expr.value = first;
+                expr.size = tokens.consume_u64();
                 tokens.consume_only(token_type::right_bracket);
+            } else {
+                auto& expr = node->emplace<node_list_expr>();
+                expr.token = tok;
+                expr.elements.push_back(first);
+                if (tokens.consume_maybe(token_type::comma)) {
+                    tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
+                        expr.elements.push_back(parse_expression(tokens));
+                    });
+                } else {
+                    tokens.consume_only(token_type::right_bracket);
+                }
             }
-        }
-    }
-    else if (tokens.peek(token_type::minus) || tokens.peek(token_type::bang)) {
-        auto& expr = node->emplace<node_unary_op_expr>();
-        expr.token = tokens.consume();
-        expr.expr = parse_single_factor(tokens);
-    }
-    else if (tokens.peek(token_type::ampersand)) {
-        auto& expr = node->emplace<node_addrof_expr>();
-        expr.token = tokens.consume();
-        expr.expr = parse_single_factor(tokens);
-    }
-    else if (tokens.peek(token_type::kw_sizeof)) {
-        auto& expr = node->emplace<node_sizeof_expr>();
-        expr.token = tokens.consume();
-        tokens.consume_only(token_type::left_paren);
-        expr.expr = parse_expression(tokens);
-        tokens.consume_only(token_type::right_paren);
-    }
-    else if (tokens.peek(token_type::star)) {
-        auto& expr = node->emplace<node_deref_expr>();
-        expr.token = tokens.consume();
-        expr.expr = parse_single_factor(tokens);
-    }
-    else if (tokens.peek(token_type::identifier)) {
-        auto& expr = node->emplace<node_name_expr>();
-        expr.token = tokens.consume();
-        expr.name = expr.token.text;
-    }
-    else if (tokens.peek(token_type::kw_new)) {
-        auto& expr = node->emplace<node_new_expr>();
-        expr.token = tokens.consume();
-        expr.type = parse_type_node(tokens);
-        if (tokens.consume_maybe(token_type::colon)) {
-            expr.size = parse_expression(tokens);
-        } else {
-            expr.size = nullptr;
-        }
-    }
-    else {
-        auto& expr = node->emplace<node_literal_expr>();
-        expr.token = tokens.curr();
-        expr.value = parse_literal(tokens);
+        } break;
+        case token_type::minus:
+        case token_type::bang: {
+            auto& expr = node->emplace<node_unary_op_expr>();
+            expr.token = tokens.consume();
+            expr.expr = parse_single_factor(tokens);
+        } break;
+        case token_type::ampersand: {
+            auto& expr = node->emplace<node_addrof_expr>();
+            expr.token = tokens.consume();
+            expr.expr = parse_single_factor(tokens);
+        } break;
+        case token_type::kw_sizeof: {
+            auto& expr = node->emplace<node_sizeof_expr>();
+            expr.token = tokens.consume();
+            tokens.consume_only(token_type::left_paren);
+            expr.expr = parse_expression(tokens);
+            tokens.consume_only(token_type::right_paren);
+        } break;
+        case token_type::star: {
+            auto& expr = node->emplace<node_deref_expr>();
+            expr.token = tokens.consume();
+            expr.expr = parse_single_factor(tokens);
+        } break;
+        case token_type::identifier: {
+            auto& expr = node->emplace<node_name_expr>();
+            expr.token = tokens.consume();
+            expr.name = expr.token.text;
+        } break;
+        case token_type::kw_new: {
+            auto& expr = node->emplace<node_new_expr>();
+            expr.token = tokens.consume();
+            expr.type = parse_type_node(tokens);
+            if (tokens.consume_maybe(token_type::colon)) {
+                expr.size = parse_expression(tokens);
+            } else {
+                expr.size = nullptr;
+            }
+        } break;
+        default: {
+            auto& expr = node->emplace<node_literal_expr>();
+            expr.token = tokens.curr();
+            expr.value = parse_literal(tokens);
+        } break;
     }
 
-    // Handle postfix expressions, such as field access, arrow access and subscripts.
+    // Handle postfix expressions
     while (true) {
-        if (tokens.peek(token_type::dot)) {
-            parse_member_access(tokens, node);
-            continue;
-        }
-
-        // For x->y, parse as (*x).y by first wrapping x in a node_deref_expr
-        if (tokens.peek(token_type::arrow)) {
-            auto deref_node = std::make_shared<node_expr>();
-            auto& deref_inner = deref_node->emplace<node_deref_expr>();
-            deref_inner.token = std::visit([](auto&& n) { return n.token; }, *node);
-            deref_inner.expr = node;
-            node = deref_node;
-            parse_member_access(tokens, node);
-            continue;
-        }
-
-        // Subscript expression or a subspan access
-        if (tokens.peek(token_type::left_bracket)) {
-            const auto token = tokens.consume();
-            auto new_node = std::make_shared<node_expr>();
-            if (tokens.consume_maybe(token_type::right_bracket)) {
-                auto& expr = new_node->emplace<node_span_expr>();
-                expr.token = token;
-                expr.expr = node;
-                node = new_node;
-            } else { // either a subspan or subscript access
-                const auto inner_expr = parse_expression(tokens);
-                if (tokens.consume_maybe(token_type::colon)) { // subspan
+        switch (tokens.curr().type) {
+            case token_type::dot: {
+                parse_member_access(tokens, node);
+            } break;
+            case token_type::arrow: { // parse x->y as (*x).y
+                auto deref_node = std::make_shared<node_expr>();
+                auto& deref_inner = deref_node->emplace<node_deref_expr>();
+                deref_inner.token = std::visit([](auto&& n) { return n.token; }, *node);
+                deref_inner.expr = node;
+                node = deref_node;
+                parse_member_access(tokens, node);
+            } break;
+            case token_type::left_bracket: { // subscript or span
+                const auto token = tokens.consume();
+                auto new_node = std::make_shared<node_expr>();
+                if (tokens.consume_maybe(token_type::right_bracket)) {
                     auto& expr = new_node->emplace<node_span_expr>();
                     expr.token = token;
                     expr.expr = node;
-                    expr.lower_bound = inner_expr;
-                    expr.upper_bound = parse_expression(tokens);
                     node = new_node;
-                } else { // subscript access
-                    auto& expr = new_node->emplace<node_subscript_expr>();
-                    expr.token = token;
-                    expr.index = inner_expr;
-                    expr.expr = node;
-                    node = new_node;
+                } else { // either a subspan or subscript access
+                    const auto inner_expr = parse_expression(tokens);
+                    if (tokens.consume_maybe(token_type::colon)) { // subspan
+                        auto& expr = new_node->emplace<node_span_expr>();
+                        expr.token = token;
+                        expr.expr = node;
+                        expr.lower_bound = inner_expr;
+                        expr.upper_bound = parse_expression(tokens);
+                        node = new_node;
+                    } else { // subscript access
+                        auto& expr = new_node->emplace<node_subscript_expr>();
+                        expr.token = token;
+                        expr.index = inner_expr;
+                        expr.expr = node;
+                        node = new_node;
+                    }
+                    tokens.consume_only(token_type::right_bracket);
                 }
-                tokens.consume_only(token_type::right_bracket);
-            }
-            continue;
+            } break;
+            case token_type::left_paren: { // callable expressions
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_call_expr>();
+                inner.token = tokens.consume();
+                inner.expr = node;
+                tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+                    inner.args.push_back(parse_expression(tokens));
+                });
+                node = new_node;
+            } break;
+            default: {
+                return node;
+            } break;
         }
-
-        // Callable expressions
-        if (tokens.peek(token_type::left_paren)) {
-            auto new_node = std::make_shared<node_expr>();
-            auto& inner = new_node->emplace<node_call_expr>();
-            inner.token = tokens.consume();
-            inner.expr = node;
-            tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-                inner.args.push_back(parse_expression(tokens));
-            });
-            node = new_node;
-            continue;
-        }
-
-        break;
     }
-
-    return node;
 }
 
 // Level is the precendence level, the lower the number, the tighter the factors bind.
