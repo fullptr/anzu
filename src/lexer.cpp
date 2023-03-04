@@ -2,21 +2,14 @@
 #include "object.hpp"
 #include "utility/print.hpp"
 
-#include <algorithm>
-#include <ranges>
 #include <fstream>
-#include <sstream>
-#include <optional>
-#include <iterator>
 
 namespace anzu {
 namespace {
 
 template <typename... Args>
-[[noreturn]] auto lexer_error(
-    std::int64_t lineno, std::int64_t col, std::string_view msg, Args&&... args
-)
-    -> void
+[[noreturn]] void lexer_error(
+    std::int64_t lineno, std::int64_t col, std::string_view msg, Args&&... args)
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
     anzu::print("[ERROR] ({}:{}) {}\n", lineno, col, formatted_msg);
@@ -27,10 +20,7 @@ template <typename... Args>
 
 struct lex_context
 {
-    std::string::const_iterator start;
-    std::string::const_iterator curr;
-    std::string::const_iterator end;
-
+    std::string::const_iterator start, curr, end;
     std::size_t line = 1;
     std::size_t col = 1;
 };
@@ -190,7 +180,7 @@ auto make_number(lex_context& ctx) -> token
     }
 
     if (match(ctx, "u64")) return make_token(ctx, token_type::uint64);
-    if (match(ctx, "u")) return make_token(ctx, token_type::uint64);
+    if (match(ctx, "u"))   return make_token(ctx, token_type::uint64);
     if (match(ctx, "i32")) return make_token(ctx, token_type::int32);
     if (match(ctx, "i64")) return make_token(ctx, token_type::int64); // for completeness
     return make_token(ctx, token_type::int64);
