@@ -57,6 +57,47 @@ struct node_literal_expr
     anzu::token token;
 };
 
+struct node_literal_i32_expr
+{
+    std::int32_t value;
+    anzu::token  token;
+};
+
+struct node_literal_i64_expr
+{
+    std::int64_t value;
+    anzu::token  token;
+};
+
+struct node_literal_u64_expr
+{
+    std::uint64_t value;
+    anzu::token   token;
+};
+
+struct node_literal_f64_expr
+{
+    double      value;
+    anzu::token token;
+};
+
+struct node_literal_char_expr
+{
+    char        value;
+    anzu::token token;
+};
+
+struct node_literal_bool_expr
+{
+    bool        value;
+    anzu::token token;
+};
+
+struct node_literal_null_expr
+{
+    anzu::token token;
+};
+
 struct node_name_expr
 {
     node_type_ptr struct_name = nullptr;
@@ -160,6 +201,13 @@ struct node_span_expr
 struct node_expr : std::variant<
     // Rvalue expressions
     node_literal_expr,
+    node_literal_i32_expr,
+    node_literal_i64_expr,
+    node_literal_u64_expr,
+    node_literal_f64_expr,
+    node_literal_char_expr,
+    node_literal_bool_expr,
+    node_literal_null_expr,
     node_unary_op_expr,
     node_binary_op_expr,
     node_call_expr,
