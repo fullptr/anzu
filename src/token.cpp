@@ -93,7 +93,8 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::bar:                 return "|";        
         case token_type::colon_equal:         return ":=";       
         case token_type::colon:               return ":";        
-        case token_type::comma:               return ",";        
+        case token_type::comma:               return ",";    
+        case token_type::character:           return "char";    
         case token_type::dot:                 return ".";        
         case token_type::equal_equal:         return "==";       
         case token_type::equal:               return "=";        
@@ -143,7 +144,8 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::right_paren:         return ")";        
         case token_type::semicolon:           return ";";        
         case token_type::slash:               return "/";        
-        case token_type::star:                return "*";        
+        case token_type::star:                return "*";       
+        case token_type::string:              return "string-literal"; 
         case token_type::uint64:              return "uint64";
         default: return "::unknown::";
     }

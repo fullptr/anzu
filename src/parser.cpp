@@ -79,7 +79,7 @@ auto parse_char(const token& tok) -> node_expr_ptr
 
 auto parse_string(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::character, "");
+    tok.assert_type(token_type::string, "");
     auto node = std::make_shared<node_expr>();
     auto& inner = node->emplace<node_literal_string_expr>();
     inner.token = tok;

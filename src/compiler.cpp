@@ -709,21 +709,67 @@ auto insert_into_rom(compiler& com, const std::vector<std::byte>& data) -> std::
     return set_rom_bit(ptr);
 }
 
-auto push_expr_val(compiler& com, const node_literal_expr& node) -> type_name
+auto push_expr_val(compiler& com, const node_literal_i32_expr& node) -> type_name
 {
-    // Handle string literals differently; put them into read only memory
-    if (is_list_type(node.value.type) && inner_type(node.value.type) == char_type()) {
-        const auto ptr = insert_into_rom(com, node.value.data);
+    const auto bytes = as_bytes(node.value);
+    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    return i32_type();
+}
 
-        // Push the span onto the stack
-        const auto ptr_bytes = as_bytes(ptr);
-        const auto size_bytes = as_bytes(node.value.data.size());
-        com.program.emplace_back(op_load_bytes{{ptr_bytes.begin(), ptr_bytes.end()}});
-        com.program.emplace_back(op_load_bytes{{size_bytes.begin(), size_bytes.end()}});
-        return concrete_span_type(char_type());
-    }
-    com.program.emplace_back(op_load_bytes{node.value.data});
-    return node.value.type;
+auto push_expr_val(compiler& com, const node_literal_i64_expr& node) -> type_name
+{
+    const auto bytes = as_bytes(node.value);
+    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    return i64_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_u64_expr& node) -> type_name
+{
+    const auto bytes = as_bytes(node.value);
+    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    return u64_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_f64_expr& node) -> type_name
+{
+    const auto bytes = as_bytes(node.value);
+    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    return f64_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_name
+{
+    const auto bytes = as_bytes(node.value);
+    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    return char_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
+{
+    auto data = std::vector<std::byte>{};
+    data.reserve(node.value.size());
+    for (char c : node.value) data.push_back(static_cast<std::byte>(c));
+    const auto ptr = insert_into_rom(com, data);
+
+    // Push the span onto the stack
+    const auto ptr_bytes = as_bytes(ptr);
+    const auto size_bytes = as_bytes(data.size());
+    com.program.emplace_back(op_load_bytes{{ptr_bytes.begin(), ptr_bytes.end()}});
+    com.program.emplace_back(op_load_bytes{{size_bytes.begin(), size_bytes.end()}});
+    return concrete_span_type(char_type());
+}
+
+auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
+{
+    const auto bytes = as_bytes(node.value);
+    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    return bool_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_name
+{
+    com.program.emplace_back(op_load_bytes{{std::byte{0}}});
+    return null_type();
 }
 
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
