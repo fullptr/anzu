@@ -15,7 +15,8 @@ inline auto pop_n(std::vector<std::byte>& vec, std::size_t count) -> void
 template <typename T>
 auto push_value(std::vector<std::byte>& mem, const T& value) -> void
 {
-    for (const auto& b : as_bytes(value)) {
+    const auto bytes = std::bit_cast<std::array<std::byte, sizeof(T)>>(value);
+    for (const auto& b : bytes) {
         mem.push_back(b);
     }
 }

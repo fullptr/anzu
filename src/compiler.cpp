@@ -141,8 +141,8 @@ using function_iter = typename function_param_map::const_iterator;
 // as well as information such as function definitions.
 struct compiler
 {
-    std::vector<op>        program;
-    std::vector<std::byte> read_only_data;
+    std::vector<op> program;
+    std::string     read_only_data;
 
     bool debug = false;
 
@@ -222,16 +222,9 @@ public:
     scope_guard& operator=(const scope_guard&) = delete;
 };
 
-template <typename T>
-auto push_literal(compiler& com, const T& value) -> void
-{
-    const auto bytes = as_bytes(value);
-    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
-}
-
 auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 {
-    push_literal(com, offset);
+    com.program.emplace_back(op_push_literal_u64{offset});
     com.program.emplace_back(op_u64_add{}); // modify ptr
 }
 
@@ -260,8 +253,8 @@ auto get_function(
 
 auto push_function_call_begin(compiler& com) -> void
 {
-    push_literal(com, std::uint64_t{0}); // base ptr
-    push_literal(com, std::uint64_t{0}); // prog ptr
+    com.program.emplace_back(op_push_literal_u64{0}); // base ptr
+    com.program.emplace_back(op_push_literal_u64{0}); // prog ptr
 }
 
 auto push_function_call(compiler& com, std::size_t ptr, const std::vector<type_name>& params) -> void
@@ -332,7 +325,7 @@ auto push_field_offset(
     auto offset = std::size_t{0};
     for (const auto& field : com.types.fields_of(type)) {
         if (field.name == field_name) {
-            push_literal(com, offset);
+            com.program.emplace_back(op_push_literal_u64{offset});
             return field.type;
         }
         offset += com.types.size_of(field.type);
@@ -596,7 +589,7 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
             node.token.error("cannot get function pointer to an overloaded function\n");
         }
         const auto& [key, value] = *it->second.begin();
-        push_literal(com, value.ptr);
+        com.program.emplace_back(op_push_literal_u64{value.ptr});
 
         // next, construct the return type.
         const auto ptr_type = type_function_ptr{
@@ -647,10 +640,10 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
         const auto index = push_expr_val(com, *expr.index);
         expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
         if (is_array) {
-            push_literal(com, array_length(expr_type));
+            com.program.emplace_back(op_push_literal_u64{array_length(expr_type)});
         } else {
             push_expr_ptr(com, *expr.expr);
-            push_literal(com, size_of_ptr());
+            com.program.emplace_back(op_push_literal_u64{size_of_ptr()});
             com.program.emplace_back(op_u64_add{}); // offset to the size value
             com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
         }
@@ -660,10 +653,9 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 
     // Offset pointer by (index * size)
     const auto inner = inner_type(expr_type);
-    const auto inner_size = com.types.size_of(inner);
     const auto index = push_expr_val(com, *expr.index);
     expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-    push_literal(com, inner_size);
+    com.program.emplace_back(op_push_literal_u64{com.types.size_of(inner)});
     com.program.emplace_back(op_u64_mul{});
     com.program.emplace_back(op_u64_add{}); // modify ptr
     return inner;
@@ -679,51 +671,67 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
     return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
 }
 
-auto subvector_find(const std::vector<std::byte>& sub, const std::vector<std::byte>& all) -> std::size_t
-{
-    const auto to_string = [](const std::vector<std::byte>& vec) {
-        auto ret = std::string{};
-        for (const auto b : vec) {
-            ret += static_cast<char>(b);
-        }
-        return ret;
-    };
-
-    const auto substr = to_string(sub);
-    const auto allstr = to_string(all);
-    return allstr.find(substr);
-}
-
 // Fetches the given literal from read only memory, or adds it if it is not there, and
 // returns the pointer.
-auto insert_into_rom(compiler& com, const std::vector<std::byte>& data) -> std::size_t
+auto insert_into_rom(compiler& com, const std::string& data) -> std::size_t
 {
-    const auto index = subvector_find(data, com.read_only_data);
+    const auto index = com.read_only_data.find(data);
     if (index != std::string::npos) {
         return set_rom_bit(index);
     }
     const auto ptr = com.read_only_data.size();
-    for (const auto b : data) {
-        com.read_only_data.push_back(b);
-    }
+    com.read_only_data.append(data);
     return set_rom_bit(ptr);
 }
 
-auto push_expr_val(compiler& com, const node_literal_expr& node) -> type_name
+auto push_expr_val(compiler& com, const node_literal_i32_expr& node) -> type_name
 {
-    // Handle string literals differently; put them into read only memory
-    if (is_list_type(node.value.type) && inner_type(node.value.type) == char_type()) {
-        const auto ptr = insert_into_rom(com, node.value.data);
+    com.program.emplace_back(op_push_literal_i32{node.value});
+    return i32_type();
+}
 
-        // Push the span onto the stack
-        const auto ptr_bytes = as_bytes(ptr);
-        const auto size_bytes = as_bytes(node.value.data.size());
-        com.program.emplace_back(op_load_bytes{{ptr_bytes.begin(), ptr_bytes.end()}});
-        com.program.emplace_back(op_load_bytes{{size_bytes.begin(), size_bytes.end()}});
-        return concrete_span_type(char_type());
-    }
-    com.program.emplace_back(op_load_bytes{node.value.data});
-    return node.value.type;
+auto push_expr_val(compiler& com, const node_literal_i64_expr& node) -> type_name
+{
+    com.program.emplace_back(op_push_literal_i64{node.value});
+    return i64_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_u64_expr& node) -> type_name
+{
+    com.program.emplace_back(op_push_literal_u64{node.value});
+    return u64_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_f64_expr& node) -> type_name
+{
+    com.program.emplace_back(op_push_literal_f64{node.value});
+    return f64_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_name
+{
+    com.program.emplace_back(op_push_literal_char{node.value});
+    return char_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
+{
+    // Push the span onto the stack
+    com.program.emplace_back(op_push_literal_u64{insert_into_rom(com, node.value)});
+    com.program.emplace_back(op_push_literal_u64{node.value.size()});
+    return concrete_span_type(char_type());
+}
+
+auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
+{
+    com.program.emplace_back(op_push_literal_bool(node.value));
+    return bool_type();
+}
+
+auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_name
+{
+    com.program.emplace_back(op_push_literal_null{});
+    return null_type();
 }
 
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
@@ -793,7 +801,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             is_span_type(inner_type(type_of_expr(com, *node.args[0]))))
         {
             push_expr_val(com, *node.args[0]); // push pointer to span
-            push_literal(com, size_of_ptr());
+            com.program.emplace_back(op_push_literal_u64{size_of_ptr()});
             com.program.emplace_back(op_u64_add{}); // offset to the size value
             com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
             return u64_type();
@@ -841,12 +849,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         args_size += com.types.size_of(param_type);
     }
 
-    // push the function pointer
+    // push the function pointer and call it
     push_expr_val(com, *node.expr);
-
-    // and call!
     com.program.emplace_back(op_call{ .args_size = args_size });
-
     return *sig.return_type;
 }
 
@@ -882,8 +887,7 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    const auto size = com.types.size_of(type);
-    push_literal(com, size);
+    com.program.emplace_back(op_push_literal_u64{com.types.size_of(type)});
     return u64_type();
 }
 
@@ -906,14 +910,14 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         com.program.emplace_back(op_assert{"lower bound must be stricly less than the upper bound"});
 
         push_expr_val(com, *node.upper_bound);
-        push_literal(com, array_length(expr_type));
+        com.program.emplace_back(op_push_literal_u64{array_length(expr_type)});
         com.program.emplace_back(op_u64_lt{});
         com.program.emplace_back(op_assert{"upper bound must be strictly less than the array size"});
     }
 
     push_expr_ptr(com, *node.expr);
     if (node.lower_bound) {// move first index of span up
-        push_literal(com, com.types.size_of(inner_type(expr_type)));
+        com.program.emplace_back(op_push_literal_u64{com.types.size_of(inner_type(expr_type))});
         const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
         com.program.emplace_back(op_u64_mul{});
@@ -926,7 +930,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_expr_val(com, *node.lower_bound);
         com.program.emplace_back(op_u64_sub{});
     } else {
-        push_literal(com, array_length(expr_type));
+        com.program.emplace_back(op_push_literal_u64{array_length(expr_type)});
     }
 
     return concrete_span_type(inner_type(expr_type));
@@ -1060,17 +1064,17 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     }
 
     // idx := 0u;
-    push_literal(com, std::uint64_t{0});
+    com.program.emplace_back(op_push_literal_u64{0});
     declare_var(com, node.token, "#:idx", u64_type());
 
     // size := length of iter;
     if (is_list_type(iter_type)) {
-        push_literal(com, array_length(iter_type));
+        com.program.emplace_back(op_push_literal_u64{array_length(iter_type)});
         declare_var(com, node.token, "#:size", u64_type());
     } else {
         node.token.assert(is_lvalue_expr(*node.iter), "for-loops only supported for lvalue spans");
         push_expr_ptr(com, *node.iter); // push pointer to span
-        push_literal(com, size_of_ptr());
+        com.program.emplace_back(op_push_literal_u64{size_of_ptr()});
         com.program.emplace_back(op_u64_add{}); // offset to the size value
         com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
         declare_var(com, node.token, "#:size", u64_type());
@@ -1097,14 +1101,14 @@ void push_stmt(compiler& com, const node_for_stmt& node)
             }
         }
         load_variable(com, node.token, "#:idx");
-        push_literal(com, com.types.size_of(inner_type(iter_type)));
+        com.program.emplace_back(op_push_literal_u64{com.types.size_of(inner_type(iter_type))});
         com.program.emplace_back(op_u64_mul{});
         com.program.emplace_back(op_u64_add{});
         declare_var(com, node.token, node.name, concrete_ptr_type(inner_type(iter_type)));
 
         // idx = idx + 1;
         load_variable(com, node.token, "#:idx");
-        push_literal(com, std::uint64_t{1});
+        com.program.emplace_back(op_push_literal_u64{1});
         com.program.emplace_back(op_u64_add{});
         save_variable(com, node.token, "#:idx");
 
@@ -1264,7 +1268,7 @@ auto compile_function_body(
             // we manually add a return value of null here.
             if (sig.return_type == null_type()) {
                 destruct_on_return(com);
-                com.program.emplace_back(op_load_bytes{{std::byte{0}}});
+                com.program.emplace_back(op_push_literal_null{});
                 com.program.emplace_back(op_return{ .size=1 });
             } else {
                 tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
@@ -1416,7 +1420,10 @@ auto compile(
         }
     }
 
-    return { com.program, com.read_only_data };
+    auto read_only = std::vector<std::byte>{};
+    read_only.reserve(com.read_only_data.size());
+    for (char c : com.read_only_data) read_only.push_back(static_cast<std::byte>(c));
+    return { com.program, read_only };
 }
 
 }

@@ -21,11 +21,6 @@ auto format_error(const std::string& str) -> void
 
 }
 
-auto to_string(const object& object) -> std::string
-{
-    return std::format("{}({})", object.type, format_comma_separated(object.data));
-}
-
 auto to_string(const type_name& type) -> std::string
 {
     return std::visit([](const auto& t) { return to_string(t); }, type);

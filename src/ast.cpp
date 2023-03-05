@@ -11,8 +11,29 @@ auto print_node(const node_expr& root, int indent) -> void
 {
     const auto spaces = std::string(4 * indent, ' ');
     std::visit(overloaded {
-        [&](const node_literal_expr& node) {
-            print("{}Literal: {}\n", spaces, node.value);
+        [&](const node_literal_i32_expr& node) {
+            print("{}Literal (i32): {}\n", spaces, node.value);
+        },
+        [&](const node_literal_i64_expr& node) {
+            print("{}Literal (i64): {}\n", spaces, node.value);
+        },
+        [&](const node_literal_u64_expr& node) {
+            print("{}Literal (u64): {}\n", spaces, node.value);
+        },
+        [&](const node_literal_f64_expr& node) {
+            print("{}Literal (f64): {}\n", spaces, node.value);
+        },
+        [&](const node_literal_char_expr& node) {
+            print("{}Literal (char): {}\n", spaces, node.value);
+        },
+        [&](const node_literal_bool_expr& node) {
+            print("{}Literal (bool): {}\n", spaces, node.value);
+        },
+        [&](const node_literal_null_expr&) {
+            print("{}Literal (null): null\n", spaces);
+        },
+        [&](const node_literal_string_expr& node) {
+            print("{}Literal (string-literal): {}\n", spaces, node.value);
         },
         [&](const node_name_expr& node) {
             print("{}Name: {}\n", spaces, node.name);
@@ -198,8 +219,6 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_delete_stmt& node) {
             print("{}Delete:\n", spaces);
             print_node(*node.expr, indent + 1);
-            print("{}- Size:\n", spaces);
-            print_node(*node.size, indent + 1);
         },
         [&](const node_assert_stmt& node) {
             print("{}Assert:\n", spaces);

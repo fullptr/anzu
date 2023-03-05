@@ -49,10 +49,32 @@ auto binary_op(runtime_context& ctx) -> void
 auto apply_op(runtime_context& ctx, const op& op_code) -> void
 {
     std::visit(overloaded {
-        [&](const op_load_bytes& op) {
-            for (const auto byte : op.bytes) {
-                ctx.stack.push_back(byte);
-            }
+        [&](op_push_literal_i32 op) {
+            push_value(ctx.stack, op.value);
+            ++ctx.prog_ptr;
+        },
+        [&](op_push_literal_i64 op) {
+            push_value(ctx.stack, op.value);
+            ++ctx.prog_ptr;
+        },
+        [&](op_push_literal_u64 op) {
+            push_value(ctx.stack, op.value);
+            ++ctx.prog_ptr;
+        },
+        [&](op_push_literal_f64 op) {
+            push_value(ctx.stack, op.value);
+            ++ctx.prog_ptr;
+        },
+        [&](op_push_literal_char op) {
+            push_value(ctx.stack, op.value);
+            ++ctx.prog_ptr;
+        },
+        [&](op_push_literal_bool op) {
+            push_value(ctx.stack, op.value);
+            ++ctx.prog_ptr;
+        },
+        [&](op_push_literal_null) {
+            ctx.stack.push_back(std::byte{0});
             ++ctx.prog_ptr;
         },
         [&](op_push_global_addr op) {
