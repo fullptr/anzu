@@ -123,10 +123,10 @@ auto parse_literal(tokenstream& tokens) -> node_expr_ptr
         case token_type::uint64:    return parse_u64(token);
         case token_type::float64:   return parse_f64(token);
         case token_type::character: return parse_char(token);
-        case token_type::string:    return parse_string(token);
         case token_type::kw_true:   return parse_bool(token);
         case token_type::kw_false:  return parse_bool(token);
         case token_type::kw_null:   return parse_null(token);
+        case token_type::string:    return parse_string(token);
     }
     token.error("failed to parse literal ({})", token.text);
 };

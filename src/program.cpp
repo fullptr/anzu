@@ -15,9 +15,14 @@ constexpr auto FORMAT3 = std::string_view{"{:<30} {:<20} {}"};
 auto to_string(const op& op_code) -> std::string
 {
     return std::visit(overloaded {
-        [&](const op_load_bytes& op) {
-            return std::format("LOAD_BYTES({})", format_comma_separated(op.bytes));
-        },
+        [](op_push_literal_i32 op) { return std::format("PUSH_LITERAL_I32({})", op.value); },
+        [](op_push_literal_i64 op) { return std::format("PUSH_LITERAL_I64({})", op.value); },
+        [](op_push_literal_u64 op) { return std::format("PUSH_LITERAL_U64({})", op.value); },
+        [](op_push_literal_f64 op) { return std::format("PUSH_LITERAL_F64({})", op.value); },
+        [](op_push_literal_char op) { return std::format("PUSH_LITERAL_CHAR({})", op.value); },
+        [](op_push_literal_bool op) { return std::format("PUSH_LITERAL_BOOL({})", op.value); },
+        [](op_push_literal_null op) { return std::string{"PUSH_LITERAL_NULL"}; },
+
         [](op_push_global_addr op) { return std::format("PUSH_GLOBAL_ADDR({})", op.position); },
         [](op_push_local_addr op) { return std::format("PUSH_LOCAL_ADDR(+{})", op.offset); },
 

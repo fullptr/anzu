@@ -712,35 +712,35 @@ auto insert_into_rom(compiler& com, const std::vector<std::byte>& data) -> std::
 auto push_expr_val(compiler& com, const node_literal_i32_expr& node) -> type_name
 {
     const auto bytes = as_bytes(node.value);
-    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    com.program.emplace_back(op_push_literal_i32{node.value});
     return i32_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_i64_expr& node) -> type_name
 {
     const auto bytes = as_bytes(node.value);
-    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    com.program.emplace_back(op_push_literal_i64{node.value});
     return i64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_u64_expr& node) -> type_name
 {
     const auto bytes = as_bytes(node.value);
-    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    com.program.emplace_back(op_push_literal_u64{node.value});
     return u64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_f64_expr& node) -> type_name
 {
     const auto bytes = as_bytes(node.value);
-    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    com.program.emplace_back(op_push_literal_f64{node.value});
     return f64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_name
 {
     const auto bytes = as_bytes(node.value);
-    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    com.program.emplace_back(op_push_literal_char{node.value});
     return char_type();
 }
 
@@ -752,23 +752,21 @@ auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_
     const auto ptr = insert_into_rom(com, data);
 
     // Push the span onto the stack
-    const auto ptr_bytes = as_bytes(ptr);
-    const auto size_bytes = as_bytes(data.size());
-    com.program.emplace_back(op_load_bytes{{ptr_bytes.begin(), ptr_bytes.end()}});
-    com.program.emplace_back(op_load_bytes{{size_bytes.begin(), size_bytes.end()}});
+    com.program.emplace_back(op_push_literal_u64{ptr});
+    com.program.emplace_back(op_push_literal_u64{data.size()});
     return concrete_span_type(char_type());
 }
 
 auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
 {
     const auto bytes = as_bytes(node.value);
-    com.program.emplace_back(op_load_bytes{{bytes.begin(), bytes.end()}});
+    com.program.emplace_back(op_push_literal_bool(node.value));
     return bool_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_name
 {
-    com.program.emplace_back(op_load_bytes{{std::byte{0}}});
+    com.program.emplace_back(op_push_literal_null{});
     return null_type();
 }
 
@@ -1310,7 +1308,7 @@ auto compile_function_body(
             // we manually add a return value of null here.
             if (sig.return_type == null_type()) {
                 destruct_on_return(com);
-                com.program.emplace_back(op_load_bytes{{std::byte{0}}});
+                com.program.emplace_back(op_push_literal_null{});
                 com.program.emplace_back(op_return{ .size=1 });
             } else {
                 tok.error("function '{}::{}' does not end in a return statement", struct_type, name);

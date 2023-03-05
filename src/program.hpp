@@ -16,6 +16,40 @@ struct op_load_bytes
     std::vector<std::byte> bytes;
 };
 
+struct op_push_literal_i32
+{
+    std::int32_t value;
+};
+
+struct op_push_literal_i64
+{
+    std::int64_t value;
+};
+
+struct op_push_literal_u64
+{
+    std::uint64_t value;
+};
+
+struct op_push_literal_f64
+{
+    double value;
+};
+
+struct op_push_literal_char
+{
+    char value;
+};
+
+struct op_push_literal_bool
+{
+    bool value;
+};
+
+struct op_push_literal_null
+{
+};
+
 struct op_push_global_addr
 {
     std::size_t position;
@@ -166,7 +200,14 @@ struct op_i64_neg {};
 struct op_f64_neg {};
 
 struct op : std::variant<
-    op_load_bytes,
+    op_push_literal_i32,
+    op_push_literal_i64,
+    op_push_literal_u64,
+    op_push_literal_f64,
+    op_push_literal_char,
+    op_push_literal_bool,
+    op_push_literal_null,
+
     op_push_global_addr,
     op_push_local_addr,
     op_load,
