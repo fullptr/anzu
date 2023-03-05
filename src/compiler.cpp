@@ -141,8 +141,8 @@ using function_iter = typename function_param_map::const_iterator;
 // as well as information such as function definitions.
 struct compiler
 {
-    std::vector<op>        program;
-    std::vector<std::byte> read_only_data;
+    std::vector<op> program;
+    std::string     read_only_data;
 
     bool debug = false;
 
@@ -689,16 +689,14 @@ auto subvector_find(const std::vector<std::byte>& sub, const std::vector<std::by
 
 // Fetches the given literal from read only memory, or adds it if it is not there, and
 // returns the pointer.
-auto insert_into_rom(compiler& com, const std::vector<std::byte>& data) -> std::size_t
+auto insert_into_rom(compiler& com, const std::string& data) -> std::size_t
 {
-    const auto index = subvector_find(data, com.read_only_data);
+    const auto index = com.read_only_data.find(data);
     if (index != std::string::npos) {
         return set_rom_bit(index);
     }
     const auto ptr = com.read_only_data.size();
-    for (const auto b : data) {
-        com.read_only_data.push_back(b);
-    }
+    com.read_only_data.append(data);
     return set_rom_bit(ptr);
 }
 
@@ -739,14 +737,11 @@ auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_na
 
 auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
 {
-    auto data = std::vector<std::byte>{};
-    data.reserve(node.value.size());
-    for (char c : node.value) data.push_back(static_cast<std::byte>(c));
-    const auto ptr = insert_into_rom(com, data);
+    const auto ptr = insert_into_rom(com, node.value);
 
     // Push the span onto the stack
     com.program.emplace_back(op_push_literal_u64{ptr});
-    com.program.emplace_back(op_push_literal_u64{data.size()});
+    com.program.emplace_back(op_push_literal_u64{node.value.size()});
     return concrete_span_type(char_type());
 }
 
@@ -1452,7 +1447,11 @@ auto compile(
         }
     }
 
-    return { com.program, com.read_only_data };
+    auto read_only = std::vector<std::byte>{};
+    read_only.reserve(com.read_only_data.size());
+    for (char c : com.read_only_data) read_only.push_back(static_cast<std::byte>(c));
+
+    return { com.program, read_only };
 }
 
 }
