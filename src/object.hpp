@@ -69,18 +69,6 @@ struct type_name : public std::variant<
 
 using type_names = std::vector<type_name>;
 
-struct object
-{
-    std::vector<std::byte> data;
-    anzu::type_name        type;
-};
-
-template <typename T>
-inline auto as_bytes(const T& val) -> std::array<std::byte, sizeof(T)>
-{
-    return std::bit_cast<std::array<std::byte, sizeof(T)>>(val);
-}
-
 struct field
 {
     std::string name;
@@ -149,7 +137,6 @@ public:
     auto fields_of(const type_name& t) const -> type_fields;
 };
 
-auto to_string(const object& object) -> std::string;
 auto to_string(const type_name& type) -> std::string;
 auto to_string(const type_list& type) -> std::string;
 auto to_string(const type_ptr& type) -> std::string;
@@ -175,12 +162,6 @@ template <> struct std::formatter<std::byte> : std::formatter<std::string> {
     auto format(std::byte b, auto& ctx) {
         const auto str = std::format("{:X}", static_cast<unsigned char>(b));
         return std::formatter<std::string>::format(str, ctx);
-    }
-};
-
-template <> struct std::formatter<anzu::object> : std::formatter<std::string> {
-    auto format(const anzu::object& obj, auto& ctx) {
-        return std::formatter<std::string>::format(to_string(obj), ctx);
     }
 };
 

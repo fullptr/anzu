@@ -653,10 +653,9 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 
     // Offset pointer by (index * size)
     const auto inner = inner_type(expr_type);
-    const auto inner_size = com.types.size_of(inner);
     const auto index = push_expr_val(com, *expr.index);
     expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-    com.program.emplace_back(op_push_literal_u64{inner_size});
+    com.program.emplace_back(op_push_literal_u64{com.types.size_of(inner)});
     com.program.emplace_back(op_u64_mul{});
     com.program.emplace_back(op_u64_add{}); // modify ptr
     return inner;
@@ -670,21 +669,6 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
 {
     return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
-}
-
-auto subvector_find(const std::vector<std::byte>& sub, const std::vector<std::byte>& all) -> std::size_t
-{
-    const auto to_string = [](const std::vector<std::byte>& vec) {
-        auto ret = std::string{};
-        for (const auto b : vec) {
-            ret += static_cast<char>(b);
-        }
-        return ret;
-    };
-
-    const auto substr = to_string(sub);
-    const auto allstr = to_string(all);
-    return allstr.find(substr);
 }
 
 // Fetches the given literal from read only memory, or adds it if it is not there, and
@@ -702,52 +686,44 @@ auto insert_into_rom(compiler& com, const std::string& data) -> std::size_t
 
 auto push_expr_val(compiler& com, const node_literal_i32_expr& node) -> type_name
 {
-    const auto bytes = as_bytes(node.value);
     com.program.emplace_back(op_push_literal_i32{node.value});
     return i32_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_i64_expr& node) -> type_name
 {
-    const auto bytes = as_bytes(node.value);
     com.program.emplace_back(op_push_literal_i64{node.value});
     return i64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_u64_expr& node) -> type_name
 {
-    const auto bytes = as_bytes(node.value);
     com.program.emplace_back(op_push_literal_u64{node.value});
     return u64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_f64_expr& node) -> type_name
 {
-    const auto bytes = as_bytes(node.value);
     com.program.emplace_back(op_push_literal_f64{node.value});
     return f64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_name
 {
-    const auto bytes = as_bytes(node.value);
     com.program.emplace_back(op_push_literal_char{node.value});
     return char_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
 {
-    const auto ptr = insert_into_rom(com, node.value);
-
     // Push the span onto the stack
-    com.program.emplace_back(op_push_literal_u64{ptr});
+    com.program.emplace_back(op_push_literal_u64{insert_into_rom(com, node.value)});
     com.program.emplace_back(op_push_literal_u64{node.value.size()});
     return concrete_span_type(char_type());
 }
 
 auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
 {
-    const auto bytes = as_bytes(node.value);
     com.program.emplace_back(op_push_literal_bool(node.value));
     return bool_type();
 }
@@ -873,12 +849,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         args_size += com.types.size_of(param_type);
     }
 
-    // push the function pointer
+    // push the function pointer and call it
     push_expr_val(com, *node.expr);
-
-    // and call!
     com.program.emplace_back(op_call{ .args_size = args_size });
-
     return *sig.return_type;
 }
 
@@ -1450,7 +1423,6 @@ auto compile(
     auto read_only = std::vector<std::byte>{};
     read_only.reserve(com.read_only_data.size());
     for (char c : com.read_only_data) read_only.push_back(static_cast<std::byte>(c));
-
     return { com.program, read_only };
 }
 
