@@ -11,72 +11,102 @@
 namespace anzu {
 namespace {
 
-auto parse_i32(const token& tok) -> object
+auto parse_i32(const token& tok) -> node_expr_ptr
 {
+    tok.assert_type(token_type::int32, "");
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_i32_expr>();
+    inner.token = tok;
     auto text = tok.text;
-
-    tok.assert(text.ends_with(i32_sv), "expected suffix '{}'\n", i32_sv);
-    text.remove_suffix(i32_sv.size());
+    if (text.ends_with(i32_sv)) text.remove_suffix(i32_sv.size());
     
-    auto result = std::int32_t{};
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
     tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, i32_sv);
-
-    const auto bytes = as_bytes(result);
-    return object{ .data={bytes.begin(), bytes.end()}, .type=i32_type() };
+    return node;
 }
 
-auto parse_i64(const token& tok) -> object
+auto parse_i64(const token& tok) -> node_expr_ptr
 {
+    tok.assert_type(token_type::int64, "");
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_i64_expr>();
+    inner.token = tok;
     auto text = tok.text;
-
-    if (text.ends_with(i64_sv)) {
-        text.remove_suffix(i64_sv.size());
-    }
-
-    auto result = std::int64_t{};
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    if (text.ends_with(i64_sv)) text.remove_suffix(i64_sv.size());
+    
+    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
     tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, i64_sv);
-
-    const auto bytes = as_bytes(result);
-    return object{ .data={bytes.begin(), bytes.end()}, .type=i64_type() };
+    return node;
 }
 
-auto parse_u64(const token& tok) -> object
+auto parse_u64(const token& tok) -> node_expr_ptr
 {
-    auto text = std::string_view{tok.text};
-
-    if (text.ends_with(u64_sv)) {
-        text.remove_suffix(u64_sv.size());
-    } else if (text.ends_with('u')) {
-        text.remove_suffix(1);
-    }
-
-    auto result = std::uint64_t{};
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    tok.assert_type(token_type::uint64, "");
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_u64_expr>();
+    inner.token = tok;
+    auto text = tok.text;
+    if (text.ends_with(u64_sv)) text.remove_suffix(u64_sv.size());
+    if (text.ends_with('u')) text.remove_suffix(1);
+    
+    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
     tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, u64_sv);
-
-    const auto bytes = as_bytes(result);
-    return object{ .data={bytes.begin(), bytes.end()}, .type=u64_type() };
+    return node;
 }
 
-auto parse_f64(const token& tok) -> object
+auto parse_f64(const token& tok) -> node_expr_ptr
 {
-    auto text = std::string_view{tok.text};
-
-    auto result = double{};
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    tok.assert_type(token_type::float64, "");
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_f64_expr>();
+    inner.token = tok;
+    auto text = tok.text;
+    
+    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
     tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, f64_sv);
-
-    const auto bytes = as_bytes(result);
-    return object{ .data={bytes.begin(), bytes.end()}, .type=f64_type() };
+    return node;
 }
 
-auto parse_char(const token& tok) -> object
+auto parse_char(const token& tok) -> node_expr_ptr
 {
-    tok.assert_eq(tok.text.size(), 1, "failed to parse char, wrong size");
-    const auto bytes = as_bytes(tok.text.front());
-    return object{ .data={bytes.begin(), bytes.end()}, .type=char_type() };
+    tok.assert_type(token_type::character, "");
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_char_expr>();
+    inner.token = tok;
+    inner.value = tok.text.front();
+    return node;
+}
+
+auto parse_string(const token& tok) -> node_expr_ptr
+{
+    tok.assert_type(token_type::character, "");
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_string_expr>();
+    inner.token = tok;
+    inner.value = tok.text;
+    return node;
+}
+
+auto parse_bool(const token& tok) -> node_expr_ptr
+{
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_bool_expr>();
+    inner.token = tok;
+    switch (tok.type) {
+        case token_type::kw_true:  { inner.value = true;  } break;
+        case token_type::kw_false: { inner.value = false; } break;
+        default: tok.error("cannot parse bool literal from {}\n", tok.type);
+    }
+    return node;
+}
+
+auto parse_null(const token& tok) -> node_expr_ptr
+{
+    tok.assert_type(token_type::kw_null, "cannot parse null literal from {}\n", tok.type);
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_null_expr>();
+    inner.token = tok;
+    return node;
 }
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
@@ -84,7 +114,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 auto parse_type(tokenstream& tokens) -> type_name;
 auto parse_type_node(tokenstream& tokens) -> node_type_ptr;
 
-auto parse_literal(tokenstream& tokens) -> object
+auto parse_literal(tokenstream& tokens) -> node_expr_ptr
 {
     const auto token = tokens.consume();
     switch (token.type) {
@@ -93,17 +123,10 @@ auto parse_literal(tokenstream& tokens) -> object
         case token_type::uint64:    return parse_u64(token);
         case token_type::float64:   return parse_f64(token);
         case token_type::character: return parse_char(token);
-        case token_type::kw_true:   return object{ .data={std::byte{1}}, .type=bool_type() };
-        case token_type::kw_false:  return object{ .data={std::byte{0}}, .type=bool_type() };
-        case token_type::kw_null:   return object{ .data={std::byte{0}}, .type=null_type() };
-        case token_type::string: {
-            auto ret = object{};
-            for (char c : token.text) {
-                ret.data.push_back(static_cast<std::byte>(c));
-            }
-            ret.type = concrete_list_type(char_type(), token.text.size());
-            return ret;
-        }
+        case token_type::string:    return parse_string(token);
+        case token_type::kw_true:   return parse_bool(token);
+        case token_type::kw_false:  return parse_bool(token);
+        case token_type::kw_null:   return parse_null(token);
     }
     token.error("failed to parse literal ({})", token.text);
 };
@@ -222,9 +245,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             }
         } break;
         default: {
-            auto& expr = node->emplace<node_literal_expr>();
-            expr.token = tokens.curr();
-            expr.value = parse_literal(tokens);
+            node = parse_literal(tokens);
         } break;
     }
 
@@ -425,8 +446,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(token_type::kw_return);
     if (tokens.peek(token_type::semicolon)) {
         stmt.return_value = std::make_shared<node_expr>();
-        auto& ret_expr = stmt.return_value->emplace<node_literal_expr>();
-        ret_expr.value = object{ .data={std::byte{0}}, .type=null_type() };
+        auto& ret_expr = stmt.return_value->emplace<node_literal_null_expr>();
         ret_expr.token = stmt.token;
     } else {
         stmt.return_value = parse_expression(tokens);
@@ -539,13 +559,6 @@ auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.token = tokens.consume_only(token_type::kw_delete);
     stmt.expr = parse_expression(tokens);
-    if (tokens.consume_maybe(token_type::colon)) {
-        stmt.size = parse_expression(tokens);
-    } else {
-        stmt.size = std::make_shared<node_expr>();
-        auto& inner = stmt.size->emplace<node_literal_expr>();
-        inner.value = parse_u64(token{.text="1u"});
-    }
     tokens.consume_only(token_type::semicolon);
 
     return node;

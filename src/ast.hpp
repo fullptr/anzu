@@ -50,13 +50,6 @@ struct node_signature
     node_type_ptr               return_type;
 };
 
-struct node_literal_expr
-{
-    anzu::object value;
-
-    anzu::token token;
-};
-
 struct node_literal_i32_expr
 {
     std::int32_t value;
@@ -95,6 +88,12 @@ struct node_literal_bool_expr
 
 struct node_literal_null_expr
 {
+    anzu::token token;
+};
+
+struct node_literal_string_expr
+{
+    std::string value;
     anzu::token token;
 };
 
@@ -200,7 +199,6 @@ struct node_span_expr
 
 struct node_expr : std::variant<
     // Rvalue expressions
-    node_literal_expr,
     node_literal_i32_expr,
     node_literal_i64_expr,
     node_literal_u64_expr,
@@ -208,6 +206,7 @@ struct node_expr : std::variant<
     node_literal_char_expr,
     node_literal_bool_expr,
     node_literal_null_expr,
+    node_literal_string_expr,
     node_unary_op_expr,
     node_binary_op_expr,
     node_call_expr,
@@ -337,7 +336,6 @@ struct node_return_stmt
 struct node_delete_stmt
 {
     node_expr_ptr expr;
-    node_expr_ptr size;
 
     anzu::token token;
 };

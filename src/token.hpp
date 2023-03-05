@@ -104,6 +104,15 @@ struct token
             error("{}: expected {}, got {}", user_msg, rhs, lhs);
         }
     }
+
+    template <typename... Args>
+    void assert_type(token_type tt, std::string_view msg, Args&&... args) const
+    {
+        if (tt != type) {
+            const auto user_msg = std::format(msg, std::forward<Args>(args)...);
+            error("{}: expected token type '{}', got '{}'", user_msg, tt, type);
+        }
+    }
 };
 
 auto print_tokens(const std::vector<anzu::token>& tokens) -> void;
