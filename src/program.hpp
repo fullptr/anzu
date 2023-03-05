@@ -11,11 +11,6 @@
 
 namespace anzu {
 
-struct op_load_bytes
-{
-    std::vector<std::byte> bytes;
-};
-
 struct op_push_literal_i32
 {
     std::int32_t value;
