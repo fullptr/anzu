@@ -38,12 +38,12 @@ auto main(const int argc, const char* argv[]) -> int
     if (mode == "lex" || mode == "parse") {
         anzu::print("Loading file '{}'\n", file.string());
         anzu::print("-> Lexing\n");
-        const auto tokens = anzu::lex(file);
+        auto lex_result = anzu::lex(file);
         if (mode == "lex") {
-            print_tokens(tokens);
+            print_tokens(lex_result);
         } else {
             anzu::print("-> Parsing\n");
-            const auto mod = anzu::parse(file, tokens);
+            const auto mod = anzu::parse(std::move(lex_result));
             print_node(*mod.root);
         }
         return 0;
@@ -51,16 +51,16 @@ auto main(const int argc, const char* argv[]) -> int
 
     // Start with the specified file, lex and parse it, then check to see if it has any other
     // required modules. Pick one and compile, continue until all modules have been parsed
-    auto parsed_program = std::map<std::filesystem::path, anzu::file_ast>{};
+    auto parsed_program = std::map<std::filesystem::path, anzu::parse_result>{};
 
     auto modules = std::set<std::filesystem::path>{file};
     while (!modules.empty()) {
         const auto curr = modules.extract(modules.begin()).value();
         anzu::print("-> Processing '{}'\n", curr.lexically_relative(root).string());
         anzu::print("    - Lexing\n");
-        const auto tokens = anzu::lex(curr);
+        auto lex_res = anzu::lex(curr);
         anzu::print("    - Parsing\n");
-        auto ast = anzu::parse(curr, tokens);
+        auto ast = anzu::parse(std::move(lex_res));
         for (const auto& m : ast.required_modules) {
             if (!parsed_program.contains(m)) {
                 modules.emplace(m);

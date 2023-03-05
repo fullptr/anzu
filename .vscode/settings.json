@@ -80,6 +80,7 @@
         "memory_resource": "cpp",
         "mutex": "cpp",
         "numeric": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "source_location": "cpp"
     }
 }

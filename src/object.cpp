@@ -1,5 +1,5 @@
 #include "object.hpp"
-#include "vocabulary.hpp"
+#include "token.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 
@@ -94,37 +94,37 @@ auto hash(const type_function_ptr& type) -> std::size_t
 
 auto i32_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_i32} }};
+    return {type_simple{ .name = std::string{i32_sv} }};
 }
 
 auto i64_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_i64} }};
+    return {type_simple{ .name = std::string{i64_sv} }};
 }
 
 auto u64_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_u64} }};
+    return {type_simple{ .name = std::string{u64_sv} }};
 }
 
 auto char_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_char} }};
+    return {type_simple{ .name = std::string{char_sv} }};
 }
 
 auto f64_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_f64} }};
+    return {type_simple{ .name = std::string{f64_sv} }};
 }
 
 auto bool_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_bool} }};
+    return {type_simple{ .name = std::string{bool_sv} }};
 }
 
 auto null_type() -> type_name
 {
-    return {type_simple{ .name = std::string{tk_null} }};
+    return {type_simple{ .name = std::string{null_sv} }};
 }
 
 auto make_type(const std::string& name) -> type_name

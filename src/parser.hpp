@@ -1,5 +1,5 @@
 #pragma once
-#include "token.hpp"
+#include "lexer.hpp"
 #include "ast.hpp"
 
 #include <vector>
@@ -9,16 +9,15 @@
 
 namespace anzu {
 
-struct file_ast
+struct parse_result
 {
-    node_stmt_ptr root;
+    std::filesystem::path        source_file;
+    std::unique_ptr<std::string> source_code;
 
+    node_stmt_ptr root;
     std::set<std::filesystem::path> required_modules;
 };
 
-auto parse(
-    const std::filesystem::path& file,
-    const std::vector<anzu::token>& token
-) -> file_ast;
+auto parse(lex_result&& lex_res) -> parse_result;
 
 }

@@ -18,7 +18,6 @@ add_executable(
     object.cpp
     functions.cpp
     resolver.cpp
-    vocabulary.cpp
 )
 
 target_include_directories(anzu PRIVATE .)

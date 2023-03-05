@@ -730,7 +730,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     const auto lhs = push_expr_val(com, *node.lhs);
     const auto rhs = push_expr_val(com, *node.rhs);
-    const auto op = node.token.text;
+    const auto op = node.token.type;
     
     const auto info = resolve_operation(lhs, rhs, op);
     node.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
@@ -741,7 +741,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     const auto type = push_expr_val(com, *node.expr);
-    const auto op = node.token.text;
+    const auto op = node.token.type;
 
     const auto info = resolve_operation(type, op);
     node.token.assert(info.has_value(), "could not find op '{}{}'", op, type);
@@ -1369,7 +1369,7 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 
 }
 
-auto compiled_all_requirements(const file_ast& module, const std::set<std::filesystem::path>& compiled) -> bool
+auto compiled_all_requirements(const parse_result& module, const std::set<std::filesystem::path>& compiled) -> bool
 {
     for (const auto& requirement : module.required_modules) {
         if (!compiled.contains(requirement)) {
@@ -1381,7 +1381,7 @@ auto compiled_all_requirements(const file_ast& module, const std::set<std::files
 
 auto compile(
     const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, file_ast>& modules,
+    const std::map<std::filesystem::path, parse_result>& modules,
     const bool debug
 )
     -> program
