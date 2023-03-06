@@ -1,194 +1,96 @@
 #pragma once
-#include "functions.hpp"
-#include "object.hpp"
-
 #include <variant>
 #include <format>
 #include <vector>
 #include <utility>
 #include <string>
-#include <string_view>
 
 namespace anzu {
 
-struct op_push_literal_i32
-{
-    std::int32_t value;
-};
+struct op_push_literal_i32  { std::int32_t  value; };
+struct op_push_literal_i64  { std::int64_t  value; };
+struct op_push_literal_u64  { std::uint64_t value; };
+struct op_push_literal_f64  { double        value; };
+struct op_push_literal_char { char          value; };
+struct op_push_literal_bool { bool          value; };
+struct op_push_literal_null {};
 
-struct op_push_literal_i64
-{
-    std::int64_t value;
-};
+struct op_push_global_addr  { std::size_t position; };
+struct op_push_local_addr   { std::size_t offset;   };
+struct op_load              { std::size_t size; };
+struct op_save              { std::size_t size; };
+struct op_pop               { std::size_t size; };
+struct op_alloc_span        { std::size_t type_size; };
+struct op_dealloc_span      { std::size_t type_size; };
+struct op_alloc_ptr         { std::size_t type_size; };
+struct op_dealloc_ptr       { std::size_t type_size; };
+struct op_jump              { std::size_t jump; };
+struct op_jump_if_false     { std::size_t jump; };
+struct op_function_call     { std::size_t ptr, args_size; };
+struct op_call              { std::size_t args_size; }; // fetches ptr from the stack
+struct op_builtin_call      { std::size_t id, args_size; };
+struct op_return            { std::size_t size; };
+struct op_assert            { std::size_t index, size; }; // describes a string in rom
 
-struct op_push_literal_u64
-{
-    std::uint64_t value;
-};
+struct op_char_eq           {};
+struct op_char_ne           {};
 
-struct op_push_literal_f64
-{
-    double value;
-};
+struct op_i32_add           {};
+struct op_i32_sub           {};
+struct op_i32_mul           {};
+struct op_i32_div           {};
+struct op_i32_mod           {};
+struct op_i32_eq            {};
+struct op_i32_ne            {};
+struct op_i32_lt            {};
+struct op_i32_le            {};
+struct op_i32_gt            {};
+struct op_i32_ge            {};
 
-struct op_push_literal_char
-{
-    char value;
-};
+struct op_i64_add           {};
+struct op_i64_sub           {};
+struct op_i64_mul           {};
+struct op_i64_div           {};
+struct op_i64_mod           {};
+struct op_i64_eq            {};
+struct op_i64_ne            {};
+struct op_i64_lt            {};
+struct op_i64_le            {};
+struct op_i64_gt            {};
+struct op_i64_ge            {};
 
-struct op_push_literal_bool
-{
-    bool value;
-};
+struct op_u64_add           {};
+struct op_u64_sub           {};
+struct op_u64_mul           {};
+struct op_u64_div           {};
+struct op_u64_mod           {};
+struct op_u64_eq            {};
+struct op_u64_ne            {};
+struct op_u64_lt            {};
+struct op_u64_le            {};
+struct op_u64_gt            {};
+struct op_u64_ge            {};
 
-struct op_push_literal_null
-{
-};
+struct op_f64_add           {};
+struct op_f64_sub           {};
+struct op_f64_mul           {};
+struct op_f64_div           {};
+struct op_f64_eq            {};
+struct op_f64_ne            {};
+struct op_f64_lt            {};
+struct op_f64_le            {};
+struct op_f64_gt            {};
+struct op_f64_ge            {};
 
-struct op_push_global_addr
-{
-    std::size_t position;
-};
+struct op_bool_or           {};
+struct op_bool_and          {};
+struct op_bool_eq           {};
+struct op_bool_ne           {};
+struct op_bool_not          {};
 
-struct op_push_local_addr
-{
-    std::size_t offset;
-};
-
-struct op_load
-{
-    std::size_t size;
-};
-
-struct op_save
-{
-    std::size_t size;
-};
-
-struct op_pop
-{
-    std::size_t size;
-};
-
-struct op_alloc_span
-{
-    std::size_t type_size;
-};
-
-struct op_dealloc_span
-{
-    std::size_t type_size;
-};
-
-struct op_alloc_ptr
-{
-    std::size_t type_size;
-};
-
-struct op_dealloc_ptr
-{
-    std::size_t type_size;
-};
-
-struct op_jump
-{
-    std::size_t jump;
-};
-
-struct op_jump_if_false
-{
-    std::size_t jump;
-};
-
-struct op_function_call
-{
-    std::size_t ptr;
-    std::size_t args_size;
-};
-
-// Same as op_function_call, but fetches the pointer from the stack
-struct op_call
-{
-    std::size_t args_size;
-};
-
-struct op_builtin_call
-{
-    std::size_t id;
-    std::size_t args_size;
-};
-
-struct op_return
-{
-    std::size_t size;
-};
-
-struct op_assert
-{
-    // Describes a position in read only memory
-    std::size_t index;
-    std::size_t size;
-};
-
-struct op_char_eq {};
-struct op_char_ne {};
-
-struct op_i32_add {};
-struct op_i32_sub {};
-struct op_i32_mul {};
-struct op_i32_div {};
-struct op_i32_mod {};
-struct op_i32_eq {};
-struct op_i32_ne {};
-struct op_i32_lt {};
-struct op_i32_le {};
-struct op_i32_gt {};
-struct op_i32_ge {};
-
-struct op_i64_add {};
-struct op_i64_sub {};
-struct op_i64_mul {};
-struct op_i64_div {};
-struct op_i64_mod {};
-struct op_i64_eq {};
-struct op_i64_ne {};
-struct op_i64_lt {};
-struct op_i64_le {};
-struct op_i64_gt {};
-struct op_i64_ge {};
-
-struct op_u64_add {};
-struct op_u64_sub {};
-struct op_u64_mul {};
-struct op_u64_div {};
-struct op_u64_mod {};
-struct op_u64_eq {};
-struct op_u64_ne {};
-struct op_u64_lt {};
-struct op_u64_le {};
-struct op_u64_gt {};
-struct op_u64_ge {};
-
-struct op_f64_add {};
-struct op_f64_sub {};
-struct op_f64_mul {};
-struct op_f64_div {};
-struct op_f64_eq {};
-struct op_f64_ne {};
-struct op_f64_lt {};
-struct op_f64_le {};
-struct op_f64_gt {};
-struct op_f64_ge {};
-
-struct op_bool_or {};
-struct op_bool_and {};
-struct op_bool_eq {};
-struct op_bool_ne {};
-struct op_bool_not {};
-
-struct op_i32_neg {};
-struct op_i64_neg {};
-struct op_f64_neg {};
+struct op_i32_neg           {};
+struct op_i64_neg           {};
+struct op_f64_neg           {};
 
 struct op : std::variant<
     op_push_literal_i32,
