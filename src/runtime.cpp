@@ -202,13 +202,13 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             get_builtin(op.id).ptr(ctx);
             ++ctx.prog_ptr;
         },
-        [&](const op_debug& op) {
-            print(op.message);
-            ++ctx.prog_ptr;
-        },
         [&](const op_assert& op) {
             if (!pop_value<bool>(ctx.stack)) {
-                runtime_error(op.message);
+                const auto m = std::string_view(
+                    reinterpret_cast<const char*>(&ctx.rom[op.index]),
+                    op.size
+                );
+                runtime_error(m);
             }
             ++ctx.prog_ptr;
         },

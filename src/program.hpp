@@ -123,14 +123,11 @@ struct op_return
     std::size_t size;
 };
 
-struct op_debug
-{
-    std::string message;
-};
-
 struct op_assert
 {
-    std::string message;
+    // Describes a position in read only memory
+    std::size_t index;
+    std::size_t size;
 };
 
 struct op_char_eq {};
@@ -218,7 +215,6 @@ struct op : std::variant<
     op_call,
     op_builtin_call,
     op_assert,
-    op_debug,
 
     op_char_eq,
     op_char_ne,
