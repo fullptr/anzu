@@ -114,9 +114,8 @@ struct op_call
 
 struct op_builtin_call
 {
-    std::string      name;
-    builtin_function ptr;
-    std::size_t      args_size;
+    std::size_t id;
+    std::size_t args_size;
 };
 
 struct op_return

@@ -1,5 +1,6 @@
 #include "runtime.hpp"
 #include "object.hpp"
+#include "functions.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 #include "utility/scope_timer.hpp"
@@ -198,7 +199,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            op.ptr(ctx);
+            get_builtin_function_ptr(op.id)(ctx);
             ++ctx.prog_ptr;
         },
         [&](const op_debug& op) {
