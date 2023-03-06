@@ -102,7 +102,13 @@ auto to_string(const op& op_code) -> std::string
             return std::format(FORMAT2, func_str, jump_str);
         },
         [](op_call op) { return std::format("CALL({})", op.args_size); },
-        [](const op_builtin_call& op) { return std::format("BUILTIN_CALL()"); },
+        [](const op_builtin_call& op) {
+            const auto& b = get_builtin(op.id);
+            return std::format(
+                "BUILTIN_CALL({}({}) -> {})",
+                b.name, format_comma_separated(b.args), b.return_type
+            );
+        },
         [](const op_debug& op) { return std::format("DEBUG({})", op.message); },
         [](const op_assert& op) { return std::format("ASSERT({})", op.message); },
     }, op_code);

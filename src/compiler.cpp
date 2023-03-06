@@ -820,7 +820,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                 .id=b.value(),
                 .args_size=args_size
             });
-            return get_builtin_return_type(*b);
+            return get_builtin(*b).return_type;
         }
     }
 

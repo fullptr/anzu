@@ -192,14 +192,9 @@ auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
     return std::nullopt;
 }
 
-auto get_builtin_return_type(std::size_t id) -> type_name
+auto get_builtin(std::size_t id) -> const builtin&
 {
-    return builtins[id].return_type;
-}
-
-auto get_builtin_function_ptr(std::size_t id) -> builtin_function
-{
-    return builtins[id].ptr;
+    return builtins[id];
 }
 
 }

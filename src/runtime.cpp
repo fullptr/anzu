@@ -199,7 +199,7 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
             ctx.prog_ptr = ptr; // Jump into the function
         },
         [&](const op_builtin_call& op) {
-            get_builtin_function_ptr(op.id)(ctx);
+            get_builtin(op.id).ptr(ctx);
             ++ctx.prog_ptr;
         },
         [&](const op_debug& op) {
