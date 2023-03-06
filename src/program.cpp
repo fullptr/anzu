@@ -1,5 +1,6 @@
 #include "program.hpp"
 #include "object.hpp"
+#include "functions.hpp"
 #include "utility/overloaded.hpp"
 
 #include <string>
