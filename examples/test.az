@@ -1,1 +1,5 @@
-x := "hello";
+
+
+for p in [1, 2, 3] {
+    println(*p);
+}

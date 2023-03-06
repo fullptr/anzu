@@ -109,7 +109,6 @@ auto to_string(const op& op_code) -> std::string
                 b.name, format_comma_separated(b.args), b.return_type
             );
         },
-        [](const op_debug& op) { return std::format("DEBUG({})", op.message); },
         [](const op_assert& op) { return std::format("ASSERT({})", op.message); },
     }, op_code);
 }

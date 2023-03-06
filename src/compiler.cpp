@@ -473,7 +473,6 @@ auto destruct_on_break_or_continue(compiler& com) -> void
     for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
         for (const auto& [name, info] : scope.vars | std::views::reverse) {
             call_destructor_named_var(com, name, info.type);
-            com.program.emplace_back(op_debug{std::format("destructing {}", name)});
         }
         if (scope.type == var_scope::scope_type::loop) {
             return;
