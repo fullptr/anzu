@@ -565,6 +565,25 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name
     return type;
 }
 
+// Fetches the given literal from read only memory, or adds it if it is not there, and
+// returns the pointer.
+auto insert_into_rom(compiler& com, std::string_view data) -> std::size_t
+{
+    const auto index = com.read_only_data.find(data);
+    if (index != std::string::npos) {
+        return set_rom_bit(index);
+    }
+    const auto ptr = com.read_only_data.size();
+    com.read_only_data.append(data);
+    return set_rom_bit(ptr);
+}
+
+auto push_assert(compiler& com, std::string_view message) -> void
+{
+    const auto index = unset_rom_bit(insert_into_rom(com, message));
+    com.program.emplace_back(op_assert{ .index=index, .size=message.size() });
+}
+
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
     auto& global_fns = com.functions[global_namespace];
@@ -647,7 +666,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
             com.program.emplace_back(op_load{ .size = com.types.size_of(u64_type()) }); // load the size
         }
         com.program.emplace_back(op_u64_lt{});
-        com.program.emplace_back(op_assert{"index out of range"});
+        push_assert(com, "index out of range");
     }
 
     // Offset pointer by (index * size)
@@ -668,19 +687,6 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
 {
     return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
-}
-
-// Fetches the given literal from read only memory, or adds it if it is not there, and
-// returns the pointer.
-auto insert_into_rom(compiler& com, const std::string& data) -> std::size_t
-{
-    const auto index = com.read_only_data.find(data);
-    if (index != std::string::npos) {
-        return set_rom_bit(index);
-    }
-    const auto ptr = com.read_only_data.size();
-    com.read_only_data.append(data);
-    return set_rom_bit(ptr);
 }
 
 auto push_expr_val(compiler& com, const node_literal_i32_expr& node) -> type_name
@@ -903,12 +909,12 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
         node.token.assert_eq(upper_bound_type, u64_type(), "subspan indices must be u64");
         com.program.emplace_back(op_u64_lt{});
-        com.program.emplace_back(op_assert{"lower bound must be stricly less than the upper bound"});
+        push_assert(com, "lower bound must be stricly less than the upper bound");
 
         push_expr_val(com, *node.upper_bound);
         com.program.emplace_back(op_push_literal_u64{array_length(expr_type)});
         com.program.emplace_back(op_u64_lt{});
-        com.program.emplace_back(op_assert{"upper bound must be strictly less than the array size"});
+        push_assert(com, "upper bound must be strictly less than the array size");
     }
 
     push_expr_ptr(com, *node.expr);
@@ -1352,8 +1358,7 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 
     if (com.debug) {
         push_expr_val(com, *node.expr);
-        const auto message = std::format("line {}", node.token.line);
-        com.program.emplace_back(op_assert{message});
+        push_assert(com, std::format("line {}", node.token.line));
     }
 }
 

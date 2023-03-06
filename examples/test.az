@@ -1,5 +1,4 @@
 
 
-for p in [1, 2, 3] {
-    println(*p);
-}
+x := [1, 2, 3];
+println(x[5u]);

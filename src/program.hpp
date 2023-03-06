@@ -125,7 +125,9 @@ struct op_return
 
 struct op_assert
 {
-    std::string message;
+    // Describes a position in read only memory
+    std::size_t index;
+    std::size_t size;
 };
 
 struct op_char_eq {};

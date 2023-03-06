@@ -204,7 +204,11 @@ auto apply_op(runtime_context& ctx, const op& op_code) -> void
         },
         [&](const op_assert& op) {
             if (!pop_value<bool>(ctx.stack)) {
-                runtime_error(op.message);
+                const auto m = std::string_view(
+                    reinterpret_cast<const char*>(&ctx.rom[op.index]),
+                    op.size
+                );
+                runtime_error(m);
             }
             ++ctx.prog_ptr;
         },
