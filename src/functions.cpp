@@ -144,148 +144,57 @@ auto builtin_fputs(runtime_context& ctx) -> void
 
 }
 
-auto construct_builtin_map() -> builtin_map
+auto construct_builtin_array() -> std::vector<builtin>
 {
-    auto builtins = builtin_map{};
-
-    builtins.emplace(
-        builtin_key{ .name = "sqrt", .args = { f64_type() } },
-        builtin_val{ .ptr = builtin_sqrt, .return_type = f64_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "print", .args = { u64_type() } },
-        builtin_val{ .ptr = builtin_print<std::uint64_t>, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { u64_type() } },
-        builtin_val{ .ptr = builtin_println<std::uint64_t>, .return_type = null_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "print", .args = { char_type() } },
-        builtin_val{ .ptr = builtin_print<char>, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { char_type() } },
-        builtin_val{ .ptr = builtin_println<char>, .return_type = null_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "print", .args = { f64_type() } },
-        builtin_val{ .ptr = builtin_print<double>, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { f64_type() } },
-        builtin_val{ .ptr = builtin_println<double>, .return_type = null_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "print", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_print<bool>, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { bool_type() } },
-        builtin_val{ .ptr = builtin_println<bool>, .return_type = null_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "print", .args = { null_type() } },
-        builtin_val{ .ptr = builtin_print<std::byte>, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { null_type() } },
-        builtin_val{ .ptr = builtin_println<std::byte>, .return_type = null_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "print", .args = { i32_type() } },
-        builtin_val{ .ptr = builtin_print<std::int32_t>, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { i32_type() } },
-        builtin_val{ .ptr = builtin_println<std::int32_t>, .return_type = null_type() }
-    );
-
-    builtins.emplace(
-        builtin_key{ .name = "print", .args = { i64_type() } },
-        builtin_val{ .ptr = builtin_print<std::int64_t>, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { i64_type() } },
-        builtin_val{ .ptr = builtin_println<std::int64_t>, .return_type = null_type() }
-    );
-
     const auto char_span = concrete_span_type(char_type());
 
-    builtins.emplace(
-        builtin_key{ .name = "print", .args = { char_span } },
-        builtin_val{ .ptr = builtin_print_char_span, .return_type = null_type() }
-    );
-    builtins.emplace(
-        builtin_key{ .name = "println", .args = { char_span } },
-        builtin_val{ .ptr = builtin_println_char_span, .return_type = null_type() }
-    );
+    auto b = std::vector<builtin>{};
 
-    builtins.emplace(
-        builtin_key{ .name = "fopen", .args = { char_span, char_span }},
-        builtin_val{ .ptr = builtin_fopen, .return_type = u64_type() }
-    );
+    b.push_back(builtin{"sqrt", builtin_sqrt, {f64_type()}, f64_type()});
 
-    builtins.emplace(
-        builtin_key{ .name = "fclose", .args = { u64_type() }},
-        builtin_val{ .ptr = builtin_fclose, .return_type = null_type() }
-    );
+    b.push_back(builtin{"print", builtin_print<std::int32_t>,  {i32_type()},  null_type()});
+    b.push_back(builtin{"print", builtin_print<std::int64_t>,  {i64_type()},  null_type()});
+    b.push_back(builtin{"print", builtin_print<std::uint64_t>, {u64_type()},  null_type()});
+    b.push_back(builtin{"print", builtin_print<double>,        {f64_type()},  null_type()});
+    b.push_back(builtin{"print", builtin_print_char,           {char_type()}, null_type()});
+    b.push_back(builtin{"print", builtin_print_bool,           {bool_type()}, null_type()});
+    b.push_back(builtin{"print", builtin_print_null,           {null_type()}, null_type()});
+    b.push_back(builtin{"print", builtin_print_char_span,      {char_span},   null_type()});
 
-    builtins.emplace(
-        builtin_key{ .name = "fputs", .args = { u64_type(), char_span }},
-        builtin_val{ .ptr = builtin_fputs, .return_type = null_type() }
-    );
+    b.push_back(builtin{"println", builtin_println<std::int32_t>,  {i32_type()},  null_type()});
+    b.push_back(builtin{"println", builtin_println<std::int64_t>,  {i64_type()},  null_type()});
+    b.push_back(builtin{"println", builtin_println<std::uint64_t>, {u64_type()},  null_type()});
+    b.push_back(builtin{"println", builtin_println<double>,        {f64_type()},  null_type()});
+    b.push_back(builtin{"println", builtin_println_char,           {char_type()}, null_type()});
+    b.push_back(builtin{"println", builtin_println_bool,           {bool_type()}, null_type()});
+    b.push_back(builtin{"println", builtin_println_null,           {null_type()}, null_type()});
+    b.push_back(builtin{"println", builtin_println_char_span,      {char_span},   null_type()});
 
-    return builtins;
+    b.push_back(builtin{"fopen", builtin_fopen, {char_span, char_span}, u64_type()});
+    b.push_back(builtin{"fclose", builtin_fclose, {u64_type()}, null_type()});
+    b.push_back(builtin{"fputs", builtin_fputs, {u64_type(), char_span}, null_type()});
+
+    return b;
 }
 
-static const auto builtins = construct_builtin_map();
+static const auto builtins = construct_builtin_array();
 
-auto is_builtin(const std::string& name, const std::vector<type_name>& args) -> bool
+auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
+    -> std::optional<std::size_t>
 {
-    // Hack, generalise later
-    if ((name == "print" || name == "println") &&
-        args.size() == 1 &&
-        std::holds_alternative<type_ptr>(args[0])
-    ) {
-        return true;
+    auto index = std::size_t{0};
+    for (const auto& b : builtins) {
+        if (name == b.name && args == b.args) {
+            return index;
+        }
+        ++index;
     }
-    return builtins.contains({name, args});
+    return std::nullopt;
 }
 
-auto fetch_builtin(const std::string& name, const std::vector<type_name>& args) -> builtin_val
+auto get_builtin(std::size_t id) -> const builtin&
 {
-    // Hack, generalise later
-    if ((name == "print" || name == "println") &&
-        args.size() == 1 &&
-        std::holds_alternative<type_ptr>(args[0])
-    ) {
-        const auto newline = name == "println";
-        return builtin_val{
-            .ptr = [=](runtime_context& ctx) -> void {
-                const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-                print("{}", ptr);
-                if (newline) {
-                    print("\n");
-                }
-                ctx.stack.push_back(std::byte{0}); // Return null
-            },
-            .return_type = null_type()
-        };
-    }
-
-    auto it = builtins.find({name, args});
-    if (it == builtins.end()) {
-        anzu::print("builtin error: could not find function '{}({})'\n", name, format_comma_separated(args));
-        std::exit(1);
-    }
-    return it->second;
+    return builtins[id];
 }
 
 }

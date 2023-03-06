@@ -815,15 +815,12 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             args_size += com.types.size_of(param_types.back());
         }
 
-        if (is_builtin(inner.name, param_types)) {
-            const auto& builtin = fetch_builtin(inner.name, param_types);
-
+        if (const auto b = get_builtin_id(inner.name, param_types); b.has_value()) {
             com.program.emplace_back(op_builtin_call{
-                .name=inner.name,
-                .ptr=builtin.ptr,
+                .id=b.value(),
                 .args_size=args_size
             });
-            return builtin.return_type;
+            return get_builtin(*b).return_type;
         }
     }
 
