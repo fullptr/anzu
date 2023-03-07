@@ -9,8 +9,8 @@
 
 namespace anzu {
 
-struct runtime_context;
-using builtin_function = std::function<void(runtime_context&)>;
+struct bytecode_context;
+using builtin_function = std::function<void(bytecode_context&)>;
 
 struct builtin
 {

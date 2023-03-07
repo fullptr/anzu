@@ -120,7 +120,6 @@ struct bytecode_program
     std::vector<std::byte> rom;
 };
 
-
 auto run_program(const bytecode_program& prog) -> void;
 
 }

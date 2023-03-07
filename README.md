@@ -103,9 +103,9 @@ Parser   -- parser.hpp    : Converts a vector of tokens into an AST
    |
 Compiler -- compiler.hpp  : Converts an AST into a program
    |
-   |     -- program.hpp   : Definitions of program op codes and utility
+   |     --
    |
-Runtime  -- runtime.hpp   : Executes the program
+Runtime  -- Rewrite WIP
    |
   Output
 

@@ -13,12 +13,11 @@ add_executable(
     ast.cpp
     compiler.cpp
     program.cpp
-    runtime.cpp
     allocator.cpp
     object.cpp
     functions.cpp
     resolver.cpp
-    runtime.cpp
+    bytecode.cpp
 )
 
 target_include_directories(anzu PRIVATE .)

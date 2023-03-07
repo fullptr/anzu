@@ -1,6 +1,6 @@
 #include "functions.hpp"
 #include "object.hpp"
-#include "runtime.hpp"
+#include "bytecode.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 #include "utility/memory.hpp"
@@ -13,7 +13,7 @@
 namespace anzu {
 namespace {
 
-auto resolve_ptr(runtime_context& ctx, std::uint64_t ptr) -> std::byte*
+auto resolve_ptr(bytecode_context& ctx, std::uint64_t ptr) -> std::byte*
 {
     if (is_heap_ptr(ptr)) {
         const auto index = unset_heap_bit(ptr);
@@ -27,7 +27,7 @@ auto resolve_ptr(runtime_context& ctx, std::uint64_t ptr) -> std::byte*
     return &ctx.stack[index];
 }
 
-auto pop_char_span(runtime_context& ctx) -> std::string
+auto pop_char_span(bytecode_context& ctx) -> std::string
 {
     const auto size = pop_value<std::uint64_t>(ctx.stack);
     const auto ptr = pop_value<std::uint64_t>(ctx.stack);
@@ -38,63 +38,63 @@ auto pop_char_span(runtime_context& ctx) -> std::string
     return ret;
 }
 
-auto builtin_sqrt(runtime_context& ctx) -> void
+auto builtin_sqrt(bytecode_context& ctx) -> void
 {
     auto val = pop_value<double>(ctx.stack);
     push_value(ctx.stack, std::sqrt(val));
 }
 
-auto builtin_print_char(runtime_context& ctx) -> void
+auto builtin_print_char(bytecode_context& ctx) -> void
 {
     print("{}", static_cast<char>(ctx.stack.back()));
     ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_char(runtime_context& ctx) -> void
+auto builtin_println_char(bytecode_context& ctx) -> void
 {
     print("{}\n", static_cast<char>(ctx.stack.back()));
     ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_bool(runtime_context& ctx) -> void
+auto builtin_print_bool(bytecode_context& ctx) -> void
 {
     print("{}", ctx.stack.back() == std::byte{1});
     ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_bool(runtime_context& ctx) -> void
+auto builtin_println_bool(bytecode_context& ctx) -> void
 {
     print("{}\n", ctx.stack.back() == std::byte{1});
     ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_print_null(runtime_context& ctx) -> void
+auto builtin_print_null(bytecode_context& ctx) -> void
 {
     print("null");
     ctx.stack.back() = std::byte{0}; // returns null
 }
 
-auto builtin_println_null(runtime_context& ctx) -> void
+auto builtin_println_null(bytecode_context& ctx) -> void
 {
     print("null\n");
     ctx.stack.back() = std::byte{0}; // returns null
 }
 
 template <typename T>
-auto builtin_print(runtime_context& ctx) -> void
+auto builtin_print(bytecode_context& ctx) -> void
 {
     print("{}", pop_value<T>(ctx.stack));
     ctx.stack.push_back(std::byte{0}); // returns null
 }
 
 template <typename T>
-auto builtin_println(runtime_context& ctx) -> void
+auto builtin_println(bytecode_context& ctx) -> void
 {
     print("{}\n", pop_value<T>(ctx.stack));
     ctx.stack.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_print_char_span(runtime_context& ctx) -> void
+auto builtin_print_char_span(bytecode_context& ctx) -> void
 {
     const auto size = pop_value<std::uint64_t>(ctx.stack);
     const auto ptr = pop_value<std::uint64_t>(ctx.stack);
@@ -105,7 +105,7 @@ auto builtin_print_char_span(runtime_context& ctx) -> void
     ctx.stack.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_println_char_span(runtime_context& ctx) -> void
+auto builtin_println_char_span(bytecode_context& ctx) -> void
 {
     const auto size = pop_value<std::uint64_t>(ctx.stack);
     const auto ptr = pop_value<std::uint64_t>(ctx.stack);
@@ -119,7 +119,7 @@ auto builtin_println_char_span(runtime_context& ctx) -> void
 
 static_assert(sizeof(std::FILE*) == sizeof(std::uint64_t));
 
-auto builtin_fopen(runtime_context& ctx) -> void
+auto builtin_fopen(bytecode_context& ctx) -> void
 {
     const auto mode = pop_char_span(ctx);
     const auto file = pop_char_span(ctx);
@@ -127,14 +127,14 @@ auto builtin_fopen(runtime_context& ctx) -> void
     push_value<std::FILE*>(ctx.stack, ptr);
 }
 
-auto builtin_fclose(runtime_context& ctx) -> void
+auto builtin_fclose(bytecode_context& ctx) -> void
 {
     const auto ptr = pop_value<std::FILE*>(ctx.stack);
     std::fclose(ptr);
     ctx.stack.push_back(std::byte{0}); // returns null
 }
 
-auto builtin_fputs(runtime_context& ctx) -> void
+auto builtin_fputs(bytecode_context& ctx) -> void
 {
     const auto data = pop_char_span(ctx);
     const auto ptr = pop_value<std::FILE*>(ctx.stack);

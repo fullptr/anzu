@@ -1,5 +1,6 @@
 #include "bytecode.hpp"
 #include "object.hpp"
+#include "functions.hpp"
 #include "utility/scope_timer.hpp"
 #include "utility/print.hpp"
 #include "utility/memory.hpp"
@@ -25,7 +26,7 @@ auto runtime_error(std::string_view message)
 }
 
 template <typename Type, template <typename> typename Op>
-auto unary_op(runtime_context& ctx) -> void
+auto unary_op(bytecode_context& ctx) -> void
 {
     static constexpr auto op = Op<Type>{};
     const auto obj = pop_value<Type>(ctx.stack);
@@ -33,7 +34,7 @@ auto unary_op(runtime_context& ctx) -> void
 }
 
 template <typename Type, template <typename> typename Op>
-auto binary_op(runtime_context& ctx) -> void
+auto binary_op(bytecode_context& ctx) -> void
 {
     static constexpr auto op = Op<Type>{};
     const auto rhs = pop_value<Type>(ctx.stack);
@@ -59,7 +60,7 @@ auto to_byte(op2 opcode) -> std::byte
 template <typename T>
 auto to_bytes(T t) -> std::array<std::byte, sizeof(T)>
 {
-    return std::bit_cast<std::array<std::byte, sizeof(T)>>(val);
+    return std::bit_cast<std::array<std::byte, sizeof(T)>>(t);
 }
 
 auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
@@ -132,13 +133,13 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             if (is_heap_ptr(ptr)) {
                 const auto heap_ptr = unset_heap_bit(ptr);
                 std::memcpy(&ctx.heap[heap_ptr], &ctx.stack[ctx.stack.size() - size], size);
-                ctx.stack.resize(ctx.stack.size() - op.size);
+                ctx.stack.resize(ctx.stack.size() - size);
             }
             else if (is_rom_ptr(ptr)) {
                 runtime_error("cannot assign into read only memory");
             }
             else {
-                runtime_assert(ptr + op.size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
+                runtime_assert(ptr + size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
                 if (ptr + size < ctx.stack.size()) {
                     std::memcpy(&ctx.stack[ptr], &ctx.stack[ctx.stack.size() - size], size);
                     ctx.stack.resize(ctx.stack.size() - size);
@@ -222,7 +223,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             ctx.prog_ptr = ptr; // Jump into the function
         } break;
         case op2::builtin_call: {
-            const auto id = read<std::uint64_t>(prog. ctx.prog_ptr);
+            const auto id = read<std::uint64_t>(prog, ctx.prog_ptr);
             get_builtin(id).ptr(ctx);
         } break;
         case op2::assert: {
@@ -295,7 +296,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op2::i32_neg: { unary_op<std::int32_t, std::negate>(ctx); } break;
         case op2::i64_neg: { unary_op<std::int64_t, std::negate>(ctx); } break;
         case op2::f64_neg: { unary_op<double, std::negate>(ctx); } break;
-        default: { runtime_error("unknown op code {}!", op_code); } break;
+        default: { runtime_error("unknown op code!"); } break;
     }
 }
 
@@ -332,7 +333,7 @@ auto run_program(const bytecode_program& prog) -> void
     bytecode_context ctx;
     ctx.rom = prog.rom;
     while (ctx.prog_ptr < prog.code.size()) {
-        apply_op(ctx);
+        apply_op(prog, ctx);
     }
 
     if (ctx.allocator.bytes_allocated() > 0) {
