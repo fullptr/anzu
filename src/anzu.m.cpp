@@ -25,19 +25,6 @@ void print_usage()
 
 auto main(const int argc, const char* argv[]) -> int
 {
-    using namespace anzu;
-    auto p = std::vector<std::byte>();
-    push_value(p, op2::push_literal_i64);
-    push_value(p, std::uint64_t{5});
-    push_value(p, op2::push_literal_i64);
-    push_value(p, std::uint64_t{6});
-    push_value(p, op2::u64_mul);
-    push_value(p, op2::builtin_call);
-    push_value(p, get_builtin_id("println", {i64_type()}));
-    run_program(bytecode_program{p, {}});
-
-    return 0;
-
     if (argc != 3) {
         print_usage();
         return 1;
@@ -94,11 +81,10 @@ auto main(const int argc, const char* argv[]) -> int
         return 0;
     }
 
-#if 0
     anzu::print("-> Compiling\n");
     const auto program = anzu::compile(root, parsed_program, true); // TODO: Make debug a switch
     if (mode == "com") {
-        anzu::print_program(program);
+        //anzu::print_program(program);
         return 0;
     }
 
@@ -108,12 +94,11 @@ auto main(const int argc, const char* argv[]) -> int
         return 0;
     }
     else if (mode == "debug") {
-        anzu::run_program_debug(program);
+        //anzu::run_program_debug(program);
         return 0;
     }
 
     anzu::print("unknown mode: '{}'\n", mode);
     print_usage();
-#endif
     return 1;
 }
