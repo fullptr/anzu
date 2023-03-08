@@ -96,10 +96,6 @@ enum class op2 : std::uint8_t
 
 using bytecode = std::vector<std::byte>;
 
-auto push_op(bytecode& code, op2 op) -> std::size_t;
-auto push_op(bytecode& code, op2 op, std::size_t val1) -> std::size_t;
-auto push_op(bytecode& code, op2 op, std::size_t val1, std::size_t val2) -> std::size_t;
-
 struct bytecode_context
 {
     std::size_t prog_ptr = 0;
@@ -121,5 +117,6 @@ struct bytecode_program
 };
 
 auto run_program(const bytecode_program& prog) -> void;
+auto print_program(const bytecode_program& prog) -> void;
 
 }

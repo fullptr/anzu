@@ -300,30 +300,142 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
     }
 }
 
+auto print_op(const bytecode_program& prog, std::size_t& ptr) -> bool
+{
+    const auto op_code = static_cast<op2>(prog.code[ptr++]);
+    switch (op_code) {
+        // TODO: Pushing literals can just be memcpy's without casting, because we're
+        // going from bytes to bytes
+        case op2::push_literal_i32: {
+            const auto value = read<std::int32_t>(prog, ptr);
+            print("PUSH_LITERAL_I32: {}\n", value);
+        } break;
+        case op2::push_literal_i64: {
+            const auto value = read<std::int64_t>(prog, ptr);
+            print("PUSH_LITERAL_I64: {}\n", value);
+        } break;
+        case op2::push_literal_u64: {
+            const auto value = read<std::uint64_t>(prog, ptr);
+            print("PUSH_LITERAL_U64: {}\n", value);
+        } break;
+        case op2::push_literal_f64: {
+            const auto value = read<double>(prog, ptr);
+            print("PUSH_LITERAL_F64: {}\n", value);
+        } break;
+        case op2::push_literal_char: {
+            const auto value = read<char>(prog, ptr);
+            print("PUSH_LITERAL_CHAR: {}\n", value);
+        } break;
+        case op2::push_literal_bool: {
+            const auto value = read<bool>(prog, ptr);
+            print("PUSH_LITERAL_BOOL: {}\n", value);
+        } break;
+        case op2::push_literal_null: {
+            print("PUSH_LITERAL_NULL\n");
+        } break;
+        case op2::push_global_addr: {
+            const auto pos = read<std::uint64_t>(prog, ptr);
+            print("PUSH_GLOBAL_ADDR: {}\n", pos);
+        } break;
+        case op2::push_local_addr: {
+            const auto offset = read<std::uint64_t>(prog, ptr);
+            print("PUSH_LOCAL_ADDR: base+{}\n", offset);
+        } break;
+        case op2::load: {
+            const auto size = read<std::uint64_t>(prog, ptr);
+            print("LOAD: {}\n", size);
+        } break;
+        case op2::save: {
+            const auto size = read<std::uint64_t>(prog, ptr);
+            print("SAVE: {}\n", size);
+        } break;
+        case op2::pop: {
+            const auto size = read<std::uint64_t>(prog, ptr);
+            print("POP: {}\n", size);
+        } break;
+        //case op2::alloc_span: {} break;
+        //case op2::dealloc_span: {} break;
+        //case op2::alloc_ptr: {} break;
+        //case op2::dealloc_ptr: {} break;
+        //case op2::jump: {} break;
+        //case op2::jump_if_false: {} break;
+        //case op2::ret: {} break;
+        //case op2::function_call: {} break;
+        //case op2::call: {} break;
+        case op2::builtin_call: {
+            const auto id = read<std::uint64_t>(prog, ptr);
+            print("BUILTIN: {}\n", get_builtin(id).name);
+        } break;
+        case op2::assert: {
+            const auto index = read<std::uint64_t>(prog, ptr);
+            const auto size = read<std::uint64_t>(prog, ptr);
+            //const auto m = std::string_view( // UB?
+            //    reinterpret_cast<const char*>(&ctx.rom[index]), size
+            //);
+            //print("ASSERT: msg={}\n", m);
+            print("ASSERT\n");
+        } break;
+        //case op2::char_eq: {} break;
+        //case op2::char_ne: {} break;
+        //case op2::i32_add: { binary_op<std::int32_t, std::plus>(ctx); } break;
+        //case op2::i32_sub: { binary_op<std::int32_t, std::minus>(ctx); } break;
+        //case op2::i32_mul: { binary_op<std::int32_t, std::multiplies>(ctx); } break;
+        //case op2::i32_div: { binary_op<std::int32_t, std::divides>(ctx); } break;
+        //case op2::i32_mod: { binary_op<std::int32_t, std::modulus>(ctx); } break;
+        //case op2::i32_eq:  { binary_op<std::int32_t, std::equal_to>(ctx); } break;
+        //case op2::i32_ne:  { binary_op<std::int32_t, std::not_equal_to>(ctx); } break;
+        //case op2::i32_lt:  { binary_op<std::int32_t, std::less>(ctx); } break;
+        //case op2::i32_le:  { binary_op<std::int32_t, std::less_equal>(ctx); } break;
+        //case op2::i32_gt:  { binary_op<std::int32_t, std::greater>(ctx); } break;
+        //case op2::i32_ge:  { binary_op<std::int32_t, std::greater_equal>(ctx); } break;
+        //case op2::i64_add: { binary_op<std::int64_t, std::plus>(ctx); } break;
+        //case op2::i64_sub: { binary_op<std::int64_t, std::minus>(ctx); } break;
+        //case op2::i64_mul: { binary_op<std::int64_t, std::multiplies>(ctx); } break;
+        //case op2::i64_div: { binary_op<std::int64_t, std::divides>(ctx); } break;
+        //case op2::i64_mod: { binary_op<std::int64_t, std::modulus>(ctx); } break;
+        //case op2::i64_eq:  { binary_op<std::int64_t, std::equal_to>(ctx); } break;
+        //case op2::i64_ne:  { binary_op<std::int64_t, std::not_equal_to>(ctx); } break;
+        //case op2::i64_lt:  { binary_op<std::int64_t, std::less>(ctx); } break;
+        //case op2::i64_le:  { binary_op<std::int64_t, std::less_equal>(ctx); } break;
+        //case op2::i64_gt:  { binary_op<std::int64_t, std::greater>(ctx); } break;
+        //case op2::i64_ge:  { binary_op<std::int64_t, std::greater_equal>(ctx); } break;
+        case op2::u64_add: { print("U64_ADD\n"); } break;
+        case op2::u64_sub: { print("U64_SUB\n"); } break;
+        case op2::u64_mul: { print("U64_MUL\n"); } break;
+        case op2::u64_div: { print("U64_DIV\n"); } break;
+        case op2::u64_mod: { print("U64_MOD\n"); } break;
+        case op2::u64_eq:  { print("U64_EQ\n"); } break;
+        case op2::u64_ne:  { print("U64_NE\n"); } break;
+        case op2::u64_lt:  { print("U64_LT\n"); } break;
+        case op2::u64_le:  { print("U64_LE\n"); } break;
+        case op2::u64_gt:  { print("U64_GT\n"); } break;
+        case op2::u64_ge:  { print("U64_GE\n"); } break;
+        //case op2::f64_add: { binary_op<double, std::plus>(ctx); } break;
+        //case op2::f64_sub: { binary_op<double, std::minus>(ctx); } break;
+        //case op2::f64_mul: { binary_op<double, std::multiplies>(ctx); } break;
+        //case op2::f64_div: { binary_op<double, std::divides>(ctx); } break;
+        //case op2::f64_eq:  { binary_op<double, std::equal_to>(ctx); } break;
+        //case op2::f64_ne:  { binary_op<double, std::not_equal_to>(ctx); } break;
+        //case op2::f64_lt:  { binary_op<double, std::less>(ctx); } break;
+        //case op2::f64_le:  { binary_op<double, std::less_equal>(ctx); } break;
+        //case op2::f64_gt:  { binary_op<double, std::greater>(ctx); } break;
+        //case op2::f64_ge:  { binary_op<double, std::greater_equal>(ctx); } break;
+        //case op2::bool_and: { binary_op<bool, std::logical_and>(ctx); } break;
+        //case op2::bool_or:  { binary_op<bool, std::logical_or>(ctx); } break;
+        //case op2::bool_eq:  { binary_op<bool, std::equal_to>(ctx); } break;
+        //case op2::bool_ne:  { binary_op<bool, std::not_equal_to>(ctx); } break;
+        //case op2::bool_not: { unary_op<bool, std::logical_not>(ctx); } break;
+        //case op2::i32_neg: { unary_op<std::int32_t, std::negate>(ctx); } break;
+        //case op2::i64_neg: { unary_op<std::int64_t, std::negate>(ctx); } break;
+        //case op2::f64_neg: { unary_op<double, std::negate>(ctx); } break;
+        default: {
+            print("UNKNOWN\n");
+            return false;
+        } break;
+    }
+    return true;
 }
 
-auto push_op(bytecode& code, op2 op) -> std::size_t
-{
-    const auto pos = code.size();
-    code.push_back(to_byte(op));
-    return pos;
-}
-
-auto push_op(bytecode& code, op2 op, std::size_t val1) -> std::size_t
-{
-    const auto pos = code.size();
-    code.push_back(to_byte(op));
-    for (const auto b : to_bytes(val1)) code.push_back(b);
-    return pos;
-}
-
-auto push_op(bytecode& code, op2 op, std::size_t val1, std::size_t val2) -> std::size_t
-{
-    const auto pos = code.size();
-    code.push_back(to_byte(op));
-    for (const auto b : to_bytes(val1)) code.push_back(b);
-    for (const auto b : to_bytes(val2)) code.push_back(b);
-    return pos;
 }
 
 auto run_program(const bytecode_program& prog) -> void
@@ -338,6 +450,14 @@ auto run_program(const bytecode_program& prog) -> void
 
     if (ctx.allocator.bytes_allocated() > 0) {
         anzu::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
+    }
+}
+
+auto print_program(const bytecode_program& prog) -> void
+{
+    auto ptr = std::size_t{0};
+    while (ptr < prog.code.size()) {
+        if (!print_op(prog, ptr)) return;
     }
 }
 
