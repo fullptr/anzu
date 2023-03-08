@@ -16,7 +16,6 @@ add_executable(
     allocator.cpp
     object.cpp
     functions.cpp
-    resolver.cpp
     bytecode.cpp
 )
 
