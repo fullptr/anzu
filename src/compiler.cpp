@@ -731,98 +731,97 @@ auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_na
     return null_type();
 }
 
-auto resolve_operation(const type_name& lhs, const type_name& rhs, token_type op_tok)
-    -> std::optional<std::pair<op, type_name>>
-{
-    using tt = token_type;
-
-    if (lhs != rhs) return std::nullopt;
-
-    const auto& type = lhs;
-    if (type == char_type()) {
-        switch (op_tok) {
-            case tt::bang:       return std::pair{ op::char_eq, bool_type() };
-            case tt::bang_equal: return std::pair{ op::char_ne, bool_type() };
-        }
-    }
-    else if (type == i32_type()) {
-        switch (op_tok) {
-            case tt::plus:    return std::pair{ op::i32_add, type };
-            case tt::minus:   return std::pair{ op::i32_sub, type };
-            case tt::star:    return std::pair{ op::i32_mul, type };
-            case tt::slash:   return std::pair{ op::i32_div, type };
-            case tt::percent: return std::pair{ op::i32_mod, type };
-        }
-    }
-    else if (type == i64_type()) {
-        switch (op_tok) {
-            case tt::plus:          return std::pair{ op::i64_add, type };
-            case tt::minus:         return std::pair{ op::i64_sub, type };
-            case tt::star:          return std::pair{ op::i64_mul, type };
-            case tt::slash:         return std::pair{ op::i64_div, type };
-            case tt::percent:       return std::pair{ op::i64_mod, type };
-
-            case tt::equal_equal:   return std::pair{ op::i64_eq, bool_type() };
-            case tt::bang_equal:    return std::pair{ op::i64_ne, bool_type() };
-            case tt::less:          return std::pair{ op::i64_lt, bool_type() };
-            case tt::less_equal:    return std::pair{ op::i64_le, bool_type() };
-            case tt::greater:       return std::pair{ op::i64_gt, bool_type() };
-            case tt::greater_equal: return std::pair{ op::i64_ge, bool_type() };
-        }
-    }
-    else if (type == u64_type()) {
-        switch (op_tok) {
-            case tt::plus:          return std::pair{ op::u64_add, type };
-            case tt::minus:         return std::pair{ op::u64_sub, type };
-            case tt::star:          return std::pair{ op::u64_mul, type };
-            case tt::slash:         return std::pair{ op::u64_div, type };
-            case tt::percent:       return std::pair{ op::u64_mod, type };
-
-            case tt::equal_equal:   return std::pair{ op::u64_eq, bool_type() };
-            case tt::bang_equal:    return std::pair{ op::u64_ne, bool_type() };
-            case tt::less:          return std::pair{ op::u64_lt, bool_type() };
-            case tt::less_equal:    return std::pair{ op::u64_le, bool_type() };
-            case tt::greater:       return std::pair{ op::u64_gt, bool_type() };
-            case tt::greater_equal: return std::pair{ op::u64_ge, bool_type() };
-        }
-    }
-    else if (type == f64_type()) {
-        switch (op_tok) {
-            case tt::plus:          return std::pair{ op::f64_add, type };
-            case tt::minus:         return std::pair{ op::f64_sub, type };
-            case tt::star:          return std::pair{ op::f64_mul, type };
-            case tt::slash:         return std::pair{ op::f64_div, type };
-
-            case tt::equal_equal:   return std::pair{ op::f64_eq, bool_type() };
-            case tt::bang_equal:    return std::pair{ op::f64_ne, bool_type() };
-            case tt::less:          return std::pair{ op::f64_lt, bool_type() };
-            case tt::less_equal:    return std::pair{ op::f64_le, bool_type() };
-            case tt::greater:       return std::pair{ op::f64_gt, bool_type() };
-            case tt::greater_equal: return std::pair{ op::f64_ge, bool_type() };
-        }
-    }
-    else if (type == bool_type()) {
-        switch (op_tok) {
-            case tt::ampersand_ampersand: return std::pair{ op::bool_and, type };
-            case tt::bar_bar:             return std::pair{ op::bool_or,  type };
-            case tt::equal_equal:         return std::pair{ op::bool_eq,  type };
-            case tt::bang_equal:          return std::pair{ op::bool_ne,  type };
-        }
-    }
-    return std::nullopt;
-}
-
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     const auto lhs = push_expr_val(com, *node.lhs);
     const auto rhs = push_expr_val(com, *node.rhs);
     const auto op = node.token.type;
     
-    const auto info = resolve_operation(lhs, rhs, op);
-    node.token.assert(info.has_value(), "could not find op '{} {} {}'", lhs, op, rhs);
-    const auto [op_code, return_type] = *info;
-    push_value(com.program, op_code);
-    return return_type;
+    using tt = token_type;
+    const auto op_tok = node.token.type;
+
+    if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, op_tok, rhs);
+
+    const auto& type = lhs;
+    if (type == char_type()) {
+        switch (op_tok) {
+            case tt::bang:       push_value(com.program, op::char_eq); return bool_type();
+            case tt::bang_equal: push_value(com.program, op::char_ne); return bool_type();
+        }
+    }
+    else if (type == i32_type()) {
+        switch (op_tok) {
+            case tt::plus:          push_value(com.program, op::i32_add); return type;
+            case tt::minus:         push_value(com.program, op::i32_sub); return type;
+            case tt::star:          push_value(com.program, op::i32_mul); return type;
+            case tt::slash:         push_value(com.program, op::i32_div); return type;
+            case tt::percent:       push_value(com.program, op::i32_mod); return type;
+
+            case tt::equal_equal:   push_value(com.program, op::i32_eq); return bool_type();
+            case tt::bang_equal:    push_value(com.program, op::i32_ne); return bool_type();
+            case tt::less:          push_value(com.program, op::i32_lt); return bool_type();
+            case tt::less_equal:    push_value(com.program, op::i32_le); return bool_type();
+            case tt::greater:       push_value(com.program, op::i32_gt); return bool_type();
+            case tt::greater_equal: push_value(com.program, op::i32_ge); return bool_type();
+        }
+    }
+    else if (type == i64_type()) {
+        switch (op_tok) {
+            case tt::plus:          push_value(com.program, op::i64_add); return type;
+            case tt::minus:         push_value(com.program, op::i64_sub); return type;
+            case tt::star:          push_value(com.program, op::i64_mul); return type;
+            case tt::slash:         push_value(com.program, op::i64_div); return type;
+            case tt::percent:       push_value(com.program, op::i64_mod); return type;
+
+            case tt::equal_equal:   push_value(com.program, op::i64_eq); return bool_type();
+            case tt::bang_equal:    push_value(com.program, op::i64_ne); return bool_type();
+            case tt::less:          push_value(com.program, op::i64_lt); return bool_type();
+            case tt::less_equal:    push_value(com.program, op::i64_le); return bool_type();
+            case tt::greater:       push_value(com.program, op::i64_gt); return bool_type();
+            case tt::greater_equal: push_value(com.program, op::i64_ge); return bool_type();
+        }
+    }
+    else if (type == u64_type()) {
+        switch (op_tok) {
+            case tt::plus:          push_value(com.program, op::u64_add); return type;
+            case tt::minus:         push_value(com.program, op::u64_sub); return type;
+            case tt::star:          push_value(com.program, op::u64_mul); return type;
+            case tt::slash:         push_value(com.program, op::u64_div); return type;
+            case tt::percent:       push_value(com.program, op::u64_mod); return type;
+
+            case tt::equal_equal:   push_value(com.program, op::u64_eq); return bool_type();
+            case tt::bang_equal:    push_value(com.program, op::u64_ne); return bool_type();
+            case tt::less:          push_value(com.program, op::u64_lt); return bool_type();
+            case tt::less_equal:    push_value(com.program, op::u64_le); return bool_type();
+            case tt::greater:       push_value(com.program, op::u64_gt); return bool_type();
+            case tt::greater_equal: push_value(com.program, op::u64_ge); return bool_type();
+        }
+    }
+    else if (type == f64_type()) {
+        switch (op_tok) {
+            case tt::plus:          push_value(com.program, op::f64_add); return type;
+            case tt::minus:         push_value(com.program, op::f64_sub); return type;
+            case tt::star:          push_value(com.program, op::f64_mul); return type;
+            case tt::slash:         push_value(com.program, op::f64_div); return type;
+
+            case tt::equal_equal:   push_value(com.program, op::f64_eq); return bool_type();
+            case tt::bang_equal:    push_value(com.program, op::f64_ne); return bool_type();
+            case tt::less:          push_value(com.program, op::f64_lt); return bool_type();
+            case tt::less_equal:    push_value(com.program, op::f64_le); return bool_type();
+            case tt::greater:       push_value(com.program, op::f64_gt); return bool_type();
+            case tt::greater_equal: push_value(com.program, op::f64_ge); return bool_type();
+        }
+    }
+    else if (type == bool_type()) {
+        switch (op_tok) {
+            case tt::ampersand_ampersand: push_value(com.program, op::bool_and); return type;
+            case tt::bar_bar:             push_value(com.program, op::bool_or);  return type;
+            case tt::equal_equal:         push_value(com.program, op::bool_eq);  return type;
+            case tt::bang_equal:          push_value(com.program, op::bool_ne);  return type;
+        }
+    }
+
+    node.token.error("could not find op '{} {} {}'", lhs, op_tok, rhs);
 }
 
 auto resolve_operation(const type_name& type, token_type op_tok)
