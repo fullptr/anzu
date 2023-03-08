@@ -205,7 +205,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             // the function.
             const auto new_base_ptr = ctx.stack.size() - args_size;
             write_value(ctx.stack, new_base_ptr, ctx.base_ptr);
-            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr + 1); // Pos after function call
+            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr); // Pos after function call
             
             ctx.base_ptr = new_base_ptr;
             ctx.prog_ptr = ptr; // Jump into the function
@@ -387,7 +387,7 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op2::function_call: {
             const auto func_ptr = read<std::uint64_t>(prog, ptr);
             const auto args_size = read<std::uint64_t>(prog, ptr);
-            print("FUNCTION_CALL: func_ptr={} args_size={}\n", func_ptr, args_size);
+            print("FUNCTION_CALL: func_ptr={} args_size={}\n", func_ptr, args_size - 2 * sizeof(std::uint64_t));
         } break;
         case op2::call: {
             const auto args_size = read<std::uint64_t>(prog, ptr);

@@ -1224,8 +1224,9 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     if (node.else_body) {
         push_value(com.program, op2::jump);
         const auto else_pos = push_value(com.program, std::uint64_t{0});
+        const auto in_else_pos = com.program.size();
         push_stmt(com, *node.else_body);
-        write_value(com.program, jump_pos, else_pos + 1); // Jump into the else block if false
+        write_value(com.program, jump_pos, in_else_pos); // Jump into the else block if false
         write_value(com.program, else_pos, com.program.size()); // Jump past the end if false
     } else {
         write_value(com.program, jump_pos, com.program.size()); // Jump past the end if false
