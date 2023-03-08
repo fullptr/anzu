@@ -19,9 +19,12 @@ auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
     }
 }
 
-auto runtime_error(std::string_view message)
+
+template <typename ...Args>
+[[noreturn]] auto runtime_error(std::string_view message, Args&&... args)
 {
-    anzu::print("Runtime assertion failed! {}\n", message);
+    const auto msg = std::format(message, std::forward<Args>(args)...);
+    print("Runtime assertion failed! {}\n", msg);
     std::exit(1);
 }
 
@@ -180,9 +183,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         } break;
         case op2::jump_if_false: {
             const auto jump = read<std::uint64_t>(prog, ctx.prog_ptr);
-            if (pop_value<bool>(ctx.stack)) {
-                ++ctx.prog_ptr;
-            } else {
+            if (!pop_value<bool>(ctx.stack)) {
                 ctx.prog_ptr = jump;
             }
         } break;
@@ -296,12 +297,14 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op2::i32_neg: { unary_op<std::int32_t, std::negate>(ctx); } break;
         case op2::i64_neg: { unary_op<std::int64_t, std::negate>(ctx); } break;
         case op2::f64_neg: { unary_op<double, std::negate>(ctx); } break;
-        default: { runtime_error("unknown op code!"); } break;
+        default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
     }
 }
 
-auto print_op(const bytecode_program& prog, std::size_t& ptr) -> bool
+auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
 {
+    std::size_t start = ptr;
+    print("[{:>3}] ", ptr);
     const auto op_code = static_cast<op2>(prog.code[ptr++]);
     switch (op_code) {
         // TODO: Pushing literals can just be memcpy's without casting, because we're
@@ -461,10 +464,10 @@ auto print_op(const bytecode_program& prog, std::size_t& ptr) -> bool
         case op2::f64_neg: { print("F64_NEG\n"); } break;
         default: {
             print("UNKNOWN\n");
-            return false;
+            return 0;
         } break;
     }
-    return true;
+    return ptr - start;
 }
 
 }
@@ -484,11 +487,29 @@ auto run_program(const bytecode_program& prog) -> void
     }
 }
 
+auto run_program_debug(const bytecode_program& prog) -> void
+{
+    const auto timer = scope_timer{};
+
+    bytecode_context ctx;
+    ctx.rom = prog.rom;
+    while (ctx.prog_ptr < prog.code.size()) {
+        print_op(prog, ctx.prog_ptr);
+        apply_op(prog, ctx);
+    }
+
+    if (ctx.allocator.bytes_allocated() > 0) {
+        anzu::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
+    }
+}
+
 auto print_program(const bytecode_program& prog) -> void
 {
     auto ptr = std::size_t{0};
     while (ptr < prog.code.size()) {
-        if (!print_op(prog, ptr)) return;
+        const auto offset = print_op(prog, ptr);
+        if (offset == 0) return;
+        ptr += offset;
     }
 }
 

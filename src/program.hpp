@@ -28,7 +28,7 @@ struct op_jump              { std::size_t jump; };
 struct op_jump_if_false     { std::size_t jump; };
 struct op_function_call     { std::size_t ptr, args_size; };
 struct op_call              { std::size_t args_size; }; // fetches ptr from the stack
-struct op_builtin_call      { std::size_t id, args_size; };
+struct op_builtin_call      { std::size_t id; };
 struct op_return            { std::size_t size; };
 struct op_assert            { std::size_t index, size; }; // describes a string in rom
 

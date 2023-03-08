@@ -94,7 +94,7 @@ auto main(const int argc, const char* argv[]) -> int
         return 0;
     }
     else if (mode == "debug") {
-        //anzu::run_program_debug(program);
+        anzu::run_program_debug(program);
         return 0;
     }
 

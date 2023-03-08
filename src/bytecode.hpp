@@ -117,6 +117,8 @@ struct bytecode_program
 };
 
 auto run_program(const bytecode_program& prog) -> void;
+auto run_program_debug(const bytecode_program& prog) -> void;
+
 auto print_program(const bytecode_program& prog) -> void;
 
 }

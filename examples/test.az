@@ -1,7 +1,17 @@
 
 
-x := [1, 2, 3];
-println(x[0u]);
+count := 0;
+i := 0;
 
-y := 5;
-print(y * 7);
+loop {
+
+    a := "woah now";
+    if !(i < 10) {
+        b := "now now";
+        break;
+    }
+    println(i);
+    i = i + 1;
+}
+
+println("end");
