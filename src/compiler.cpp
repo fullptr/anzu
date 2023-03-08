@@ -916,7 +916,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         if (const auto b = get_builtin_id(inner.name, param_types); b.has_value()) {
-            push_value(com.program, op2::builtin_call, *b, args_size);
+            push_value(com.program, op2::builtin_call, *b);
             return get_builtin(*b).return_type;
         }
     }

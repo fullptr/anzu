@@ -1,4 +1,7 @@
 
 
 x := [1, 2, 3];
-println(x[5u]);
+println(x[0u]);
+
+y := 5;
+print(y * 7);
