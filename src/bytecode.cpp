@@ -387,7 +387,7 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op2::function_call: {
             const auto func_ptr = read<std::uint64_t>(prog, ptr);
             const auto args_size = read<std::uint64_t>(prog, ptr);
-            print("RETURN: func_ptr={} args_size={}\n", func_ptr, args_size);
+            print("FUNCTION_CALL: func_ptr={} args_size={}\n", func_ptr, args_size);
         } break;
         case op2::call: {
             const auto args_size = read<std::uint64_t>(prog, ptr);

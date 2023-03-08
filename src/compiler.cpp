@@ -1339,7 +1339,8 @@ auto compile_function_body(
 {
     auto sig = signature{};
     push_value(com.program, op2::jump);
-    const auto begin_pos = push_value(com.program, std::uint64_t{0});
+    const auto jump_op = push_value(com.program, std::uint64_t{0});
+    const auto begin_pos = com.program.size(); // First op code after the jump
 
     com.current_func.emplace(current_function{ .vars={}, .return_type=null_type() });
 
@@ -1359,7 +1360,9 @@ auto compile_function_body(
         if (com.functions[struct_type][name].contains(sig.params)) {
             tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
         }
-        com.functions[struct_type][name][sig.params] = { .return_type=sig.return_type, .ptr=begin_pos + 1, .tok=tok };
+        com.functions[struct_type][name][sig.params] = {
+            .return_type=sig.return_type, .ptr=begin_pos, .tok=tok
+        };
 
         push_stmt(com, *body);
 
@@ -1377,7 +1380,7 @@ auto compile_function_body(
     }
 
     com.current_func.reset();
-    write_value(com.program, begin_pos, com.program.size());
+    write_value(com.program, jump_op, com.program.size());
     return sig;
 }
 

@@ -1,17 +1,9 @@
 
 
-count := 0;
-i := 0;
-
-loop {
-
-    a := "woah now";
-    if !(i < 10) {
-        b := "now now";
-        break;
-    }
-    println(i);
-    i = i + 1;
+fn adder(a: i64, b: i64, c: i64) -> i64
+{
+    return a + b + c;
 }
 
-println("end");
+y := adder(1, 2, 3);
+println(y);
