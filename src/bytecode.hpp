@@ -6,7 +6,7 @@
 
 namespace anzu {
 
-enum class op2 : std::uint8_t
+enum class op : std::uint8_t
 {
     push_literal_i32,
     push_literal_i64,
