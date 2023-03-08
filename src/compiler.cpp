@@ -753,7 +753,6 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
             case tt::star:          push_value(com.program, op::i32_mul); return type;
             case tt::slash:         push_value(com.program, op::i32_div); return type;
             case tt::percent:       push_value(com.program, op::i32_mod); return type;
-
             case tt::equal_equal:   push_value(com.program, op::i32_eq); return bool_type();
             case tt::bang_equal:    push_value(com.program, op::i32_ne); return bool_type();
             case tt::less:          push_value(com.program, op::i32_lt); return bool_type();
@@ -769,7 +768,6 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
             case tt::star:          push_value(com.program, op::i64_mul); return type;
             case tt::slash:         push_value(com.program, op::i64_div); return type;
             case tt::percent:       push_value(com.program, op::i64_mod); return type;
-
             case tt::equal_equal:   push_value(com.program, op::i64_eq); return bool_type();
             case tt::bang_equal:    push_value(com.program, op::i64_ne); return bool_type();
             case tt::less:          push_value(com.program, op::i64_lt); return bool_type();
@@ -785,7 +783,6 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
             case tt::star:          push_value(com.program, op::u64_mul); return type;
             case tt::slash:         push_value(com.program, op::u64_div); return type;
             case tt::percent:       push_value(com.program, op::u64_mod); return type;
-
             case tt::equal_equal:   push_value(com.program, op::u64_eq); return bool_type();
             case tt::bang_equal:    push_value(com.program, op::u64_ne); return bool_type();
             case tt::less:          push_value(com.program, op::u64_lt); return bool_type();
@@ -800,7 +797,6 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
             case tt::minus:         push_value(com.program, op::f64_sub); return type;
             case tt::star:          push_value(com.program, op::f64_mul); return type;
             case tt::slash:         push_value(com.program, op::f64_div); return type;
-
             case tt::equal_equal:   push_value(com.program, op::f64_eq); return bool_type();
             case tt::bang_equal:    push_value(com.program, op::f64_ne); return bool_type();
             case tt::less:          push_value(com.program, op::f64_lt); return bool_type();
@@ -826,17 +822,15 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     using tt = token_type;
     const auto type = push_expr_val(com, *node.expr);
 
-    if (type == i32_type()) {
-        if (node.token.type == tt::minus) push_value(com.program, op::i32_neg); return type;
-    }
-    else if (type == i64_type()) {
-        if (node.token.type == tt::minus) push_value(com.program, op::i64_neg); return type;
-    }
-    else if (type == f64_type()) {
-        if (node.token.type == tt::minus) push_value(com.program, op::f64_neg); return type;
-    }
-    else if (type == bool_type()) {
-        if (node.token.type == tt::bang) push_value(com.program, op::bool_not); return type;
+    switch (node.token.type) {
+        case tt::minus: {
+            if (type == i32_type()) push_value(com.program, op::i32_neg); return type;
+            if (type == i64_type()) push_value(com.program, op::i64_neg); return type;
+            if (type == f64_type()) push_value(com.program, op::f64_neg); return type;
+        } break;
+        case tt::bang: {
+            if (type == bool_type()) push_value(com.program, op::bool_not); return type;
+        } break;
     }
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
