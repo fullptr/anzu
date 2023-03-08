@@ -733,24 +733,21 @@ auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_na
 
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
+    using tt = token_type;
     const auto lhs = push_expr_val(com, *node.lhs);
     const auto rhs = push_expr_val(com, *node.rhs);
-    const auto op = node.token.type;
-    
-    using tt = token_type;
-    const auto op_tok = node.token.type;
 
-    if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, op_tok, rhs);
+    if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 
     const auto& type = lhs;
     if (type == char_type()) {
-        switch (op_tok) {
+        switch (node.token.type) {
             case tt::bang:       push_value(com.program, op::char_eq); return bool_type();
             case tt::bang_equal: push_value(com.program, op::char_ne); return bool_type();
         }
     }
     else if (type == i32_type()) {
-        switch (op_tok) {
+        switch (node.token.type) {
             case tt::plus:          push_value(com.program, op::i32_add); return type;
             case tt::minus:         push_value(com.program, op::i32_sub); return type;
             case tt::star:          push_value(com.program, op::i32_mul); return type;
@@ -766,7 +763,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
         }
     }
     else if (type == i64_type()) {
-        switch (op_tok) {
+        switch (node.token.type) {
             case tt::plus:          push_value(com.program, op::i64_add); return type;
             case tt::minus:         push_value(com.program, op::i64_sub); return type;
             case tt::star:          push_value(com.program, op::i64_mul); return type;
@@ -782,7 +779,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
         }
     }
     else if (type == u64_type()) {
-        switch (op_tok) {
+        switch (node.token.type) {
             case tt::plus:          push_value(com.program, op::u64_add); return type;
             case tt::minus:         push_value(com.program, op::u64_sub); return type;
             case tt::star:          push_value(com.program, op::u64_mul); return type;
@@ -798,7 +795,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
         }
     }
     else if (type == f64_type()) {
-        switch (op_tok) {
+        switch (node.token.type) {
             case tt::plus:          push_value(com.program, op::f64_add); return type;
             case tt::minus:         push_value(com.program, op::f64_sub); return type;
             case tt::star:          push_value(com.program, op::f64_mul); return type;
@@ -813,7 +810,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
         }
     }
     else if (type == bool_type()) {
-        switch (op_tok) {
+        switch (node.token.type) {
             case tt::ampersand_ampersand: push_value(com.program, op::bool_and); return type;
             case tt::bar_bar:             push_value(com.program, op::bool_or);  return type;
             case tt::equal_equal:         push_value(com.program, op::bool_eq);  return type;
@@ -821,39 +818,27 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
         }
     }
 
-    node.token.error("could not find op '{} {} {}'", lhs, op_tok, rhs);
-}
-
-auto resolve_operation(const type_name& type, token_type op_tok)
-    -> std::optional<std::pair<op, type_name>>
-{
-    using tt = token_type;
-
-    if (type == i32_type()) {
-        if (op_tok == tt::minus) return std::pair{ op::i32_neg, type };
-    }
-    else if (type == i64_type()) {
-        if (op_tok == tt::minus) return std::pair{ op::i64_neg, type };
-    }
-    else if (type == f64_type()) {
-        if (op_tok == tt::minus) return std::pair{ op::f64_neg, type };
-    }
-    else if (type == bool_type()) {
-        if (op_tok == tt::bang) return std::pair{ op::bool_not, type };
-    }
-    return std::nullopt;
+    node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
+    using tt = token_type;
     const auto type = push_expr_val(com, *node.expr);
-    const auto op_tok = node.token.type;
 
-    const auto info = resolve_operation(type, op_tok);
-    node.token.assert(info.has_value(), "could not find op '{}{}'", op_tok, type);
-    const auto [op_code, return_type] = *info;
-    push_value(com.program, op_code);
-    return return_type;
+    if (type == i32_type()) {
+        if (node.token.type == tt::minus) push_value(com.program, op::i32_neg); return type;
+    }
+    else if (type == i64_type()) {
+        if (node.token.type == tt::minus) push_value(com.program, op::i64_neg); return type;
+    }
+    else if (type == f64_type()) {
+        if (node.token.type == tt::minus) push_value(com.program, op::f64_neg); return type;
+    }
+    else if (type == bool_type()) {
+        if (node.token.type == tt::bang) push_value(com.program, op::bool_not); return type;
+    }
+    node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
