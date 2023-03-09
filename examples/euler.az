@@ -3,7 +3,7 @@
 count := 0;
 i := 0;
 
-while i < 100000 {
+while i < 10 {
     if i % 3 == 0 {
         count = count + i;
     } else if i % 5 == 0 {

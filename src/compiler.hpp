@@ -1,7 +1,7 @@
 #pragma once
 #include "ast.hpp"
-#include "program.hpp"
 #include "parser.hpp"
+#include "bytecode.hpp"
 
 #include <filesystem>
 #include <map>
@@ -13,6 +13,6 @@ auto compile(
     const std::filesystem::path& main_dir,
     const std::map<std::filesystem::path, parse_result>& modules,
     bool debug = true
-) -> program;
+) -> bytecode_program;
 
 }

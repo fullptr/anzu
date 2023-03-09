@@ -1,5 +1,5 @@
 # tests all language features, here is a comment
-import file.az;
+
 
 # declaring variables from literals
 {

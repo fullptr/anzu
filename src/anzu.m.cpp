@@ -1,8 +1,9 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "compiler.hpp"
-#include "runtime.hpp"
+#include "bytecode.hpp"
 #include "utility/print.hpp"
+#include "utility/memory.hpp"
 
 #include <string>
 #include <map>

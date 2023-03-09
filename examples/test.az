@@ -1,4 +1,13 @@
 
 
-x := [1, 2, 3];
-println(x[5u]);
+fn add2(x: i64, y: i64) -> i64
+{
+    return x + y;
+}
+
+fn add3(x: i64, y: i64, z: i64) -> i64
+{
+    return add2(x, add2(y, z));
+}
+
+println(add3(1, 2, 3));
