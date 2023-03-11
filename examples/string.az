@@ -1,0 +1,103 @@
+
+struct string
+{
+    data: char[];
+    size: u64;
+
+    fn append_char(self: &string, c: char)
+    {
+        if (self->size == self->data.size()) {
+            new_cap := 2u * self->data.size();
+            if new_cap == 0u {
+                new_cap = 1u;
+            }
+            newdata := new char : new_cap;
+
+            idx := 0u;
+            while idx != self->size {
+                newdata[idx] = self->data[idx];
+                idx = idx + 1u;
+            }
+
+            delete self->data;
+            self->data = newdata;
+        }
+        self->data[self->size] = c;
+        self->size = self->size + 1u;      
+    }
+
+    fn at(self: &string, idx: u64) -> char
+    {
+        assert idx < self->size;
+        return self->data[idx];
+    }
+
+    fn append(self: &string, other: char[])
+    {
+        for c in other {
+            self->append_char(*c);
+        }
+    }
+
+    fn clear(self: &string)
+    {
+        self->size = 0u;
+    }
+
+    fn get(self: &string) -> char[]
+    {
+        return self->data[0u : self->size];
+    }
+
+    fn set(self: &string, value: char[])
+    {
+        self->clear();
+        self->append(value);
+    }
+
+    fn transform(self: &string, func: (&char) -> null)
+    {
+        s := self->get();
+        for c in s {
+            func(c);
+        }
+    }
+
+    # SPECIAL MEMBER FUNCTIONS
+
+    fn drop(self: &string)
+    {
+        delete self->data;
+    }
+
+    fn copy(self: &string) -> string
+    {
+        cpy := string(new char : self->data.size(), self->size);
+        cpy.append(self->get());
+        return cpy;
+    }
+
+    fn assign(self: &string, other: &string)
+    {
+        # Resize self if needed
+        if self->data.size() < other->data.size() {
+            delete self->data;
+            self->data = new char : other->data.size();
+        }
+
+        # Copy over the data
+        idx := 0u;
+        while idx != other->size {
+            self->data[idx] = other->data[idx];
+            idx = idx + 1u;
+        }
+
+        self->size = other->size;
+    }
+}
+
+fn new_string() -> string
+{
+    # We don't have nullptr yet, so we must allocate some space here for now
+    return string(new char : 1u, 0u);
+}

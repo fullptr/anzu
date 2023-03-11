@@ -18,6 +18,5 @@ fn replace_vowels(c: &char)
     }
 }
 
-c := 'a';
-replace_vowels(&c);
-println(c);
+str2.transform(replace_vowels);
+println(str2.get());
