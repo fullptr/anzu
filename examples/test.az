@@ -1,11 +1,14 @@
+import string.az;
 
-x := [1, 2, 3, 4, 5];
-y := x[1u : 4u];
+str := new_string();
+str.append("hello ");
+str.append("world");
 
-for p in y {
-    println(*p);
-}
+str2 := str;
+str2.append(" abc");
 
-z := y[];
-println(y.size());
-println(z.size());
+println(str.get());
+println(str2.get());
+
+str2 = str;
+println(str2.get());

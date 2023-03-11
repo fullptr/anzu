@@ -1011,13 +1011,13 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_expr_val(com, *node.upper_bound);
         push_expr_val(com, *node.lower_bound);
         push_value(com.program, op::u64_sub);
-    } else if (is_list_type(expr_type)) {
-        push_value(com.program, op::push_literal_u64, array_length(expr_type));
-    } else {
+    } else if (is_span_type(expr_type)) {
         // Push the span pointer, offset to the size, and load the size
         push_expr_ptr(com, *node.expr);
         push_value(com.program, op::push_literal_u64, size_of_ptr(), op::u64_add);
         push_value(com.program, op::load, com.types.size_of(u64_type()));
+    } else {
+        push_value(com.program, op::push_literal_u64, array_length(expr_type));
     }
 
     return concrete_span_type(inner_type(expr_type));
