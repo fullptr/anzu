@@ -742,8 +742,8 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     const auto& type = lhs;
     if (type == char_type()) {
         switch (node.token.type) {
-            case tt::bang:       push_value(com.program, op::char_eq); return bool_type();
-            case tt::bang_equal: push_value(com.program, op::char_ne); return bool_type();
+            case tt::equal_equal: push_value(com.program, op::char_eq); return bool_type();
+            case tt::bang_equal:  push_value(com.program, op::char_ne); return bool_type();
         }
     }
     else if (type == i32_type()) {

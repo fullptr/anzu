@@ -6,9 +6,18 @@ str.append("world");
 
 str2 := str;
 str2.append(" abc");
+str2.set("this is a replacement string");
 
 println(str.get());
 println(str2.get());
 
-str2 = str;
-println(str2.get());
+fn replace_vowels(c: &char)
+{
+    if (*c == 'a' || *c == 'e' || *c == 'i' || *c == 'o' || *c == 'u') {
+        *c = 'X';
+    }
+}
+
+c := 'a';
+replace_vowels(&c);
+println(c);
