@@ -1,4 +1,4 @@
-import string.az;
+import std/string.az;
 
 str1 := new_string();
 
