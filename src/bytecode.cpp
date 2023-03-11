@@ -6,6 +6,7 @@
 #include "utility/memory.hpp"
 
 #include <concepts>
+#include <utility>
 
 namespace anzu {
 namespace {
@@ -70,38 +71,25 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
 {
     const auto op_code = static_cast<op>(prog.code[ctx.prog_ptr++]);
     switch (op_code) {
-        // TODO: Pushing literals can just be memcpy's without casting, because we're
-        // going from bytes to bytes
         case op::push_literal_i32: {
-            const auto value = read<std::int32_t>(prog, ctx.prog_ptr);
-            push_value(ctx.stack, value);
+            for (std::size_t i = 0; i != 4; ++i) {
+                ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
+            }
         } break;
-        case op::push_literal_i64: {
-            const auto value = read<std::int64_t>(prog, ctx.prog_ptr);
-            push_value(ctx.stack, value);
+        case op::push_literal_i64:
+        case op::push_literal_u64:
+        case op::push_literal_f64:
+        case op::push_global_addr: {
+            for (std::size_t i = 0; i != 8; ++i) {
+                ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
+            }
         } break;
-        case op::push_literal_u64: {
-            const auto value = read<std::uint64_t>(prog, ctx.prog_ptr);
-            push_value(ctx.stack, value);
-        } break;
-        case op::push_literal_f64: {
-            const auto value = read<double>(prog, ctx.prog_ptr);
-            push_value(ctx.stack, value);
-        } break;
-        case op::push_literal_char: {
-            const auto value = read<char>(prog, ctx.prog_ptr);
-            push_value(ctx.stack, value);
-        } break;
+        case op::push_literal_char:
         case op::push_literal_bool: {
-            const auto value = read<bool>(prog, ctx.prog_ptr);
-            push_value(ctx.stack, value);
+            ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
         } break;
         case op::push_literal_null: {
             push_value(ctx.stack, std::byte{0});
-        } break;
-        case op::push_global_addr: {
-            const auto pos = read<std::uint64_t>(prog, ctx.prog_ptr);
-            push_value(ctx.stack, pos);
         } break;
         case op::push_local_addr: {
             const auto offset = read<std::uint64_t>(prog, ctx.prog_ptr);
@@ -178,8 +166,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             ctx.allocator.deallocate(unset_heap_bit(ptr), type_size);
         } break;
         case op::jump: {
-            const auto jump = read<std::uint64_t>(prog, ctx.prog_ptr);
-            ctx.prog_ptr = jump;
+            ctx.prog_ptr = read<std::uint64_t>(prog, ctx.prog_ptr);
         } break;
         case op::jump_if_false: {
             const auto jump = read<std::uint64_t>(prog, ctx.prog_ptr);
