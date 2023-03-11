@@ -6,7 +6,6 @@ for p in y {
     println(*p);
 }
 
-z := y[1u : 3u];
-for p in z {
-    println(*p);
-}
+z := y[];
+println(y.size());
+println(z.size());
