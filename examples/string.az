@@ -55,14 +55,6 @@ struct string
         self->append(value);
     }
 
-    fn transform(self: &string, func: (&char) -> null)
-    {
-        s := self->get();
-        for c in s {
-            func(c);
-        }
-    }
-
     # SPECIAL MEMBER FUNCTIONS
 
     fn drop(self: &string)

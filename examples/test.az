@@ -1,22 +1,13 @@
 import string.az;
 
-str := new_string();
-str.append("hello ");
-str.append("world");
+str1 := new_string();
 
-str2 := str;
+str1.append("hello ");
+str1.append("world");
+
+str2 := str1;
 str2.append(" abc");
 str2.set("this is a replacement string");
 
-println(str.get());
-println(str2.get());
-
-fn replace_vowels(c: &char)
-{
-    if (*c == 'a' || *c == 'e' || *c == 'i' || *c == 'o' || *c == 'u') {
-        *c = 'X';
-    }
-}
-
-str2.transform(replace_vowels);
+println(str1.get());
 println(str2.get());
