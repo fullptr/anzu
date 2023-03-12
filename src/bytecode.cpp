@@ -67,35 +67,42 @@ auto to_bytes(T t) -> std::array<std::byte, sizeof(T)>
     return std::bit_cast<std::array<std::byte, sizeof(T)>>(t);
 }
 
+template <std::size_t N>
+auto push_bytes_from_program(bytecode_context& ctx, const bytecode_program& prog) -> void
+{
+    for (std::size_t i = 0; i != N; ++i) {
+        ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
+    }
+}
+
 auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
 {
     const auto op_code = static_cast<op>(prog.code[ctx.prog_ptr++]);
     switch (op_code) {
-        case op::push_literal_i32: {
-            for (std::size_t i = 0; i != 4; ++i) {
-                ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
-            }
+        case op::push_char:
+        case op::push_bool: {
+            push_bytes_from_program<1>(ctx, prog);
         } break;
-        case op::push_literal_i64:
-        case op::push_literal_u64:
-        case op::push_literal_f64:
-        case op::push_literal_ptr: {
-            for (std::size_t i = 0; i != 8; ++i) {
-                ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
-            }
+        case op::push_i32: {
+            push_bytes_from_program<4>(ctx, prog);
         } break;
-        case op::push_literal_char:
-        case op::push_literal_bool: {
-            ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
+        case op::push_i64:
+        case op::push_u64:
+        case op::push_f64:
+        case op::push_ptr: {
+            push_bytes_from_program<8>(ctx, prog);
         } break;
-        case op::push_literal_null: {
+        case op::push_string_literal: {
+            push_bytes_from_program<16>(ctx, prog);
+        } break;
+        case op::push_null: {
             push_value(ctx.stack, std::byte{0});
         } break;
-        case op::push_literal_ptr_rel: {
+        case op::push_ptr_rel: {
             const auto offset = read<std::uint64_t>(prog, ctx.prog_ptr);
             push_value(ctx.stack, ctx.base_ptr + offset);
         } break;
-        case op::push_literal_call_frame: {
+        case op::push_call_frame: {
             push_value(ctx.stack, std::uint64_t{0});
             push_value(ctx.stack, std::uint64_t{0});
         } break;
@@ -300,51 +307,59 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
     switch (op_code) {
         // TODO: Pushing literals can just be memcpy's without casting, because we're
         // going from bytes to bytes
-        case op::push_literal_i32: {
+        case op::push_i32: {
             const auto value = read<std::int32_t>(prog, ptr);
-            print("PUSH_LITERAL_I32: {}\n", value);
+            print("PUSH_I32: {}\n", value);
         } break;
-        case op::push_literal_i64: {
+        case op::push_i64: {
             const auto value = read<std::int64_t>(prog, ptr);
-            print("PUSH_LITERAL_I64: {}\n", value);
+            print("PUSH_I64: {}\n", value);
         } break;
-        case op::push_literal_u64: {
+        case op::push_u64: {
             const auto value = read<std::uint64_t>(prog, ptr);
-            print("PUSH_LITERAL_U64: {}\n", value);
+            print("PUSH_U64: {}\n", value);
         } break;
-        case op::push_literal_f64: {
+        case op::push_f64: {
             const auto value = read<double>(prog, ptr);
-            print("PUSH_LITERAL_F64: {}\n", value);
+            print("PUSH_F64: {}\n", value);
         } break;
-        case op::push_literal_char: {
+        case op::push_char: {
             const auto value = read<char>(prog, ptr);
-            print("PUSH_LITERAL_CHAR: {}\n", value);
+            print("PUSH_CHAR: {}\n", value);
         } break;
-        case op::push_literal_bool: {
+        case op::push_bool: {
             const auto value = read<bool>(prog, ptr);
-            print("PUSH_LITERAL_BOOL: {}\n", value);
+            print("PUSH_BOOL: {}\n", value);
         } break;
-        case op::push_literal_null: {
-            print("PUSH_LITERAL_NULL\n");
+        case op::push_null: {
+            print("PUSH_NULL\n");
         } break;
-        case op::push_literal_ptr: {
+        case op::push_string_literal: {
+            const auto index = unset_rom_bit(read<std::uint64_t>(prog, ptr));
+            const auto size = read<std::uint64_t>(prog, ptr);
+            const auto m = std::string_view( // UB?
+                reinterpret_cast<const char*>(&prog.rom[index]), size
+            );
+            print("PUSH_STRING_LITERAL: '{}'\n", m);
+        } break;
+        case op::push_ptr: {
             const auto pos = read<std::uint64_t>(prog, ptr);
             if (is_heap_ptr(pos)) {
-                print("PUSH_LITERAL_PTR: {} (HEAP)\n", unset_heap_bit(pos));
+                print("PUSH_PTR: {} (HEAP)\n", unset_heap_bit(pos));
             }
             else if (is_rom_ptr(pos)) {
-                print("PUSH_LITERAL_PTR: {} (ROM)\n", unset_rom_bit(pos));
+                print("PUSH_PTR: {} (ROM)\n", unset_rom_bit(pos));
             }
             else {
-                print("PUSH_LITERAL_PTR: {} (STACK)\n", pos);
+                print("PUSH_PTR: {} (STACK)\n", pos);
             }
         } break;
-        case op::push_literal_ptr_rel: {
+        case op::push_ptr_rel: {
             const auto offset = read<std::uint64_t>(prog, ptr);
-            print("PUSH_LITERAL_PTR_REL: base_ptr + {}\n", offset);
+            print("PUSH_PTR_REL: base_ptr + {}\n", offset);
         } break;
-        case op::push_literal_call_frame: {
-            print("PUSH_LITERAL_CALL_FRAME (16 bytes)\n");
+        case op::push_call_frame: {
+            print("PUSH_CALL_FRAME\n");
         } break;
         case op::load: {
             const auto size = read<std::uint64_t>(prog, ptr);
@@ -406,9 +421,8 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::assert: {
             const auto index = read<std::uint64_t>(prog, ptr);
             const auto size = read<std::uint64_t>(prog, ptr);
-            const auto m = std::string_view( // UB?
-                reinterpret_cast<const char*>(&prog.rom[index]), size
-            );
+            const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
+            const auto m = std::string_view(data, size); // UB?
             print("ASSERT: msg={}\n", m);
         } break;
         case op::char_eq: { print("CHAR_EQ\n"); } break;

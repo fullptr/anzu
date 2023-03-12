@@ -1,16 +1,4 @@
+import std/string.az;
 
-fn print_name(name: char[])
-{
-    println(name);
-}
-
-fn do_twice(
-    func: (char[]) -> null,
-    input: char[]
-)
-{
-    func(input);
-    func(input);
-}
-
-do_twice(print_name, "hello");
+str := new_string("hello world");
+println(str.get());
