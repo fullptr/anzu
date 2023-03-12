@@ -25,7 +25,7 @@ template <typename... Ts>
 auto push_value(std::vector<std::byte>& mem, Ts&&... values) -> std::size_t
 {
     const auto size = mem.size();
-    (push_value_single(mem, values), ...);
+    (push_value_single(mem, std::forward<Ts>(values)), ...);
     return size;
 }
 

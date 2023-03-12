@@ -742,8 +742,8 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     const auto& type = lhs;
     if (type == char_type()) {
         switch (node.token.type) {
-            case tt::bang:       push_value(com.program, op::char_eq); return bool_type();
-            case tt::bang_equal: push_value(com.program, op::char_ne); return bool_type();
+            case tt::equal_equal: push_value(com.program, op::char_eq); return bool_type();
+            case tt::bang_equal:  push_value(com.program, op::char_ne); return bool_type();
         }
     }
     else if (type == i32_type()) {
@@ -970,10 +970,13 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     }
 
     const auto expr_type = type_of_expr(com, *node.expr);
-    node.token.assert(is_list_type(expr_type), "can only span arrays, not {}", expr_type);
+    node.token.assert(
+        is_list_type(expr_type) || is_span_type(expr_type),
+        "can only span arrays and other spans, not {}", expr_type
+    );
 
-    // Bounds checking
-    if (com.debug && node.lower_bound && node.upper_bound) {
+    // Bounds checking (TODO: BOUNDS CHECKING ON SPANS TOO)
+    if (is_list_type(expr_type) && com.debug && node.lower_bound && node.upper_bound) {
         const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
         const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
@@ -988,6 +991,13 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     }
 
     push_expr_ptr(com, *node.expr);
+
+    // If we are a span, we want the address that it holds rather than its own address,
+    // so switch the pointer by loading what it's pointing at.
+    if (is_span_type(expr_type)) {
+        push_value(com.program, op::load, size_of_ptr());
+    }
+
     if (node.lower_bound) {// move first index of span up
         push_value(com.program, op::push_literal_u64, com.types.size_of(inner_type(expr_type)));
         const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
@@ -1001,6 +1011,11 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_expr_val(com, *node.upper_bound);
         push_expr_val(com, *node.lower_bound);
         push_value(com.program, op::u64_sub);
+    } else if (is_span_type(expr_type)) {
+        // Push the span pointer, offset to the size, and load the size
+        push_expr_ptr(com, *node.expr);
+        push_value(com.program, op::push_literal_u64, size_of_ptr(), op::u64_add);
+        push_value(com.program, op::load, com.types.size_of(u64_type()));
     } else {
         push_value(com.program, op::push_literal_u64, array_length(expr_type));
     }

@@ -121,10 +121,10 @@ static_assert(sizeof(std::FILE*) == sizeof(std::uint64_t));
 
 auto builtin_fopen(bytecode_context& ctx) -> void
 {
-    //const auto mode = pop_char_span(ctx);
-    //const auto file = pop_char_span(ctx);
-    //auto ptr = std::fopen(file.c_str(), mode.c_str());
-    //push_value<std::FILE*>(ctx.stack, ptr);
+    const auto mode = pop_char_span(ctx);
+    const auto file = pop_char_span(ctx);
+    const auto handle = std::fopen(file.c_str(), mode.c_str());
+    push_value(ctx.stack, handle);
 }
 
 auto builtin_fclose(bytecode_context& ctx) -> void
@@ -170,7 +170,7 @@ auto construct_builtin_array() -> std::vector<builtin>
     b.push_back(builtin{"println", builtin_println_null,           {null_type()}, null_type()});
     b.push_back(builtin{"println", builtin_println_char_span,      {char_span},   null_type()});
 
-    //b.push_back(builtin{"fopen", builtin_fopen, {char_span, char_span}, u64_type()});
+    b.push_back(builtin{"fopen", builtin_fopen, {char_span, char_span}, u64_type()});
     b.push_back(builtin{"fclose", builtin_fclose, {u64_type()}, null_type()});
     b.push_back(builtin{"fputs", builtin_fputs, {u64_type(), char_span}, null_type()});
 

@@ -1,13 +1,13 @@
+import std/string.az;
 
+str1 := new_string();
 
-fn add2(x: i64, y: i64) -> i64
-{
-    return x + y;
-}
+str1.append("hello ");
+str1.append("world");
 
-fn add3(x: i64, y: i64, z: i64) -> i64
-{
-    return add2(x, add2(y, z));
-}
+str2 := str1;
+str2.append(" abc");
+str2.set("this is a replacement string");
 
-println(add3(1, 2, 3));
+println(str1.get());
+println(str2.get());
