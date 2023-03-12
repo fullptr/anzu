@@ -280,14 +280,14 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
     if (com.current_func) {
         auto& locals = com.current_func->vars;
         if (const auto info = locals.find(name); info.has_value()) {
-            push_value(com.program, op::push_local_addr, info->location);
+            push_value(com.program, op::push_literal_ptr_rel, info->location);
             return info->type;
         }
     }
 
     auto& globals = com.globals;
     if (const auto info = globals.find(name); info.has_value()) {
-        push_value(com.program, op::push_global_addr, info->location);
+        push_value(com.program, op::push_literal_ptr, info->location);
         return info->type;
     }
 
@@ -504,7 +504,7 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
     call_destructor(com, type, [&](const token&) {
         // Because the variable has not been delcared, the stack pointer has not
         // incremented, so it is currently pointing to our temp value.
-        push_value(com.program, op::push_local_addr, object_ptr);
+        push_value(com.program, op::push_literal_ptr_rel, object_ptr);
     });
     push_value(com.program, op::pop, com.types.size_of(type));
 }

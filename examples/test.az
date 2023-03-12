@@ -1,4 +1,16 @@
 
-x := '\n';
+fn print_name(name: char[])
+{
+    println(name);
+}
 
-print(x);
+fn do_twice(
+    func: (char[]) -> null,
+    input: char[]
+)
+{
+    func(input);
+    func(input);
+}
+
+do_twice(print_name, "hello");
