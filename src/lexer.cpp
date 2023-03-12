@@ -214,7 +214,7 @@ auto make_char(lex_context& ctx) -> token
 {
     const auto tok = make_literal(ctx, '\'', token_type::character);
     if (const auto size = tok.text.size(); size != 1) {
-        lexer_error(ctx.line, ctx.col, "Char literal is not one character! Got {} ({})", size);
+        lexer_error(ctx.line, ctx.col, "Char literal is not one character! Got '{}' ({})", tok.text, size);
     }
     return tok;
 }

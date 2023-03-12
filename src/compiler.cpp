@@ -251,12 +251,6 @@ auto get_function(
     return std::nullopt;
 }
 
-auto push_function_call_begin(compiler& com) -> void
-{
-    push_value(com.program, op::push_literal_u64, std::uint64_t{0}); // base ptr
-    push_value(com.program, op::push_literal_u64, std::uint64_t{0}); // prog ptr
-}
-
 auto push_function_call(compiler& com, std::size_t ptr, const std::vector<type_name>& params) -> void
 {
     auto args_size = 2 * sizeof(std::uint64_t);
@@ -280,14 +274,14 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
     if (com.current_func) {
         auto& locals = com.current_func->vars;
         if (const auto info = locals.find(name); info.has_value()) {
-            push_value(com.program, op::push_local_addr, info->location);
+            push_value(com.program, op::push_literal_ptr_rel, info->location);
             return info->type;
         }
     }
 
     auto& globals = com.globals;
     if (const auto info = globals.find(name); info.has_value()) {
-        push_value(com.program, op::push_global_addr, info->location);
+        push_value(com.program, op::push_literal_ptr, info->location);
         return info->type;
     }
 
@@ -412,7 +406,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
             const auto params = drop_fn_params(type);
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
-                push_function_call_begin(com);
+                push_value(com.program, op::push_literal_call_frame);
                 push_object_ptr(func->tok);
                 push_function_call(com, func->ptr, params);
                 push_value(com.program, op::pop, com.types.size_of(func->return_type));
@@ -434,7 +428,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
             if (const auto drop = get_function(com, *list_type.inner_type, "drop", params)) {
                 for (std::size_t i = array_length(type); i != 0;) {
                     --i;
-                    push_function_call_begin(com);
+                    push_value(com.program, op::push_literal_call_frame);
                     push_object_ptr(drop->tok);
                     push_ptr_adjust(com, i * inner_size);
                     push_function_call(com, drop->ptr, params);
@@ -504,7 +498,7 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
     call_destructor(com, type, [&](const token&) {
         // Because the variable has not been delcared, the stack pointer has not
         // incremented, so it is currently pointing to our temp value.
-        push_value(com.program, op::push_local_addr, object_ptr);
+        push_value(com.program, op::push_literal_ptr_rel, object_ptr);
     });
     push_value(com.program, op::pop, com.types.size_of(type));
 }
@@ -528,7 +522,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
 
         for (std::size_t i = 0; i != array_length(type); ++i) {
-            push_function_call_begin(com);
+            push_value(com.program, op::push_literal_call_frame);
             push_expr_ptr(com, expr);
             push_ptr_adjust(com, i * inner_size);
             push_function_call(com, copy->ptr, params);
@@ -540,7 +534,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         const auto copy = get_function(com, type, "copy", params);
         tok.assert(copy.has_value(), "{} cannot be copied", type);
 
-        push_function_call_begin(com);
+        push_value(com.program, op::push_literal_call_frame);
         push_expr_ptr(com, expr);
         push_function_call(com, copy->ptr, params);
     }
@@ -714,7 +708,7 @@ auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_na
 auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
 {
     // Push the span onto the stack
-    push_value(com.program, op::push_literal_u64, insert_into_rom(com, node.value));
+    push_value(com.program, op::push_literal_ptr, insert_into_rom(com, node.value));
     push_value(com.program, op::push_literal_u64, node.value.size());
     return concrete_span_type(char_type());
 }
@@ -862,7 +856,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
         if (const auto func = get_function(com, struct_type, inner.name, params); func) {
-            push_function_call_begin(com);
+            push_value(com.program, op::push_literal_call_frame);
             for (const auto& arg : node.args) {
                 push_object_copy(com, *arg, node.token);
             }
@@ -887,13 +881,14 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
         // Fourth, it might be a builtin function
         auto param_types = std::vector<type_name>{};
-        auto args_size = std::size_t{0};
         for (const auto& arg : node.args) {
-            param_types.emplace_back(push_object_copy(com, *arg, node.token));
-            args_size += com.types.size_of(param_types.back());
+            param_types.emplace_back(type_of_expr(com, *arg));
         }
 
         if (const auto b = get_builtin_id(inner.name, param_types); b.has_value()) {
+            for (const auto& arg : node.args) {
+                push_object_copy(com, *arg, node.token);
+            }
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;
         }
@@ -901,14 +896,11 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
     // Otherwise, the expression must be a function pointer.
     const auto type = type_of_expr(com, *node.expr);
-    node.token.assert(
-        is_function_ptr_type(type),
-        "unable to call non-callable type {}", type
-    );
+    node.token.assert(is_function_ptr_type(type), "unable to call non-callable type {}", type);
 
     const auto& sig = std::get<type_function_ptr>(type);
 
-    push_function_call_begin(com);
+    push_value(com.program, op::push_literal_call_frame);
     auto actual_types = std::vector<type_name>{};
     for (const auto& arg : node.args) {
         const auto type = push_object_copy(com, *arg, node.token);
@@ -1296,7 +1288,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         node.token.assert(assign.has_value(), "{} cannot be assigned", etype);
 
         for (std::size_t i = 0; i != array_length(rhs); ++i) {
-            push_function_call_begin(com);
+            push_value(com.program, op::push_literal_call_frame);
 
             push_expr_ptr(com, *node.position); // i-th element of dst
             push_ptr_adjust(com, i * inner_size);
@@ -1314,7 +1306,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     const auto assign = get_function(com, rhs, "assign", params);
     node.token.assert(assign.has_value(), "{} cannot be assigned", rhs);
 
-    push_function_call_begin(com);
+    push_value(com.program, op::push_literal_call_frame);
     push_expr_ptr(com, *node.position);
     push_expr_ptr(com, *node.expr);
     push_function_call(com, assign->ptr, params);

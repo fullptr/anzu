@@ -79,7 +79,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::push_literal_i64:
         case op::push_literal_u64:
         case op::push_literal_f64:
-        case op::push_global_addr: {
+        case op::push_literal_ptr: {
             for (std::size_t i = 0; i != 8; ++i) {
                 ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
             }
@@ -91,9 +91,13 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::push_literal_null: {
             push_value(ctx.stack, std::byte{0});
         } break;
-        case op::push_local_addr: {
+        case op::push_literal_ptr_rel: {
             const auto offset = read<std::uint64_t>(prog, ctx.prog_ptr);
             push_value(ctx.stack, ctx.base_ptr + offset);
+        } break;
+        case op::push_literal_call_frame: {
+            push_value(ctx.stack, std::uint64_t{0});
+            push_value(ctx.stack, std::uint64_t{0});
         } break;
         case op::load: {
             const auto size = read<std::uint64_t>(prog, ctx.prog_ptr);
@@ -323,13 +327,24 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::push_literal_null: {
             print("PUSH_LITERAL_NULL\n");
         } break;
-        case op::push_global_addr: {
+        case op::push_literal_ptr: {
             const auto pos = read<std::uint64_t>(prog, ptr);
-            print("PUSH_GLOBAL_ADDR: {}\n", pos);
+            if (is_heap_ptr(pos)) {
+                print("PUSH_LITERAL_PTR: {} (HEAP)\n", unset_heap_bit(pos));
+            }
+            else if (is_rom_ptr(pos)) {
+                print("PUSH_LITERAL_PTR: {} (ROM)\n", unset_rom_bit(pos));
+            }
+            else {
+                print("PUSH_LITERAL_PTR: {} (STACK)\n", pos);
+            }
         } break;
-        case op::push_local_addr: {
+        case op::push_literal_ptr_rel: {
             const auto offset = read<std::uint64_t>(prog, ptr);
-            print("PUSH_LOCAL_ADDR: base+{}\n", offset);
+            print("PUSH_LITERAL_PTR_REL: base_ptr + {}\n", offset);
+        } break;
+        case op::push_literal_call_frame: {
+            print("PUSH_LITERAL_CALL_FRAME (16 bytes)\n");
         } break;
         case op::load: {
             const auto size = read<std::uint64_t>(prog, ptr);
@@ -374,11 +389,11 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::function_call: {
             const auto func_ptr = read<std::uint64_t>(prog, ptr);
             const auto args_size = read<std::uint64_t>(prog, ptr);
-            print("FUNCTION_CALL: func_ptr={} args_size={}\n", func_ptr, args_size - 2 * sizeof(std::uint64_t));
+            print("FUNCTION_CALL: func_ptr={} args_size={}\n", func_ptr, args_size);
         } break;
         case op::call: {
             const auto args_size = read<std::uint64_t>(prog, ptr);
-            print("RETURN: args_size={}\n", args_size);
+            print("CALL: args_size={}\n", args_size);
         } break;
         case op::builtin_call: {
             const auto id = read<std::uint64_t>(prog, ptr);

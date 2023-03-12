@@ -1,13 +1,16 @@
-import std/string.az;
 
-str1 := new_string();
+fn print_name(name: char[])
+{
+    println(name);
+}
 
-str1.append("hello ");
-str1.append("world");
+fn do_twice(
+    func: (char[]) -> null,
+    input: char[]
+)
+{
+    func(input);
+    func(input);
+}
 
-str2 := str1;
-str2.append(" abc");
-str2.set("this is a replacement string");
-
-println(str1.get());
-println(str2.get());
+do_twice(print_name, "hello");
