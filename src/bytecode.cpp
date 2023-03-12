@@ -344,7 +344,7 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             print("PUSH_LITERAL_PTR_REL: base_ptr + {}\n", offset);
         } break;
         case op::push_literal_call_frame: {
-            print("PUSH_CALL_FRAME\n");
+            print("PUSH_LITERAL_CALL_FRAME (16 bytes)\n");
         } break;
         case op::load: {
             const auto size = read<std::uint64_t>(prog, ptr);
