@@ -18,6 +18,8 @@ enum class op : std::uint8_t
 
     push_literal_ptr,
     push_literal_ptr_rel,
+    push_literal_call_frame,
+    
     load,
     save,
     pop,

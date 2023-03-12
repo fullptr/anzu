@@ -95,6 +95,10 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto offset = read<std::uint64_t>(prog, ctx.prog_ptr);
             push_value(ctx.stack, ctx.base_ptr + offset);
         } break;
+        case op::push_literal_call_frame: {
+            push_value(ctx.stack, std::uint64_t{0});
+            push_value(ctx.stack, std::uint64_t{0});
+        } break;
         case op::load: {
             const auto size = read<std::uint64_t>(prog, ctx.prog_ptr);
 
@@ -339,6 +343,9 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             const auto offset = read<std::uint64_t>(prog, ptr);
             print("PUSH_LITERAL_PTR_REL: base_ptr + {}\n", offset);
         } break;
+        case op::push_literal_call_frame: {
+            print("PUSH_CALL_FRAME\n");
+        } break;
         case op::load: {
             const auto size = read<std::uint64_t>(prog, ptr);
             print("LOAD: {}\n", size);
@@ -382,11 +389,11 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::function_call: {
             const auto func_ptr = read<std::uint64_t>(prog, ptr);
             const auto args_size = read<std::uint64_t>(prog, ptr);
-            print("FUNCTION_CALL: func_ptr={} args_size={}\n", func_ptr, args_size - 2 * sizeof(std::uint64_t));
+            print("FUNCTION_CALL: func_ptr={} args_size={}\n", func_ptr, args_size);
         } break;
         case op::call: {
             const auto args_size = read<std::uint64_t>(prog, ptr);
-            print("RETURN: args_size={}\n", args_size);
+            print("CALL: args_size={}\n", args_size);
         } break;
         case op::builtin_call: {
             const auto id = read<std::uint64_t>(prog, ptr);
