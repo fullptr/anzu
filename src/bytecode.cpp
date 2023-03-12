@@ -91,6 +91,11 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::push_literal_null: {
             push_value(ctx.stack, std::byte{0});
         } break;
+        case op::push_literal_string: {
+            for (std::size_t i = 0; i != 16; ++i) {
+                ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
+            }
+        } break;
         case op::push_literal_ptr_rel: {
             const auto offset = read<std::uint64_t>(prog, ctx.prog_ptr);
             push_value(ctx.stack, ctx.base_ptr + offset);
@@ -326,6 +331,14 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         } break;
         case op::push_literal_null: {
             print("PUSH_LITERAL_NULL\n");
+        } break;
+        case op::push_literal_string: {
+            const auto index = read<std::uint64_t>(prog, ptr);
+            const auto size = read<std::uint64_t>(prog, ptr);
+            const auto m = std::string_view( // UB?
+                reinterpret_cast<const char*>(&prog.rom[index]), size
+            );
+            print("PUSH_LITERAL_STRING: '{}'\n", m);
         } break;
         case op::push_literal_ptr: {
             const auto pos = read<std::uint64_t>(prog, ptr);

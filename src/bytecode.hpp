@@ -15,6 +15,7 @@ enum class op : std::uint8_t
     push_literal_char,
     push_literal_bool,
     push_literal_null,
+    push_literal_string,
 
     push_literal_ptr,
     push_literal_ptr_rel,

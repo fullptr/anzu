@@ -1,16 +1,22 @@
+import std/string.az;
 
-fn print_name(name: char[])
+fn replace_a(c: &char)
 {
-    println(name);
+    if (*c == 'a') {
+        *c = 'X';
+    }
 }
 
-fn do_twice(
-    func: (char[]) -> null,
-    input: char[]
-)
+fn transform_string(s: &string, func: (&char) -> null)
 {
-    func(input);
-    func(input);
+    span := s->get();
+    for c in span {
+        func(c);
+    }
 }
 
-do_twice(print_name, "hello");
+str := new_string();
+str.set("this is a temporary string for testing");
+transform_string(&str, replace_a);
+
+"HERE WE ARE";
