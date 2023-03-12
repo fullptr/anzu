@@ -67,34 +67,36 @@ auto to_bytes(T t) -> std::array<std::byte, sizeof(T)>
     return std::bit_cast<std::array<std::byte, sizeof(T)>>(t);
 }
 
+template <std::size_t N>
+auto push_bytes_from_program(bytecode_context& ctx, const bytecode_program& prog) -> void
+{
+    for (std::size_t i = 0; i != N; ++i) {
+        ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
+    }
+}
+
 auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
 {
     const auto op_code = static_cast<op>(prog.code[ctx.prog_ptr++]);
     switch (op_code) {
+        case op::push_char:
+        case op::push_bool: {
+            push_bytes_from_program<1>(ctx, prog);
+        } break;
         case op::push_i32: {
-            for (std::size_t i = 0; i != 4; ++i) {
-                ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
-            }
+            push_bytes_from_program<4>(ctx, prog);
         } break;
         case op::push_i64:
         case op::push_u64:
         case op::push_f64:
         case op::push_ptr: {
-            for (std::size_t i = 0; i != 8; ++i) {
-                ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
-            }
+            push_bytes_from_program<8>(ctx, prog);
         } break;
-        case op::push_char:
-        case op::push_bool: {
-            ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
+        case op::push_string_literal: {
+            push_bytes_from_program<16>(ctx, prog);
         } break;
         case op::push_null: {
             push_value(ctx.stack, std::byte{0});
-        } break;
-        case op::push_string_literal: {
-            for (std::size_t i = 0; i != 16; ++i) {
-                ctx.stack.push_back(prog.code[ctx.prog_ptr++]);
-            }
         } break;
         case op::push_ptr_rel: {
             const auto offset = read<std::uint64_t>(prog, ctx.prog_ptr);
@@ -419,9 +421,8 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::assert: {
             const auto index = read<std::uint64_t>(prog, ptr);
             const auto size = read<std::uint64_t>(prog, ptr);
-            const auto m = std::string_view( // UB?
-                reinterpret_cast<const char*>(&prog.rom[index]), size
-            );
+            const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
+            const auto m = std::string_view(data, size); // UB?
             print("ASSERT: msg={}\n", m);
         } break;
         case op::char_eq: { print("CHAR_EQ\n"); } break;
