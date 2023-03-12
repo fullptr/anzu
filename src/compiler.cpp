@@ -707,8 +707,8 @@ auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_na
 
 auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
 {
-    const auto rom_ptr = insert_into_rom(com, node.value);
-    push_value(com.program, op::push_literal_string, unset_rom_bit(rom_ptr), node.value.size());
+    push_value(com.program, op::push_literal_string);
+    push_value(com.program, insert_into_rom(com, node.value), node.value.size());
     return concrete_span_type(char_type());
 }
 

@@ -333,7 +333,7 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             print("PUSH_LITERAL_NULL\n");
         } break;
         case op::push_literal_string: {
-            const auto index = read<std::uint64_t>(prog, ptr);
+            const auto index = unset_rom_bit(read<std::uint64_t>(prog, ptr));
             const auto size = read<std::uint64_t>(prog, ptr);
             const auto m = std::string_view( // UB?
                 reinterpret_cast<const char*>(&prog.rom[index]), size

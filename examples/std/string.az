@@ -101,3 +101,10 @@ fn new_string() -> string
     # We don't have nullptr yet, so we must allocate some space here for now
     return string(new char : 1u, 0u);
 }
+
+fn new_string(data: char[]) -> string
+{
+    str := new_string();
+    str.append(data);
+    return str;
+}

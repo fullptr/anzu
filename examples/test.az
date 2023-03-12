@@ -1,23 +1,4 @@
 import std/string.az;
 
-fn replace_a(c: &char)
-{
-    if (*c == 'a') {
-        *c = 'X';
-    }
-}
-
-fn transform_string(s: &string, func: (&char) -> null)
-{
-    span := s->get();
-    for c in span {
-        func(c);
-    }
-}
-
-str := new_string();
-str.append("this is a temporary string for testing");
+str := new_string("hello world");
 println(str.get());
-
-msg := "HERE WE ARE";
-println(msg);
