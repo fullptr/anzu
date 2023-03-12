@@ -16,7 +16,8 @@ fn transform_string(s: &string, func: (&char) -> null)
 }
 
 str := new_string();
-str.set("this is a temporary string for testing");
-transform_string(&str, replace_a);
+str.append("this is a temporary string for testing");
+println(str.get());
 
-"HERE WE ARE";
+msg := "HERE WE ARE";
+println(msg);
