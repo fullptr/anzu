@@ -8,18 +8,18 @@ namespace anzu {
 
 enum class op : std::uint8_t
 {
-    push_literal_i32,
-    push_literal_i64,
-    push_literal_u64,
-    push_literal_f64,
-    push_literal_char,
-    push_literal_bool,
-    push_literal_null,
-    push_literal_string,
+    push_i32,
+    push_i64,
+    push_u64,
+    push_f64,
+    push_char,
+    push_bool,
+    push_null,
 
-    push_literal_ptr,
-    push_literal_ptr_rel,
-    push_literal_call_frame,
+    push_string_literal,
+    push_call_frame,
+    push_ptr,
+    push_ptr_rel,
     
     load,
     save,
