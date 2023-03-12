@@ -123,22 +123,14 @@ Utility Modules (in src/utility)
 ```
 
 # Next Features
-* Modules
-    - ~~Basic impl~~
+* Postfix notation for pointers (and new symbol for deref to disambiguate from multiplication)
+* Complete modules
     - Namespacing
     - No transitive includes
-* Spans
-    - ~~Basic impl~~
-    - ~~Have `new` and `delete` operate on spans instead of pointers for arrays (then ban pointer arithmetic).~~
-    - ~~A way to create subspans with syntax like `arr[0..2]` or `arr[0:2]`.~~
-    - ~~Runtime bounds checking for arrays and spans, possibly adding debug-only op codes.~~
+* Complete spans
     - Create spans from other spans.
-    - ~~Turn string literals into spans instead of char arrays.~~
 * Templates/Generics
-* ~~Function Pointers~~
 * Filesystem Support
-    - ~~opening/closing/writing~~
     - reading/readlines
 * Const
 * Variants
-* ~~Static storage for string literals~~
