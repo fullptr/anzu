@@ -195,19 +195,6 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             ctx.base_ptr = prev_base_ptr;
             ctx.prog_ptr = prev_prog_ptr;
         } break;
-        case op::function_call: {
-            const auto ptr = read<std::uint64_t>(prog, ctx.prog_ptr);
-            const auto args_size = read<std::uint64_t>(prog, ctx.prog_ptr);
-
-            // Store the old base_ptr and prog_ptr so that they can be restored at the end of
-            // the function.
-            const auto new_base_ptr = ctx.stack.size() - args_size;
-            write_value(ctx.stack, new_base_ptr, ctx.base_ptr);
-            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr);
-            
-            ctx.base_ptr = new_base_ptr;
-            ctx.prog_ptr = ptr; // Jump into the function
-        } break;
         case op::call: {
             const auto args_size = read<std::uint64_t>(prog, ctx.prog_ptr);
 
@@ -400,11 +387,6 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::ret: {
             const auto type_size = read<std::uint64_t>(prog, ptr);
             print("RETURN: type_size={}\n", type_size);
-        } break;
-        case op::function_call: {
-            const auto func_ptr = read<std::uint64_t>(prog, ptr);
-            const auto args_size = read<std::uint64_t>(prog, ptr);
-            print("FUNCTION_CALL: func_ptr={} args_size={}\n", func_ptr, args_size);
         } break;
         case op::call: {
             const auto args_size = read<std::uint64_t>(prog, ptr);
