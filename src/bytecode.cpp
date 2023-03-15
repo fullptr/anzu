@@ -203,7 +203,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             // the function.
             const auto new_base_ptr = ctx.stack.size() - args_size;
             write_value(ctx.stack, new_base_ptr, ctx.base_ptr);
-            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr); // Pos after function call
+            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr);
             
             ctx.base_ptr = new_base_ptr;
             ctx.prog_ptr = ptr; // Jump into the function
@@ -216,7 +216,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             // the function.
             const auto new_base_ptr = ctx.stack.size() - args_size;
             write_value(ctx.stack, new_base_ptr, ctx.base_ptr);
-            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr + 1); // Pos after function call
+            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), ctx.prog_ptr);
             
             ctx.base_ptr = new_base_ptr;
             ctx.prog_ptr = ptr; // Jump into the function
