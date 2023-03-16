@@ -30,7 +30,6 @@ enum class op : std::uint8_t
     dealloc_ptr,
     jump,
     jump_if_false,
-    function_call,
     call,
     builtin_call,
     ret,

@@ -55,6 +55,14 @@ struct string
         self->append(value);
     }
 
+    fn transform(self: &string, func: (&char) -> null)
+    {
+        span := self->get();
+        for c in span {
+            func(c);
+        }
+    }
+
     # SPECIAL MEMBER FUNCTIONS
 
     fn drop(self: &string)

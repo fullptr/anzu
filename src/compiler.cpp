@@ -258,7 +258,7 @@ auto push_function_call(compiler& com, std::size_t ptr, const std::vector<type_n
         args_size += com.types.size_of(param);
     }
 
-    push_value(com.program, op::function_call, ptr, args_size);
+    push_value(com.program, op::push_u64, ptr, op::call, args_size);
 }
 
 // Registers the given name in the current scope
