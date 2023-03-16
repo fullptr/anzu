@@ -56,17 +56,6 @@ auto read(const bytecode_program& prog, std::size_t& ptr) -> T
     return ret;
 }
 
-auto to_byte(op opcode) -> std::byte
-{
-    return static_cast<std::byte>(opcode);
-}
-
-template <typename T>
-auto to_bytes(T t) -> std::array<std::byte, sizeof(T)>
-{
-    return std::bit_cast<std::array<std::byte, sizeof(T)>>(t);
-}
-
 template <std::size_t N>
 auto push_bytes_from_program(bytecode_context& ctx, const bytecode_program& prog) -> void
 {
@@ -197,8 +186,8 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         } break;
         case op::call: {
             const auto args_size = read<std::uint64_t>(prog, ctx.prog_ptr);
-
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+
             // Store the old base_ptr and prog_ptr so that they can be restored at the end of
             // the function.
             const auto new_base_ptr = ctx.stack.size() - args_size;
@@ -216,10 +205,8 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto index = read<std::uint64_t>(prog, ctx.prog_ptr);
             const auto size = read<std::uint64_t>(prog, ctx.prog_ptr);
             if (!pop_value<bool>(ctx.stack)) {
-                const auto m = std::string_view( // UB?
-                    reinterpret_cast<const char*>(&ctx.rom[index]), size
-                );
-                runtime_error(m);
+                const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
+                runtime_error({data, size});
             }
         } break;
 
@@ -324,9 +311,8 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::push_string_literal: {
             const auto index = unset_rom_bit(read<std::uint64_t>(prog, ptr));
             const auto size = read<std::uint64_t>(prog, ptr);
-            const auto m = std::string_view( // UB?
-                reinterpret_cast<const char*>(&prog.rom[index]), size
-            );
+            const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
+            const auto m = std::string_view(data, size);
             print("PUSH_STRING_LITERAL: '{}'\n", m);
         } break;
         case op::push_ptr: {
@@ -395,17 +381,14 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::builtin_call: {
             const auto id = read<std::uint64_t>(prog, ptr);
             const auto& b = get_builtin(id);
-            print(
-                "BUILTIN_CALL: {}({}) -> {}\n",
-                b.name, format_comma_separated(b.args), b.return_type
-            );
+            print("BUILTIN_CALL: {}({}) -> {}\n",
+                  b.name, format_comma_separated(b.args), b.return_type);
         } break;
         case op::assert: {
             const auto index = read<std::uint64_t>(prog, ptr);
             const auto size = read<std::uint64_t>(prog, ptr);
             const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
-            const auto m = std::string_view(data, size); // UB?
-            print("ASSERT: msg={}\n", m);
+            print("ASSERT: msg={}\n", std::string_view{data, size});
         } break;
         case op::char_eq: { print("CHAR_EQ\n"); } break;
         case op::char_ne: { print("CHAR_NE\n"); } break;
