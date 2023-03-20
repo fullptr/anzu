@@ -18,13 +18,6 @@ template <typename... Args>
 
 }
 
-struct lex_context
-{
-    std::string::const_iterator start, curr, end;
-    std::size_t line = 1;
-    std::size_t col = 1;
-};
-
 auto valid(const lex_context& ctx) -> bool
 {
     return ctx.curr != ctx.end;
@@ -282,11 +275,7 @@ auto lex(const std::filesystem::path& file) -> lex_result
         std::istreambuf_iterator<char>{ifs}, std::istreambuf_iterator<char>{}
     );
 
-    auto ctx = lex_context{
-        .start = result.source_code->begin(),
-        .curr = result.source_code->begin(),
-        .end = result.source_code->end()
-    };
+    auto ctx = lex_start(*result.source_code);
 
     skip_whitespace(ctx);
     while (ctx.curr != ctx.end) {
@@ -302,6 +291,15 @@ auto print_tokens(const lex_result& res) -> void
         const auto text = std::format("'{}'", token.text);
         anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
     }
+}
+
+auto lex_start(std::string_view source_code) -> lex_context
+{
+    return lex_context{
+        .start = source_code.begin(),
+        .curr = source_code.begin(),
+        .end = source_code.end()
+    };
 }
 
 }
