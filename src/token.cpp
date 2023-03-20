@@ -91,11 +91,12 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::bang:                return "!";        
         case token_type::bar_bar:             return "||";       
         case token_type::bar:                 return "|";        
+        case token_type::character:           return "char";    
         case token_type::colon_equal:         return ":=";       
         case token_type::colon:               return ":";        
         case token_type::comma:               return ",";    
-        case token_type::character:           return "char";    
         case token_type::dot:                 return ".";        
+        case token_type::eof:                 return "eof";
         case token_type::equal_equal:         return "==";       
         case token_type::equal:               return "=";        
         case token_type::float64:             return "float64";

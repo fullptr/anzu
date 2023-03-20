@@ -212,8 +212,52 @@ auto make_char(lex_context& ctx) -> token
     return tok;
 }
 
-auto scan_token(lex_context& ctx) -> token
+auto lex(const std::filesystem::path& file) -> lex_result
 {
+    auto result = lex_result{};
+    result.source_file = file;
+    result.source_code = read_file(file);
+
+    auto ctx = lex_start(*result.source_code);
+    for (auto token = lex_next(ctx); token.type != token_type::eof; token = lex_next(ctx)) {
+        result.tokens.push_back(token);
+    }
+    return result;
+}
+
+auto print_tokens(const lex_result& res) -> void
+{
+    for (const auto& token : res.tokens) {
+        const auto text = std::format("'{}'", token.text);
+        anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
+    }
+}
+
+auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string>
+{
+    std::ifstream ifs{file};
+    if (!ifs) {
+        lexer_error(0, 0, "Could not find module {}\n", file.string());
+    }
+
+    using iter = std::istreambuf_iterator<char>;
+    return std::make_unique<std::string>(iter{ifs}, iter{});
+}
+
+auto lex_start(std::string_view source_code) -> lex_context
+{
+    return lex_context{
+        .start = source_code.begin(),
+        .curr = source_code.begin(),
+        .end = source_code.end()
+    };
+}
+
+auto lex_next(lex_context& ctx) -> token
+{
+    skip_whitespace(ctx);
+    if (!valid(ctx)) return make_token(ctx, token_type::eof);
+
     ctx.start = ctx.curr;
     
     const auto c = advance(ctx);
@@ -259,47 +303,13 @@ auto scan_token(lex_context& ctx) -> token
     lexer_error(ctx.line, ctx.col, "Unknown token");
 }
 
-auto lex(const std::filesystem::path& file) -> lex_result
+auto lex_print(std::string_view source_code) -> void
 {
-    // Loop over the lines in the program, and then split each line into tokens.
-    // If a '//' comment symbol is hit, the rest of the line is ignored.
-    std::vector<anzu::token> tokens;
-    std::ifstream ifs{file};
-    if (!ifs) {
-        lexer_error(0, 0, "Could not find module {}\n", file.string());
-    }
-
-    auto result = lex_result{};
-    result.source_file = file;
-    result.source_code = std::make_unique<std::string>(
-        std::istreambuf_iterator<char>{ifs}, std::istreambuf_iterator<char>{}
-    );
-
-    auto ctx = lex_start(*result.source_code);
-
-    skip_whitespace(ctx);
-    while (ctx.curr != ctx.end) {
-        result.tokens.push_back(scan_token(ctx));
-        skip_whitespace(ctx);
-    }
-    return result;
-}
-
-auto print_tokens(const lex_result& res) -> void
-{
-    for (const auto& token : res.tokens) {
+    auto ctx = lex_start(source_code);
+    for (auto token = lex_next(ctx); token.type != token_type::eof; token = lex_next(ctx)) {
         const auto text = std::format("'{}'", token.text);
         anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
     }
-}
-
-auto lex_start(std::string_view source_code) -> lex_context
-{
-    return lex_context{
-        .start = source_code.begin(),
-        .curr = source_code.begin(),
-        .end = source_code.end()
-    };
 }
 
 }

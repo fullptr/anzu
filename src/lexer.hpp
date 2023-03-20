@@ -29,6 +29,9 @@ auto lex(const std::filesystem::path& file) -> lex_result;
 
 auto print_tokens(const lex_result& res) -> void;
 
+auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string>;
 auto lex_start(std::string_view source_code) -> lex_context;
+auto lex_next(lex_context& ctx) -> token;
+auto lex_print(std::string_view source_code) -> void;
 
 }
