@@ -34,22 +34,21 @@ auto main(const int argc, const char* argv[]) -> int
     const auto root = file.parent_path();
     const auto mode = std::string{argv[2]};
 
-    // In lex and parse mode, only process the specified file, not the entire program.
-    if (mode == "lex" || mode == "parse") {
+    if (mode == "lex") {
         anzu::print("Loading file '{}'\n", file.string());
         anzu::print("-> Lexing\n");
         const auto code = anzu::read_file(file);
-        
-        if (mode == "lex") {
-            auto ctx = anzu::lex_start(*code);
-            for (auto token = anzu::lex_next(ctx); token.type != anzu::token_type::eof; token = anzu::lex_next(ctx)) {
-                anzu::print_token(token);
-            }
-        } else {
-            anzu::print("-> Parsing\n");
-            const auto mod = anzu::parse(file);
-            anzu::print_node(*mod.root);
+        auto ctx = anzu::lex_start(*code);
+        for (auto token = anzu::lex_next(ctx); token.type != anzu::token_type::eof; token = anzu::lex_next(ctx)) {
+            anzu::print_token(token);
         }
+        return 0;
+    }
+
+    if (mode == "parse") {
+        anzu::print("-> Parsing\n");
+        const auto mod = anzu::parse(file);
+        anzu::print_node(*mod.root);
         return 0;
     }
 
