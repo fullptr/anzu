@@ -35,8 +35,7 @@ auto main(const int argc, const char* argv[]) -> int
     const auto mode = std::string{argv[2]};
 
     if (mode == "lex") {
-        anzu::print("Loading file '{}'\n", file.string());
-        anzu::print("-> Lexing\n");
+        anzu::print("Lexing file '{}'\n", file.string());
         const auto code = anzu::read_file(file);
         auto ctx = anzu::scanner{*code};
         for (auto token = ctx.get_token(); token.type != anzu::token_type::eof; token = ctx.get_token()) {
@@ -46,7 +45,7 @@ auto main(const int argc, const char* argv[]) -> int
     }
 
     if (mode == "parse") {
-        anzu::print("-> Parsing\n");
+        anzu::print("Parsing file '{}'\n", file.string());
         const auto mod = anzu::parse(file);
         anzu::print_node(*mod.root);
         return 0;
