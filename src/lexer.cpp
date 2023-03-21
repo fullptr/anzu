@@ -18,29 +18,29 @@ template <typename... Args>
 
 }
 
-auto valid(const lex_context& ctx) -> bool
+auto valid(const scanner& ctx) -> bool
 {
     return ctx.curr != ctx.end;
 }
 
-auto peek(const lex_context& ctx) -> char
+auto peek(const scanner& ctx) -> char
 {
     return *ctx.curr;
 }
 
-auto peek_next(const lex_context& ctx) -> char
+auto peek_next(const scanner& ctx) -> char
 {
     if (!valid(ctx)) return '\0';
     return *std::next(ctx.curr);
 }
 
-auto advance(lex_context& ctx) -> char
+auto advance(scanner& ctx) -> char
 {
     ++ctx.col;
     return *(ctx.curr++);
 }
 
-auto match(lex_context& ctx, std::string_view expected) -> bool
+auto match(scanner& ctx, std::string_view expected) -> bool
 {
     auto original_curr = ctx.curr; // so we can roll back if we dont match
     for (char c : expected) {
@@ -58,7 +58,7 @@ auto match(lex_context& ctx, std::string_view expected) -> bool
 }
 
 // TODO: We can make this more efficient, but it's fine for now
-auto identifier_type(const lex_context& ctx) -> token_type
+auto identifier_type(const scanner& ctx) -> token_type
 {
     const auto token = std::string_view{ctx.start, ctx.curr};
     if (token == "assert")   return token_type::kw_assert;
@@ -120,7 +120,7 @@ auto identifier_type(const lex_context& ctx) -> token_type
     return token_type::identifier;
 }
 
-auto skip_whitespace(lex_context& ctx) -> void
+auto skip_whitespace(scanner& ctx) -> void
 {
     while (valid(ctx)) {
         const char c = peek(ctx);
@@ -147,7 +147,7 @@ auto skip_whitespace(lex_context& ctx) -> void
     }
 }
 
-auto make_token(const lex_context& ctx, token_type type) -> token
+auto make_token(const scanner& ctx, token_type type) -> token
 {
     const auto text = std::string_view{ctx.start, ctx.curr};
 
@@ -155,13 +155,13 @@ auto make_token(const lex_context& ctx, token_type type) -> token
     return token{ .text=text, .line=ctx.line, .col=(ctx.col - text.size()), .type=type };
 }
 
-auto make_identifier(lex_context& ctx) -> token
+auto make_identifier(scanner& ctx) -> token
 {
     while (std::isalpha(peek(ctx)) || std::isdigit(peek(ctx)) || peek(ctx) == '_') advance(ctx);
     return make_token(ctx, identifier_type(ctx));
 }
 
-auto make_number(lex_context& ctx) -> token
+auto make_number(scanner& ctx) -> token
 {
     while (std::isdigit(peek(ctx))) advance(ctx);
 
@@ -179,7 +179,7 @@ auto make_number(lex_context& ctx) -> token
     return make_token(ctx, token_type::int64);
 }
 
-auto make_literal(lex_context& ctx, char delimiter, token_type tt) -> token
+auto make_literal(scanner& ctx, char delimiter, token_type tt) -> token
 {
     while (valid(ctx) && peek(ctx) != delimiter) {
         if (peek(ctx) == '\n') {
@@ -198,12 +198,12 @@ auto make_literal(lex_context& ctx, char delimiter, token_type tt) -> token
     return tok;
 }
 
-auto make_string(lex_context& ctx) -> token
+auto make_string(scanner& ctx) -> token
 {
     return make_literal(ctx, '"', token_type::string);
 }
 
-auto make_char(lex_context& ctx) -> token
+auto make_char(scanner& ctx) -> token
 {
     const auto tok = make_literal(ctx, '\'', token_type::character);
     if (const auto size = tok.text.size(); size != 1) {
@@ -223,17 +223,16 @@ auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string
     return std::make_unique<std::string>(iter{ifs}, iter{});
 }
 
-auto lex_start(std::string_view source_code) -> lex_context
+scanner::scanner(std::string_view source_code)
+    : start{source_code.begin()}
+    , curr{source_code.begin()}
+    , end{source_code.end()}
 {
-    return lex_context{
-        .start = source_code.begin(),
-        .curr = source_code.begin(),
-        .end = source_code.end()
-    };
 }
 
-auto lex_next(lex_context& ctx) -> token
+auto scanner::get_token() -> token
 {
+    auto& ctx = *this;
     skip_whitespace(ctx);
     if (!valid(ctx)) return make_token(ctx, token_type::eof);
 
@@ -284,17 +283,17 @@ auto lex_next(lex_context& ctx) -> token
 
 auto lex_print(std::string_view source_code) -> void
 {
-    auto ctx = lex_start(source_code);
-    for (auto token = lex_next(ctx); token.type != token_type::eof; token = lex_next(ctx)) {
+    auto ctx = scanner{source_code};
+    for (auto token = ctx.get_token(); token.type != token_type::eof; token = ctx.get_token()) {
         const auto text = std::format("'{}'", token.text);
         anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
     }
 }
 
 tokenstream::tokenstream(std::string_view source_code)
-    : d_ctx{lex_start(source_code)}
-    , d_curr{lex_next(d_ctx)}
-    , d_next{lex_next(d_ctx)}
+    : d_ctx{scanner(source_code)}
+    , d_curr{d_ctx.get_token()}
+    , d_next{d_ctx.get_token()}
 {}
 
 auto tokenstream::consume_maybe(token_type tt) -> bool

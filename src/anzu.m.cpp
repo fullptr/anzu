@@ -38,8 +38,8 @@ auto main(const int argc, const char* argv[]) -> int
         anzu::print("Loading file '{}'\n", file.string());
         anzu::print("-> Lexing\n");
         const auto code = anzu::read_file(file);
-        auto ctx = anzu::lex_start(*code);
-        for (auto token = anzu::lex_next(ctx); token.type != anzu::token_type::eof; token = anzu::lex_next(ctx)) {
+        auto ctx = anzu::scanner{*code};
+        for (auto token = ctx.get_token(); token.type != anzu::token_type::eof; token = ctx.get_token()) {
             anzu::print_token(token);
         }
         return 0;

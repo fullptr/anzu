@@ -11,20 +11,24 @@
 
 namespace anzu {
 
-struct lex_context
+auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string>;
+
+class scanner
 {
-    std::string_view::const_iterator start, curr, end;
+public:
+    std::string_view::const_iterator start;
+    std::string_view::const_iterator curr;
+    std::string_view::const_iterator end;
     std::size_t line = 1;
     std::size_t col = 1;
-};
 
-auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string>;
-auto lex_start(std::string_view source_code) -> lex_context;
-auto lex_next(lex_context& ctx) -> token;
+    scanner(std::string_view source_code);
+    auto get_token() -> token;
+};
 
 class tokenstream
 {
-    lex_context d_ctx;
+    scanner d_ctx;
     token d_curr;
     token d_next;
 
@@ -40,7 +44,7 @@ public:
 
     auto consume() -> token
     {
-        return std::exchange(d_curr, std::exchange(d_next, lex_next(d_ctx)));
+        return std::exchange(d_curr, std::exchange(d_next, d_ctx.get_token()));
     }
 
     auto consume_maybe(token_type tt) -> bool;
