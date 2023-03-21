@@ -9,15 +9,13 @@
 
 namespace anzu {
 
-struct parse_result
+struct anzu_module
 {
-    std::filesystem::path        source_file;
-    std::unique_ptr<std::string> source_code;
-
-    node_stmt_ptr root;
+    std::unique_ptr<std::string> source_code; // TODO: make this a std::unique_ptr<char[]>
     std::set<std::filesystem::path> required_modules;
+    node_stmt_ptr root;
 };
 
-auto parse(lex_result&& lex_res) -> parse_result;
+auto parse(const std::filesystem::path& file) -> anzu_module;
 
 }

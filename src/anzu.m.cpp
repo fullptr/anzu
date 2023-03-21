@@ -34,7 +34,6 @@ auto main(const int argc, const char* argv[]) -> int
     const auto root = file.parent_path();
     const auto mode = std::string{argv[2]};
 
-
     // In lex and parse mode, only process the specified file, not the entire program.
     if (mode == "lex" || mode == "parse") {
         anzu::print("Loading file '{}'\n", file.string());
@@ -42,38 +41,33 @@ auto main(const int argc, const char* argv[]) -> int
         const auto code = anzu::read_file(file);
         
         if (mode == "lex") {
-            anzu::lex_print(*code);
+            auto ctx = anzu::lex_start(*code);
+            for (auto token = anzu::lex_next(ctx); token.type != anzu::token_type::eof; token = anzu::lex_next(ctx)) {
+                anzu::print_token(token);
+            }
         } else {
             anzu::print("-> Parsing\n");
-            auto ctx = anzu::lex_start(*code);
-            auto tokens = std::vector<anzu::token>{};
-            for (auto token = anzu::lex_next(ctx); token.type != anzu::token_type::eof; token = anzu::lex_next(ctx)) {
-                tokens.push_back(token);
-            }
-            //const auto mod = anzu::parse(std::move(lex_result));
-            //print_node(*mod.root);
+            const auto mod = anzu::parse(file);
+            anzu::print_node(*mod.root);
         }
         return 0;
     }
 
     // Start with the specified file, lex and parse it, then check to see if it has any other
     // required modules. Pick one and compile, continue until all modules have been parsed
-    auto parsed_program = std::map<std::filesystem::path, anzu::parse_result>{};
+    auto parsed_program = std::map<std::filesystem::path, anzu::anzu_module>{};
 
     auto modules = std::set<std::filesystem::path>{file};
     while (!modules.empty()) {
         const auto curr = modules.extract(modules.begin()).value();
         anzu::print("-> Processing '{}'\n", curr.lexically_relative(root).string());
-        anzu::print("    - Lexing\n");
-        auto lex_res = anzu::lex(curr);
-        anzu::print("    - Parsing\n");
-        auto ast = anzu::parse(std::move(lex_res));
-        for (const auto& m : ast.required_modules) {
+        auto current_module = anzu::parse(curr);
+        for (const auto& m : current_module.required_modules) {
             if (!parsed_program.contains(m)) {
                 modules.emplace(m);
             }
         }
-        parsed_program.emplace(curr, std::move(ast));
+        parsed_program.emplace(curr, std::move(current_module));
     }
 
     if (mode == "discover") {

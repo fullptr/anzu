@@ -212,27 +212,6 @@ auto make_char(lex_context& ctx) -> token
     return tok;
 }
 
-auto lex(const std::filesystem::path& file) -> lex_result
-{
-    auto result = lex_result{};
-    result.source_file = file;
-    result.source_code = read_file(file);
-
-    auto ctx = lex_start(*result.source_code);
-    for (auto token = lex_next(ctx); token.type != token_type::eof; token = lex_next(ctx)) {
-        result.tokens.push_back(token);
-    }
-    return result;
-}
-
-auto print_tokens(const lex_result& res) -> void
-{
-    for (const auto& token : res.tokens) {
-        const auto text = std::format("'{}'", token.text);
-        anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
-    }
-}
-
 auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string>
 {
     std::ifstream ifs{file};
@@ -310,6 +289,67 @@ auto lex_print(std::string_view source_code) -> void
         const auto text = std::format("'{}'", token.text);
         anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
     }
+}
+
+tokenstream::tokenstream(std::string_view source_code)
+    : d_ctx{lex_start(source_code)}
+    , d_curr{lex_next(d_ctx)}
+    , d_next{lex_next(d_ctx)}
+{}
+
+auto tokenstream::consume_maybe(token_type tt) -> bool
+{
+    if (valid() && curr().type == tt) {
+        consume();
+        return true;
+    }
+    return false;
+}
+
+auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
+{
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected '{}'\n", tt);
+        std::exit(1);
+    }
+    if (curr().type != tt) {
+        curr().error("expected '{}', got '{}' [PARSER:{}]\n", tt, curr().type, loc.line());
+    }
+    return consume();
+}
+
+auto tokenstream::consume_i64() -> std::int64_t
+{
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected an int\n");
+        std::exit(1);
+    }
+    if (curr().type != token_type::int64) {
+        curr().error("expected {}, got '{}'\n", token_type::int64, curr().type);
+    }
+    return std::stoll(std::string{consume().text}); // todo - use from_chars
+}
+
+auto tokenstream::consume_u64() -> std::uint64_t
+{
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected a uint\n");
+        std::exit(1);
+    }
+    if (curr().type != token_type::uint64) {
+        curr().error("expected u64, got '{}'\n", token_type::uint64, curr().type);
+    }
+    return std::stoull(std::string{consume().text}); // todo - use from_chars
+}
+
+auto tokenstream::peek(token_type tt) -> bool
+{
+    return valid() && curr().type == tt;
+}
+
+auto tokenstream::peek_next(token_type tt) -> bool
+{
+    return has_next() && next().type == tt;
 }
 
 }

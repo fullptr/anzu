@@ -1,6 +1,7 @@
 #include "parser.hpp"
 #include "object.hpp"
 #include "functions.hpp"
+#include "lexer.hpp"
 
 #include <unordered_set>
 #include <string_view>
@@ -645,15 +646,14 @@ auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 
 }
 
-auto parse(lex_result&& lex_res) -> parse_result
+auto parse(const std::filesystem::path& file) -> anzu_module
 {
-    auto res = parse_result{};
-    res.source_file = std::move(lex_res.source_file);
-    res.source_code = std::move(lex_res.source_code);
+    auto new_module = anzu_module{};
+    new_module.source_code = anzu::read_file(file);
+    new_module.root = std::make_shared<node_stmt>();
+    auto& seq = new_module.root->emplace<node_sequence_stmt>();
 
-    auto stream = tokenstream{lex_res.tokens};
-    res.root = std::make_shared<node_stmt>();
-    auto& seq = res.root->emplace<node_sequence_stmt>();
+    auto stream = tokenstream{*new_module.source_code};
     while (stream.valid()) {
         while (stream.consume_maybe(token_type::semicolon));
         if (stream.consume_maybe(token_type::kw_import)) {
@@ -661,15 +661,15 @@ auto parse(lex_result&& lex_res) -> parse_result
             while (!stream.peek(token_type::semicolon)) {
                 module_name += stream.consume().text;
             }
-            res.required_modules.emplace(
-                std::filesystem::absolute(res.source_file.parent_path() / module_name)
+            new_module.required_modules.emplace(
+                std::filesystem::absolute(file.parent_path() / module_name)
             );
             stream.consume_only(token_type::semicolon);
         } else {
             seq.sequence.push_back(parse_top_level_statement(stream));
         }
     }
-    return res;
+    return new_module;
 }
 
 }
