@@ -135,15 +135,8 @@ auto scanner::make_number() -> token
     using tt = token_type;
 
     while (std::isdigit(peek())) advance();
-
-    auto is_float = false;
-
-    // look for any fractional part
-    if (peek() == '.' && std::isdigit(peek_next())) {
-        advance(); // consume the '.'
-        is_float = true;
-        while (std::isdigit(peek())) advance();
-    }
+    const auto is_float = match(".");
+    while (std::isdigit(peek())) advance(); // won't do anything if not a float
 
     static constexpr auto suffixes = {
         std::pair{"u64"sv, tt::uint64},
@@ -152,9 +145,9 @@ auto scanner::make_number() -> token
         std::pair{"i64"sv, tt::int64},
         std::pair{"f64"sv, tt::float64}
     };
-    for (const auto& [suffix, tt] : suffixes) {
+    for (const auto& [suffix, type] : suffixes) {
         if (match(suffix)) {
-            auto tok = make_token(tt);
+            auto tok = make_token(type);
             tok.text.remove_suffix(suffix.size());
             return tok;
         }

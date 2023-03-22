@@ -12,60 +12,38 @@
 namespace anzu {
 namespace {
 
-auto parse_i32(const token& tok) -> node_expr_ptr
+template <typename ExprType, token_type TokenType>
+auto parse_literal(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::int32, "");
+    tok.assert_type(TokenType, "");
     auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_i32_expr>();
+    auto& inner = node->emplace<ExprType>();
     inner.token = tok;
     auto text = tok.text;
-    if (text.ends_with(i32_sv)) text.remove_suffix(i32_sv.size());
     
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, i32_sv);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, to_string(TokenType));
     return node;
+}
+
+auto parse_i32(const token& tok) -> node_expr_ptr
+{
+    return parse_literal<node_literal_i32_expr, token_type::int32>(tok);
 }
 
 auto parse_i64(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::int64, "");
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_i64_expr>();
-    inner.token = tok;
-    auto text = tok.text;
-    if (text.ends_with(i64_sv)) text.remove_suffix(i64_sv.size());
-    
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, i64_sv);
-    return node;
+    return parse_literal<node_literal_i64_expr, token_type::int64>(tok);
 }
 
 auto parse_u64(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::uint64, "");
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_u64_expr>();
-    inner.token = tok;
-    auto text = tok.text;
-    if (text.ends_with(u64_sv)) text.remove_suffix(u64_sv.size());
-    if (text.ends_with('u')) text.remove_suffix(1);
-    
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, u64_sv);
-    return node;
+    return parse_literal<node_literal_u64_expr, token_type::uint64>(tok);
 }
 
 auto parse_f64(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::float64, "");
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_f64_expr>();
-    inner.token = tok;
-    auto text = tok.text;
-    
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, f64_sv);
-    return node;
+    return parse_literal<node_literal_f64_expr, token_type::float64>(tok);
 }
 
 auto parse_char(const token& tok) -> node_expr_ptr
