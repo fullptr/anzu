@@ -131,20 +131,36 @@ auto scanner::make_identifier() -> token
 
 auto scanner::make_number() -> token
 {
+    using namespace std::string_view_literals;
+    using tt = token_type;
+
     while (std::isdigit(peek())) advance();
+
+    auto is_float = false;
 
     // look for any fractional part
     if (peek() == '.' && std::isdigit(peek_next())) {
         advance(); // consume the '.'
+        is_float = true;
         while (std::isdigit(peek())) advance();
-        return make_token(token_type::float64);
     }
 
-    if (match("u64")) return make_token(token_type::uint64);
-    if (match("u"))   return make_token(token_type::uint64);
-    if (match("i32")) return make_token(token_type::int32);
-    if (match("i64")) return make_token(token_type::int64); // for completeness
-    return make_token(token_type::int64);
+    static constexpr auto suffixes = {
+        std::pair{"u64"sv, tt::uint64},
+        std::pair{"u"sv,   tt::uint64},
+        std::pair{"i32"sv, tt::int32},
+        std::pair{"i64"sv, tt::int64},
+        std::pair{"f64"sv, tt::float64}
+    };
+    for (const auto& [suffix, tt] : suffixes) {
+        if (match(suffix)) {
+            auto tok = make_token(tt);
+            tok.text.remove_suffix(suffix.size());
+            return tok;
+        }
+    }
+
+    return make_token(is_float ? tt::float64 : tt::int64);
 }
 
 auto scanner::make_literal(char delimiter, token_type tt) -> token
