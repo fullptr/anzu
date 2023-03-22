@@ -15,13 +15,26 @@ auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string
 
 class scanner
 {
-public:
-    std::string_view::const_iterator start;
-    std::string_view::const_iterator curr;
-    std::string_view::const_iterator end;
-    std::size_t line = 1;
-    std::size_t col = 1;
+    std::string_view::const_iterator d_start;
+    std::string_view::const_iterator d_curr;
+    std::string_view::const_iterator d_end;
+    std::size_t d_line = 1;
+    std::size_t d_col = 1;
 
+    auto valid() const -> bool;
+    auto peek() const -> char;
+    auto peek_next() const -> char;
+    auto advance() -> char;
+    auto match(std::string_view expected) -> bool;
+
+    auto make_token(token_type type) const -> token;
+    auto make_identifier() -> token;
+    auto make_number() -> token;
+    auto make_literal(char delimiter, token_type tt) -> token;
+    auto make_string() -> token;
+    auto make_char() -> token;
+
+public:
     scanner(std::string_view source_code);
     auto get_token() -> token;
 };

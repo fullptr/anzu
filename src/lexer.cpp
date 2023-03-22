@@ -18,49 +18,44 @@ template <typename... Args>
 
 }
 
-auto valid(const scanner& ctx) -> bool
+auto scanner::valid() const -> bool
 {
-    return ctx.curr != ctx.end;
+    return d_curr != d_end;
 }
 
-auto peek(const scanner& ctx) -> char
+auto scanner::peek() const -> char
 {
-    return *ctx.curr;
+    return *d_curr;
 }
 
-auto peek_next(const scanner& ctx) -> char
+auto scanner::peek_next() const -> char
 {
-    if (!valid(ctx)) return '\0';
-    return *std::next(ctx.curr);
+    if (!valid()) return '\0';
+    return *std::next(d_curr);
 }
 
-auto advance(scanner& ctx) -> char
+auto scanner::advance() -> char
 {
-    ++ctx.col;
-    return *(ctx.curr++);
+    ++d_col;
+    return *(d_curr++);
 }
 
-auto match(scanner& ctx, std::string_view expected) -> bool
+auto scanner::match(std::string_view expected) -> bool
 {
-    auto original_curr = ctx.curr; // so we can roll back if we dont match
+    auto original_curr = d_curr; // so we can roll back if we dont match
     for (char c : expected) {
-        if (!valid(ctx)) {
-            ctx.curr = original_curr;
+        if (!valid() || peek() != c) {
+            d_curr = original_curr;
             return false;
         }
-        if (peek(ctx) != c) {
-            ctx.curr = original_curr;
-            return false;
-        }
-        advance(ctx);
+        advance();
     }
     return true;
 }
 
 // TODO: We can make this more efficient, but it's fine for now
-auto identifier_type(const scanner& ctx) -> token_type
+auto identifier_type(std::string_view token) -> token_type
 {
-    const auto token = std::string_view{ctx.start, ctx.curr};
     if (token == "assert")   return token_type::kw_assert;
     if (token == "bool")     return token_type::kw_bool;
     if (token == "break")    return token_type::kw_break;
@@ -120,94 +115,67 @@ auto identifier_type(const scanner& ctx) -> token_type
     return token_type::identifier;
 }
 
-auto skip_whitespace(scanner& ctx) -> void
+auto scanner::make_token(token_type type) const -> token
 {
-    while (valid(ctx)) {
-        const char c = peek(ctx);
-        switch (c) {
-            case ' ':
-            case '\r':
-            case '\t': {
-                advance(ctx);
-            } break;
-            case '\n': {
-                advance(ctx);
-                ++ctx.line;
-                ctx.col = 1;
-            } break;
-            case '#': {
-                while (valid(ctx) && peek(ctx) != '\n') {
-                    advance(ctx);
-                }
-            } break;
-            default: {
-                return;
-            }
-        }
-    }
-}
-
-auto make_token(const scanner& ctx, token_type type) -> token
-{
-    const auto text = std::string_view{ctx.start, ctx.curr};
+    const auto text = std::string_view{d_start, d_curr};
 
     // ctx.col is currently the end of the token, hence the offset to the front
-    return token{ .text=text, .line=ctx.line, .col=(ctx.col - text.size()), .type=type };
+    return token{ .text=text, .line=d_line, .col=(d_col - text.size()), .type=type };
 }
 
-auto make_identifier(scanner& ctx) -> token
+auto scanner::make_identifier() -> token
 {
-    while (std::isalpha(peek(ctx)) || std::isdigit(peek(ctx)) || peek(ctx) == '_') advance(ctx);
-    return make_token(ctx, identifier_type(ctx));
+    while (std::isalpha(peek()) || std::isdigit(peek()) || peek() == '_') advance();
+    return make_token(identifier_type({d_start, d_curr}));
 }
 
-auto make_number(scanner& ctx) -> token
+auto scanner::make_number() -> token
 {
-    while (std::isdigit(peek(ctx))) advance(ctx);
+    while (std::isdigit(peek())) advance();
 
     // look for any fractional part
-    if (peek(ctx) == '.' && std::isdigit(peek_next(ctx))) {
-        advance(ctx); // consume the '.'
-        while (std::isdigit(peek(ctx))) advance(ctx);
-        return make_token(ctx, token_type::float64);
+    if (peek() == '.' && std::isdigit(peek_next())) {
+        advance(); // consume the '.'
+        while (std::isdigit(peek())) advance();
+        return make_token(token_type::float64);
     }
 
-    if (match(ctx, "u64")) return make_token(ctx, token_type::uint64);
-    if (match(ctx, "u"))   return make_token(ctx, token_type::uint64);
-    if (match(ctx, "i32")) return make_token(ctx, token_type::int32);
-    if (match(ctx, "i64")) return make_token(ctx, token_type::int64); // for completeness
-    return make_token(ctx, token_type::int64);
+    if (match("u64")) return make_token(token_type::uint64);
+    if (match("u"))   return make_token(token_type::uint64);
+    if (match("i32")) return make_token(token_type::int32);
+    if (match("i64")) return make_token(token_type::int64); // for completeness
+    return make_token(token_type::int64);
 }
 
-auto make_literal(scanner& ctx, char delimiter, token_type tt) -> token
+auto scanner::make_literal(char delimiter, token_type tt) -> token
 {
-    while (valid(ctx) && peek(ctx) != delimiter) {
-        if (peek(ctx) == '\n') {
-            ctx.line++;
-            ctx.col = 1;
+    while (valid() && peek() != delimiter) {
+        if (peek() == '\n') {
+            d_line++;
+            d_col = 1;
         }
-        advance(ctx);
+        advance();
     }
 
-    if (!valid(ctx)) lexer_error(ctx.line, ctx.col, "Unterminated string");
-    advance(ctx); // closing quote
+    if (!valid()) lexer_error(d_line, d_col, "Unterminated string");
+    advance(); // closing quote
 
-    auto tok = make_token(ctx, tt);
+    auto tok = make_token(tt);
     tok.text.remove_prefix(1); // remove leading "
     tok.text.remove_suffix(1); // remove trailing "
     return tok;
 }
 
-auto make_string(scanner& ctx) -> token
+auto scanner::make_string() -> token
 {
-    return make_literal(ctx, '"', token_type::string);
+    return make_literal('"', token_type::string);
 }
 
-auto make_char(scanner& ctx) -> token
+auto scanner::make_char() -> token
 {
-    const auto tok = make_literal(ctx, '\'', token_type::character);
+    const auto tok = make_literal('\'', token_type::character);
     if (const auto size = tok.text.size(); size != 1) {
-        lexer_error(ctx.line, ctx.col, "Char literal is not one character! Got '{}' ({})", tok.text, size);
+        lexer_error(d_line, d_col, "Char literal is not one character! Got '{}' ({})", tok.text, size);
     }
     return tok;
 }
@@ -224,61 +192,86 @@ auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string
 }
 
 scanner::scanner(std::string_view source_code)
-    : start{source_code.begin()}
-    , curr{source_code.begin()}
-    , end{source_code.end()}
+    : d_start{source_code.begin()}
+    , d_curr{source_code.begin()}
+    , d_end{source_code.end()}
 {
 }
 
 auto scanner::get_token() -> token
 {
-    auto& ctx = *this;
-    skip_whitespace(ctx);
-    if (!valid(ctx)) return make_token(ctx, token_type::eof);
+    const auto skip_whitespace = [&] {
+        while (valid()) {
+            const char c = peek();
+            switch (c) {
+                case ' ':
+                case '\r':
+                case '\t': {
+                    advance();
+                } break;
+                case '\n': {
+                    advance();
+                    ++d_line;
+                    d_col = 1;
+                } break;
+                case '#': {
+                    while (valid() && peek() != '\n') {
+                        advance();
+                    }
+                } break;
+                default: {
+                    return;
+                }
+            }
+        }
+    };
 
-    ctx.start = ctx.curr;
+    skip_whitespace();
+    if (!valid()) return make_token(token_type::eof);
+
+    d_start = d_curr;
     
-    const auto c = advance(ctx);
-    if (std::isalpha(c)) return make_identifier(ctx);
-    if (std::isdigit(c)) return make_number(ctx);
+    const auto c = advance();
+    if (std::isalpha(c)) return make_identifier();
+    if (std::isdigit(c)) return make_number();
 
     switch (c) {
-        case '(': return make_token(ctx, token_type::left_paren);
-        case ')': return make_token(ctx, token_type::right_paren);
-        case '{': return make_token(ctx, token_type::left_brace);
-        case '}': return make_token(ctx, token_type::right_brace);
-        case '[': return make_token(ctx, token_type::left_bracket);
-        case ']': return make_token(ctx, token_type::right_bracket);
-        case ';': return make_token(ctx, token_type::semicolon);
-        case ',': return make_token(ctx, token_type::comma);
-        case '.': return make_token(ctx, token_type::dot);
-        case '-': return make_token(ctx,
-            match(ctx, ">") ? token_type::arrow : token_type::minus);
-        case '+': return make_token(ctx, token_type::plus);
-        case '/': return make_token(ctx, token_type::slash);
-        case '*': return make_token(ctx, token_type::star);
-        case '%': return make_token(ctx, token_type::percent);
-        case '!': return make_token(ctx,
-            match(ctx, "=") ? token_type::bang_equal : token_type::bang);
-        case '=': return make_token(ctx,
-            match(ctx, "=") ? token_type::equal_equal : token_type::equal);
-        case '<': return make_token(ctx,
-            match(ctx, "=") ? token_type::less_equal : token_type::less);
-        case '>': return make_token(ctx,
-            match(ctx, "=") ? token_type::greater_equal : token_type::greater);
-        case ':': return make_token(ctx,
-            match(ctx, "=") ? token_type::colon_equal : token_type::colon);
-        case '|': return make_token(ctx,
-            match(ctx, "|") ? token_type::bar_bar : token_type::bar);
-        case '&': return make_token(ctx,
-            match(ctx, "&") ? token_type::ampersand_ampersand : token_type::ampersand);
+        case '(': return make_token(token_type::left_paren);
+        case ')': return make_token(token_type::right_paren);
+        case '{': return make_token(token_type::left_brace);
+        case '}': return make_token(token_type::right_brace);
+        case '[': return make_token(token_type::left_bracket);
+        case ']': return make_token(token_type::right_bracket);
+        case ';': return make_token(token_type::semicolon);
+        case ',': return make_token(token_type::comma);
+        case '.': return make_token(token_type::dot);
+        case '-': return make_token(
+            match(">") ? token_type::arrow : token_type::minus);
+        case '+': return make_token(token_type::plus);
+        case '/': return make_token(token_type::slash);
+        case '*': return make_token(token_type::star);
+        case '%': return make_token(token_type::percent);
+        case '!': return make_token(
+            match("=") ? token_type::bang_equal : token_type::bang);
+        case '=': return make_token(
+            match("=") ? token_type::equal_equal : token_type::equal);
+        case '<': return make_token(
+            match("=") ? token_type::less_equal : token_type::less);
+        case '>': return make_token(
+            match("=") ? token_type::greater_equal : token_type::greater);
+        case ':': return make_token(
+            match("=") ? token_type::colon_equal : token_type::colon);
+        case '|': return make_token(
+            match("|") ? token_type::bar_bar : token_type::bar);
+        case '&': return make_token(
+            match("&") ? token_type::ampersand_ampersand : token_type::ampersand);
         case '\'':
-            return make_char(ctx);
+            return make_char();
         case '"':
-            return make_string(ctx);
+            return make_string();
     }
 
-    lexer_error(ctx.line, ctx.col, "Unknown token");
+    lexer_error(d_line, d_col, "Unknown token");
 }
 
 auto lex_print(std::string_view source_code) -> void
