@@ -34,40 +34,38 @@ auto main(const int argc, const char* argv[]) -> int
     const auto root = file.parent_path();
     const auto mode = std::string{argv[2]};
 
-
-    // In lex and parse mode, only process the specified file, not the entire program.
-    if (mode == "lex" || mode == "parse") {
-        anzu::print("Loading file '{}'\n", file.string());
-        anzu::print("-> Lexing\n");
-        auto lex_result = anzu::lex(file);
-        if (mode == "lex") {
-            print_tokens(lex_result);
-        } else {
-            anzu::print("-> Parsing\n");
-            const auto mod = anzu::parse(std::move(lex_result));
-            print_node(*mod.root);
+    if (mode == "lex") {
+        anzu::print("Lexing file '{}'\n", file.string());
+        const auto code = anzu::read_file(file);
+        auto ctx = anzu::lexer{*code};
+        for (auto token = ctx.get_token(); token.type != anzu::token_type::eof; token = ctx.get_token()) {
+            anzu::print_token(token);
         }
+        return 0;
+    }
+
+    if (mode == "parse") {
+        anzu::print("Parsing file '{}'\n", file.string());
+        const auto mod = anzu::parse(file);
+        anzu::print_node(*mod.root);
         return 0;
     }
 
     // Start with the specified file, lex and parse it, then check to see if it has any other
     // required modules. Pick one and compile, continue until all modules have been parsed
-    auto parsed_program = std::map<std::filesystem::path, anzu::parse_result>{};
+    auto parsed_program = std::map<std::filesystem::path, anzu::anzu_module>{};
 
     auto modules = std::set<std::filesystem::path>{file};
     while (!modules.empty()) {
         const auto curr = modules.extract(modules.begin()).value();
         anzu::print("-> Processing '{}'\n", curr.lexically_relative(root).string());
-        anzu::print("    - Lexing\n");
-        auto lex_res = anzu::lex(curr);
-        anzu::print("    - Parsing\n");
-        auto ast = anzu::parse(std::move(lex_res));
-        for (const auto& m : ast.required_modules) {
+        auto current_module = anzu::parse(curr);
+        for (const auto& m : current_module.required_modules) {
             if (!parsed_program.contains(m)) {
                 modules.emplace(m);
             }
         }
-        parsed_program.emplace(curr, std::move(ast));
+        parsed_program.emplace(curr, std::move(current_module));
     }
 
     if (mode == "discover") {

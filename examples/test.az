@@ -1,12 +1,3 @@
-import std/string.az;
+x := [1, 2, 3];
 
-str := new_string("hello world");
-str.append(" ian");
-
-fn replace_a(c: &char)
-{
-    if (*c == 'a') { *c = 'X'; }
-}
-
-str.transform(replace_a);
-println(str.get());
+println(x[2u]);

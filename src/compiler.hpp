@@ -11,7 +11,7 @@ namespace anzu {
 
 auto compile(
     const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, parse_result>& modules,
+    const std::map<std::filesystem::path, anzu_module>& modules,
     bool debug = true
 ) -> bytecode_program;
 

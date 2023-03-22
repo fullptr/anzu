@@ -12,73 +12,10 @@ void token::error(std::string_view message) const
     std::exit(1);
 }
 
-auto print_tokens(const std::vector<anzu::token>& tokens) -> void
+auto print_token(token tok) -> void
 {
-    for (const auto& token : tokens) {
-        const auto text = std::format("'{}'", token.text);
-        anzu::print("{:<10} - {:<20} {:<5} {:<5}\n", token.type, text, token.line, token.col);
-    }
-}
-
-tokenstream::tokenstream(const std::vector<token>& tokens)
-    : d_begin(tokens.cbegin())
-    , d_curr(tokens.cbegin())
-    , d_end(tokens.cend())
-{}
-
-auto tokenstream::consume_maybe(token_type tt) -> bool
-{
-    if (valid() && curr().type == tt) {
-        consume();
-        return true;
-    }
-    return false;
-}
-
-auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
-{
-    if (!valid()) {
-        anzu::print("[ERROR] (EOF) expected '{}'\n", tt);
-        std::exit(1);
-    }
-    if (curr().type != tt) {
-        curr().error("expected '{}', got '{}' [PARSER:{}]\n", tt, curr().type, loc.line());
-    }
-    return consume();
-}
-
-auto tokenstream::consume_i64() -> std::int64_t
-{
-    if (!valid()) {
-        anzu::print("[ERROR] (EOF) expected an int\n");
-        std::exit(1);
-    }
-    if (curr().type != token_type::int64) {
-        curr().error("expected {}, got '{}'\n", token_type::int64, curr().type);
-    }
-    return std::stoll(std::string{consume().text}); // todo - use from_chars
-}
-
-auto tokenstream::consume_u64() -> std::uint64_t
-{
-    if (!valid()) {
-        anzu::print("[ERROR] (EOF) expected a uint\n");
-        std::exit(1);
-    }
-    if (curr().type != token_type::uint64) {
-        curr().error("expected u64, got '{}'\n", token_type::uint64, curr().type);
-    }
-    return std::stoull(std::string{consume().text}); // todo - use from_chars
-}
-
-auto tokenstream::peek(token_type tt) -> bool
-{
-    return valid() && curr().type == tt;
-}
-
-auto tokenstream::peek_next(token_type tt) -> bool
-{
-    return has_next() && next().type == tt;
+    const auto text = std::format("'{}'", tok.text);
+    anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", tok.type, text, tok.line, tok.col);
 }
 
 auto to_string(token_type tt) -> std::string_view
@@ -91,11 +28,12 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::bang:                return "!";        
         case token_type::bar_bar:             return "||";       
         case token_type::bar:                 return "|";        
+        case token_type::character:           return "char";    
         case token_type::colon_equal:         return ":=";       
         case token_type::colon:               return ":";        
         case token_type::comma:               return ",";    
-        case token_type::character:           return "char";    
         case token_type::dot:                 return ".";        
+        case token_type::eof:                 return "eof";
         case token_type::equal_equal:         return "==";       
         case token_type::equal:               return "=";        
         case token_type::float64:             return "float64";

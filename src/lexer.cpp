@@ -18,56 +18,44 @@ template <typename... Args>
 
 }
 
-struct lex_context
+auto lexer::valid() const -> bool
 {
-    std::string::const_iterator start, curr, end;
-    std::size_t line = 1;
-    std::size_t col = 1;
-};
-
-auto valid(const lex_context& ctx) -> bool
-{
-    return ctx.curr != ctx.end;
+    return d_curr != d_end;
 }
 
-auto peek(const lex_context& ctx) -> char
+auto lexer::peek() const -> char
 {
-    return *ctx.curr;
+    return *d_curr;
 }
 
-auto peek_next(const lex_context& ctx) -> char
+auto lexer::peek_next() const -> char
 {
-    if (!valid(ctx)) return '\0';
-    return *std::next(ctx.curr);
+    if (!valid()) return '\0';
+    return *std::next(d_curr);
 }
 
-auto advance(lex_context& ctx) -> char
+auto lexer::advance() -> char
 {
-    ++ctx.col;
-    return *(ctx.curr++);
+    ++d_col;
+    return *(d_curr++);
 }
 
-auto match(lex_context& ctx, std::string_view expected) -> bool
+auto lexer::match(std::string_view expected) -> bool
 {
-    auto original_curr = ctx.curr; // so we can roll back if we dont match
+    auto original_curr = d_curr; // so we can roll back if we dont match
     for (char c : expected) {
-        if (!valid(ctx)) {
-            ctx.curr = original_curr;
+        if (!valid() || peek() != c) {
+            d_curr = original_curr;
             return false;
         }
-        if (peek(ctx) != c) {
-            ctx.curr = original_curr;
-            return false;
-        }
-        advance(ctx);
+        advance();
     }
     return true;
 }
 
 // TODO: We can make this more efficient, but it's fine for now
-auto identifier_type(const lex_context& ctx) -> token_type
+auto identifier_type(std::string_view token) -> token_type
 {
-    const auto token = std::string_view{ctx.start, ctx.curr};
     if (token == "assert")   return token_type::kw_assert;
     if (token == "bool")     return token_type::kw_bool;
     if (token == "break")    return token_type::kw_break;
@@ -127,181 +115,230 @@ auto identifier_type(const lex_context& ctx) -> token_type
     return token_type::identifier;
 }
 
-auto skip_whitespace(lex_context& ctx) -> void
+auto lexer::make_token(token_type type) const -> token
 {
-    while (valid(ctx)) {
-        const char c = peek(ctx);
-        switch (c) {
-            case ' ':
-            case '\r':
-            case '\t': {
-                advance(ctx);
-            } break;
-            case '\n': {
-                advance(ctx);
-                ++ctx.line;
-                ctx.col = 1;
-            } break;
-            case '#': {
-                while (valid(ctx) && peek(ctx) != '\n') {
-                    advance(ctx);
-                }
-            } break;
-            default: {
-                return;
-            }
-        }
-    }
-}
-
-auto make_token(const lex_context& ctx, token_type type) -> token
-{
-    const auto text = std::string_view{ctx.start, ctx.curr};
+    const auto text = std::string_view{d_start, d_curr};
 
     // ctx.col is currently the end of the token, hence the offset to the front
-    return token{ .text=text, .line=ctx.line, .col=(ctx.col - text.size()), .type=type };
+    return token{ .text=text, .line=d_line, .col=(d_col - text.size()), .type=type };
 }
 
-auto make_identifier(lex_context& ctx) -> token
+auto lexer::make_identifier() -> token
 {
-    while (std::isalpha(peek(ctx)) || std::isdigit(peek(ctx)) || peek(ctx) == '_') advance(ctx);
-    return make_token(ctx, identifier_type(ctx));
+    while (std::isalpha(peek()) || std::isdigit(peek()) || peek() == '_') advance();
+    return make_token(identifier_type({d_start, d_curr}));
 }
 
-auto make_number(lex_context& ctx) -> token
+auto lexer::make_number() -> token
 {
-    while (std::isdigit(peek(ctx))) advance(ctx);
+    using namespace std::string_view_literals;
+    using tt = token_type;
 
-    // look for any fractional part
-    if (peek(ctx) == '.' && std::isdigit(peek_next(ctx))) {
-        advance(ctx); // consume the '.'
-        while (std::isdigit(peek(ctx))) advance(ctx);
-        return make_token(ctx, token_type::float64);
-    }
+    while (std::isdigit(peek())) advance();
+    const auto is_float = match(".");
+    while (std::isdigit(peek())) advance(); // won't do anything if not a float
 
-    if (match(ctx, "u64")) return make_token(ctx, token_type::uint64);
-    if (match(ctx, "u"))   return make_token(ctx, token_type::uint64);
-    if (match(ctx, "i32")) return make_token(ctx, token_type::int32);
-    if (match(ctx, "i64")) return make_token(ctx, token_type::int64); // for completeness
-    return make_token(ctx, token_type::int64);
-}
-
-auto make_literal(lex_context& ctx, char delimiter, token_type tt) -> token
-{
-    while (valid(ctx) && peek(ctx) != delimiter) {
-        if (peek(ctx) == '\n') {
-            ctx.line++;
-            ctx.col = 1;
+    static constexpr auto suffixes = {
+        std::pair{"u64"sv, tt::uint64},
+        std::pair{"u"sv,   tt::uint64},
+        std::pair{"i32"sv, tt::int32},
+        std::pair{"i64"sv, tt::int64},
+        std::pair{"f64"sv, tt::float64}
+    };
+    for (const auto& [suffix, type] : suffixes) {
+        if (match(suffix)) {
+            auto tok = make_token(type);
+            tok.text.remove_suffix(suffix.size());
+            return tok;
         }
-        advance(ctx);
     }
 
-    if (!valid(ctx)) lexer_error(ctx.line, ctx.col, "Unterminated string");
-    advance(ctx); // closing quote
+    return make_token(is_float ? tt::float64 : tt::int64);
+}
 
-    auto tok = make_token(ctx, tt);
+auto lexer::make_literal(char delimiter, token_type tt) -> token
+{
+    while (valid() && peek() != delimiter) {
+        if (peek() == '\n') {
+            d_line++;
+            d_col = 1;
+        }
+        advance();
+    }
+
+    if (!valid()) lexer_error(d_line, d_col, "Unterminated string");
+    advance(); // closing quote
+
+    auto tok = make_token(tt);
     tok.text.remove_prefix(1); // remove leading "
     tok.text.remove_suffix(1); // remove trailing "
     return tok;
 }
 
-auto make_string(lex_context& ctx) -> token
+auto lexer::make_string() -> token
 {
-    return make_literal(ctx, '"', token_type::string);
+    return make_literal('"', token_type::string);
 }
 
-auto make_char(lex_context& ctx) -> token
+auto lexer::make_char() -> token
 {
-    const auto tok = make_literal(ctx, '\'', token_type::character);
+    const auto tok = make_literal('\'', token_type::character);
     if (const auto size = tok.text.size(); size != 1) {
-        lexer_error(ctx.line, ctx.col, "Char literal is not one character! Got '{}' ({})", tok.text, size);
+        lexer_error(d_line, d_col, "Char literal is not one character! Got '{}' ({})", tok.text, size);
     }
     return tok;
 }
 
-auto scan_token(lex_context& ctx) -> token
+auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string>
 {
-    ctx.start = ctx.curr;
-    
-    const auto c = advance(ctx);
-    if (std::isalpha(c)) return make_identifier(ctx);
-    if (std::isdigit(c)) return make_number(ctx);
-
-    switch (c) {
-        case '(': return make_token(ctx, token_type::left_paren);
-        case ')': return make_token(ctx, token_type::right_paren);
-        case '{': return make_token(ctx, token_type::left_brace);
-        case '}': return make_token(ctx, token_type::right_brace);
-        case '[': return make_token(ctx, token_type::left_bracket);
-        case ']': return make_token(ctx, token_type::right_bracket);
-        case ';': return make_token(ctx, token_type::semicolon);
-        case ',': return make_token(ctx, token_type::comma);
-        case '.': return make_token(ctx, token_type::dot);
-        case '-': return make_token(ctx,
-            match(ctx, ">") ? token_type::arrow : token_type::minus);
-        case '+': return make_token(ctx, token_type::plus);
-        case '/': return make_token(ctx, token_type::slash);
-        case '*': return make_token(ctx, token_type::star);
-        case '%': return make_token(ctx, token_type::percent);
-        case '!': return make_token(ctx,
-            match(ctx, "=") ? token_type::bang_equal : token_type::bang);
-        case '=': return make_token(ctx,
-            match(ctx, "=") ? token_type::equal_equal : token_type::equal);
-        case '<': return make_token(ctx,
-            match(ctx, "=") ? token_type::less_equal : token_type::less);
-        case '>': return make_token(ctx,
-            match(ctx, "=") ? token_type::greater_equal : token_type::greater);
-        case ':': return make_token(ctx,
-            match(ctx, "=") ? token_type::colon_equal : token_type::colon);
-        case '|': return make_token(ctx,
-            match(ctx, "|") ? token_type::bar_bar : token_type::bar);
-        case '&': return make_token(ctx,
-            match(ctx, "&") ? token_type::ampersand_ampersand : token_type::ampersand);
-        case '\'':
-            return make_char(ctx);
-        case '"':
-            return make_string(ctx);
-    }
-
-    lexer_error(ctx.line, ctx.col, "Unknown token");
-}
-
-auto lex(const std::filesystem::path& file) -> lex_result
-{
-    // Loop over the lines in the program, and then split each line into tokens.
-    // If a '//' comment symbol is hit, the rest of the line is ignored.
-    std::vector<anzu::token> tokens;
     std::ifstream ifs{file};
     if (!ifs) {
         lexer_error(0, 0, "Could not find module {}\n", file.string());
     }
 
-    auto result = lex_result{};
-    result.source_file = file;
-    result.source_code = std::make_unique<std::string>(
-        std::istreambuf_iterator<char>{ifs}, std::istreambuf_iterator<char>{}
-    );
-
-    auto ctx = lex_context{
-        .start = result.source_code->begin(),
-        .curr = result.source_code->begin(),
-        .end = result.source_code->end()
-    };
-
-    skip_whitespace(ctx);
-    while (ctx.curr != ctx.end) {
-        result.tokens.push_back(scan_token(ctx));
-        skip_whitespace(ctx);
-    }
-    return result;
+    using iter = std::istreambuf_iterator<char>;
+    return std::make_unique<std::string>(iter{ifs}, iter{});
 }
 
-auto print_tokens(const lex_result& res) -> void
+lexer::lexer(std::string_view source_code)
+    : d_start{source_code.begin()}
+    , d_curr{source_code.begin()}
+    , d_end{source_code.end()}
 {
-    for (const auto& token : res.tokens) {
+}
+
+auto lexer::get_token() -> token
+{
+    const auto skip_whitespace = [&] {
+        while (valid()) {
+            const char c = peek();
+            switch (c) {
+                case ' ':
+                case '\r':
+                case '\t': {
+                    advance();
+                } break;
+                case '\n': {
+                    advance();
+                    ++d_line;
+                    d_col = 1;
+                } break;
+                case '#': {
+                    while (valid() && peek() != '\n') {
+                        advance();
+                    }
+                } break;
+                default: {
+                    return;
+                }
+            }
+        }
+    };
+
+    skip_whitespace();
+    if (!valid()) return make_token(token_type::eof);
+
+    d_start = d_curr;
+    
+    const auto c = advance();
+    if (std::isalpha(c)) return make_identifier();
+    if (std::isdigit(c)) return make_number();
+
+    switch (c) {
+        case '(': return make_token(token_type::left_paren);
+        case ')': return make_token(token_type::right_paren);
+        case '{': return make_token(token_type::left_brace);
+        case '}': return make_token(token_type::right_brace);
+        case '[': return make_token(token_type::left_bracket);
+        case ']': return make_token(token_type::right_bracket);
+        case ';': return make_token(token_type::semicolon);
+        case ',': return make_token(token_type::comma);
+        case '.': return make_token(token_type::dot);
+        case '-': return make_token(
+            match(">") ? token_type::arrow : token_type::minus);
+        case '+': return make_token(token_type::plus);
+        case '/': return make_token(token_type::slash);
+        case '*': return make_token(token_type::star);
+        case '%': return make_token(token_type::percent);
+        case '!': return make_token(
+            match("=") ? token_type::bang_equal : token_type::bang);
+        case '=': return make_token(
+            match("=") ? token_type::equal_equal : token_type::equal);
+        case '<': return make_token(
+            match("=") ? token_type::less_equal : token_type::less);
+        case '>': return make_token(
+            match("=") ? token_type::greater_equal : token_type::greater);
+        case ':': return make_token(
+            match("=") ? token_type::colon_equal : token_type::colon);
+        case '|': return make_token(
+            match("|") ? token_type::bar_bar : token_type::bar);
+        case '&': return make_token(
+            match("&") ? token_type::ampersand_ampersand : token_type::ampersand);
+        case '\'':
+            return make_char();
+        case '"':
+            return make_string();
+    }
+
+    lexer_error(d_line, d_col, "Unknown token");
+}
+
+auto lex_print(std::string_view source_code) -> void
+{
+    auto ctx = lexer{source_code};
+    for (auto token = ctx.get_token(); token.type != token_type::eof; token = ctx.get_token()) {
         const auto text = std::format("'{}'", token.text);
         anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
     }
+}
+
+tokenstream::tokenstream(std::string_view source_code)
+    : d_ctx{lexer(source_code)}
+    , d_curr{d_ctx.get_token()}
+    , d_next{d_ctx.get_token()}
+{}
+
+auto tokenstream::consume_maybe(token_type tt) -> bool
+{
+    if (valid() && curr().type == tt) {
+        consume();
+        return true;
+    }
+    return false;
+}
+
+auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
+{
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected '{}'\n", tt);
+        std::exit(1);
+    }
+    if (curr().type != tt) {
+        curr().error("expected '{}', got '{}' [PARSER:{}]\n", tt, curr().type, loc.line());
+    }
+    return consume();
+}
+
+auto tokenstream::consume_u64() -> std::uint64_t
+{
+    if (!valid()) {
+        anzu::print("[ERROR] (EOF) expected a uint\n");
+        std::exit(1);
+    }
+    if (curr().type != token_type::uint64) {
+        curr().error("expected u64, got '{}'\n", token_type::uint64, curr().type);
+    }
+    return std::stoull(std::string{consume().text}); // todo - use from_chars
+}
+
+auto tokenstream::peek(token_type tt) -> bool
+{
+    return valid() && curr().type == tt;
+}
+
+auto tokenstream::peek_next(token_type tt) -> bool
+{
+    return has_next() && next().type == tt;
 }
 
 }

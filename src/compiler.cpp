@@ -1458,7 +1458,7 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 
 }
 
-auto compiled_all_requirements(const parse_result& module, const std::set<std::filesystem::path>& compiled) -> bool
+auto compiled_all_requirements(const anzu_module& module, const std::set<std::filesystem::path>& compiled) -> bool
 {
     for (const auto& requirement : module.required_modules) {
         if (!compiled.contains(requirement)) {
@@ -1470,7 +1470,7 @@ auto compiled_all_requirements(const parse_result& module, const std::set<std::f
 
 auto compile(
     const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, parse_result>& modules,
+    const std::map<std::filesystem::path, anzu_module>& modules,
     const bool debug
 )
     -> bytecode_program

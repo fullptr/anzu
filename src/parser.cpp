@@ -1,6 +1,7 @@
 #include "parser.hpp"
 #include "object.hpp"
 #include "functions.hpp"
+#include "lexer.hpp"
 
 #include <unordered_set>
 #include <string_view>
@@ -11,60 +12,38 @@
 namespace anzu {
 namespace {
 
-auto parse_i32(const token& tok) -> node_expr_ptr
+template <typename ExprType, token_type TokenType>
+auto parse_literal(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::int32, "");
+    tok.assert_type(TokenType, "");
     auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_i32_expr>();
+    auto& inner = node->emplace<ExprType>();
     inner.token = tok;
     auto text = tok.text;
-    if (text.ends_with(i32_sv)) text.remove_suffix(i32_sv.size());
     
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, i32_sv);
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, to_string(TokenType));
     return node;
+}
+
+auto parse_i32(const token& tok) -> node_expr_ptr
+{
+    return parse_literal<node_literal_i32_expr, token_type::int32>(tok);
 }
 
 auto parse_i64(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::int64, "");
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_i64_expr>();
-    inner.token = tok;
-    auto text = tok.text;
-    if (text.ends_with(i64_sv)) text.remove_suffix(i64_sv.size());
-    
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, i64_sv);
-    return node;
+    return parse_literal<node_literal_i64_expr, token_type::int64>(tok);
 }
 
 auto parse_u64(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::uint64, "");
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_u64_expr>();
-    inner.token = tok;
-    auto text = tok.text;
-    if (text.ends_with(u64_sv)) text.remove_suffix(u64_sv.size());
-    if (text.ends_with('u')) text.remove_suffix(1);
-    
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, u64_sv);
-    return node;
+    return parse_literal<node_literal_u64_expr, token_type::uint64>(tok);
 }
 
 auto parse_f64(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::float64, "");
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_f64_expr>();
-    inner.token = tok;
-    auto text = tok.text;
-    
-    const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, f64_sv);
-    return node;
+    return parse_literal<node_literal_f64_expr, token_type::float64>(tok);
 }
 
 auto parse_char(const token& tok) -> node_expr_ptr
@@ -358,13 +337,9 @@ auto parse_type(tokenstream& tokens) -> type_name
     auto type = type_name{type_simple{.name=std::string{tokens.consume().text}}};
     while (tokens.consume_maybe(token_type::left_bracket)) {
         if (tokens.consume_maybe(token_type::right_bracket)) {
-            auto new_type = type_name{type_span{ .inner_type=type }};
-            type = new_type;
+            type = type_name{type_span{ .inner_type=type }};
         } else {
-            auto new_type = type_name{type_list{
-                .inner_type=type, .count=static_cast<std::size_t>(tokens.consume_u64())
-            }};
-            type = new_type;
+            type = type_name{type_list{ .inner_type=type, .count=tokens.consume_u64() }};
             tokens.consume_only(token_type::right_bracket);
         }
     }
@@ -645,15 +620,14 @@ auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 
 }
 
-auto parse(lex_result&& lex_res) -> parse_result
+auto parse(const std::filesystem::path& file) -> anzu_module
 {
-    auto res = parse_result{};
-    res.source_file = std::move(lex_res.source_file);
-    res.source_code = std::move(lex_res.source_code);
+    auto new_module = anzu_module{};
+    new_module.source_code = anzu::read_file(file);
+    new_module.root = std::make_shared<node_stmt>();
+    auto& seq = new_module.root->emplace<node_sequence_stmt>();
 
-    auto stream = tokenstream{lex_res.tokens};
-    res.root = std::make_shared<node_stmt>();
-    auto& seq = res.root->emplace<node_sequence_stmt>();
+    auto stream = tokenstream{*new_module.source_code};
     while (stream.valid()) {
         while (stream.consume_maybe(token_type::semicolon));
         if (stream.consume_maybe(token_type::kw_import)) {
@@ -661,15 +635,15 @@ auto parse(lex_result&& lex_res) -> parse_result
             while (!stream.peek(token_type::semicolon)) {
                 module_name += stream.consume().text;
             }
-            res.required_modules.emplace(
-                std::filesystem::absolute(res.source_file.parent_path() / module_name)
+            new_module.required_modules.emplace(
+                std::filesystem::absolute(file.parent_path() / module_name)
             );
             stream.consume_only(token_type::semicolon);
         } else {
             seq.sequence.push_back(parse_top_level_statement(stream));
         }
     }
-    return res;
+    return new_module;
 }
 
 }
