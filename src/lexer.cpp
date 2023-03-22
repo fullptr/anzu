@@ -319,18 +319,6 @@ auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
     return consume();
 }
 
-auto tokenstream::consume_i64() -> std::int64_t
-{
-    if (!valid()) {
-        anzu::print("[ERROR] (EOF) expected an int\n");
-        std::exit(1);
-    }
-    if (curr().type != token_type::int64) {
-        curr().error("expected {}, got '{}'\n", token_type::int64, curr().type);
-    }
-    return std::stoll(std::string{consume().text}); // todo - use from_chars
-}
-
 auto tokenstream::consume_u64() -> std::uint64_t
 {
     if (!valid()) {

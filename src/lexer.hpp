@@ -62,7 +62,6 @@ public:
 
     auto consume_maybe(token_type tt) -> bool;
     auto consume_only(token_type tt, std::source_location loc = std::source_location::current()) -> token;
-    auto consume_i64() -> std::int64_t;
     auto consume_u64() -> std::uint64_t;
     auto peek(token_type tt) -> bool;
     auto peek_next(token_type tt) -> bool;
