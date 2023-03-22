@@ -13,7 +13,7 @@ namespace anzu {
 
 auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string>;
 
-class scanner
+class lexer
 {
     std::string_view::const_iterator d_start;
     std::string_view::const_iterator d_curr;
@@ -35,13 +35,13 @@ class scanner
     auto make_char() -> token;
 
 public:
-    scanner(std::string_view source_code);
+    lexer(std::string_view source_code);
     auto get_token() -> token;
 };
 
 class tokenstream
 {
-    scanner d_ctx;
+    lexer d_ctx;
     token d_curr;
     token d_next;
 

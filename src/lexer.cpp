@@ -18,29 +18,29 @@ template <typename... Args>
 
 }
 
-auto scanner::valid() const -> bool
+auto lexer::valid() const -> bool
 {
     return d_curr != d_end;
 }
 
-auto scanner::peek() const -> char
+auto lexer::peek() const -> char
 {
     return *d_curr;
 }
 
-auto scanner::peek_next() const -> char
+auto lexer::peek_next() const -> char
 {
     if (!valid()) return '\0';
     return *std::next(d_curr);
 }
 
-auto scanner::advance() -> char
+auto lexer::advance() -> char
 {
     ++d_col;
     return *(d_curr++);
 }
 
-auto scanner::match(std::string_view expected) -> bool
+auto lexer::match(std::string_view expected) -> bool
 {
     auto original_curr = d_curr; // so we can roll back if we dont match
     for (char c : expected) {
@@ -115,7 +115,7 @@ auto identifier_type(std::string_view token) -> token_type
     return token_type::identifier;
 }
 
-auto scanner::make_token(token_type type) const -> token
+auto lexer::make_token(token_type type) const -> token
 {
     const auto text = std::string_view{d_start, d_curr};
 
@@ -123,13 +123,13 @@ auto scanner::make_token(token_type type) const -> token
     return token{ .text=text, .line=d_line, .col=(d_col - text.size()), .type=type };
 }
 
-auto scanner::make_identifier() -> token
+auto lexer::make_identifier() -> token
 {
     while (std::isalpha(peek()) || std::isdigit(peek()) || peek() == '_') advance();
     return make_token(identifier_type({d_start, d_curr}));
 }
 
-auto scanner::make_number() -> token
+auto lexer::make_number() -> token
 {
     using namespace std::string_view_literals;
     using tt = token_type;
@@ -156,7 +156,7 @@ auto scanner::make_number() -> token
     return make_token(is_float ? tt::float64 : tt::int64);
 }
 
-auto scanner::make_literal(char delimiter, token_type tt) -> token
+auto lexer::make_literal(char delimiter, token_type tt) -> token
 {
     while (valid() && peek() != delimiter) {
         if (peek() == '\n') {
@@ -175,12 +175,12 @@ auto scanner::make_literal(char delimiter, token_type tt) -> token
     return tok;
 }
 
-auto scanner::make_string() -> token
+auto lexer::make_string() -> token
 {
     return make_literal('"', token_type::string);
 }
 
-auto scanner::make_char() -> token
+auto lexer::make_char() -> token
 {
     const auto tok = make_literal('\'', token_type::character);
     if (const auto size = tok.text.size(); size != 1) {
@@ -200,14 +200,14 @@ auto read_file(const std::filesystem::path& file) -> std::unique_ptr<std::string
     return std::make_unique<std::string>(iter{ifs}, iter{});
 }
 
-scanner::scanner(std::string_view source_code)
+lexer::lexer(std::string_view source_code)
     : d_start{source_code.begin()}
     , d_curr{source_code.begin()}
     , d_end{source_code.end()}
 {
 }
 
-auto scanner::get_token() -> token
+auto lexer::get_token() -> token
 {
     const auto skip_whitespace = [&] {
         while (valid()) {
@@ -285,7 +285,7 @@ auto scanner::get_token() -> token
 
 auto lex_print(std::string_view source_code) -> void
 {
-    auto ctx = scanner{source_code};
+    auto ctx = lexer{source_code};
     for (auto token = ctx.get_token(); token.type != token_type::eof; token = ctx.get_token()) {
         const auto text = std::format("'{}'", token.text);
         anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
@@ -293,7 +293,7 @@ auto lex_print(std::string_view source_code) -> void
 }
 
 tokenstream::tokenstream(std::string_view source_code)
-    : d_ctx{scanner(source_code)}
+    : d_ctx{lexer(source_code)}
     , d_curr{d_ctx.get_token()}
     , d_next{d_ctx.get_token()}
 {}

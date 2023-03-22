@@ -37,7 +37,7 @@ auto main(const int argc, const char* argv[]) -> int
     if (mode == "lex") {
         anzu::print("Lexing file '{}'\n", file.string());
         const auto code = anzu::read_file(file);
-        auto ctx = anzu::scanner{*code};
+        auto ctx = anzu::lexer{*code};
         for (auto token = ctx.get_token(); token.type != anzu::token_type::eof; token = ctx.get_token()) {
             anzu::print_token(token);
         }
