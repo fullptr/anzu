@@ -121,7 +121,7 @@ static constexpr auto prec_unit = 7;
 auto get_precedence(token token) -> int
 {
     switch (token.type) {
-        case token_type::bar_bar:             return prec_none;
+        case token_type::bar_bar:             return prec_or;
         case token_type::ampersand_ampersand: return prec_and;
         case token_type::equal_equal:
         case token_type::bang_equal:          return prec_equality;
