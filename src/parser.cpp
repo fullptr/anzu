@@ -3,7 +3,6 @@
 #include "functions.hpp"
 #include "lexer.hpp"
 
-#include <unordered_set>
 #include <string_view>
 #include <vector>
 #include <memory>
@@ -20,7 +19,7 @@ auto parse_literal(const token& tok) -> node_expr_ptr
     auto& inner = node->emplace<ExprType>();
     inner.token = tok;
     auto text = tok.text;
-    
+
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
     tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, to_string(TokenType));
     return node;
@@ -110,19 +109,34 @@ auto parse_literal(tokenstream& tokens) -> node_expr_ptr
     token.error("failed to parse literal ({})", token.text);
 };
 
-auto precedence_table()
+static constexpr auto prec_none = 0;
+static constexpr auto prec_or = 1;
+static constexpr auto prec_and = 2;
+static constexpr auto prec_equality = 3;
+static constexpr auto prec_comparison = 4;
+static constexpr auto prec_term = 5;
+static constexpr auto prec_factor = 6;
+static constexpr auto prec_unit = 7;
+
+auto get_precedence(token token) -> int
 {
-    using tt = token_type;
-    auto table = std::array<std::unordered_set<tt>, 6>{};
-    table[0] = {tt::bar_bar}; // or
-    table[1] = {tt::ampersand_ampersand}; // and
-    table[2] = {tt::equal_equal, tt::bang_equal}; // == !=
-    table[3] = {tt::less, tt::less_equal, tt::greater, tt::greater_equal}; // < <= > >=
-    table[4] = {tt::plus, tt::minus}; // + -
-    table[5] = {tt::star, tt::slash, tt::percent}; // * / %
-    return table;
+    switch (token.type) {
+        case token_type::bar_bar:             return prec_none;
+        case token_type::ampersand_ampersand: return prec_and;
+        case token_type::equal_equal:
+        case token_type::bang_equal:          return prec_equality;
+        case token_type::less:
+        case token_type::less_equal:
+        case token_type::greater:
+        case token_type::greater_equal:       return prec_comparison;
+        case token_type::plus:
+        case token_type::minus:               return prec_term;
+        case token_type::star:
+        case token_type::slash:
+        case token_type::percent:             return prec_factor;
+        default:                              return prec_none;
+    }
 }
-static const auto bin_ops_table = precedence_table();
 
 auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 {
@@ -286,15 +300,14 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     }
 }
 
-// Level is the precendence level, the lower the number, the tighter the factors bind.
-auto parse_compound_factor(tokenstream& tokens, std::int64_t level) -> node_expr_ptr
+auto parse_compound_factor(tokenstream& tokens, int level) -> node_expr_ptr
 {
-    if (level == std::ssize(bin_ops_table)) {
+    if (level == prec_unit) {
         return parse_single_factor(tokens);
     }
 
     auto factor = parse_compound_factor(tokens, level + 1);
-    while (tokens.valid() && bin_ops_table[level].contains(tokens.curr().type)) {
+    while (level <= get_precedence(tokens.curr())) {
         auto node = std::make_shared<node_expr>();
         auto& expr = node->emplace<node_binary_op_expr>();
         expr.lhs = factor;
@@ -316,7 +329,7 @@ auto parse_name(tokenstream& tokens)
     if (token.type != token_type::identifier) {
         token.error("'{}' is not a valid name", token.text);
     }
-    return token.text;   
+    return token.text;
 }
 
 auto parse_type(tokenstream& tokens) -> type_name
@@ -376,7 +389,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         tokens.consume_only(token_type::colon);
         param.type = parse_type_node(tokens);
         stmt.sig.params.push_back(param);
-    });    
+    });
     if (tokens.consume_maybe(token_type::arrow)) {
         stmt.sig.return_type = parse_type_node(tokens);
     } else {
@@ -394,8 +407,8 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
 
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.struct_name = struct_name;
-    stmt.function_name = parse_name(tokens); 
-    
+    stmt.function_name = parse_name(tokens);
+
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};
@@ -417,7 +430,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_return_stmt>();
-    
+
     stmt.token = tokens.consume_only(token_type::kw_return);
     if (tokens.peek(token_type::semicolon)) {
         stmt.return_value = std::make_shared<node_expr>();
@@ -518,7 +531,7 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_sequence_stmt>();
-    
+
     stmt.token = tokens.consume_only(token_type::left_brace);
     while (!tokens.consume_maybe(token_type::right_brace)) {
         stmt.sequence.push_back(parse_statement(tokens));
