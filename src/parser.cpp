@@ -330,9 +330,7 @@ auto parse_name(tokenstream& tokens)
 
 auto parse_type(tokenstream& tokens) -> type_name
 {
-    if (tokens.consume_maybe(token_type::ampersand)) {
-        return {type_ptr{ .inner_type={parse_type(tokens)} }};
-    }
+    // Function pointers
     if (tokens.consume_maybe(token_type::left_paren)) {
         auto ret = type_function_ptr{};
         tokens.consume_comma_separated_list(token_type::right_paren, [&]{
@@ -344,12 +342,21 @@ auto parse_type(tokenstream& tokens) -> type_name
     }
 
     auto type = type_name{type_simple{.name=std::string{tokens.consume().text}}};
-    while (tokens.consume_maybe(token_type::left_bracket)) {
-        if (tokens.consume_maybe(token_type::right_bracket)) {
-            type = type_name{type_span{ .inner_type=type }};
-        } else {
-            type = type_name{type_list{ .inner_type=type, .count=tokens.consume_u64() }};
-            tokens.consume_only(token_type::right_bracket);
+    while (true) {
+        if (tokens.consume_maybe(token_type::left_bracket)) {
+            if (tokens.consume_maybe(token_type::right_bracket)) {
+                type = type_name{type_span{ .inner_type=type }};
+            }
+            else {
+                type = type_name{type_list{ .inner_type=type, .count=tokens.consume_u64() }};
+                tokens.consume_only(token_type::right_bracket);
+            }
+        }
+        else if (tokens.consume_maybe(token_type::ampersand)) {
+            type = type_name{type_ptr{ .inner_type=type }};
+        }
+        else {
+            break;
         }
     }
     return type;
