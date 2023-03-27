@@ -205,11 +205,6 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             expr.token = tokens.consume();
             expr.expr = parse_single_factor(tokens);
         } break;
-        case token_type::ampersand: {
-            auto& expr = node->emplace<node_addrof_expr>();
-            expr.token = tokens.consume();
-            expr.expr = parse_single_factor(tokens);
-        } break;
         case token_type::kw_sizeof: {
             auto& expr = node->emplace<node_sizeof_expr>();
             expr.token = tokens.consume();
@@ -241,11 +236,18 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     while (true) {
         switch (tokens.curr().type) {
             case token_type::at: {
-                auto deref_node = std::make_shared<node_expr>();
-                auto& deref_inner = deref_node->emplace<node_deref_expr>();
-                deref_inner.token = tokens.consume();
-                deref_inner.expr = node;
-                node = deref_node;
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_deref_expr>();
+                inner.token = tokens.consume();
+                inner.expr = node;
+                node = new_node;
+            } break;
+            case token_type::ampersand: {
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_addrof_expr>();
+                inner.token = tokens.consume();
+                inner.expr = node;
+                node = new_node;
             } break;
             case token_type::dot: {
                 parse_member_access(tokens, node);
