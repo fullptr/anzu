@@ -9,12 +9,28 @@ An interpreted programming language written in C++. This started out as a stack-
     1. Boolean type `bool`.
     1. Character type `char`.
     1. Null type `null`.
-    1. Typed pointers, eg: `i64&` is an `i64` pointer. Dereference with a trailing `@`.
 
-* Builtin fixed-size arrays:
+* Pointers:
+    1. Uses trailing syntax for both taking addresses and dereferencing.
+    1. eg: `i64&` is an `i64` pointer.
+    1. If `ptr` is an `i64&`, then `ptr@` is the int that it points to.
+    1. Uses `@` instead of the familiar `*` because using `*` in trailing syntax can be ambigious with multiplication. Plus I like it more; it signals that I'm using the value "at" the pointer.
+
+* Arrays:
+    1. Fixed size arrays with statically known size.
     1. Declare elements up front: `l := [1, 2, 3]`.
     1. Declare repeat value and size: `l := [0; 5u]` (same as `l := [0, 0, 0, 0, 0]`).
     1. All objects in an array must be the same type.
+
+* Spans:
+    1. Non-owning views over arrays, made up of a pointer + a size.
+    1. Create a span from an array using trailing `[]`.
+    1. eg: If `l` is an array of 5 `i64`s, then `l[]` is an `int64[]`.
+    1. Slicing syntax `l[0 : 2]` for creating subspans.
+
+* Function Pointers:
+    1. Function names resolve to function pointers which can be passed to functions.
+    1. Syntax for function pointer types: `(<arg_types>) -> <return_type>`.
 
 * Variables:
     * Declare with `:=` operator: `x := 5`.
@@ -123,7 +139,6 @@ Utility Modules (in src/utility)
 ```
 
 # Next Features
-* Postfix notation for pointers (and new symbol for deref to disambiguate from multiplication)
 * Complete modules
     - Namespacing
     - No transitive includes
