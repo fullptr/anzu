@@ -1,6 +1,5 @@
 # tests all language features, here is a comment
 
-
 # declaring variables from literals
 {
     a := 1;               # ints
@@ -109,15 +108,15 @@ struct vec2
     x: i64;
     y: i64;
 
-    fn copy(self: &vec2) -> vec2
+    fn copy(self: vec2&) -> vec2
     {
-        return vec2(self->x, self->y);
+        return vec2(self@.x, self@.y);
     }
 
-    fn assign(self: &vec2, other: &vec2)
+    fn assign(self: vec2&, other: vec2&)
     {
-        other->x = self->x;
-        other->y = self->y;
+        other@.x = self@.x;
+        other@.y = self@.y;
     }
 }
 
@@ -143,7 +142,7 @@ fn println(v: vec2) -> null
 # Pointers
 {
     p_value := 5;
-    p := &p_value;
+    p := p_value&;
     p@ = 6;
     println("p_value should now equal 6:");
     println(p_value);
@@ -177,24 +176,24 @@ struct vec3
     y: f64;
     z: f64;
 
-    fn length(self: &vec3) -> f64
+    fn length(self: vec3&) -> f64
     {
-        x_squared := square(self->x);
-        y_squared := square(self->y);
-        z_squared := square(self->z);
+        x_squared := square(self@.x);
+        y_squared := square(self@.y);
+        z_squared := square(self@.z);
         return sqrt(x_squared + y_squared + z_squared);
     }
 
-    fn copy(self: &vec3) -> vec3
+    fn copy(self: vec3&) -> vec3
     {
-        return vec3(self->x, self->y, self->z);
+        return vec3(self@.x, self@.y, self@.z);
     }
 
-    fn assign(self: &vec3, other: &vec3)
+    fn assign(self: vec3&, other: vec3&)
     {
-        other->x = self->x;
-        other->y = self->y;
-        other->z = self->z;
+        other@.x = self@.x;
+        other@.y = self@.y;
+        other@.z = self@.z;
     }
 }
 
@@ -221,16 +220,16 @@ struct vec3
 # rvalue
 {
     for v in [vec2(1, 2), vec2(3, 4), vec2(5, 6)] {
-        print(v->x);
+        print(v@.x);
         print(", ");
-        println(v->y);
+        println(v@.y);
     }
 
     arr := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
     for v in arr {
-        print(v->x);
+        print(v@.x);
         print(", ");
-        println(v->y);
+        println(v@.y);
     }
 }
 
@@ -255,10 +254,10 @@ struct destructible
 {
     val: i64;
 
-    fn drop(self: &destructible)
+    fn drop(self: destructible&)
     {
         print("dropping ");
-        println(self->val);
+        println(self@.val);
     }
 }
 

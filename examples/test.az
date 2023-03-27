@@ -1,2 +1,4 @@
+import std/string.az;
 
-f := 5;
+str := new_string("hello world");
+print(str.get());
