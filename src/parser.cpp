@@ -217,11 +217,6 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             expr.expr = parse_expression(tokens);
             tokens.consume_only(token_type::right_paren);
         } break;
-        case token_type::star: {
-            auto& expr = node->emplace<node_deref_expr>();
-            expr.token = tokens.consume();
-            expr.expr = parse_single_factor(tokens);
-        } break;
         case token_type::identifier: {
             auto& expr = node->emplace<node_name_expr>();
             expr.token = tokens.consume();
@@ -245,6 +240,13 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     // Handle postfix expressions
     while (true) {
         switch (tokens.curr().type) {
+            case token_type::at: {
+                auto deref_node = std::make_shared<node_expr>();
+                auto& deref_inner = deref_node->emplace<node_deref_expr>();
+                deref_inner.token = tokens.consume();
+                deref_inner.expr = node;
+                node = deref_node;
+            } break;
             case token_type::dot: {
                 parse_member_access(tokens, node);
             } break;

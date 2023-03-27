@@ -144,7 +144,7 @@ fn println(v: vec2) -> null
 {
     p_value := 5;
     p := &p_value;
-    *p = 6;
+    p@ = 6;
     println("p_value should now equal 6:");
     println(p_value);
 }

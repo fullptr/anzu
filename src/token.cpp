@@ -22,7 +22,8 @@ auto to_string(token_type tt) -> std::string_view
 {
     switch (tt) {
         case token_type::ampersand_ampersand: return "&&";       
-        case token_type::ampersand:           return "&";        
+        case token_type::ampersand:           return "&";     
+        case token_type::at:                  return "@";   
         case token_type::arrow:               return "->";       
         case token_type::bang_equal:          return "!=";       
         case token_type::bang:                return "!";        

@@ -10,6 +10,7 @@ enum class token_type
 {
     ampersand_ampersand,
     ampersand,
+    at,
     arrow,
     bang_equal,
     bang,
