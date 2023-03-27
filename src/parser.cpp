@@ -12,7 +12,7 @@ namespace anzu {
 namespace {
 
 template <typename ExprType, token_type TokenType>
-auto parse_literal(const token& tok) -> node_expr_ptr
+auto parse_number(const token& tok) -> node_expr_ptr
 {
     tok.assert_type(TokenType, "");
     auto node = std::make_shared<node_expr>();
@@ -27,22 +27,22 @@ auto parse_literal(const token& tok) -> node_expr_ptr
 
 auto parse_i32(const token& tok) -> node_expr_ptr
 {
-    return parse_literal<node_literal_i32_expr, token_type::int32>(tok);
+    return parse_number<node_literal_i32_expr, token_type::int32>(tok);
 }
 
 auto parse_i64(const token& tok) -> node_expr_ptr
 {
-    return parse_literal<node_literal_i64_expr, token_type::int64>(tok);
+    return parse_number<node_literal_i64_expr, token_type::int64>(tok);
 }
 
 auto parse_u64(const token& tok) -> node_expr_ptr
 {
-    return parse_literal<node_literal_u64_expr, token_type::uint64>(tok);
+    return parse_number<node_literal_u64_expr, token_type::uint64>(tok);
 }
 
 auto parse_f64(const token& tok) -> node_expr_ptr
 {
-    return parse_literal<node_literal_f64_expr, token_type::float64>(tok);
+    return parse_number<node_literal_f64_expr, token_type::float64>(tok);
 }
 
 auto parse_char(const token& tok) -> node_expr_ptr
@@ -303,7 +303,7 @@ auto parse_compound_factor(tokenstream& tokens, int level) -> node_expr_ptr
     }
 
     auto factor = parse_compound_factor(tokens, level + 1);
-    while (level <= get_precedence(tokens.curr())) {
+    while (level < get_precedence(tokens.curr())) {
         auto node = std::make_shared<node_expr>();
         auto& expr = node->emplace<node_binary_op_expr>();
         expr.lhs = factor;
