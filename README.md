@@ -9,7 +9,7 @@ An interpreted programming language written in C++. This started out as a stack-
     1. Boolean type `bool`.
     1. Character type `char`.
     1. Null type `null`.
-    1. Typed pointers, eg: `&i64` is an `i64` pointer.
+    1. Typed pointers, eg: `i64&` is an `i64` pointer. Dereference with a trailing `@`.
 
 * Builtin fixed-size arrays:
     1. Declare elements up front: `l := [1, 2, 3]`.
@@ -75,9 +75,9 @@ An interpreted programming language written in C++. This started out as a stack-
         x: f64;
         y: f64;
 
-        fn length2(self: &vec2) -> f64
+        fn length2(self: vec2&) -> f64
         {
-            return (self->x * self->x) + (self->y * self->y);
+            return (self@.x * self@.x) + (self@.y * self@.y);
         }
     }
     ```
@@ -103,9 +103,9 @@ Parser   -- parser.hpp    : Converts a vector of tokens into an AST
    |
 Compiler -- compiler.hpp  : Converts an AST into a program
    |
-   |     --
    |
-Runtime  -- Rewrite WIP
+   |
+Runtime  -- bytecode.hpp  : Definitions of op codes and functionality to run a program
    |
   Output
 
