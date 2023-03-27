@@ -250,14 +250,6 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             case token_type::dot: {
                 parse_member_access(tokens, node);
             } break;
-            case token_type::arrow: { // parse x->y as (*x).y
-                auto deref_node = std::make_shared<node_expr>();
-                auto& deref_inner = deref_node->emplace<node_deref_expr>();
-                deref_inner.token = std::visit([](auto&& n) { return n.token; }, *node);
-                deref_inner.expr = node;
-                node = deref_node;
-                parse_member_access(tokens, node);
-            } break;
             case token_type::left_bracket: { // subscript or span
                 const auto token = tokens.consume();
                 auto new_node = std::make_shared<node_expr>();
