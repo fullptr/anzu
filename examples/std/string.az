@@ -4,60 +4,60 @@ struct string
     data: char[];
     size: u64;
 
-    fn append_char(self: &string, c: char)
+    fn append_char(self: string&, c: char)
     {
-        if (self->size == self->data.size()) {
-            new_cap := 2u * self->data.size();
+        if (self@.size == self@.data.size()) {
+            new_cap := 2u * self@.data.size();
             if new_cap == 0u {
                 new_cap = 1u;
             }
             newdata := new char : new_cap;
 
             idx := 0u;
-            while idx != self->size {
-                newdata[idx] = self->data[idx];
+            while idx != self@.size {
+                newdata[idx] = self@.data[idx];
                 idx = idx + 1u;
             }
 
-            delete self->data;
-            self->data = newdata;
+            delete self@.data;
+            self@.data = newdata;
         }
-        self->data[self->size] = c;
-        self->size = self->size + 1u;      
+        self@.data[self@.size] = c;
+        self@.size = self@.size + 1u;      
     }
 
-    fn at(self: &string, idx: u64) -> char
+    fn at(self: string&, idx: u64) -> char
     {
-        assert idx < self->size;
-        return self->data[idx];
+        assert idx < self@.size;
+        return self@.data[idx];
     }
 
-    fn append(self: &string, other: char[])
+    fn append(self: string&, other: char[])
     {
         for c in other {
-            self->append_char(*c);
+            self@.append_char(c@);
         }
     }
 
-    fn clear(self: &string)
+    fn clear(self: string&)
     {
-        self->size = 0u;
+        self@.size = 0u;
     }
 
-    fn get(self: &string) -> char[]
+    fn get(self: string&) -> char[]
     {
-        return self->data[0u : self->size];
+        return self@.data[0u : self@.size];
     }
 
-    fn set(self: &string, value: char[])
+    fn set(self: string&, value: char[])
     {
-        self->clear();
-        self->append(value);
+        self@.clear();
+        self@.append(value);
     }
 
-    fn transform(self: &string, func: (&char) -> null)
+    fn transform(self: string&, func: (char&) -> null)
     {
-        span := self->get();
+        span := self@.get();
         for c in span {
             func(c);
         }
@@ -65,34 +65,34 @@ struct string
 
     # SPECIAL MEMBER FUNCTIONS
 
-    fn drop(self: &string)
+    fn drop(self: string&)
     {
-        delete self->data;
+        delete self@.data;
     }
 
-    fn copy(self: &string) -> string
+    fn copy(self: string&) -> string
     {
-        cpy := string(new char : self->data.size(), self->size);
-        cpy.append(self->get());
+        cpy := string(new char : self@.data.size(), self@.size);
+        cpy.append(self@.get());
         return cpy;
     }
 
-    fn assign(self: &string, other: &string)
+    fn assign(self: string&, other: string&)
     {
         # Resize self if needed
-        if self->data.size() < other->data.size() {
-            delete self->data;
-            self->data = new char : other->data.size();
+        if self@.data.size() < other@.data.size() {
+            delete self@.data;
+            self@.data = new char : other@.data.size();
         }
 
         # Copy over the data
         idx := 0u;
-        while idx != other->size {
-            self->data[idx] = other->data[idx];
+        while idx != other@.size {
+            self@.data[idx] = other@.data[idx];
             idx = idx + 1u;
         }
 
-        self->size = other->size;
+        self@.size = other@.size;
     }
 }
 

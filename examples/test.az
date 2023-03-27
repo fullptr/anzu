@@ -1,2 +1,4 @@
-x := 3 * (4 + 5);
-println(x);
+import std/string.az;
+
+str := new_string("hello world");
+print(str.get());

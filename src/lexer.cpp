@@ -53,7 +53,6 @@ auto lexer::match(std::string_view expected) -> bool
     return true;
 }
 
-// TODO: We can make this more efficient, but it's fine for now
 auto identifier_type(std::string_view token) -> token_type
 {
     if (token == "assert")   return token_type::kw_assert;
@@ -66,8 +65,8 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "else")     return token_type::kw_else;
     if (token == "f64")      return token_type::kw_f64;
     if (token == "false")    return token_type::kw_false;
-    if (token == "for")      return token_type::kw_for;
     if (token == "fn")       return token_type::kw_function;
+    if (token == "for")      return token_type::kw_for;
     if (token == "i32")      return token_type::kw_i32;
     if (token == "i64")      return token_type::kw_i64;
     if (token == "if")       return token_type::kw_if;
@@ -83,35 +82,6 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "typeof")   return token_type::kw_typeof;
     if (token == "u64")      return token_type::kw_u64;
     if (token == "while")    return token_type::kw_while;
-    if (token == "(")        return token_type::left_paren;
-    if (token == ")")        return token_type::right_paren;
-    if (token == "{")        return token_type::left_brace;
-    if (token == "}")        return token_type::right_brace;
-    if (token == ";")        return token_type::semicolon;
-    if (token == ",")        return token_type::comma;
-    if (token == ".")        return token_type::dot;
-    if (token == "-")        return token_type::minus;
-    if (token == "+")        return token_type::plus;
-    if (token == "/")        return token_type::slash;
-    if (token == "*")        return token_type::star;
-    if (token == "!=")       return token_type::bang_equal;
-    if (token == "!")        return token_type::bang;
-    if (token == "==")       return token_type::equal_equal;
-    if (token == "=")        return token_type::equal;
-    if (token == "<=")       return token_type::less_equal;
-    if (token == "<")        return token_type::less;
-    if (token == ">=")       return token_type::greater_equal;
-    if (token == ">")        return token_type::greater;
-    if (token == "&")        return token_type::ampersand;
-    if (token == "&&")       return token_type::ampersand_ampersand;
-    if (token == ":=")       return token_type::colon_equal;
-    if (token == ":")        return token_type::colon;
-    if (token == "[")        return token_type::left_bracket;
-    if (token == "]")        return token_type::right_bracket;
-    if (token == "%")        return token_type::percent;
-    if (token == "||")       return token_type::bar_bar;
-    if (token == "|")        return token_type::bar;
-    if (token == "->")       return token_type::arrow;
     return token_type::identifier;
 }
 
@@ -245,6 +215,7 @@ auto lexer::get_token() -> token
     if (std::isdigit(c)) return make_number();
 
     switch (c) {
+        case '@': return make_token(token_type::at);
         case '(': return make_token(token_type::left_paren);
         case ')': return make_token(token_type::right_paren);
         case '{': return make_token(token_type::left_brace);
