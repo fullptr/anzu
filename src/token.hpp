@@ -85,19 +85,19 @@ struct token
     [[noreturn]] void error(std::string_view msg) const;
 
     template <typename... Args>
-    [[noreturn]] void error(std::string_view msg, Args&&... args) const
+    [[noreturn]] void error(std::format_string<Args...> msg, Args&&... args) const
     {
         error(std::format(msg, std::forward<Args>(args)...));
     }
 
     template <typename... Args>
-    void assert(bool condition, std::string_view msg, Args&&... args) const
+    void assert(bool condition, std::format_string<Args...> msg, Args&&... args) const
     {
         if (!condition) error(std::format(msg, std::forward<Args>(args)...));
     }
 
     template <typename... Args>
-    void assert_eq(const auto& lhs, const auto& rhs, std::string_view msg, Args&&... args) const
+    void assert_eq(const auto& lhs, const auto& rhs, std::format_string<Args...> msg, Args&&... args) const
     {
         if (lhs != rhs) {
             const auto user_msg = std::format(msg, std::forward<Args>(args)...);
@@ -106,7 +106,7 @@ struct token
     }
 
     template <typename... Args>
-    void assert_type(token_type tt, std::string_view msg, Args&&... args) const
+    void assert_type(token_type tt, std::format_string<Args...> msg, Args&&... args) const
     {
         if (tt != type) {
             const auto user_msg = std::format(msg, std::forward<Args>(args)...);

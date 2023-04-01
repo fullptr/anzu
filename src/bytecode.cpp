@@ -12,7 +12,7 @@ namespace anzu {
 namespace {
 
 template <typename ...Args>
-auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
+auto runtime_assert(bool condition, std::format_string<Args...> msg, Args&&... args)
 {
     if (!condition) {
         anzu::print(msg, std::forward<Args>(args)...);
@@ -22,7 +22,7 @@ auto runtime_assert(bool condition, std::string_view msg, Args&&... args)
 
 
 template <typename ...Args>
-[[noreturn]] auto runtime_error(std::string_view message, Args&&... args)
+[[noreturn]] auto runtime_error(std::format_string<Args...> message, Args&&... args)
 {
     const auto msg = std::format(message, std::forward<Args>(args)...);
     print("Runtime assertion failed! {}\n", msg);
@@ -206,7 +206,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto size = read_advance<std::uint64_t>(prog, ctx.prog_ptr);
             if (!pop_value<bool>(ctx.stack)) {
                 const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
-                runtime_error({data, size});
+                runtime_error("{}", std::string_view{data, size});
             }
         } break;
 
