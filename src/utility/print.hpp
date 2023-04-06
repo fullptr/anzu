@@ -8,7 +8,7 @@
 namespace anzu {
 
 template <typename... Args>
-void print(std::string_view fmt, Args&&... args)
+void print(std::format_string<Args...> fmt, Args&&... args)
 {
     std::cout << std::format(fmt, std::forward<Args>(args)...);
 }

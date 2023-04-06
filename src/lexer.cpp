@@ -9,7 +9,7 @@ namespace {
 
 template <typename... Args>
 [[noreturn]] void lexer_error(
-    std::int64_t lineno, std::int64_t col, std::string_view msg, Args&&... args)
+    std::int64_t lineno, std::int64_t col, std::format_string<Args...> msg, Args&&... args)
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
     anzu::print("[ERROR] ({}:{}) {}\n", lineno, col, formatted_msg);

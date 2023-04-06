@@ -1220,8 +1220,8 @@ void push_stmt(compiler& com, const node_if_stmt& node)
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     const auto message = std::format("type '{}' already defined", node.name);
-    node.token.assert(!com.types.contains(make_type(node.name)), message);
-    node.token.assert(!com.functions[global_namespace].contains(node.name), message);
+    node.token.assert(!com.types.contains(make_type(node.name)), "{}", message);
+    node.token.assert(!com.functions[global_namespace].contains(node.name), "{}", message);
 
     auto fields = type_fields{};
     for (const auto& p : node.fields) {
