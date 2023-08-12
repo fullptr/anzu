@@ -1,4 +1,19 @@
-import std/string.az;
 
-str := new_string("hello world");
-print(str.get());
+struct foo
+{
+    x: i64;
+    
+    fn bar(self: foo&, val: i64) -> i64
+    {
+        return self@.x + val;
+    }
+}
+
+fn bar(self: foo&, val: i64) -> i64
+{
+    return 2 * self@.x + val;
+}
+
+
+f := foo(5);
+println(f.bar(6));

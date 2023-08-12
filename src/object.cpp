@@ -87,6 +87,12 @@ auto hash(const type_function_ptr& type) -> std::size_t
     return val;
 }
 
+auto hash(const type_reference& type) -> std::size_t
+{
+    static const auto base = std::hash<std::string_view>{}("type_reference");
+    return hash(*type.inner_type) ^ base;
+}
+
 auto i32_type() -> type_name
 {
     return {type_simple{ .name = std::string{i32_sv} }};
@@ -162,6 +168,16 @@ auto is_function_ptr_type(const type_name& t) -> bool
     return std::holds_alternative<type_function_ptr>(t);
 }
 
+auto concrete_reference_type(const type_name& t) -> type_name
+{
+    return {type_reference{ .inner_type = { t } }};
+}
+
+auto is_reference_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_reference>(t);
+}
+
 auto inner_type(const type_name& t) -> type_name
 {
     if (is_list_type(t)) {
@@ -173,7 +189,11 @@ auto inner_type(const type_name& t) -> type_name
     if (is_span_type(t)) {
         return *std::get<type_span>(t).inner_type; 
     }
-    print("OH NO MY TYPE\n");
+    if (is_reference_type(t)) {
+        return *std::get<type_reference>(t).inner_type;
+    }
+    print("COMPILER ERROR: Tried to get the inner type of an invalid type category, "
+          "can only get the inner type for arrays, pointers, spans and references\n");
     std::exit(1);
     return {};
 }
@@ -183,7 +203,7 @@ auto array_length(const type_name& t) -> std::size_t
     if (is_list_type(t)) {
         return std::get<type_list>(t).count;
     }
-    print("OH NO MY TYPE\n");
+    print("COMPILER ERROR: Tried to get length of a non-array type\n");
     std::exit(1);
     return {};
 }
@@ -196,6 +216,11 @@ auto size_of_ptr() -> std::size_t
 auto size_of_span() -> std::size_t
 {
     return 2 * PTR_SIZE; // actually a pointer + a size, but they are both 8 bytes
+}
+
+auto size_of_reference() -> std::size_t
+{
+    return PTR_SIZE;
 }
 
 auto is_type_fundamental(const type_name& type) -> bool
@@ -267,14 +292,17 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         [&](const type_list& t) {
             return size_of(*t.inner_type) * t.count;
         },
-        [&](const type_ptr&) {
+        [](const type_ptr&) {
             return size_of_ptr();
         },
-        [&](const type_span&) {
+        [](const type_span&) {
             return size_of_span();
         },
         [](const type_function_ptr&) {
             return size_of_ptr();
+        },
+        [](const type_reference&) {
+            return size_of_reference();
         }
     }, type);
 }

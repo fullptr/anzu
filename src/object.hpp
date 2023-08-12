@@ -57,12 +57,19 @@ struct type_function_ptr
     auto operator==(const type_function_ptr&) const -> bool = default;
 };
 
+struct type_reference
+{
+    value_ptr<type_name> inner_type;
+    auto operator==(const type_reference&) const -> bool = default;
+};
+
 struct type_name : public std::variant<
     type_simple,
     type_list,
     type_ptr,
     type_span,
-    type_function_ptr>
+    type_function_ptr,
+    type_reference>
 {
     using variant::variant;
 };
@@ -88,6 +95,7 @@ auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
+auto hash(const type_reference& type) -> std::size_t;
 
 auto i32_type() -> type_name;
 auto i64_type() -> type_name;
@@ -110,8 +118,12 @@ auto is_span_type(const type_name& t) -> bool;
 
 auto is_function_ptr_type(const type_name& t) -> bool;
 
+auto concrete_reference_type(const type_name& t) -> type_name;
+auto is_reference_type(const type_name& t) -> bool;
+
 auto size_of_ptr() -> std::size_t;
 auto size_of_span() -> std::size_t;
+auto size_of_reference() -> std::size_t;
 
 // Extracts the single inner type of the given t. Undefined if the given t is not a compound
 // type with a single subtype.

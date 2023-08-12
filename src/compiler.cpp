@@ -435,14 +435,17 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 }
             }
         },
-        [&](const type_ptr&) {
-            // pointers have no destructors
+        [](const type_ptr&) {
+            // pointers do not own anything to cloean up
         },
-        [&](const type_span&) {
-            // spans have no destructors
+        [](const type_span&) {
+            // spans do not own anything to cloean up
         },
-        [&](const type_function_ptr&) {
-            // functions pointers have no destructors
+        [](const type_function_ptr&) {
+            // functions pointers do not own anything to cloean up
+        },
+        [](const type_reference&) {
+            // references do not own anything to cloean up
         }
     }, type);
 }
