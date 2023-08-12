@@ -23,7 +23,7 @@ auto format_error(const std::string& str) -> void
 
 auto to_string(const type_name& type) -> std::string
 {
-    return std::visit([](const auto& t) { return to_string(t); }, type);
+    return std::visit([](const auto& t) { return ::anzu::to_string(t); }, type);
 }
 
 auto to_string(const type_simple& type) -> std::string

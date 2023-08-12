@@ -155,6 +155,7 @@ auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
+auto to_string(const type_reference& type) -> std::string;
 
 // Runtime pointer helpers to determine if the pointer is in stack, heap or read-only memory.
 static constexpr auto heap_bit = std::uint64_t{1} << 63;
