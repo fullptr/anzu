@@ -51,6 +51,11 @@ auto to_string(const type_function_ptr& type) -> std::string
     return std::format("({}) -> {}", format_comma_separated(type.param_types), *type.return_type);
 }
 
+auto to_string(const type_reference& type) -> std::string
+{
+    return std::format("ref-{}", to_string(*type.inner_type));
+}
+
 auto hash(const type_name& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
