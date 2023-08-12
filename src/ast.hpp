@@ -197,6 +197,13 @@ struct node_span_expr
     anzu::token token;
 };
 
+struct node_reference_expr
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
 struct node_expr : std::variant<
     // Rvalue expressions
     node_literal_i32_expr,
@@ -221,7 +228,8 @@ struct node_expr : std::variant<
     node_field_expr,
     node_deref_expr,
     node_subscript_expr,
-    node_span_expr>
+    node_span_expr,
+    node_reference_expr>
 {
 };
 

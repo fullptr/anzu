@@ -626,15 +626,15 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
     return inner_type(type);
 }
 
-auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
+auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
 {
-    const auto expr_type = type_of_expr(com, *expr.expr);
+    const auto expr_type = type_of_expr(com, *node.expr);
 
     const auto is_array = is_list_type(expr_type);
     const auto is_span = is_span_type(expr_type);
-    expr.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
+    node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
-    push_expr_ptr(com, *expr.expr);
+    push_expr_ptr(com, *node.expr);
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
@@ -644,12 +644,12 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 
     // Bounds checking on the subscript, it's unsigned so only need to check upper bound
     if (com.debug) {
-        const auto index = push_expr_val(com, *expr.index);
-        expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
+        const auto index = push_expr_val(com, *node.index);
+        node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
         if (is_array) {
             push_value(com.program, op::push_u64, array_length(expr_type));
         } else {
-            push_expr_ptr(com, *expr.expr);
+            push_expr_ptr(com, *node.expr);
             push_value(com.program, op::push_u64, size_of_ptr());
             push_value(com.program, op::u64_add); // offset to the size value
             push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
@@ -660,12 +660,18 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 
     // Offset pointer by (index * size)
     const auto inner = inner_type(expr_type);
-    const auto index = push_expr_val(com, *expr.index);
-    expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
+    const auto index = push_expr_val(com, *node.index);
+    node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
     push_value(com.program, op::push_u64, com.types.size_of(inner));
     push_value(com.program, op::u64_mul);
     push_value(com.program, op::u64_add); // modify ptr
     return inner;
+}
+
+auto push_expr_ptr(compiler& com, const node_reference_expr& node) -> type_name
+{
+    const auto type = push_expr_ptr(com, *node.expr);
+    return concrete_reference_type(type);
 }
 
 [[noreturn]] auto push_expr_ptr(compiler& com, const auto& node) -> type_name
