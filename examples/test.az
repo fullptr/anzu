@@ -1,5 +1,6 @@
 x := 5;
 
 y := ref x;
-
 y = 6;
+
+println(x);

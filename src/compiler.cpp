@@ -581,7 +581,8 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
         node.token.error("cannot take address of a function pointer");
     }
 
-    return push_var_addr(com, node.token, node.name);
+    const auto type = push_var_addr(com, node.token, node.name);
+    return type;
 }
 
 // I think this is a bit of a hack; when pushing the value of a function pointer, we need
@@ -666,12 +667,6 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     push_value(com.program, op::u64_mul);
     push_value(com.program, op::u64_add); // modify ptr
     return inner;
-}
-
-auto push_expr_ptr(compiler& com, const node_reference_expr& node) -> type_name
-{
-    const auto type = push_expr_ptr(com, *node.expr);
-    return concrete_reference_type(type);
 }
 
 [[noreturn]] auto push_expr_ptr(compiler& com, const auto& node) -> type_name
@@ -1039,6 +1034,12 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
     return concrete_ptr_type(type);
 }
 
+auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
+{
+    const auto type = push_expr_ptr(com, *node.expr);
+    return concrete_reference_type(type);
+}
+
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
 // we can load it by pushing the address to the stack and loading.
 auto push_expr_val(compiler& com, const auto& node) -> type_name
@@ -1272,16 +1273,36 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     declare_var(com, node.token, node.name, type);
 }
 
+auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
+{
+    if (lhs != rhs) {
+        // Support assigning to references
+        if (is_reference_type(lhs) && inner_type(lhs) == rhs) {
+            return true;
+        }
+        return false;
+    }
+
+    return true;
+}
+
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = type_of_expr(com, *node.expr);
     const auto lhs = type_of_expr(com, *node.position);
-    node.token.assert_eq(lhs, rhs, "invalid assignment");
+    
+    node.token.assert(is_assignable(lhs, rhs), "invalid assignment");
 
     if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(rhs)) {
         const auto rhs = push_expr_val(com, *node.expr);
         const auto lhs = push_expr_ptr(com, *node.position);
-        node.token.assert_eq(lhs, rhs, "invalid assignment");
+        node.token.assert(is_assignable(lhs, rhs), "invalid assignment");
+
+        // We don't want to assign to the address of the reference, we want to
+        // assign the address that it stores
+        if (is_reference_type(lhs)) {
+            push_value(com.program, op::load, size_of_reference());
+        }
 
         push_value(com.program, op::save, com.types.size_of(lhs));
         return;
