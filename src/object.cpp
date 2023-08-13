@@ -241,11 +241,14 @@ auto is_type_fundamental(const type_name& type) -> bool
 
 auto is_type_trivially_copyable(const type_name& type) -> bool
 {
+    // TODO: Allow for trivially copyable user types
+    //   ie- classes with default copy/assign and all trivially copyable members
     return is_type_fundamental(type)
         || is_ptr_type(type)
         || is_function_ptr_type(type)
         || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)))
-        || is_span_type(type);
+        || is_span_type(type)
+        || is_reference_type(type); // is just a pointer
 }
 
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
@@ -264,7 +267,8 @@ auto type_store::contains(const type_name& type) const -> bool
         || is_list_type(type)
         || is_ptr_type(type)
         || is_function_ptr_type(type)
-        || is_span_type(type);
+        || is_span_type(type)
+        || is_reference_type(type); // is just a pointer
 }
 
 // TODO: Refactor this mess
