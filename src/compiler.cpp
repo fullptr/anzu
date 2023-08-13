@@ -329,6 +329,8 @@ auto push_adjust_ptr_to_field(
 )
     -> type_name
 {
+    tok.assert(!is_reference_type(type), "cannot adjust pointer to field of a reference, "
+                                         "as the value should already be dereferenced");
     const auto field_type = push_field_offset(com, tok, type, field_name);
     push_value(com.program, op::u64_add); // modify ptr
     return field_type;
@@ -616,7 +618,11 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, *node.expr);
+    auto type = push_expr_ptr(com, *node.expr);
+    if (is_reference_type(type)) {
+        push_value(com.program, op::load, size_of_reference());
+        type = inner_type(type);
+    }
     return push_adjust_ptr_to_field(com, node.token, type, node.field_name);
 }
 
@@ -1336,7 +1342,12 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     node.token.assert(assign.has_value(), "{} cannot be assigned", rhs);
 
     push_value(com.program, op::push_call_frame);
+
     push_expr_ptr(com, *node.position);
+    if (is_reference_type(lhs)) {
+        push_value(com.program, op::load, size_of_reference());
+    }
+
     push_expr_ptr(com, *node.expr);
     push_function_call(com, assign->ptr, params);
     pop_object(com, assign->return_type, node.token);

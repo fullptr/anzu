@@ -1,6 +1,20 @@
-x := 5;
 
-y := ref x;
-y = 6;
 
-println(x);
+struct copyable
+{
+    i: i64;
+    f: f64;
+
+    fn assign(self: copyable&, other: copyable&) -> null
+    {
+        other@.i = self@.i;
+        other@.f = self@.f;
+    }
+}
+
+a := copyable(1, 1.0);
+b := ref a;
+
+b.i = 5;
+
+println(a.i);
