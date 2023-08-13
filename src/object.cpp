@@ -251,6 +251,28 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
         || is_reference_type(type); // is just a pointer
 }
 
+auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool
+{
+    return type == expected
+        || is_reference_type(type) && inner_type(type) == expected
+        || is_reference_type(expected) && inner_type(expected) == type;
+}
+
+// Checks if the set of given args is convertible to the signature for a function.
+// Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
+// rvalues should not be bindable to references
+auto are_types_convertible_to(const std::vector<type_name>& args,
+                       const std::vector<type_name>& actuals) -> bool
+{
+    if (args.size() != actuals.size()) return false;
+    for (std::size_t i = 0; i != args.size(); ++i) {
+        if (!is_type_convertible_to(args[i], actuals[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
 {
     if (d_classes.contains(name)) {

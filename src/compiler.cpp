@@ -902,11 +902,17 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                 }
                 // In this case, we have a reference but the function accepts a value,
                 // so push the value of the reference, which is an address, then load
-                // the value (TODO: This bypasses constructors, so needs fixing)
+                // the value. Note: this skips calling constructors, which is fine for
+                // builtin types, but a more general solution is needed for passing references
+                // to user functions.
                 else if (is_reference_type(param_types[i])) {
                     push_expr_val(com, *node.args.at(i));
                     push_value(com.program, op::load, com.types.size_of(inner_type(param_types[i])));
                 }
+                // TODO: Handle the case where the function itself takes a reference and we
+                // have passed a value. First need a way of expressing that a function takes
+                // references, which requires a way to spell reference types. Either do this
+                // or go straight to specifying mut/copy (and eventually in when we have const).
                 else {
                     node.token.error("TODO: Loading references into builtin functions");
                 }

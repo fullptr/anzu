@@ -136,6 +136,14 @@ auto is_type_fundamental(const type_name& type) -> bool;
 
 auto is_type_trivially_copyable(const type_name& type) -> bool;
 
+// Checks if the set of given args is convertible to the signature for a function.
+// Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
+// rvalues should not be bindable to references
+auto is_type_convertible_to(const type_name& lhs, const type_name& rhs) -> bool;
+
+auto are_types_convertible_to(const std::vector<type_name>& lhs,
+                              const std::vector<type_name>& rhs) -> bool;
+
 class type_store
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
