@@ -513,9 +513,6 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
     const auto type = type_of_expr(com, expr);
-    if (is_reference_type(type)) {
-        tok.error("TODO: Implement push_object_copy for references, if that's meaningful");
-    }
 
     if (is_rvalue_expr(expr) || is_type_trivially_copyable(type)) {
         push_expr_val(com, expr);
@@ -891,7 +888,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return u64_type();
         }
 
-        // Fourth, it might be a builtin function
+        // Lastly, it might be a builtin function
         auto param_types = std::vector<type_name>{};
         for (const auto& arg : node.args) {
             param_types.emplace_back(type_of_expr(com, *arg));
@@ -904,6 +901,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;
         }
+
+        node.token.error("Could not find function {}({})\n",
+                         inner.name, format_comma_separated(param_types));
     }
 
     // Otherwise, the expression must be a function pointer.

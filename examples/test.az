@@ -15,10 +15,5 @@ struct copyable
 a := copyable(1, 1.0);
 b := ref a.i;
 
-b = 6;
-
-c := ref a;
-c.i = 8;
-
 println(4);
 println(b);
