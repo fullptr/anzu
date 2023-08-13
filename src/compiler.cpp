@@ -513,6 +513,9 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
     const auto type = type_of_expr(com, expr);
+    if (is_reference_type(type)) {
+        tok.error("TODO: Implement push_object_copy for references, if that's meaningful");
+    }
 
     if (is_rvalue_expr(expr) || is_type_trivially_copyable(type)) {
         push_expr_val(com, expr);

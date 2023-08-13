@@ -13,8 +13,12 @@ struct copyable
 }
 
 a := copyable(1, 1.0);
-b := ref a;
+b := ref a.i;
 
-b.i = 5;
+b = 6;
 
-println(a.i);
+c := ref a;
+c.i = 8;
+
+println(4);
+println(b);
