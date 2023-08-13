@@ -895,8 +895,21 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         if (const auto b = get_builtin_id(inner.name, param_types); b.has_value()) {
-            for (const auto& arg : node.args) {
-                push_object_copy(com, *arg, node.token);
+            const auto& builtin = get_builtin(*b);
+            for (std::size_t i = 0; i != builtin.args.size(); ++i) {
+                if (builtin.args.at(i) == param_types[i]) {
+                    push_object_copy(com, *node.args.at(i), node.token);
+                }
+                // In this case, we have a reference but the function accepts a value,
+                // so push the value of the reference, which is an address, then load
+                // the value (TODO: This bypasses constructors, so needs fixing)
+                else if (is_reference_type(param_types[i])) {
+                    push_expr_val(com, *node.args.at(i));
+                    push_value(com.program, op::load, com.types.size_of(inner_type(param_types[i])));
+                }
+                else {
+                    node.token.error("TODO: Loading references into builtin functions");
+                }
             }
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;

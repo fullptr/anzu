@@ -179,12 +179,34 @@ auto construct_builtin_array() -> std::vector<builtin>
 
 static const auto builtins = construct_builtin_array();
 
+auto is_convertible_to(const type_name& type, const type_name& expected) -> bool
+{
+    return type == expected
+        || is_reference_type(type) && inner_type(type) == expected
+        || is_reference_type(expected) && inner_type(expected) == type;
+}
+
+// Checks if the set of given args is convertible to the signature for a function.
+// Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
+// rvalues should not be bindable to references
+auto is_convertible_to(const std::vector<type_name>& args,
+                       const std::vector<type_name>& actuals) -> bool
+{
+    if (args.size() != actuals.size()) return false;
+    for (std::size_t i = 0; i != args.size(); ++i) {
+        if (!is_convertible_to(args[i], actuals[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
     -> std::optional<std::size_t>
 {
     auto index = std::size_t{0};
     for (const auto& b : builtins) {
-        if (name == b.name && args == b.args) {
+        if (name == b.name && is_convertible_to(args, b.args)) {
             return index;
         }
         ++index;
