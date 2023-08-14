@@ -1,23 +1,12 @@
-struct copyable
+
+i := 5;
+ir := ref i;
+
+println(ir);
+
+fn print_int(x: i64) -> null
 {
-    arr: i64[2u];
-
-    fn assign(self: copyable&, other: copyable&) -> null
-    {
-        other@.arr = self@.arr;
-    }
-
-    fn copy(self: copyable&) -> copyable
-    {
-        return copyable(self@.arr);
-    }
+    println(x);
 }
 
-a := [1, 2];
-ar := ref a;
-
-c := copyable(a);
-a[0u] = 3;
-
-println(c.arr[0u]);
-println(c.arr[1u]);
+print_int(ir);
