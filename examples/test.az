@@ -19,3 +19,4 @@ i := 5;
 ir := ref i;
 
 c := copyable(ir, 6.0);
+println(c.i);

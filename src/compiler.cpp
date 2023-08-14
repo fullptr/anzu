@@ -354,7 +354,7 @@ void verify_sig(
 
     auto arg_index = std::size_t{0};
     for (const auto& [expected_param, actual_param] : zip(expected, actual)) {
-        if (expected_param != actual_param) {
+        if (actual_param != expected_param) {
             tok.error("arg {} type '{}' does not match '{}'", arg_index, actual_param, expected_param);
             ++arg_index;
         }
@@ -506,6 +506,50 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
         push_value(com.program, op::push_ptr_rel, object_ptr);
     });
     push_value(com.program, op::pop, com.types.size_of(type));
+}
+
+// Given an expression that evaluates to a reference, evaluate it and push to the top of the stack. If the expression
+// is an lvalue, copy constructors are invoked.
+auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
+{
+    const auto type = type_of_expr(com, expr);
+    tok.assert(is_reference_type(type), "tried to push a copy of a non-ref");
+
+    const auto inner = inner_type(type);
+    
+    if (is_rvalue_expr(expr) || is_type_trivially_copyable(inner)) {
+        push_expr_val(com, expr);
+        push_value(com.program, op::load, com.types.size_of(inner));
+    }
+
+    else if (is_list_type(inner)) {
+        tok.assert(false, "copying a ref to an array not implemented yet");
+        //const auto etype = inner_type(type);
+        //const auto inner_size = com.types.size_of(etype);
+        //const auto params = copy_fn_params(etype);
+
+        //const auto copy = get_function(com, etype, "copy", params);
+        //tok.assert(copy.has_value(), "{} cannot be copied", etype);
+
+        //for (std::size_t i = 0; i != array_length(type); ++i) {
+        //    push_value(com.program, op::push_call_frame);
+        //    push_expr_ptr(com, expr);
+        //    push_ptr_adjust(com, i * inner_size);
+        //    push_function_call(com, copy->ptr, params);
+        //}
+    }
+
+    else {
+        const auto params = copy_fn_params(inner);
+        const auto copy = get_function(com, type, "copy", params);
+        tok.assert(copy.has_value(), "{} cannot be copied", inner);
+
+        push_value(com.program, op::push_call_frame);
+        push_expr_val(com, expr);
+        push_function_call(com, copy->ptr, params);
+    }
+
+    return inner;
 }
 
 // Given an expression, evaluate it and push to the top of the stack. If the expression
@@ -849,8 +893,20 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (inner.struct_name == nullptr && com.types.contains(type)) {
             const auto expected_params = get_constructor_params(com, type);
             std::vector<type_name> actual_params;
-            for (const auto& arg : node.args) {
-                actual_params.emplace_back(push_object_copy(com, *arg, node.token));
+            node.token.assert_eq(expected_params.size(), node.args.size(),
+                                 "incorrect number of arguments to constructor call");
+            for (std::size_t i = 0; i != node.args.size(); ++i) {
+                const auto& actual = type_of_expr(com, *node.args.at(i));
+                const auto& expected = expected_params[i];
+                if (actual == expected) {
+                    actual_params.emplace_back(push_object_copy(com, *node.args.at(i), node.token));
+                }
+                else if (is_reference_type(actual) && inner_type(actual) == expected) {
+                    actual_params.emplace_back(push_object_ref_copy(com, *node.args.at(i), node.token));
+                }
+                else {
+                    node.token.assert(false, "not yet implemented");
+                }
             }
             verify_sig(node.token, expected_params, actual_params);
             return type;
