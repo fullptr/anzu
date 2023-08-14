@@ -521,8 +521,8 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     else if (is_list_type(type)) {
         const auto etype = inner_type(type);
         const auto esize = com.types.size_of(etype);
-        const auto params = copy_fn_params(etype);
 
+        const auto params = copy_fn_params(etype);
         const auto copy = get_function(com, etype, "copy", params);
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
 
@@ -547,8 +547,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     return type;
 }
 
-// Given an expression that evaluates to a reference, evaluate it and push to the top of the stack. If the expression
-// is an lvalue, copy constructors are invoked.
+// Given an expression that evaluates to a reference, copy the value that it refers to onto the stack.
 auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
     const auto type = type_of_expr(com, expr);
@@ -562,17 +561,16 @@ auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok
     }
 
     else if (is_list_type(inner)) {
-        tok.assert(false, "copying a ref to an array not implemented yet");
         const auto etype = inner_type(inner);
         const auto esize = com.types.size_of(etype);
-        const auto params = copy_fn_params(etype);
 
+        const auto params = copy_fn_params(etype);
         const auto copy = get_function(com, etype, "copy", params);
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
 
         for (std::size_t i = 0; i != array_length(type); ++i) {
             push_value(com.program, op::push_call_frame);
-            push_expr_val(com, expr);
+            push_expr_val(com, expr); // the value is the pointer
             push_ptr_adjust(com, i * esize);
             push_function_call(com, copy->ptr, params);
         }
@@ -584,7 +582,7 @@ auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok
         tok.assert(copy.has_value(), "{} cannot be copied", inner);
 
         push_value(com.program, op::push_call_frame);
-        push_expr_val(com, expr);
+        push_expr_val(com, expr); // the value is the pointer
         push_function_call(com, copy->ptr, params);
     }
 
@@ -905,10 +903,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                     actual_params.emplace_back(push_object_ref_copy(com, *node.args.at(i), node.token));
                 }
                 else {
-                    node.token.assert(false, "not yet implemented");
+                    node.token.error("Logic error");
                 }
             }
-            verify_sig(node.token, expected_params, actual_params);
             return type;
         }
 

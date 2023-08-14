@@ -16,7 +16,7 @@ struct copyable
 a := [1, 2];
 ar := ref a;
 
-c := copyable(ar);
+c := copyable(a);
 a[0u] = 3;
 
 println(c.arr[0u]);
