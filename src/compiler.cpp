@@ -508,50 +508,6 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
     push_value(com.program, op::pop, com.types.size_of(type));
 }
 
-// Given an expression that evaluates to a reference, evaluate it and push to the top of the stack. If the expression
-// is an lvalue, copy constructors are invoked.
-auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
-{
-    const auto type = type_of_expr(com, expr);
-    tok.assert(is_reference_type(type), "tried to push a copy of a non-ref");
-
-    const auto inner = inner_type(type);
-    
-    if (is_rvalue_expr(expr) || is_type_trivially_copyable(inner)) {
-        push_expr_val(com, expr);
-        push_value(com.program, op::load, com.types.size_of(inner));
-    }
-
-    else if (is_list_type(inner)) {
-        tok.assert(false, "copying a ref to an array not implemented yet");
-        //const auto etype = inner_type(type);
-        //const auto inner_size = com.types.size_of(etype);
-        //const auto params = copy_fn_params(etype);
-
-        //const auto copy = get_function(com, etype, "copy", params);
-        //tok.assert(copy.has_value(), "{} cannot be copied", etype);
-
-        //for (std::size_t i = 0; i != array_length(type); ++i) {
-        //    push_value(com.program, op::push_call_frame);
-        //    push_expr_ptr(com, expr);
-        //    push_ptr_adjust(com, i * inner_size);
-        //    push_function_call(com, copy->ptr, params);
-        //}
-    }
-
-    else {
-        const auto params = copy_fn_params(inner);
-        const auto copy = get_function(com, type, "copy", params);
-        tok.assert(copy.has_value(), "{} cannot be copied", inner);
-
-        push_value(com.program, op::push_call_frame);
-        push_expr_val(com, expr);
-        push_function_call(com, copy->ptr, params);
-    }
-
-    return inner;
-}
-
 // Given an expression, evaluate it and push to the top of the stack. If the expression
 // is an lvalue, copy constructors are invoked.
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
@@ -564,7 +520,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     
     else if (is_list_type(type)) {
         const auto etype = inner_type(type);
-        const auto inner_size = com.types.size_of(etype);
+        const auto esize = com.types.size_of(etype);
         const auto params = copy_fn_params(etype);
 
         const auto copy = get_function(com, etype, "copy", params);
@@ -573,7 +529,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         for (std::size_t i = 0; i != array_length(type); ++i) {
             push_value(com.program, op::push_call_frame);
             push_expr_ptr(com, expr);
-            push_ptr_adjust(com, i * inner_size);
+            push_ptr_adjust(com, i * esize);
             push_function_call(com, copy->ptr, params);
         }
     }
@@ -589,6 +545,50 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     }
 
     return type;
+}
+
+// Given an expression that evaluates to a reference, evaluate it and push to the top of the stack. If the expression
+// is an lvalue, copy constructors are invoked.
+auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
+{
+    const auto type = type_of_expr(com, expr);
+    tok.assert(is_reference_type(type), "tried to push a copy of a non-ref");
+
+    const auto inner = inner_type(type);
+
+    if (is_type_trivially_copyable(inner)) {
+        push_expr_val(com, expr);
+        push_value(com.program, op::load, com.types.size_of(inner));
+    }
+
+    else if (is_list_type(inner)) {
+        tok.assert(false, "copying a ref to an array not implemented yet");
+        const auto etype = inner_type(inner);
+        const auto esize = com.types.size_of(etype);
+        const auto params = copy_fn_params(etype);
+
+        const auto copy = get_function(com, etype, "copy", params);
+        tok.assert(copy.has_value(), "{} cannot be copied", etype);
+
+        for (std::size_t i = 0; i != array_length(type); ++i) {
+            push_value(com.program, op::push_call_frame);
+            push_expr_val(com, expr);
+            push_ptr_adjust(com, i * esize);
+            push_function_call(com, copy->ptr, params);
+        }
+    }
+
+    else {
+        const auto params = copy_fn_params(inner);
+        const auto copy = get_function(com, type, "copy", params);
+        tok.assert(copy.has_value(), "{} cannot be copied", inner);
+
+        push_value(com.program, op::push_call_frame);
+        push_expr_val(com, expr);
+        push_function_call(com, copy->ptr, params);
+    }
+
+    return inner;
 }
 
 // Gets the type of the expression by compiling it, then removes the added

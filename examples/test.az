@@ -1,22 +1,23 @@
 struct copyable
 {
-    i: i64;
-    f: f64;
+    arr: i64[2u];
 
     fn assign(self: copyable&, other: copyable&) -> null
     {
-        other@.i = self@.i;
-        other@.f = self@.f;
+        other@.arr = self@.arr;
     }
 
     fn copy(self: copyable&) -> copyable
     {
-        return copyable(self@.i, self@.f);
+        return copyable(self@.arr);
     }
 }
 
-i := 5;
-ir := ref i;
+a := [1, 2];
+ar := ref a;
 
-c := copyable(ir, 6.0);
-println(c.i);
+c := copyable(ar);
+a[0u] = 3;
+
+println(c.arr[0u]);
+println(c.arr[1u]);
