@@ -1086,6 +1086,15 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
 {
     const auto type = push_expr_ptr(com, *node.expr);
+
+    // Trying to take a reference of a reference just returns the original reference, ie-
+    // creating a reference from a reference is the same as creating a new reference to the
+    // original object. Here we have a pointer to a pointer, so dereference it to get a pointer
+    // to the original value.
+    if (is_reference_type(type)) {
+        push_value(com.program, op::load, size_of_reference());
+        return type;
+    }
     return concrete_reference_type(type);
 }
 

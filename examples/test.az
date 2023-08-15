@@ -1,13 +1,20 @@
 
 i := 5;
+println(i);
 ir := ref i;
-i = 6;
+ir = 6;
+println(i);
+irr := ref ir;
+irr = 7;
+println(i);
+irrr := ref irr;
+irrr = 8;
+println(irrr);
 
 fn print_int(x: i64) -> null
 {
     println(x);
 }
 
-ptr := print_int;
 
-ptr(ir);
+print_int(irrr);
