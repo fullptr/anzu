@@ -942,12 +942,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Lastly, it might be a builtin function
-        auto param_types = std::vector<type_name>{};
-        for (const auto& arg : node.args) {
-            param_types.emplace_back(type_of_expr(com, *arg));
-        }
-
-        if (const auto b = get_builtin_id(inner.name, param_types); b.has_value()) {
+        if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
             const auto& builtin = get_builtin(*b);
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
@@ -955,9 +950,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;
         }
-
-        node.token.error("Could not find function {}({})\n",
-                         inner.name, format_comma_separated(param_types));
     }
 
     // Otherwise, the expression must be a function pointer.
@@ -967,16 +959,10 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     const auto& sig = std::get<type_function_ptr>(type);
 
     push_value(com.program, op::push_call_frame);
-    auto actual_types = std::vector<type_name>{};
-    for (const auto& arg : node.args) {
-        const auto type = push_object_copy(com, *arg, node.token);
-        actual_types.push_back(type);
-    }
-    verify_sig(node.token, sig.param_types, actual_types);
-
     auto args_size = 2 * sizeof(std::uint64_t);
-    for (const auto& param_type : actual_types) {
-        args_size += com.types.size_of(param_type);
+    for (std::size_t i = 0; i != node.args.size(); ++i) {
+        const auto arg = push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
+        args_size += com.types.size_of(arg);
     }
 
     // push the function pointer and call it
