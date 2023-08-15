@@ -273,6 +273,11 @@ auto are_types_convertible_to(const std::vector<type_name>& args,
     return true;
 }
 
+auto remove_reference(const type_name& type) -> type_name
+{
+    return is_reference_type(type) ? inner_type(type) : type;
+}
+
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
 {
     if (d_classes.contains(name)) {

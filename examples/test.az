@@ -1,20 +1,5 @@
 
-i := 5;
-println(i);
-ir := ref i;
-ir = 6;
-println(i);
-irr := ref ir;
-irr = 7;
-println(i);
-irrr := ref irr;
-irrr = 8;
-println(irrr);
+x := true;
+r := ref x;
 
-fn print_int(x: i64) -> null
-{
-    println(x);
-}
-
-
-print_int(irrr);
+print(sizeof(r));

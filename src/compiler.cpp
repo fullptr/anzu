@@ -178,7 +178,8 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
             return node.type;
         },
         [&](const node_expr_type& node) {
-            return type_of_expr(com, *node.expr);
+            // References act like aliases, so taking the typeof a reference strips the reference away.
+            return remove_reference(type_of_expr(com, *node.expr));
         }
     }, *type);
 
@@ -1003,7 +1004,10 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    push_value(com.program, op::push_u64, com.types.size_of(type));
+
+    // References act like aliases, so calling sizeof on a reference returns the size
+    // of the inner type. References will not be directly spellable eventually.
+    push_value(com.program, op::push_u64, com.types.size_of(remove_reference(type)));
     return u64_type();
 }
 
