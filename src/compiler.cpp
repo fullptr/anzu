@@ -103,10 +103,15 @@ public:
     }
 };
 
+struct signature
+{
+    std::vector<type_name> params;
+    type_name              return_type;
+};
+
 struct function_info
 {
-    type_names  params;
-    type_name   return_type;
+    signature   sig;
     std::size_t ptr;
     token       tok;
 };
@@ -242,7 +247,7 @@ auto get_function(
     if (const auto it = com.functions.find(struct_name); it != com.functions.end()) {
         if (const auto it2 = it->second.find(function_name); it2 != it->second.end()) {
             for (const auto& function_info : it2->second) {
-                if (are_types_convertible_to(params, function_info.params)) {
+                if (are_types_convertible_to(params, function_info.sig.params)) {
                     return function_info;
                 }
             }
@@ -336,13 +341,6 @@ auto push_adjust_ptr_to_field(
     return field_type;
 }
 
-struct signature
-{
-    std::vector<type_name> params;
-    type_name              return_type;
-};
-
-
 void verify_sig(
     const token& tok,
     const std::vector<type_name>& expected,
@@ -411,7 +409,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 push_value(com.program, op::push_call_frame);
                 push_object_ptr(func->tok);
                 push_function_call(com, func->ptr, params);
-                push_value(com.program, op::pop, com.types.size_of(func->return_type));
+                push_value(com.program, op::pop, com.types.size_of(func->sig.return_type));
             }
 
             // Loop through the fields and call their destructors.
@@ -646,8 +644,8 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
         // next, construct the return type.
         const auto ptr_type = type_function_ptr{
-            .param_types = info.params,
-            .return_type = make_value<type_name>(info.return_type)
+            .param_types = info.sig.params,
+            .return_type = make_value<type_name>(info.sig.return_type)
         };
         return ptr_type;
     }
@@ -923,10 +921,10 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto func = get_function(com, struct_type, inner.name, params); func) {
             push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), func->params[i], node.token);
+                push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
             push_function_call(com, func->ptr, params);
-            return func->return_type;
+            return func->sig.return_type;
         }
 
         // Third, it might be a .size member function on a span, TODO: make it easier to add
@@ -1409,7 +1407,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
             push_ptr_adjust(com, i * inner_size);
 
             push_function_call(com, assign->ptr, params);
-            pop_object(com, assign->return_type, node.token);
+            pop_object(com, assign->sig.return_type, node.token);
         }
 
         return;
@@ -1428,7 +1426,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 
     push_expr_ptr(com, *node.expr);
     push_function_call(com, assign->ptr, params);
-    pop_object(com, assign->return_type, node.token);
+    pop_object(com, assign->sig.return_type, node.token);
 }
 
 auto compile_function_body(
@@ -1462,11 +1460,11 @@ auto compile_function_body(
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.current_func->return_type = sig.return_type;
         for (const auto& function : com.functions[struct_type][name]) {
-            if (are_types_convertible_to(sig.params, function.params)) {
+            if (are_types_convertible_to(sig.params, function.sig.params)) {
                 tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
             }
         }
-        com.functions[struct_type][name].emplace_back(sig.params, sig.return_type, begin_pos, tok);
+        com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
 
         push_stmt(com, *body);
 
