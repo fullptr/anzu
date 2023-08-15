@@ -2,4 +2,7 @@
 x := true;
 r := ref x;
 
-print(sizeof(r));
+fn foo() -> typeof(r)
+{
+    return 5;
+}
