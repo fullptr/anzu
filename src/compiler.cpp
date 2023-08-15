@@ -105,6 +105,7 @@ public:
 
 struct function_info
 {
+    type_names  params;
     type_name   return_type;
     std::size_t ptr;
     token       tok;
@@ -131,11 +132,8 @@ struct control_flow_frame
     std::unordered_set<std::size_t> break_stmts;
 };
 
-using function_hash = decltype([](const type_names& f) { return hash(f); });
 using type_name_hash = decltype([](const type_name& f) { return hash(f); });
-using function_param_map = std::unordered_map<type_names, function_info, function_hash>;
-using function_map = std::unordered_map<std::string, function_param_map>;
-using function_iter = typename function_param_map::const_iterator;
+using function_map = std::unordered_map<std::string, std::vector<function_info>>;
 
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
@@ -233,25 +231,19 @@ auto current_vars(compiler& com) -> var_locations&
     return com.current_func ? com.current_func->vars : com.globals;
 }
 
-struct full_func_info
-{
-    type_names params;
-    function_info info;
-};
-
 auto get_function(
     const compiler& com,
     const type_name& struct_name,
     const std::string& function_name,
     const type_names& params
 )
-    -> std::optional<full_func_info>
+    -> std::optional<function_info>
 {
     if (const auto it = com.functions.find(struct_name); it != com.functions.end()) {
         if (const auto it2 = it->second.find(function_name); it2 != it->second.end()) {
-            for (const auto& [type_names, function_info] : it2->second) {
-                if (are_types_convertible_to(params, type_names)) {
-                    return full_func_info{type_names, function_info};
+            for (const auto& function_info : it2->second) {
+                if (are_types_convertible_to(params, function_info.params)) {
+                    return function_info;
                 }
             }
         }
@@ -417,9 +409,9 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
-                push_object_ptr(func->info.tok);
-                push_function_call(com, func->info.ptr, params);
-                push_value(com.program, op::pop, com.types.size_of(func->info.return_type));
+                push_object_ptr(func->tok);
+                push_function_call(com, func->ptr, params);
+                push_value(com.program, op::pop, com.types.size_of(func->return_type));
             }
 
             // Loop through the fields and call their destructors.
@@ -439,9 +431,9 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 for (std::size_t i = array_length(type); i != 0;) {
                     --i;
                     push_value(com.program, op::push_call_frame);
-                    push_object_ptr(drop->info.tok);
+                    push_object_ptr(drop->tok);
                     push_ptr_adjust(com, i * inner_size);
-                    push_function_call(com, drop->info.ptr, params);
+                    push_function_call(com, drop->ptr, params);
                 }
             }
         },
@@ -538,7 +530,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
             push_value(com.program, op::push_call_frame);
             push_expr_ptr(com, expr);
             push_ptr_adjust(com, i * esize);
-            push_function_call(com, copy->info.ptr, params);
+            push_function_call(com, copy->ptr, params);
         }
     }
 
@@ -549,7 +541,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
 
         push_value(com.program, op::push_call_frame);
         push_expr_ptr(com, expr);
-        push_function_call(com, copy->info.ptr, params);
+        push_function_call(com, copy->ptr, params);
     }
 
     return type;
@@ -580,7 +572,7 @@ auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok
             push_value(com.program, op::push_call_frame);
             push_expr_val(com, expr); // the value is the pointer
             push_ptr_adjust(com, i * esize);
-            push_function_call(com, copy->info.ptr, params);
+            push_function_call(com, copy->ptr, params);
         }
     }
 
@@ -591,7 +583,7 @@ auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok
 
         push_value(com.program, op::push_call_frame);
         push_expr_val(com, expr); // the value is the pointer
-        push_function_call(com, copy->info.ptr, params);
+        push_function_call(com, copy->ptr, params);
     }
 
     return inner;
@@ -649,13 +641,13 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
         if (it->second.size() > 1) {
             node.token.error("cannot get function pointer to an overloaded function\n");
         }
-        const auto& [key, value] = *it->second.begin();
-        push_value(com.program, op::push_u64, value.ptr);
+        const auto& info = *it->second.begin();
+        push_value(com.program, op::push_u64, info.ptr);
 
         // next, construct the return type.
         const auto ptr_type = type_function_ptr{
-            .param_types = key,
-            .return_type = make_value<type_name>(value.return_type)
+            .param_types = info.params,
+            .return_type = make_value<type_name>(info.return_type)
         };
         return ptr_type;
     }
@@ -933,8 +925,8 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->params[i], node.token);
             }
-            push_function_call(com, func->info.ptr, params);
-            return func->info.return_type;
+            push_function_call(com, func->ptr, params);
+            return func->return_type;
         }
 
         // Third, it might be a .size member function on a span, TODO: make it easier to add
@@ -1416,8 +1408,8 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
             push_expr_ptr(com, *node.expr); // i-th element of src
             push_ptr_adjust(com, i * inner_size);
 
-            push_function_call(com, assign->info.ptr, params);
-            pop_object(com, assign->info.return_type, node.token);
+            push_function_call(com, assign->ptr, params);
+            pop_object(com, assign->return_type, node.token);
         }
 
         return;
@@ -1435,8 +1427,8 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     }
 
     push_expr_ptr(com, *node.expr);
-    push_function_call(com, assign->info.ptr, params);
-    pop_object(com, assign->info.return_type, node.token);
+    push_function_call(com, assign->ptr, params);
+    pop_object(com, assign->return_type, node.token);
 }
 
 auto compile_function_body(
@@ -1469,12 +1461,12 @@ auto compile_function_body(
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.current_func->return_type = sig.return_type;
-        if (com.functions[struct_type][name].contains(sig.params)) {
-            tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
+        for (const auto& function : com.functions[struct_type][name]) {
+            if (are_types_convertible_to(sig.params, function.params)) {
+                tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
+            }
         }
-        com.functions[struct_type][name][sig.params] = {
-            .return_type=sig.return_type, .ptr=begin_pos, .tok=tok
-        };
+        com.functions[struct_type][name].emplace_back(sig.params, sig.return_type, begin_pos, tok);
 
         push_stmt(com, *body);
 

@@ -6,7 +6,12 @@ println(ir);
 
 fn print_int(x: i64) -> null
 {
-    println(x);
+    println("value");
+}
+
+fn print_int(x: i64) -> null
+{
+    println("value2");
 }
 
 print_int(ir);
