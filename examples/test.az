@@ -1,6 +1,7 @@
 
 i := 5;
 ir := ref i;
+i = 6;
 
 println(ir);
 

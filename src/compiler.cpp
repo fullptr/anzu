@@ -881,7 +881,6 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> type_name
 {
     const auto& actual = type_of_expr(com, expr);
-    print("MATT: expected {} actual {}\n", expected, actual);
     if (actual == expected) {
         return push_object_copy(com, expr, tok);
     }
@@ -951,25 +950,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto b = get_builtin_id(inner.name, param_types); b.has_value()) {
             const auto& builtin = get_builtin(*b);
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
-                if (builtin.args.at(i) == param_types[i]) {
-                    push_object_copy(com, *node.args.at(i), node.token);
-                }
-                // In this case, we have a reference but the function accepts a value,
-                // so push the value of the reference, which is an address, then load
-                // the value. Note: this skips calling constructors, which is fine for
-                // builtin types, but a more general solution is needed for passing references
-                // to user functions.
-                else if (is_reference_type(param_types[i])) {
-                    push_expr_val(com, *node.args.at(i));
-                    push_value(com.program, op::load, com.types.size_of(inner_type(param_types[i])));
-                }
-                // TODO: Handle the case where the function itself takes a reference and we
-                // have passed a value. First need a way of expressing that a function takes
-                // references, which requires a way to spell reference types. Either do this
-                // or go straight to specifying mut/copy (and eventually in when we have const).
-                else {
-                    node.token.error("TODO: Loading references into builtin functions");
-                }
+                push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
             }
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;
