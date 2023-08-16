@@ -1,37 +1,9 @@
-
-struct copyable
-{
-    val: i64;
-
-    fn assign(self: copyable&, other: copyable&)
-    {
-        other@.val = self@.val;
-        println("Assign called!");
-    }
-
-    fn copy(self: copyable&) -> copyable
-    {
-        println("Copy called!");
-        return copyable(self@.val);
-    }
-
-    fn drop(self: copyable&) 
-    {
-        println("Drop called!");
-    }
-}
-
-
-x := copyable(1);
+x := 5;
 r := x~;
-y := [r, r, copyable(20)];
-r = copyable(5);
 
-fn print_copyable_array(values: copyable[])
-{
-    for ptr in values {
-        println(ptr@.val);
-    }
-}
-
-print_copyable_array(y[]);
+arr := [x, r, r];
+r = 10;
+arr[1u] = 20;
+println(arr[0u]);
+println(arr[1u]);
+println(arr[2u]);

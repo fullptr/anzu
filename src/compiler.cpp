@@ -556,7 +556,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         push_function_call(com, copy->ptr, params);
     }
 
-    return type;
+    return real_type;
 }
 
 // Gets the type of the expression by compiling it, then removes the added
@@ -958,9 +958,9 @@ auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name
 {
     node.token.assert(!node.elements.empty(), "currently do not support empty list literals");
 
-    const auto inner_type = push_expr_val(com, *node.elements.front());
+    const auto inner_type = push_object_copy(com, *node.elements.front(), node.token);
     for (const auto& element : node.elements | std::views::drop(1)) {
-        const auto element_type = push_expr_val(com, *element);
+        const auto element_type = push_object_copy(com, *element, node.token);
         node.token.assert_eq(element_type, inner_type, "list has mismatching element types");
     }
     return concrete_list_type(inner_type, node.elements.size());
