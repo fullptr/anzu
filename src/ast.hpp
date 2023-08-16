@@ -188,6 +188,13 @@ struct node_new_expr
     anzu::token token;
 };
 
+struct node_reference_expr
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
 struct node_span_expr
 {
     node_expr_ptr expr;
@@ -215,6 +222,7 @@ struct node_expr : std::variant<
     node_addrof_expr,
     node_sizeof_expr,
     node_new_expr,
+    node_reference_expr,
 
     // Lvalue expressions
     node_name_expr,

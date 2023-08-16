@@ -73,6 +73,7 @@ enum class token_type
     star,
     string,
     uint64,
+    tilde,
 };
 
 struct token

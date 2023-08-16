@@ -103,9 +103,15 @@ public:
     }
 };
 
+struct signature
+{
+    std::vector<type_name> params;
+    type_name              return_type;
+};
+
 struct function_info
 {
-    type_name   return_type;
+    signature   sig;
     std::size_t ptr;
     token       tok;
 };
@@ -131,11 +137,8 @@ struct control_flow_frame
     std::unordered_set<std::size_t> break_stmts;
 };
 
-using function_hash = decltype([](const type_names& f) { return hash(f); });
 using type_name_hash = decltype([](const type_name& f) { return hash(f); });
-using function_param_map = std::unordered_map<type_names, function_info, function_hash>;
-using function_map = std::unordered_map<std::string, function_param_map>;
-using function_iter = typename function_param_map::const_iterator;
+using function_map = std::unordered_map<std::string, std::vector<function_info>>;
 
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
@@ -175,7 +178,8 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
             return node.type;
         },
         [&](const node_expr_type& node) {
-            return type_of_expr(com, *node.expr);
+            // References act like aliases, so taking the typeof a reference strips the reference away.
+            return remove_reference(type_of_expr(com, *node.expr));
         }
     }, *type);
 
@@ -243,8 +247,10 @@ auto get_function(
 {
     if (const auto it = com.functions.find(struct_name); it != com.functions.end()) {
         if (const auto it2 = it->second.find(function_name); it2 != it->second.end()) {
-            if (const auto it3 = it2->second.find(params); it3 != it2->second.end()) {
-                return it3->second;
+            for (const auto& function_info : it2->second) {
+                if (are_types_convertible_to(params, function_info.sig.params)) {
+                    return function_info;
+                }
             }
         }
     }
@@ -329,17 +335,12 @@ auto push_adjust_ptr_to_field(
 )
     -> type_name
 {
+    tok.assert(!is_reference_type(type), "cannot adjust pointer to field of a reference, "
+                                         "as the value should already be dereferenced");
     const auto field_type = push_field_offset(com, tok, type, field_name);
     push_value(com.program, op::u64_add); // modify ptr
     return field_type;
 }
-
-struct signature
-{
-    std::vector<type_name> params;
-    type_name              return_type;
-};
-
 
 void verify_sig(
     const token& tok,
@@ -352,7 +353,7 @@ void verify_sig(
 
     auto arg_index = std::size_t{0};
     for (const auto& [expected_param, actual_param] : zip(expected, actual)) {
-        if (expected_param != actual_param) {
+        if (actual_param != expected_param) {
             tok.error("arg {} type '{}' does not match '{}'", arg_index, actual_param, expected_param);
             ++arg_index;
         }
@@ -409,7 +410,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 push_value(com.program, op::push_call_frame);
                 push_object_ptr(func->tok);
                 push_function_call(com, func->ptr, params);
-                push_value(com.program, op::pop, com.types.size_of(func->return_type));
+                push_value(com.program, op::pop, com.types.size_of(func->sig.return_type));
             }
 
             // Loop through the fields and call their destructors.
@@ -435,14 +436,17 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 }
             }
         },
-        [&](const type_ptr&) {
-            // pointers have no destructors
+        [](const type_ptr&) {
+            // pointers do not own anything to cloean up
         },
-        [&](const type_span&) {
-            // spans have no destructors
+        [](const type_span&) {
+            // spans do not own anything to cloean up
         },
-        [&](const type_function_ptr&) {
-            // functions pointers have no destructors
+        [](const type_function_ptr&) {
+            // functions pointers do not own anything to cloean up
+        },
+        [](const type_reference&) {
+            // references do not own anything to cloean up
         }
     }, type);
 }
@@ -504,38 +508,51 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
 }
 
 // Given an expression, evaluate it and push to the top of the stack. If the expression
-// is an lvalue, copy constructors are invoked.
+// is an lvalue, copy constructors are invoked. If the expression is a reference, it is
+// automatically dereferenced
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
     const auto type = type_of_expr(com, expr);
+    const auto real_type = remove_reference(type);
 
-    if (is_rvalue_expr(expr) || is_type_trivially_copyable(type)) {
+    if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
         push_expr_val(com, expr);
+        if (is_reference_type(type)) {
+            push_value(com.program, op::load, com.types.size_of(type));
+        }
     }
     
     else if (is_list_type(type)) {
         const auto etype = inner_type(type);
-        const auto inner_size = com.types.size_of(etype);
-        const auto params = copy_fn_params(etype);
+        const auto esize = com.types.size_of(etype);
 
+        const auto params = copy_fn_params(etype);
         const auto copy = get_function(com, etype, "copy", params);
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
 
         for (std::size_t i = 0; i != array_length(type); ++i) {
             push_value(com.program, op::push_call_frame);
-            push_expr_ptr(com, expr);
-            push_ptr_adjust(com, i * inner_size);
+            if (is_reference_type(type)) {
+                push_expr_val(com, expr);
+            } else {
+                push_expr_ptr(com, expr);
+            }
+            push_ptr_adjust(com, i * esize);
             push_function_call(com, copy->ptr, params);
         }
     }
 
     else {
-        const auto params = copy_fn_params(type);
-        const auto copy = get_function(com, type, "copy", params);
-        tok.assert(copy.has_value(), "{} cannot be copied", type);
+        const auto params = copy_fn_params(real_type);
+        const auto copy = get_function(com, real_type, "copy", params);
+        tok.assert(copy.has_value(), "{} cannot be copied", real_type);
 
         push_value(com.program, op::push_call_frame);
-        push_expr_ptr(com, expr);
+        if (is_reference_type(type)) {
+            push_expr_val(com, expr);
+        } else {
+            push_expr_ptr(com, expr);
+        }
         push_function_call(com, copy->ptr, params);
     }
 
@@ -578,7 +595,8 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
         node.token.error("cannot take address of a function pointer");
     }
 
-    return push_var_addr(com, node.token, node.name);
+    const auto type = push_var_addr(com, node.token, node.name);
+    return type;
 }
 
 // I think this is a bit of a hack; when pushing the value of a function pointer, we need
@@ -593,13 +611,13 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
         if (it->second.size() > 1) {
             node.token.error("cannot get function pointer to an overloaded function\n");
         }
-        const auto& [key, value] = *it->second.begin();
-        push_value(com.program, op::push_u64, value.ptr);
+        const auto& info = *it->second.begin();
+        push_value(com.program, op::push_u64, info.ptr);
 
         // next, construct the return type.
         const auto ptr_type = type_function_ptr{
-            .param_types = key,
-            .return_type = make_value<type_name>(value.return_type)
+            .param_types = info.sig.params,
+            .return_type = make_value<type_name>(info.sig.return_type)
         };
         return ptr_type;
     }
@@ -612,7 +630,11 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, *node.expr);
+    auto type = push_expr_ptr(com, *node.expr);
+    if (is_reference_type(type)) {
+        push_value(com.program, op::load, size_of_reference());
+        type = inner_type(type);
+    }
     return push_adjust_ptr_to_field(com, node.token, type, node.field_name);
 }
 
@@ -623,15 +645,15 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
     return inner_type(type);
 }
 
-auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
+auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
 {
-    const auto expr_type = type_of_expr(com, *expr.expr);
+    const auto expr_type = type_of_expr(com, *node.expr);
 
     const auto is_array = is_list_type(expr_type);
     const auto is_span = is_span_type(expr_type);
-    expr.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
+    node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
-    push_expr_ptr(com, *expr.expr);
+    push_expr_ptr(com, *node.expr);
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
@@ -641,12 +663,12 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 
     // Bounds checking on the subscript, it's unsigned so only need to check upper bound
     if (com.debug) {
-        const auto index = push_expr_val(com, *expr.index);
-        expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
+        const auto index = push_expr_val(com, *node.index);
+        node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
         if (is_array) {
             push_value(com.program, op::push_u64, array_length(expr_type));
         } else {
-            push_expr_ptr(com, *expr.expr);
+            push_expr_ptr(com, *node.expr);
             push_value(com.program, op::push_u64, size_of_ptr());
             push_value(com.program, op::u64_add); // offset to the size value
             push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
@@ -657,8 +679,8 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& expr) -> type_name
 
     // Offset pointer by (index * size)
     const auto inner = inner_type(expr_type);
-    const auto index = push_expr_val(com, *expr.index);
-    expr.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
+    const auto index = push_expr_val(com, *node.index);
+    node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
     push_value(com.program, op::push_u64, com.types.size_of(inner));
     push_value(com.program, op::u64_mul);
     push_value(com.program, op::u64_add); // modify ptr
@@ -727,8 +749,16 @@ auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_na
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    const auto lhs = push_expr_val(com, *node.lhs);
-    const auto rhs = push_expr_val(com, *node.rhs);
+    auto lhs = push_expr_val(com, *node.lhs);
+    if (is_reference_type(lhs)) {
+        lhs = inner_type(lhs);
+        push_value(com.program, op::load, com.types.size_of(lhs));
+    }
+    auto rhs = push_expr_val(com, *node.rhs);
+    if (is_reference_type(rhs)) {
+        rhs = inner_type(rhs);
+        push_value(com.program, op::load, com.types.size_of(rhs));
+    }
 
     if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 
@@ -828,6 +858,22 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
+auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> type_name
+{
+    const auto& actual = type_of_expr(com, expr);
+    tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
+
+    if (is_reference_type(expected)) {
+        if (is_reference_type(actual)) {
+            return push_expr_val(com, expr); // simple copy of the reference
+        } else {
+            return push_expr_ptr(com, expr); // push address of the object rather than the object itself
+        }
+    }
+
+    return push_object_copy(com, expr, tok);
+}
+
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 {
     // First, handle the cases where the thing we are trying to call is a name.
@@ -838,11 +884,11 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         const auto type = make_type(inner.name);
         if (inner.struct_name == nullptr && com.types.contains(type)) {
             const auto expected_params = get_constructor_params(com, type);
-            std::vector<type_name> actual_params;
-            for (const auto& arg : node.args) {
-                actual_params.emplace_back(push_object_copy(com, *arg, node.token));
+            node.token.assert_eq(expected_params.size(), node.args.size(),
+                                 "incorrect number of arguments to constructor call");
+            for (std::size_t i = 0; i != node.args.size(); ++i) {
+                push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
             }
-            verify_sig(node.token, expected_params, actual_params);
             return type;
         }
 
@@ -856,11 +902,11 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
         if (const auto func = get_function(com, struct_type, inner.name, params); func) {
             push_value(com.program, op::push_call_frame);
-            for (const auto& arg : node.args) {
-                push_object_copy(com, *arg, node.token);
+            for (std::size_t i = 0; i != node.args.size(); ++i) {
+                push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
             push_function_call(com, func->ptr, params);
-            return func->return_type;
+            return func->sig.return_type;
         }
 
         // Third, it might be a .size member function on a span, TODO: make it easier to add
@@ -878,15 +924,11 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return u64_type();
         }
 
-        // Fourth, it might be a builtin function
-        auto param_types = std::vector<type_name>{};
-        for (const auto& arg : node.args) {
-            param_types.emplace_back(type_of_expr(com, *arg));
-        }
-
-        if (const auto b = get_builtin_id(inner.name, param_types); b.has_value()) {
-            for (const auto& arg : node.args) {
-                push_object_copy(com, *arg, node.token);
+        // Lastly, it might be a builtin function
+        if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
+            const auto& builtin = get_builtin(*b);
+            for (std::size_t i = 0; i != builtin.args.size(); ++i) {
+                push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
             }
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;
@@ -900,16 +942,10 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     const auto& sig = std::get<type_function_ptr>(type);
 
     push_value(com.program, op::push_call_frame);
-    auto actual_types = std::vector<type_name>{};
-    for (const auto& arg : node.args) {
-        const auto type = push_object_copy(com, *arg, node.token);
-        actual_types.push_back(type);
-    }
-    verify_sig(node.token, sig.param_types, actual_types);
-
     auto args_size = 2 * sizeof(std::uint64_t);
-    for (const auto& param_type : actual_types) {
-        args_size += com.types.size_of(param_type);
+    for (std::size_t i = 0; i != node.args.size(); ++i) {
+        const auto arg = push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
+        args_size += com.types.size_of(arg);
     }
 
     // push the function pointer and call it
@@ -950,7 +986,10 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    push_value(com.program, op::push_u64, com.types.size_of(type));
+
+    // References act like aliases, so calling sizeof on a reference returns the size
+    // of the inner type. References will not be directly spellable eventually.
+    push_value(com.program, op::push_u64, com.types.size_of(remove_reference(type)));
     return u64_type();
 }
 
@@ -1028,6 +1067,21 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
     const auto type = resolve_type(com, node.token, node.type);
     push_value(com.program, op::alloc_ptr, com.types.size_of(type));
     return concrete_ptr_type(type);
+}
+
+auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
+{
+    const auto type = push_expr_ptr(com, *node.expr);
+
+    // Trying to take a reference of a reference just returns the original reference, ie-
+    // creating a reference from a reference is the same as creating a new reference to the
+    // original object. Here we have a pointer to a pointer, so dereference it to get a pointer
+    // to the original value.
+    if (is_reference_type(type)) {
+        push_value(com.program, op::load, size_of_reference());
+        return type;
+    }
+    return concrete_reference_type(type);
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -1259,27 +1313,54 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
+    // If this is specifically an expression with a ~ at the end, create a reference to it
+    if (std::holds_alternative<node_reference_expr>(*node.expr)) {
+        const auto type = push_expr_ptr(com, *std::get<node_reference_expr>(*node.expr).expr);
+        declare_var(com, node.token, node.name, concrete_reference_type(type));
+        return;
+    }
+
     const auto type = push_object_copy(com, *node.expr, node.token);
     declare_var(com, node.token, node.name, type);
 }
 
+auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
+{
+    if (lhs != rhs) {
+        // Support assigning to references
+        if (is_reference_type(lhs) && inner_type(lhs) == rhs) {
+            return true;
+        }
+        return false;
+    }
+    return true;
+}
+
+// TODO: Fix assigning from a ref to a ref (currentl)
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = type_of_expr(com, *node.expr);
     const auto lhs = type_of_expr(com, *node.position);
-    node.token.assert_eq(lhs, rhs, "invalid assignment");
+    
+    node.token.assert(is_assignable(lhs, rhs), "invalid assignment");
 
-    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(rhs)) {
-        const auto rhs = push_expr_val(com, *node.expr);
-        const auto lhs = push_expr_ptr(com, *node.position);
-        node.token.assert_eq(lhs, rhs, "invalid assignment");
-
+    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(remove_reference(rhs))) {
+        push_expr_val(com, *node.expr);
+        if (is_reference_type(rhs)) {
+            push_value(com.program, op::load, com.types.size_of(rhs));
+        }
+        if (is_reference_type(lhs)) {
+            push_expr_val(com, *node.position);
+        } else {
+            push_expr_ptr(com, *node.position);
+        }
         push_value(com.program, op::save, com.types.size_of(lhs));
         return;
     }
     
     if (is_list_type(rhs)) {
         const auto etype = inner_type(rhs);
+        node.token.assert(!is_reference_type(etype), "cannot have arrays of references");
         const auto inner_size = com.types.size_of(etype);
         const auto params = assign_fn_params(etype);
 
@@ -1295,21 +1376,33 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
             push_ptr_adjust(com, i * inner_size);
 
             push_function_call(com, assign->ptr, params);
-            pop_object(com, assign->return_type, node.token);
+            pop_object(com, assign->sig.return_type, node.token);
         }
 
         return;
     }
 
-    const auto params = assign_fn_params(rhs);
-    const auto assign = get_function(com, rhs, "assign", params);
-    node.token.assert(assign.has_value(), "{} cannot be assigned", rhs);
+    const auto type = remove_reference(rhs);
+    const auto params = assign_fn_params(type);
+    const auto assign = get_function(com, type, "assign", params);
+    node.token.assert(assign.has_value(), "{} cannot be assigned", type);
 
     push_value(com.program, op::push_call_frame);
-    push_expr_ptr(com, *node.position);
-    push_expr_ptr(com, *node.expr);
+
+    if (is_reference_type(lhs)) {
+        push_expr_val(com, *node.position);
+    } else {
+        push_expr_ptr(com, *node.position);
+    }
+
+    if (is_reference_type(rhs)) {
+        push_expr_val(com, *node.expr);
+    } else {
+        push_expr_ptr(com, *node.expr);
+    }
+
     push_function_call(com, assign->ptr, params);
-    pop_object(com, assign->return_type, node.token);
+    pop_object(com, assign->sig.return_type, node.token);
 }
 
 auto compile_function_body(
@@ -1342,12 +1435,12 @@ auto compile_function_body(
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.current_func->return_type = sig.return_type;
-        if (com.functions[struct_type][name].contains(sig.params)) {
-            tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
+        for (const auto& function : com.functions[struct_type][name]) {
+            if (are_types_convertible_to(sig.params, function.sig.params)) {
+                tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
+            }
         }
-        com.functions[struct_type][name][sig.params] = {
-            .return_type=sig.return_type, .ptr=begin_pos, .tok=tok
-        };
+        com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
 
         push_stmt(com, *body);
 

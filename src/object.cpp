@@ -23,7 +23,7 @@ auto format_error(const std::string& str) -> void
 
 auto to_string(const type_name& type) -> std::string
 {
-    return std::visit([](const auto& t) { return to_string(t); }, type);
+    return std::visit([](const auto& t) { return ::anzu::to_string(t); }, type);
 }
 
 auto to_string(const type_simple& type) -> std::string
@@ -49,6 +49,11 @@ auto to_string(const type_span& type) -> std::string
 auto to_string(const type_function_ptr& type) -> std::string
 {
     return std::format("({}) -> {}", format_comma_separated(type.param_types), *type.return_type);
+}
+
+auto to_string(const type_reference& type) -> std::string
+{
+    return std::format("{}~", to_string(*type.inner_type));
 }
 
 auto hash(const type_name& type) -> std::size_t
@@ -85,6 +90,12 @@ auto hash(const type_function_ptr& type) -> std::size_t
         val ^= hash(param);
     }
     return val;
+}
+
+auto hash(const type_reference& type) -> std::size_t
+{
+    static const auto base = std::hash<std::string_view>{}("type_reference");
+    return hash(*type.inner_type) ^ base;
 }
 
 auto i32_type() -> type_name
@@ -162,6 +173,16 @@ auto is_function_ptr_type(const type_name& t) -> bool
     return std::holds_alternative<type_function_ptr>(t);
 }
 
+auto concrete_reference_type(const type_name& t) -> type_name
+{
+    return {type_reference{ .inner_type = { t } }};
+}
+
+auto is_reference_type(const type_name& t) -> bool
+{
+    return std::holds_alternative<type_reference>(t);
+}
+
 auto inner_type(const type_name& t) -> type_name
 {
     if (is_list_type(t)) {
@@ -173,7 +194,11 @@ auto inner_type(const type_name& t) -> type_name
     if (is_span_type(t)) {
         return *std::get<type_span>(t).inner_type; 
     }
-    print("OH NO MY TYPE\n");
+    if (is_reference_type(t)) {
+        return *std::get<type_reference>(t).inner_type;
+    }
+    print("COMPILER ERROR: Tried to get the inner type of an invalid type category, "
+          "can only get the inner type for arrays, pointers, spans and references\n");
     std::exit(1);
     return {};
 }
@@ -183,7 +208,7 @@ auto array_length(const type_name& t) -> std::size_t
     if (is_list_type(t)) {
         return std::get<type_list>(t).count;
     }
-    print("OH NO MY TYPE\n");
+    print("COMPILER ERROR: Tried to get length of a non-array type\n");
     std::exit(1);
     return {};
 }
@@ -196,6 +221,11 @@ auto size_of_ptr() -> std::size_t
 auto size_of_span() -> std::size_t
 {
     return 2 * PTR_SIZE; // actually a pointer + a size, but they are both 8 bytes
+}
+
+auto size_of_reference() -> std::size_t
+{
+    return PTR_SIZE;
 }
 
 auto is_type_fundamental(const type_name& type) -> bool
@@ -211,11 +241,40 @@ auto is_type_fundamental(const type_name& type) -> bool
 
 auto is_type_trivially_copyable(const type_name& type) -> bool
 {
+    // TODO: Allow for trivially copyable user types
+    //   ie- classes with default copy/assign and all trivially copyable members
     return is_type_fundamental(type)
         || is_ptr_type(type)
         || is_function_ptr_type(type)
         || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)))
         || is_span_type(type);
+}
+
+auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool
+{
+    return type == expected
+        || is_reference_type(type) && inner_type(type) == expected
+        || is_reference_type(expected) && inner_type(expected) == type;
+}
+
+// Checks if the set of given args is convertible to the signature for a function.
+// Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
+// rvalues should not be bindable to references
+auto are_types_convertible_to(const std::vector<type_name>& args,
+                       const std::vector<type_name>& actuals) -> bool
+{
+    if (args.size() != actuals.size()) return false;
+    for (std::size_t i = 0; i != args.size(); ++i) {
+        if (!is_type_convertible_to(args[i], actuals[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+auto remove_reference(const type_name& type) -> type_name
+{
+    return is_reference_type(type) ? inner_type(type) : type;
 }
 
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
@@ -234,7 +293,8 @@ auto type_store::contains(const type_name& type) const -> bool
         || is_list_type(type)
         || is_ptr_type(type)
         || is_function_ptr_type(type)
-        || is_span_type(type);
+        || is_span_type(type)
+        || is_reference_type(type); // is just a pointer
 }
 
 // TODO: Refactor this mess
@@ -267,14 +327,17 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         [&](const type_list& t) {
             return size_of(*t.inner_type) * t.count;
         },
-        [&](const type_ptr&) {
+        [](const type_ptr&) {
             return size_of_ptr();
         },
-        [&](const type_span&) {
+        [](const type_span&) {
             return size_of_span();
         },
         [](const type_function_ptr&) {
             return size_of_ptr();
+        },
+        [](const type_reference&) {
+            return size_of_reference();
         }
     }, type);
 }

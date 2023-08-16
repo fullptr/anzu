@@ -235,6 +235,13 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     // Handle postfix expressions
     while (true) {
         switch (tokens.curr().type) {
+            case token_type::tilde: {
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_reference_expr>();
+                inner.token = tokens.consume();
+                inner.expr = node;
+                node = new_node;
+            } break;
             case token_type::at: {
                 auto new_node = std::make_shared<node_expr>();
                 auto& inner = new_node->emplace<node_deref_expr>();
@@ -354,6 +361,12 @@ auto parse_type(tokenstream& tokens) -> type_name
         }
         else if (tokens.consume_maybe(token_type::ampersand)) {
             type = type_name{type_ptr{ .inner_type=type }};
+        }
+        else if (tokens.consume_maybe(token_type::tilde)) {
+            if (std::holds_alternative<type_reference>(type)) {
+                tokens.consume().error("Invalid type, cannot have reference to reference");
+            }
+            type = type_name{type_reference{ .inner_type=type }};
         }
         else {
             break;

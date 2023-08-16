@@ -57,12 +57,19 @@ struct type_function_ptr
     auto operator==(const type_function_ptr&) const -> bool = default;
 };
 
+struct type_reference
+{
+    value_ptr<type_name> inner_type;
+    auto operator==(const type_reference&) const -> bool = default;
+};
+
 struct type_name : public std::variant<
     type_simple,
     type_list,
     type_ptr,
     type_span,
-    type_function_ptr>
+    type_function_ptr,
+    type_reference>
 {
     using variant::variant;
 };
@@ -88,6 +95,7 @@ auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
+auto hash(const type_reference& type) -> std::size_t;
 
 auto i32_type() -> type_name;
 auto i64_type() -> type_name;
@@ -110,8 +118,12 @@ auto is_span_type(const type_name& t) -> bool;
 
 auto is_function_ptr_type(const type_name& t) -> bool;
 
+auto concrete_reference_type(const type_name& t) -> type_name;
+auto is_reference_type(const type_name& t) -> bool;
+
 auto size_of_ptr() -> std::size_t;
 auto size_of_span() -> std::size_t;
+auto size_of_reference() -> std::size_t;
 
 // Extracts the single inner type of the given t. Undefined if the given t is not a compound
 // type with a single subtype.
@@ -123,6 +135,16 @@ auto array_length(const type_name& t) -> std::size_t;
 auto is_type_fundamental(const type_name& type) -> bool;
 
 auto is_type_trivially_copyable(const type_name& type) -> bool;
+
+// Checks if the set of given args is convertible to the signature for a function.
+// Type A is convertible to B is A == ref B or B == ref A.
+auto is_type_convertible_to(const type_name& lhs, const type_name& rhs) -> bool;
+
+auto are_types_convertible_to(const std::vector<type_name>& lhs,
+                              const std::vector<type_name>& rhs) -> bool;
+
+// If the type is a reference, returns the inner type, otherwise returns the type.
+auto remove_reference(const type_name& type) -> type_name;
 
 class type_store
 {
@@ -143,6 +165,7 @@ auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
+auto to_string(const type_reference& type) -> std::string;
 
 // Runtime pointer helpers to determine if the pointer is in stack, heap or read-only memory.
 static constexpr auto heap_bit = std::uint64_t{1} << 63;

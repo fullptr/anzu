@@ -231,6 +231,7 @@ auto lexer::get_token() -> token
         case '/': return make_token(token_type::slash);
         case '*': return make_token(token_type::star);
         case '%': return make_token(token_type::percent);
+        case '~': return make_token(token_type::tilde);
         case '!': return make_token(
             match("=") ? token_type::bang_equal : token_type::bang);
         case '=': return make_token(

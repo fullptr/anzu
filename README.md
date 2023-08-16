@@ -149,3 +149,6 @@ Utility Modules (in src/utility)
     - reading/readlines
 * Const
 * Variants
+
+# Known Issues
+* If trying to call a builtin function with an unknown type, it doesn't say that it couldn't find the function; it instead tries to lookup the function name as a variable, and reports that it couldn't find it.

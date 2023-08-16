@@ -184,7 +184,7 @@ auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
 {
     auto index = std::size_t{0};
     for (const auto& b : builtins) {
-        if (name == b.name && args == b.args) {
+        if (name == b.name && are_types_convertible_to(args, b.args)) {
             return index;
         }
         ++index;
