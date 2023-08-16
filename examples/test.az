@@ -1,4 +1,11 @@
 
-x := true;
-r := x~;
- println(r);
+x := 5;
+
+fn increment(val: i64~)
+{
+    copy := val;
+    val = copy + 1;
+}
+
+# TODO: Assignment from a reference produces a copy
+# TODO: Allow operators to convert with binary operations

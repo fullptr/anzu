@@ -53,7 +53,7 @@ auto to_string(const type_function_ptr& type) -> std::string
 
 auto to_string(const type_reference& type) -> std::string
 {
-    return std::format("ref-{}", to_string(*type.inner_type));
+    return std::format("{}~", to_string(*type.inner_type));
 }
 
 auto hash(const type_name& type) -> std::size_t
