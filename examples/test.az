@@ -9,3 +9,11 @@ fn increment(val: i64~)
 
 # TODO: Assignment from a reference produces a copy
 # TODO: Allow operators to convert with binary operations
+
+
+increment(x);
+increment(x);
+increment(x);
+increment(x);
+
+println(x);

@@ -778,8 +778,16 @@ auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_na
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    const auto lhs = push_expr_val(com, *node.lhs);
-    const auto rhs = push_expr_val(com, *node.rhs);
+    auto lhs = push_expr_val(com, *node.lhs);
+    if (is_reference_type(lhs)) {
+        lhs = inner_type(lhs);
+        push_value(com.program, op::load, com.types.size_of(lhs));
+    }
+    auto rhs = push_expr_val(com, *node.rhs);
+    if (is_reference_type(rhs)) {
+        rhs = inner_type(rhs);
+        push_value(com.program, op::load, com.types.size_of(rhs));
+    }
 
     if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 
@@ -887,6 +895,9 @@ auto push_function_arg(compiler& com, const node_expr& expr, const type_name& ex
     }
     if (is_reference_type(actual) && inner_type(actual) == expected) {
         return push_object_ref_copy(com, expr, tok);
+    }
+    if (is_reference_type(expected) && inner_type(expected) == actual) {
+        return push_expr_ptr(com, expr);
     }
     tok.error("Could not convert arg of type {} to {}", actual, expected);
     return null_type();
