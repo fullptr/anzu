@@ -521,7 +521,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
             push_value(com.program, op::load, com.types.size_of(type));
         }
     }
-    
+
     else if (is_list_type(type)) {
         const auto etype = inner_type(type);
         const auto esize = com.types.size_of(etype);
@@ -541,7 +541,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
             push_function_call(com, copy->ptr, params);
         }
     }
-
+    
     else {
         const auto params = copy_fn_params(real_type);
         const auto copy = get_function(com, real_type, "copy", params);
@@ -556,7 +556,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         push_function_call(com, copy->ptr, params);
     }
 
-    return type;
+    return real_type;
 }
 
 // Gets the type of the expression by compiling it, then removes the added
@@ -648,16 +648,21 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
 {
     const auto expr_type = type_of_expr(com, *node.expr);
+    const auto real_type = remove_reference(expr_type);
 
-    const auto is_array = is_list_type(expr_type);
-    const auto is_span = is_span_type(expr_type);
+    const auto is_array = is_list_type(real_type);
+    const auto is_span = is_span_type(real_type);
     node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
-    push_expr_ptr(com, *node.expr);
+    if (is_reference_type(expr_type)) {
+        push_expr_val(com, *node.expr);
+    } else {
+        push_expr_ptr(com, *node.expr);
+    }
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
-    if (is_span_type(expr_type)) {
+    if (is_span_type(real_type)) {
         push_value(com.program, op::load, size_of_ptr());
     }
 
@@ -666,7 +671,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
         const auto index = push_expr_val(com, *node.index);
         node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
         if (is_array) {
-            push_value(com.program, op::push_u64, array_length(expr_type));
+            push_value(com.program, op::push_u64, array_length(real_type));
         } else {
             push_expr_ptr(com, *node.expr);
             push_value(com.program, op::push_u64, size_of_ptr());
@@ -678,7 +683,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     }
 
     // Offset pointer by (index * size)
-    const auto inner = inner_type(expr_type);
+    const auto inner = inner_type(real_type);
     const auto index = push_expr_val(com, *node.index);
     node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
     push_value(com.program, op::push_u64, com.types.size_of(inner));
@@ -958,9 +963,9 @@ auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name
 {
     node.token.assert(!node.elements.empty(), "currently do not support empty list literals");
 
-    const auto inner_type = push_expr_val(com, *node.elements.front());
+    const auto inner_type = push_object_copy(com, *node.elements.front(), node.token);
     for (const auto& element : node.elements | std::views::drop(1)) {
-        const auto element_type = push_expr_val(com, *element);
+        const auto element_type = push_object_copy(com, *element, node.token);
         node.token.assert_eq(element_type, inner_type, "list has mismatching element types");
     }
     return concrete_list_type(inner_type, node.elements.size());
@@ -972,7 +977,7 @@ auto push_expr_val(compiler& com, const node_repeat_list_expr& node) -> type_nam
 
     const auto inner_type = type_of_expr(com, *node.value);
     for (std::size_t i = 0; i != node.size; ++i) {
-        push_expr_val(com, *node.value);
+        push_object_copy(com, *node.value, node.token);
     }
     return concrete_list_type(inner_type, node.size);
 }
