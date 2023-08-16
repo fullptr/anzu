@@ -1,19 +1,11 @@
 
-x := 5;
+a := 1;
+ar := a~;
 
-fn increment(val: i64~)
-{
-    copy := val;
-    val = copy + 1;
-}
+b := 2;
+br := b~;
 
-# TODO: Assignment from a reference produces a copy
-# TODO: Allow operators to convert with binary operations
+ar = br;
+br = 5;
 
-
-increment(x);
-increment(x);
-increment(x);
-increment(x);
-
-println(x);
+println(a);

@@ -1342,8 +1342,23 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto type = push_object_copy(com, *node.expr, node.token);
-    declare_var(com, node.token, node.name, type);
+    // If this is specifically an expression with a ~ at the end, create a reference to it
+    if (std::holds_alternative<node_reference_expr>(*node.expr)) {
+        const auto type = push_expr_ptr(com, *std::get<node_reference_expr>(*node.expr).expr);
+        declare_var(com, node.token, node.name, concrete_reference_type(type));
+    }
+
+    // If the expression is a reference but not a reference expression, produce a copy
+    else if (is_reference_type(type_of_expr(com, *node.expr))) {
+        const auto type = push_object_ref_copy(com, *node.expr, node.token);
+        declare_var(com, node.token, node.name, type);
+    }
+
+    // Regular behaviour, copy the value.
+    else {
+        const auto type = push_object_copy(com, *node.expr, node.token);
+        declare_var(com, node.token, node.name, type);
+    }
 }
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
@@ -1356,6 +1371,8 @@ auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
         return false;
     }
 
+    // Assigning from a ref to a ref is currently broken
+    if (is_reference_type(lhs)) return false;
     return true;
 }
 
