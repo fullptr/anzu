@@ -22,13 +22,16 @@ struct copyable
 }
 
 
-fn foo(c: copyable~) {
-    c.val = 20;
-    println(c.val);
+x := copyable(1);
+r := x~;
+y := [r, r, copyable(20)];
+r = copyable(5);
+
+fn print_copyable_array(values: copyable[])
+{
+    for ptr in values {
+        println(ptr@.val);
+    }
 }
 
-x := copyable(10);
-ref := x~;
-foo(ref);
-println("After foo call");
-println(x.val);
+print_copyable_array(y[]);
