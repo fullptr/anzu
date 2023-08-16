@@ -1,11 +1,34 @@
 
-x := 5;
-y := 6;
+struct copyable
+{
+    val: i64;
 
-xr := x~;
-yr := y~;
+    fn assign(self: copyable&, other: copyable&)
+    {
+        other@.val = self@.val;
+        println("Assign called!");
+    }
 
-xr = yr;
-xr = 8;
+    fn copy(self: copyable&) -> copyable
+    {
+        println("Copy called!");
+        return copyable(self@.val);
+    }
 
-println(x);
+    fn drop(self: copyable&) 
+    {
+        println("Drop called!");
+    }
+}
+
+
+fn foo(c: copyable~) {
+    c.val = 20;
+    println(c.val);
+}
+
+x := copyable(10);
+ref := x~;
+foo(ref);
+println("After foo call");
+println(x.val);

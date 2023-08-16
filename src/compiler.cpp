@@ -508,13 +508,18 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
 }
 
 // Given an expression, evaluate it and push to the top of the stack. If the expression
-// is an lvalue, copy constructors are invoked.
+// is an lvalue, copy constructors are invoked. If the expression is a reference, it is
+// automatically dereferenced
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
     const auto type = type_of_expr(com, expr);
+    const auto real_type = remove_reference(type);
 
-    if (is_rvalue_expr(expr) || is_type_trivially_copyable(type)) {
+    if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
         push_expr_val(com, expr);
+        if (is_reference_type(type)) {
+            push_value(com.program, op::load, com.types.size_of(type));
+        }
     }
     
     else if (is_list_type(type)) {
@@ -527,65 +532,31 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
 
         for (std::size_t i = 0; i != array_length(type); ++i) {
             push_value(com.program, op::push_call_frame);
-            push_expr_ptr(com, expr);
+            if (is_reference_type(type)) {
+                push_expr_val(com, expr);
+            } else {
+                push_expr_ptr(com, expr);
+            }
             push_ptr_adjust(com, i * esize);
             push_function_call(com, copy->ptr, params);
         }
     }
 
     else {
-        const auto params = copy_fn_params(type);
-        const auto copy = get_function(com, type, "copy", params);
-        tok.assert(copy.has_value(), "{} cannot be copied", type);
+        const auto params = copy_fn_params(real_type);
+        const auto copy = get_function(com, real_type, "copy", params);
+        tok.assert(copy.has_value(), "{} cannot be copied", real_type);
 
         push_value(com.program, op::push_call_frame);
-        push_expr_ptr(com, expr);
+        if (is_reference_type(type)) {
+            push_expr_val(com, expr);
+        } else {
+            push_expr_ptr(com, expr);
+        }
         push_function_call(com, copy->ptr, params);
     }
 
     return type;
-}
-
-// Given an expression that evaluates to a reference, copy the value that it refers to onto the stack.
-auto push_object_ref_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
-{
-    const auto type = type_of_expr(com, expr);
-    tok.assert(is_reference_type(type), "tried to push a copy of a non-ref");
-
-    const auto inner = inner_type(type);
-
-    if (is_type_trivially_copyable(inner)) {
-        push_expr_val(com, expr);
-        push_value(com.program, op::load, com.types.size_of(inner));
-    }
-
-    else if (is_list_type(inner)) {
-        const auto etype = inner_type(inner);
-        const auto esize = com.types.size_of(etype);
-
-        const auto params = copy_fn_params(etype);
-        const auto copy = get_function(com, etype, "copy", params);
-        tok.assert(copy.has_value(), "{} cannot be copied", etype);
-
-        for (std::size_t i = 0; i != array_length(type); ++i) {
-            push_value(com.program, op::push_call_frame);
-            push_expr_val(com, expr); // the value is the pointer
-            push_ptr_adjust(com, i * esize);
-            push_function_call(com, copy->ptr, params);
-        }
-    }
-
-    else {
-        const auto params = copy_fn_params(inner);
-        const auto copy = get_function(com, type, "copy", params);
-        tok.assert(copy.has_value(), "{} cannot be copied", inner);
-
-        push_value(com.program, op::push_call_frame);
-        push_expr_val(com, expr); // the value is the pointer
-        push_function_call(com, copy->ptr, params);
-    }
-
-    return inner;
 }
 
 // Gets the type of the expression by compiling it, then removes the added
@@ -890,17 +861,17 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> type_name
 {
     const auto& actual = type_of_expr(com, expr);
-    if (actual == expected) {
-        return push_object_copy(com, expr, tok);
+    tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
+
+    if (is_reference_type(expected)) {
+        if (is_reference_type(actual)) {
+            return push_expr_val(com, expr); // simple copy of the reference
+        } else {
+            return push_expr_ptr(com, expr); // push address of the object rather than the object itself
+        }
     }
-    if (is_reference_type(actual) && inner_type(actual) == expected) {
-        return push_object_ref_copy(com, expr, tok);
-    }
-    if (is_reference_type(expected) && inner_type(expected) == actual) {
-        return push_expr_ptr(com, expr);
-    }
-    tok.error("Could not convert arg of type {} to {}", actual, expected);
-    return null_type();
+
+    return push_object_copy(com, expr, tok);
 }
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
@@ -1346,19 +1317,11 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     if (std::holds_alternative<node_reference_expr>(*node.expr)) {
         const auto type = push_expr_ptr(com, *std::get<node_reference_expr>(*node.expr).expr);
         declare_var(com, node.token, node.name, concrete_reference_type(type));
+        return;
     }
 
-    // If the expression is a reference but not a reference expression, produce a copy
-    else if (is_reference_type(type_of_expr(com, *node.expr))) {
-        const auto type = push_object_ref_copy(com, *node.expr, node.token);
-        declare_var(com, node.token, node.name, type);
-    }
-
-    // Regular behaviour, copy the value.
-    else {
-        const auto type = push_object_copy(com, *node.expr, node.token);
-        declare_var(com, node.token, node.name, type);
-    }
+    const auto type = push_object_copy(com, *node.expr, node.token);
+    declare_var(com, node.token, node.name, type);
 }
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
