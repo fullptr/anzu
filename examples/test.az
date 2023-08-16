@@ -2,8 +2,7 @@ x := 5;
 r := x~;
 
 arr := [x, r, r];
-r = 10;
-arr[1u] = 20;
+ref := arr~;
+ref[0u] = 10;
+
 println(arr[0u]);
-println(arr[1u]);
-println(arr[2u]);

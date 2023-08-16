@@ -639,16 +639,21 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
 {
     const auto expr_type = type_of_expr(com, *node.expr);
+    const auto real_type = remove_reference(expr_type);
 
-    const auto is_array = is_list_type(expr_type);
-    const auto is_span = is_span_type(expr_type);
+    const auto is_array = is_list_type(real_type);
+    const auto is_span = is_span_type(real_type);
     node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
-    push_expr_ptr(com, *node.expr);
+    if (is_reference_type(expr_type)) {
+        push_expr_val(com, *node.expr);
+    } else {
+        push_expr_ptr(com, *node.expr);
+    }
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
-    if (is_span_type(expr_type)) {
+    if (is_span_type(real_type)) {
         push_value(com.program, op::load, size_of_ptr());
     }
 
@@ -657,7 +662,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
         const auto index = push_expr_val(com, *node.index);
         node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
         if (is_array) {
-            push_value(com.program, op::push_u64, array_length(expr_type));
+            push_value(com.program, op::push_u64, array_length(real_type));
         } else {
             push_expr_ptr(com, *node.expr);
             push_value(com.program, op::push_u64, size_of_ptr());
@@ -669,7 +674,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     }
 
     // Offset pointer by (index * size)
-    const auto inner = inner_type(expr_type);
+    const auto inner = inner_type(real_type);
     const auto index = push_expr_val(com, *node.index);
     node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
     push_value(com.program, op::push_u64, com.types.size_of(inner));
