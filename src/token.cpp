@@ -63,7 +63,6 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::kw_loop:             return "loop";
         case token_type::kw_new:              return "new";
         case token_type::kw_null:             return "null";
-        case token_type::kw_ref:              return "ref";
         case token_type::kw_return:           return "return";
         case token_type::kw_sizeof:           return "sizeof";
         case token_type::kw_struct:           return "struct";
@@ -87,6 +86,7 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::star:                return "*";       
         case token_type::string:              return "string-literal"; 
         case token_type::uint64:              return "uint64";
+        case token_type::tilde:               return "~";
         default: return "::unknown::";
     }
 }

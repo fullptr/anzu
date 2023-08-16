@@ -172,11 +172,6 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     auto node = std::make_shared<node_expr>();
 
     switch (tokens.curr().type) {
-        case token_type::kw_ref: {
-            auto& expr = node->emplace<node_reference_expr>();
-            expr.token = tokens.consume();
-            expr.expr = parse_expression(tokens);
-        } break;
         case token_type::left_paren: {
             tokens.consume();
             node = parse_expression(tokens);
@@ -240,6 +235,13 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     // Handle postfix expressions
     while (true) {
         switch (tokens.curr().type) {
+            case token_type::tilde: {
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_reference_expr>();
+                inner.token = tokens.consume();
+                inner.expr = node;
+                node = new_node;
+            } break;
             case token_type::at: {
                 auto new_node = std::make_shared<node_expr>();
                 auto& inner = new_node->emplace<node_deref_expr>();
