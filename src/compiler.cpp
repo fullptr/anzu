@@ -1376,6 +1376,7 @@ auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
     return true;
 }
 
+// TODO: Fix assigning from a ref to a ref (currentl)
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = type_of_expr(com, *node.expr);
