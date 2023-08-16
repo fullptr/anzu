@@ -247,8 +247,7 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
         || is_ptr_type(type)
         || is_function_ptr_type(type)
         || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)))
-        || is_span_type(type)
-        || is_reference_type(type); // is just a pointer
+        || is_span_type(type);
 }
 
 auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool

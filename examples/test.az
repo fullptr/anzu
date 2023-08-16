@@ -1,11 +1,11 @@
 
-a := 1;
-ar := a~;
+x := 5;
+y := 6;
 
-b := 2;
-br := b~;
+xr := x~;
+yr := y~;
 
-ar = br;
-br = 5;
+xr = yr;
+xr = 8;
 
-println(a);
+println(x);

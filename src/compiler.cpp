@@ -1370,9 +1370,6 @@ auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
         }
         return false;
     }
-
-    // Assigning from a ref to a ref is currently broken
-    if (is_reference_type(lhs)) return false;
     return true;
 }
 
@@ -1384,23 +1381,23 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     
     node.token.assert(is_assignable(lhs, rhs), "invalid assignment");
 
-    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(rhs)) {
-        const auto rhs = push_expr_val(com, *node.expr);
-        const auto lhs = push_expr_ptr(com, *node.position);
-        node.token.assert(is_assignable(lhs, rhs), "invalid assignment");
-
-        // We don't want to assign to the address of the reference, we want to
-        // assign the address that it stores
-        if (is_reference_type(lhs)) {
-            push_value(com.program, op::load, size_of_reference());
+    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(remove_reference(rhs))) {
+        push_expr_val(com, *node.expr);
+        if (is_reference_type(rhs)) {
+            push_value(com.program, op::load, com.types.size_of(rhs));
         }
-
+        if (is_reference_type(lhs)) {
+            push_expr_val(com, *node.position);
+        } else {
+            push_expr_ptr(com, *node.position);
+        }
         push_value(com.program, op::save, com.types.size_of(lhs));
         return;
     }
     
     if (is_list_type(rhs)) {
         const auto etype = inner_type(rhs);
+        node.token.assert(!is_reference_type(etype), "cannot have arrays of references");
         const auto inner_size = com.types.size_of(etype);
         const auto params = assign_fn_params(etype);
 
@@ -1422,18 +1419,25 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         return;
     }
 
-    const auto params = assign_fn_params(rhs);
-    const auto assign = get_function(com, rhs, "assign", params);
-    node.token.assert(assign.has_value(), "{} cannot be assigned", rhs);
+    const auto type = remove_reference(rhs);
+    const auto params = assign_fn_params(type);
+    const auto assign = get_function(com, type, "assign", params);
+    node.token.assert(assign.has_value(), "{} cannot be assigned", type);
 
     push_value(com.program, op::push_call_frame);
 
-    push_expr_ptr(com, *node.position);
     if (is_reference_type(lhs)) {
-        push_value(com.program, op::load, size_of_reference());
+        push_expr_val(com, *node.position);
+    } else {
+        push_expr_ptr(com, *node.position);
     }
 
-    push_expr_ptr(com, *node.expr);
+    if (is_reference_type(rhs)) {
+        push_expr_val(com, *node.expr);
+    } else {
+        push_expr_ptr(com, *node.expr);
+    }
+
     push_function_call(com, assign->ptr, params);
     pop_object(com, assign->sig.return_type, node.token);
 }

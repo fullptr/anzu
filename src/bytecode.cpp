@@ -279,8 +279,6 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
     print("[{:>3}] ", ptr);
     const auto op_code = static_cast<op>(prog.code[ptr++]);
     switch (op_code) {
-        // TODO: Pushing literals can just be memcpy's without casting, because we're
-        // going from bytes to bytes
         case op::push_i32: {
             const auto value = read_advance<std::int32_t>(prog, ptr);
             print("PUSH_I32: {}\n", value);
