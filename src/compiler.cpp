@@ -512,19 +512,8 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
 // automatically dereferenced
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
-    if (std::holds_alternative<node_list_expr>(expr)) {
-        const auto& inner = std::get<node_list_expr>(expr);
-        const auto etype = push_object_copy(com, *inner.elements.front(), inner.token);
-        for (const auto& element : inner.elements | std::views::drop(1)) {
-            const auto type = push_object_copy(com, *element, inner.token);
-            inner.token.assert_eq(etype, type, "array is elements of mismatched type");
-        }
-        return concrete_list_type(etype, inner.elements.size());
-    }
-
     const auto type = type_of_expr(com, expr);
     const auto real_type = remove_reference(type);
-    tok.assert(!is_list_type(real_type), "cannot call push_object_copy on a list");
 
     if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
         push_expr_val(com, expr);
@@ -533,6 +522,26 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         }
     }
 
+    else if (is_list_type(type)) {
+        const auto etype = inner_type(type);
+        const auto esize = com.types.size_of(etype);
+
+        const auto params = copy_fn_params(etype);
+        const auto copy = get_function(com, etype, "copy", params);
+        tok.assert(copy.has_value(), "{} cannot be copied", etype);
+
+        for (std::size_t i = 0; i != array_length(type); ++i) {
+            push_value(com.program, op::push_call_frame);
+            if (is_reference_type(type)) {
+                push_expr_val(com, expr);
+            } else {
+                push_expr_ptr(com, expr);
+            }
+            push_ptr_adjust(com, i * esize);
+            push_function_call(com, copy->ptr, params);
+        }
+    }
+    
     else {
         const auto params = copy_fn_params(real_type);
         const auto copy = get_function(com, real_type, "copy", params);
