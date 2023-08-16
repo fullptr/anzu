@@ -138,6 +138,12 @@ Utility Modules (in src/utility)
 -- views.hpp       : A collection of some helper views not in C++20
 ```
 
+# References TODO
+* Allow using sqaure brackets on references to arrays and spans.
+* Let arrays convert to spans for function arguments.
+* Refactor the compiler to call copy constructors in `push_expr_val` calls, which makes calling copy constructors more robust. Should be able to remove `push_object_copy` then.
+* Refactor for loops to use references instead of pointers.
+
 # Next Features
 * Complete modules
     - Namespacing
