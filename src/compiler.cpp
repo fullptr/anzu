@@ -869,7 +869,6 @@ auto push_function_arg(compiler& com, const node_expr& expr, const type_name& ex
     tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
 
     if (is_span_type(expected) && is_array_type(actual)) {
-        print("adding code to bind a array to a span\n");
         push_expr_ptr(com, expr);
         push_value(com.program, op::push_u64, array_length(actual));
         return concrete_span_type(inner_type(actual));
