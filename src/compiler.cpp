@@ -409,7 +409,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
                 push_object_ptr(func->tok);
-                push_function_call(com, func->ptr, params);
+                push_function_call(com, func->ptr, func->sig.params);
                 push_value(com.program, op::pop, com.types.size_of(func->sig.return_type));
             }
 
@@ -432,7 +432,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                     push_value(com.program, op::push_call_frame);
                     push_object_ptr(drop->tok);
                     push_ptr_adjust(com, i * inner_size);
-                    push_function_call(com, drop->ptr, params);
+                    push_function_call(com, drop->ptr, drop->sig.params);
                 }
             }
         },
@@ -538,7 +538,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
                 push_expr_ptr(com, expr);
             }
             push_ptr_adjust(com, i * esize);
-            push_function_call(com, copy->ptr, params);
+            push_function_call(com, copy->ptr, copy->sig.params);
         }
     }
     
@@ -553,7 +553,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         } else {
             push_expr_ptr(com, expr);
         }
-        push_function_call(com, copy->ptr, params);
+        push_function_call(com, copy->ptr, copy->sig.params);
     }
 
     return real_type;
@@ -868,6 +868,13 @@ auto push_function_arg(compiler& com, const node_expr& expr, const type_name& ex
     const auto& actual = type_of_expr(com, expr);
     tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
 
+    if (is_span_type(expected) && is_list_type(actual)) {
+        print("adding code to bind a array to a span\n");
+        push_expr_ptr(com, expr);
+        push_value(com.program, op::push_u64, array_length(actual));
+        return concrete_span_type(inner_type(actual));
+    }
+
     if (is_reference_type(expected)) {
         if (is_reference_type(actual)) {
             return push_expr_val(com, expr); // simple copy of the reference
@@ -910,7 +917,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
-            push_function_call(com, func->ptr, params);
+            push_function_call(com, func->ptr, func->sig.params);
             return func->sig.return_type;
         }
 
@@ -1380,7 +1387,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
             push_expr_ptr(com, *node.expr); // i-th element of src
             push_ptr_adjust(com, i * inner_size);
 
-            push_function_call(com, assign->ptr, params);
+            push_function_call(com, assign->ptr, assign->sig.params);
             pop_object(com, assign->sig.return_type, node.token);
         }
 
@@ -1406,7 +1413,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         push_expr_ptr(com, *node.expr);
     }
 
-    push_function_call(com, assign->ptr, params);
+    push_function_call(com, assign->ptr, assign->sig.params);
     pop_object(com, assign->sig.return_type, node.token);
 }
 

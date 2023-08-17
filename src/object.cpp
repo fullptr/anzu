@@ -253,8 +253,9 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
 auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool
 {
     return type == expected
-        || is_reference_type(type) && inner_type(type) == expected
-        || is_reference_type(expected) && inner_type(expected) == type;
+        || (is_reference_type(type) && inner_type(type) == expected)
+        || (is_reference_type(expected) && inner_type(expected) == type)
+        || (is_list_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected));
 }
 
 // Checks if the set of given args is convertible to the signature for a function.

@@ -2,7 +2,10 @@ x := 5;
 r := x~;
 
 arr := [x, r, r];
-ref := arr~;
-ref[0u] = 10;
 
-println(arr[0u]);
+fn print_ints(s: i64[])
+{
+    println(s.size());
+}
+
+print_ints(arr);
