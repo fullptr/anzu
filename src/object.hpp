@@ -31,11 +31,11 @@ struct type_simple
     auto operator==(const type_simple&) const -> bool = default;
 };
 
-struct type_list
+struct type_array
 {
     value_ptr<type_name> inner_type;
     std::size_t          count;
-    auto operator==(const type_list&) const -> bool = default;
+    auto operator==(const type_array&) const -> bool = default;
 };
 
 struct type_ptr
@@ -65,7 +65,7 @@ struct type_reference
 
 struct type_name : public std::variant<
     type_simple,
-    type_list,
+    type_array,
     type_ptr,
     type_span,
     type_function_ptr,
@@ -90,7 +90,7 @@ struct type_info
 };
 
 auto hash(const type_name& type) -> std::size_t;
-auto hash(const type_list& type) -> std::size_t;
+auto hash(const type_array& type) -> std::size_t;
 auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_simple& type) -> std::size_t;
@@ -107,8 +107,8 @@ auto null_type() -> type_name;
 
 auto make_type(const std::string& name) -> type_name;
 
-auto concrete_list_type(const type_name& t, std::size_t size) -> type_name;
-auto is_list_type(const type_name& t) -> bool;
+auto concrete_array_type(const type_name& t, std::size_t size) -> type_name;
+auto is_array_type(const type_name& t) -> bool;
 
 auto concrete_ptr_type(const type_name& t) -> type_name;
 auto is_ptr_type(const type_name& t) -> bool;
@@ -160,7 +160,7 @@ public:
 };
 
 auto to_string(const type_name& type) -> std::string;
-auto to_string(const type_list& type) -> std::string;
+auto to_string(const type_array& type) -> std::string;
 auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_simple& type) -> std::string;

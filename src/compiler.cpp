@@ -257,14 +257,14 @@ auto get_function(
     return std::nullopt;
 }
 
-auto push_function_call(compiler& com, std::size_t ptr, const std::vector<type_name>& params) -> void
+auto push_function_call(compiler& com, const function_info& function) -> void
 {
     auto args_size = 2 * sizeof(std::uint64_t);
-    for (const auto& param : params) {
+    for (const auto& param : function.sig.params) {
         args_size += com.types.size_of(param);
     }
 
-    push_value(com.program, op::push_u64, ptr, op::call, args_size);
+    push_value(com.program, op::push_u64, function.ptr, op::call, args_size);
 }
 
 // Registers the given name in the current scope
@@ -409,7 +409,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
                 push_object_ptr(func->tok);
-                push_function_call(com, func->ptr, func->sig.params);
+                push_function_call(com, *func);
                 push_value(com.program, op::pop, com.types.size_of(func->sig.return_type));
             }
 
@@ -422,17 +422,17 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                 });
             }
         },
-        [&](const type_list& list_type) {
-            const auto inner_size = com.types.size_of(*list_type.inner_type);
-            const auto params = drop_fn_params(*list_type.inner_type);
+        [&](const type_array& type) {
+            const auto inner_size = com.types.size_of(*type.inner_type);
+            const auto params = drop_fn_params(*type.inner_type);
 
-            if (const auto drop = get_function(com, *list_type.inner_type, "drop", params)) {
+            if (const auto drop = get_function(com, *type.inner_type, "drop", params)) {
                 for (std::size_t i = array_length(type); i != 0;) {
                     --i;
                     push_value(com.program, op::push_call_frame);
                     push_object_ptr(drop->tok);
                     push_ptr_adjust(com, i * inner_size);
-                    push_function_call(com, drop->ptr, drop->sig.params);
+                    push_function_call(com, *drop);
                 }
             }
         },
@@ -522,7 +522,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         }
     }
 
-    else if (is_list_type(type)) {
+    else if (is_array_type(type)) {
         const auto etype = inner_type(type);
         const auto esize = com.types.size_of(etype);
 
@@ -538,7 +538,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
                 push_expr_ptr(com, expr);
             }
             push_ptr_adjust(com, i * esize);
-            push_function_call(com, copy->ptr, copy->sig.params);
+            push_function_call(com, *copy);
         }
     }
     
@@ -553,7 +553,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         } else {
             push_expr_ptr(com, expr);
         }
-        push_function_call(com, copy->ptr, copy->sig.params);
+        push_function_call(com, *copy);
     }
 
     return real_type;
@@ -650,7 +650,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     const auto expr_type = type_of_expr(com, *node.expr);
     const auto real_type = remove_reference(expr_type);
 
-    const auto is_array = is_list_type(real_type);
+    const auto is_array = is_array_type(real_type);
     const auto is_span = is_span_type(real_type);
     node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
@@ -868,7 +868,7 @@ auto push_function_arg(compiler& com, const node_expr& expr, const type_name& ex
     const auto& actual = type_of_expr(com, expr);
     tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
 
-    if (is_span_type(expected) && is_list_type(actual)) {
+    if (is_span_type(expected) && is_array_type(actual)) {
         print("adding code to bind a array to a span\n");
         push_expr_ptr(com, expr);
         push_value(com.program, op::push_u64, array_length(actual));
@@ -917,14 +917,14 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
-            push_function_call(com, func->ptr, func->sig.params);
+            push_function_call(com, *func);
             return func->sig.return_type;
         }
 
         // Third, it might be a .size member function on a span, TODO: make it easier to add
         // builtin member functions first arg is a pointer to a span, so need to deref with
         // inner_type before checking if its a span. BUG: This will match ANY call a size
-        // function, and if the type of the argument is not a list, ptr or span, inner_type is
+        // function, and if the type of the argument is not an array, ptr or span, inner_type is
         // not defined and we fail compilation.
         if (inner.name == "size" && node.args.size() == 1 &&
             is_span_type(inner_type(type_of_expr(com, *node.args[0]))))
@@ -966,27 +966,27 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     return *sig.return_type;
 }
 
-auto push_expr_val(compiler& com, const node_list_expr& node) -> type_name
+auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
 {
-    node.token.assert(!node.elements.empty(), "currently do not support empty list literals");
+    node.token.assert(!node.elements.empty(), "cannot have empty array literals");
 
     const auto inner_type = push_object_copy(com, *node.elements.front(), node.token);
     for (const auto& element : node.elements | std::views::drop(1)) {
         const auto element_type = push_object_copy(com, *element, node.token);
-        node.token.assert_eq(element_type, inner_type, "list has mismatching element types");
+        node.token.assert_eq(element_type, inner_type, "array has mismatching element types");
     }
-    return concrete_list_type(inner_type, node.elements.size());
+    return concrete_array_type(inner_type, node.elements.size());
 }
 
-auto push_expr_val(compiler& com, const node_repeat_list_expr& node) -> type_name
+auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_name
 {
-    node.token.assert(node.size != 0, "currently do not support empty list literals");
+    node.token.assert(node.size != 0, "cannot have empty array literals");
 
     const auto inner_type = type_of_expr(com, *node.value);
     for (std::size_t i = 0; i != node.size; ++i) {
         push_object_copy(com, *node.value, node.token);
     }
-    return concrete_list_type(inner_type, node.size);
+    return concrete_array_type(inner_type, node.size);
 }
 
 auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
@@ -1013,12 +1013,12 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
     const auto expr_type = type_of_expr(com, *node.expr);
     node.token.assert(
-        is_list_type(expr_type) || is_span_type(expr_type),
+        is_array_type(expr_type) || is_span_type(expr_type),
         "can only span arrays and other spans, not {}", expr_type
     );
 
     // Bounds checking (TODO: BOUNDS CHECKING ON SPANS TOO)
-    if (is_list_type(expr_type) && com.debug && node.lower_bound && node.upper_bound) {
+    if (is_array_type(expr_type) && com.debug && node.lower_bound && node.upper_bound) {
         const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
         const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
@@ -1197,7 +1197,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
-    const auto is_array = is_list_type(iter_type);
+    const auto is_array = is_array_type(iter_type);
     const auto is_lvalue_span = is_span_type(iter_type) && is_lvalue_expr(*node.iter);
     node.token.assert(is_array || is_lvalue_span, "for-loops only supported for arrays and lvalue spans");
 
@@ -1212,7 +1212,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     declare_var(com, node.token, "#:idx", u64_type());
 
     // size := length of iter;
-    if (is_list_type(iter_type)) {
+    if (is_array_type(iter_type)) {
         push_value(com.program, op::push_u64, array_length(iter_type));
         declare_var(com, node.token, "#:size", u64_type());
     } else {
@@ -1370,7 +1370,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         return;
     }
     
-    if (is_list_type(rhs)) {
+    if (is_array_type(rhs)) {
         const auto etype = inner_type(rhs);
         node.token.assert(!is_reference_type(etype), "cannot have arrays of references");
         const auto inner_size = com.types.size_of(etype);
@@ -1387,7 +1387,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
             push_expr_ptr(com, *node.expr); // i-th element of src
             push_ptr_adjust(com, i * inner_size);
 
-            push_function_call(com, assign->ptr, assign->sig.params);
+            push_function_call(com, *assign);
             pop_object(com, assign->sig.return_type, node.token);
         }
 
@@ -1413,7 +1413,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         push_expr_ptr(com, *node.expr);
     }
 
-    push_function_call(com, assign->ptr, assign->sig.params);
+    push_function_call(com, *assign);
     pop_object(com, assign->sig.return_type, node.token);
 }
 

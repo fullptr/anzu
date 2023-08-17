@@ -136,14 +136,14 @@ struct node_call_expr
     anzu::token token;
 };
 
-struct node_list_expr
+struct node_array_expr
 {
     std::vector<node_expr_ptr> elements;
 
     anzu::token token;
 };
 
-struct node_repeat_list_expr
+struct node_repeat_array_expr
 {
     node_expr_ptr value;
     std::size_t   size;
@@ -217,8 +217,8 @@ struct node_expr : std::variant<
     node_unary_op_expr,
     node_binary_op_expr,
     node_call_expr,
-    node_list_expr,
-    node_repeat_list_expr,
+    node_array_expr,
+    node_repeat_array_expr,
     node_addrof_expr,
     node_sizeof_expr,
     node_new_expr,
