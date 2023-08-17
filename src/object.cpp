@@ -61,6 +61,11 @@ auto hash(const type_name& type) -> std::size_t
     return std::visit([](const auto& t) { return hash(t); }, type);
 }
 
+auto hash(type_fundamental type) -> std::size_t
+{
+    return static_cast<std::size_t>(type.type);
+}
+
 auto hash(const type_struct& type) -> std::size_t
 {
     return std::hash<std::string>{}(type.name);
@@ -98,39 +103,39 @@ auto hash(const type_reference& type) -> std::size_t
     return hash(*type.inner_type) ^ base;
 }
 
-auto i32_type() -> type_name
+auto null_type() -> type_name
 {
-    return {type_struct{ .name = std::string{i32_sv} }};
-}
-
-auto i64_type() -> type_name
-{
-    return {type_struct{ .name = std::string{i64_sv} }};
-}
-
-auto u64_type() -> type_name
-{
-    return {type_struct{ .name = std::string{u64_sv} }};
-}
-
-auto char_type() -> type_name
-{
-    return {type_struct{ .name = std::string{char_sv} }};
-}
-
-auto f64_type() -> type_name
-{
-    return {type_struct{ .name = std::string{f64_sv} }};
+    return {type_fundamental { .type = fundamental::null_type }};
 }
 
 auto bool_type() -> type_name
 {
-    return {type_struct{ .name = std::string{bool_sv} }};
+    return {type_fundamental { .type = fundamental::bool_type }};
 }
 
-auto null_type() -> type_name
+auto char_type() -> type_name
 {
-    return {type_struct{ .name = std::string{null_sv} }};
+    return {type_fundamental { .type = fundamental::char_type }};
+}
+
+auto i32_type() -> type_name
+{
+    return {type_fundamental { .type = fundamental::i32_type }};
+}
+
+auto i64_type() -> type_name
+{
+    return {type_fundamental { .type = fundamental::i64_type }};
+}
+
+auto u64_type() -> type_name
+{
+    return {type_fundamental { .type = fundamental::u64_type }};
+}
+
+auto f64_type() -> type_name
+{
+    return {type_fundamental { .type = fundamental::f64_type }};
 }
 
 auto make_type(const std::string& name) -> type_name
@@ -230,13 +235,7 @@ auto size_of_reference() -> std::size_t
 
 auto is_type_fundamental(const type_name& type) -> bool
 {
-    return type == i32_type()
-        || type == i64_type()
-        || type == u64_type()
-        || type == f64_type()
-        || type == char_type()
-        || type == bool_type()
-        || type == null_type();
+    return std::holds_alternative<type_fundamental>(type);
 }
 
 auto is_type_trivially_copyable(const type_name& type) -> bool
@@ -302,19 +301,25 @@ auto type_store::contains(const type_name& type) const -> bool
 auto type_store::size_of(const type_name& type) const -> std::size_t
 {
     return std::visit(overloaded{
+        [](type_fundamental t) -> std::size_t {
+            switch (t.type) {
+                case fundamental::null_type:
+                case fundamental::bool_type:
+                case fundamental::char_type:
+                    return 1;
+                case fundamental::i32_type:
+                    return 4;
+                case fundamental::i64_type:
+                case fundamental::u64_type:
+                case fundamental::f64_type:
+                    return 8;
+                default:
+                    print("unknown fundamental type\n");
+                    std::exit(1);
+                return 0;
+            }
+        },
         [&](const type_struct& t) -> std::size_t {
-            if (type == null_type() || type == char_type() || type == bool_type()) {
-                return 1;
-            }
-            
-            if (type == i32_type()) {
-                return 4;
-            }
-
-            if (type == i64_type() || type == f64_type() || type == u64_type()) {
-                return 8;
-            }
-
             if (!d_classes.contains(type)) {
                 print("unknown type '{}'\n", type);
                 std::exit(1);

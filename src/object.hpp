@@ -11,19 +11,28 @@
 
 namespace anzu {
 
-static constexpr auto i32_sv = std::string_view{"i32"};
-static constexpr auto i64_sv = std::string_view{"i64"};
-static constexpr auto u64_sv = std::string_view{"u64"};
-static constexpr auto f64_sv = std::string_view{"f64"};
-static constexpr auto char_sv = std::string_view{"char"};
-static constexpr auto bool_sv = std::string_view{"bool"};
-static constexpr auto null_sv = std::string_view{"null"};
-
 // Want these to be equivalent since we want uints available in the runtime but we also want
 // to use it as indexes into C++ vectors which use size_t.
 static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 
 struct type_name;
+
+enum class fundamental : std::uint8_t
+{
+    null_type,
+    bool_type,
+    char_type,
+    i32_type,
+    i64_type,
+    u64_type,
+    f64_type,
+};
+
+struct type_fundamental
+{
+    fundamental type;
+    auto operator==(const type_fundamental&) const -> bool = default;
+};
 
 struct type_struct
 {
@@ -64,6 +73,7 @@ struct type_reference
 };
 
 struct type_name : public std::variant<
+    type_fundamental,
     type_struct,
     type_array,
     type_ptr,
@@ -90,20 +100,21 @@ struct type_info
 };
 
 auto hash(const type_name& type) -> std::size_t;
+auto hash(type_fundamental type) -> std::size_t;
+auto hash(const type_struct& type) -> std::size_t;
 auto hash(const type_array& type) -> std::size_t;
 auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
-auto hash(const type_struct& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_reference& type) -> std::size_t;
 
+auto null_type() -> type_name;
+auto bool_type() -> type_name;
+auto char_type() -> type_name;
 auto i32_type() -> type_name;
 auto i64_type() -> type_name;
 auto u64_type() -> type_name;
 auto f64_type() -> type_name;
-auto char_type() -> type_name;
-auto bool_type() -> type_name;
-auto null_type() -> type_name;
 
 auto make_type(const std::string& name) -> type_name;
 
