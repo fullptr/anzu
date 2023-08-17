@@ -333,7 +333,7 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             for (const auto& field : fields_of(type)) {
                 size += size_of(field.type);
             }
-            return size;
+            return std::max(std::size_t{1}, size); // empty structs take up one byte
         },
         [&](const type_array& t) {
             return size_of(*t.inner_type) * t.count;
