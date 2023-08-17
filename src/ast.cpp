@@ -67,15 +67,15 @@ auto print_node(const node_expr& root, int indent) -> void
                 print_node(*arg, indent + 1);
             }
         },
-        [&](const node_list_expr& node) {
-            print("{}List:\n", spaces);
+        [&](const node_array_expr& node) {
+            print("{}Array:\n", spaces);
             print("{}- Elements:\n", spaces);
             for (const auto& element : node.elements) {
                 print_node(*element, indent + 1);
             }
         },
-        [&](const node_repeat_list_expr& node) {
-            print("{}List:\n", spaces);
+        [&](const node_repeat_array_expr& node) {
+            print("{}Array:\n", spaces);
             print("{}- Element:\n", spaces);
             print_node(*node.value, indent + 1);
             print("{}- Count: {}\n", spaces, node.size);

@@ -31,7 +31,7 @@ auto to_string(const type_simple& type) -> std::string
     return type.name;
 }
 
-auto to_string(const type_list& type) -> std::string
+auto to_string(const type_array& type) -> std::string
 {
     return std::format("{}[{}]", to_string(*type.inner_type), type.count);
 }
@@ -66,7 +66,7 @@ auto hash(const type_simple& type) -> std::size_t
     return std::hash<std::string>{}(type.name);
 }
 
-auto hash(const type_list& type) -> std::size_t
+auto hash(const type_array& type) -> std::size_t
 {
     return hash(*type.inner_type) ^ std::hash<std::size_t>{}(type.count);
 }
@@ -138,14 +138,14 @@ auto make_type(const std::string& name) -> type_name
     return { type_simple{ .name=name } };
 }
 
-auto concrete_list_type(const type_name& t, std::size_t size) -> type_name
+auto concrete_array_type(const type_name& t, std::size_t size) -> type_name
 {
-    return {type_list{ .inner_type = { t }, .count = size }};
+    return {type_array{ .inner_type = { t }, .count = size }};
 }
 
-auto is_list_type(const type_name& t) -> bool
+auto is_array_type(const type_name& t) -> bool
 {
-    return std::holds_alternative<type_list>(t);
+    return std::holds_alternative<type_array>(t);
 }
 
 auto concrete_ptr_type(const type_name& t) -> type_name
@@ -185,8 +185,8 @@ auto is_reference_type(const type_name& t) -> bool
 
 auto inner_type(const type_name& t) -> type_name
 {
-    if (is_list_type(t)) {
-        return *std::get<type_list>(t).inner_type;
+    if (is_array_type(t)) {
+        return *std::get<type_array>(t).inner_type;
     }
     if (is_ptr_type(t)) {
         return *std::get<type_ptr>(t).inner_type;
@@ -205,8 +205,8 @@ auto inner_type(const type_name& t) -> type_name
 
 auto array_length(const type_name& t) -> std::size_t
 {
-    if (is_list_type(t)) {
-        return std::get<type_list>(t).count;
+    if (is_array_type(t)) {
+        return std::get<type_array>(t).count;
     }
     print("COMPILER ERROR: Tried to get length of a non-array type\n");
     std::exit(1);
@@ -246,7 +246,7 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
     return is_type_fundamental(type)
         || is_ptr_type(type)
         || is_function_ptr_type(type)
-        || (is_list_type(type) && is_type_trivially_copyable(inner_type(type)))
+        || (is_array_type(type) && is_type_trivially_copyable(inner_type(type)))
         || is_span_type(type);
 }
 
@@ -255,7 +255,7 @@ auto is_type_convertible_to(const type_name& type, const type_name& expected) ->
     return type == expected
         || (is_reference_type(type) && inner_type(type) == expected)
         || (is_reference_type(expected) && inner_type(expected) == type)
-        || (is_list_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected));
+        || (is_array_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected));
 }
 
 // Checks if the set of given args is convertible to the signature for a function.
@@ -291,7 +291,7 @@ auto type_store::contains(const type_name& type) const -> bool
 {
     return d_classes.contains(type)
         || is_type_fundamental(type)
-        || is_list_type(type)
+        || is_array_type(type)
         || is_ptr_type(type)
         || is_function_ptr_type(type)
         || is_span_type(type)
@@ -325,7 +325,7 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             }
             return size;
         },
-        [&](const type_list& t) {
+        [&](const type_array& t) {
             return size_of(*t.inner_type) * t.count;
         },
         [](const type_ptr&) {

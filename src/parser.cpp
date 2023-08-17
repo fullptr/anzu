@@ -181,13 +181,13 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             const auto tok = tokens.consume();
             auto first = parse_expression(tokens);
             if (tokens.consume_maybe(token_type::semicolon)) {
-                auto& expr = node->emplace<node_repeat_list_expr>();
+                auto& expr = node->emplace<node_repeat_array_expr>();
                 expr.token = tok;
                 expr.value = first;
                 expr.size = tokens.consume_u64();
                 tokens.consume_only(token_type::right_bracket);
             } else {
-                auto& expr = node->emplace<node_list_expr>();
+                auto& expr = node->emplace<node_array_expr>();
                 expr.token = tok;
                 expr.elements.push_back(first);
                 if (tokens.consume_maybe(token_type::comma)) {
@@ -355,7 +355,7 @@ auto parse_type(tokenstream& tokens) -> type_name
                 type = type_name{type_span{ .inner_type=type }};
             }
             else {
-                type = type_name{type_list{ .inner_type=type, .count=tokens.consume_u64() }};
+                type = type_name{type_array{ .inner_type=type, .count=tokens.consume_u64() }};
                 tokens.consume_only(token_type::right_bracket);
             }
         }
