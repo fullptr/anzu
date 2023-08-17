@@ -240,13 +240,16 @@ auto is_type_fundamental(const type_name& type) -> bool
 
 auto is_type_trivially_copyable(const type_name& type) -> bool
 {
-    // TODO: Allow for trivially copyable user types
-    //   ie- classes with default copy/assign and all trivially copyable members
-    return is_type_fundamental(type)
-        || is_ptr_type(type)
-        || is_function_ptr_type(type)
-        || (is_array_type(type) && is_type_trivially_copyable(inner_type(type)))
-        || is_span_type(type);
+    // TODO: Allow for trivially copyable struct types
+    return std::visit(overloaded{
+        [](type_fundamental)         { return true; },
+        [](const type_struct&)       { return false; },
+        [](const type_array& t)      { return is_type_trivially_copyable(*t.inner_type); },
+        [](const type_span&)         { return true; },
+        [](const type_ptr&)          { return true; },
+        [](const type_function_ptr&) { return true; },
+        [](const type_reference&)    { return false; }
+    }, type);
 }
 
 auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool
@@ -288,13 +291,15 @@ auto type_store::add(const type_name& name, const type_fields& fields) -> bool
 
 auto type_store::contains(const type_name& type) const -> bool
 {
-    return d_classes.contains(type)
-        || is_type_fundamental(type)
-        || is_array_type(type)
-        || is_ptr_type(type)
-        || is_function_ptr_type(type)
-        || is_span_type(type)
-        || is_reference_type(type); // is just a pointer
+    return std::visit(overloaded{
+        [](type_fundamental)          { return true; },
+        [&](const type_struct&)       { return d_classes.contains(type); },
+        [&](const type_array& t)      { return contains(*t.inner_type); },
+        [&](const type_span& t)       { return contains(*t.inner_type); },
+        [&](const type_ptr& t)        { return contains(*t.inner_type); },
+        [&](const type_function_ptr&) { return true; },
+        [&](const type_reference& t)  { return contains(*t.inner_type); }
+    }, type);
 }
 
 // TODO: Refactor this mess
