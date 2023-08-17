@@ -348,7 +348,7 @@ auto parse_type(tokenstream& tokens) -> type_name
         return ret;
     }
 
-    auto type = type_name{type_simple{.name=std::string{tokens.consume().text}}};
+    auto type = type_name{type_struct{.name=std::string{tokens.consume().text}}};
     while (true) {
         if (tokens.consume_maybe(token_type::left_bracket)) {
             if (tokens.consume_maybe(token_type::right_bracket)) {

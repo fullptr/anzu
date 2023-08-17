@@ -25,10 +25,10 @@ static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 
 struct type_name;
 
-struct type_simple
+struct type_struct
 {
     std::string name;
-    auto operator==(const type_simple&) const -> bool = default;
+    auto operator==(const type_struct&) const -> bool = default;
 };
 
 struct type_array
@@ -64,7 +64,7 @@ struct type_reference
 };
 
 struct type_name : public std::variant<
-    type_simple,
+    type_struct,
     type_array,
     type_ptr,
     type_span,
@@ -93,7 +93,7 @@ auto hash(const type_name& type) -> std::size_t;
 auto hash(const type_array& type) -> std::size_t;
 auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
-auto hash(const type_simple& type) -> std::size_t;
+auto hash(const type_struct& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_reference& type) -> std::size_t;
 
@@ -163,7 +163,7 @@ auto to_string(const type_name& type) -> std::string;
 auto to_string(const type_array& type) -> std::string;
 auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
-auto to_string(const type_simple& type) -> std::string;
+auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
 auto to_string(const type_reference& type) -> std::string;
 

@@ -26,7 +26,7 @@ auto to_string(const type_name& type) -> std::string
     return std::visit([](const auto& t) { return ::anzu::to_string(t); }, type);
 }
 
-auto to_string(const type_simple& type) -> std::string
+auto to_string(const type_struct& type) -> std::string
 {
     return type.name;
 }
@@ -61,7 +61,7 @@ auto hash(const type_name& type) -> std::size_t
     return std::visit([](const auto& t) { return hash(t); }, type);
 }
 
-auto hash(const type_simple& type) -> std::size_t
+auto hash(const type_struct& type) -> std::size_t
 {
     return std::hash<std::string>{}(type.name);
 }
@@ -100,42 +100,42 @@ auto hash(const type_reference& type) -> std::size_t
 
 auto i32_type() -> type_name
 {
-    return {type_simple{ .name = std::string{i32_sv} }};
+    return {type_struct{ .name = std::string{i32_sv} }};
 }
 
 auto i64_type() -> type_name
 {
-    return {type_simple{ .name = std::string{i64_sv} }};
+    return {type_struct{ .name = std::string{i64_sv} }};
 }
 
 auto u64_type() -> type_name
 {
-    return {type_simple{ .name = std::string{u64_sv} }};
+    return {type_struct{ .name = std::string{u64_sv} }};
 }
 
 auto char_type() -> type_name
 {
-    return {type_simple{ .name = std::string{char_sv} }};
+    return {type_struct{ .name = std::string{char_sv} }};
 }
 
 auto f64_type() -> type_name
 {
-    return {type_simple{ .name = std::string{f64_sv} }};
+    return {type_struct{ .name = std::string{f64_sv} }};
 }
 
 auto bool_type() -> type_name
 {
-    return {type_simple{ .name = std::string{bool_sv} }};
+    return {type_struct{ .name = std::string{bool_sv} }};
 }
 
 auto null_type() -> type_name
 {
-    return {type_simple{ .name = std::string{null_sv} }};
+    return {type_struct{ .name = std::string{null_sv} }};
 }
 
 auto make_type(const std::string& name) -> type_name
 {
-    return { type_simple{ .name=name } };
+    return { type_struct{ .name=name } };
 }
 
 auto concrete_array_type(const type_name& t, std::size_t size) -> type_name
@@ -302,7 +302,7 @@ auto type_store::contains(const type_name& type) const -> bool
 auto type_store::size_of(const type_name& type) const -> std::size_t
 {
     return std::visit(overloaded{
-        [&](const type_simple& t) -> std::size_t {
+        [&](const type_struct& t) -> std::size_t {
             if (type == null_type() || type == char_type() || type == bool_type()) {
                 return 1;
             }

@@ -403,7 +403,7 @@ using compile_obj_ptr_cb = std::function<void(const token&)>;
 auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb push_object_ptr) -> void
 {
     std::visit(overloaded{
-        [&](const type_simple&) {
+        [&](const type_struct&) {
             const auto params = drop_fn_params(type);
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
