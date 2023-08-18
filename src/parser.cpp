@@ -335,6 +335,20 @@ auto parse_name(tokenstream& tokens)
     return token.text;
 }
 
+// If it's a fundamental type, return that, otherwise return a struct_type
+auto parse_simple_type(tokenstream& tokens) -> type_name
+{
+    const auto tok = tokens.consume();
+    if (tok.text == "null") return { type_fundamental{ .type=fundamental::null_type }};
+    if (tok.text == "bool") return { type_fundamental{ .type=fundamental::bool_type }};
+    if (tok.text == "char") return { type_fundamental{ .type=fundamental::char_type }};
+    if (tok.text == "i32")  return { type_fundamental{ .type=fundamental::i32_type  }};
+    if (tok.text == "i64")  return { type_fundamental{ .type=fundamental::i64_type  }};
+    if (tok.text == "u64")  return { type_fundamental{ .type=fundamental::u64_type  }};
+    if (tok.text == "f64")  return { type_fundamental{ .type=fundamental::f64_type  }};
+    return {type_struct{ .name=std::string{tok.text} }};
+}
+
 auto parse_type(tokenstream& tokens) -> type_name
 {
     // Function pointers
@@ -348,7 +362,7 @@ auto parse_type(tokenstream& tokens) -> type_name
         return ret;
     }
 
-    auto type = type_name{type_simple{.name=std::string{tokens.consume().text}}};
+    auto type = parse_simple_type(tokens);
     while (true) {
         if (tokens.consume_maybe(token_type::left_bracket)) {
             if (tokens.consume_maybe(token_type::right_bracket)) {

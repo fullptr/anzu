@@ -461,6 +461,10 @@ auto run_program(const bytecode_program& prog) -> void
         apply_op(prog, ctx);
     }
 
+    if (ctx.stack.size() > 0) {
+        anzu::print("\n -> Stack Size: {}, bug in the compiler!\n", ctx.stack.size());
+    }
+
     if (ctx.allocator.bytes_allocated() > 0) {
         anzu::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
     }
