@@ -247,11 +247,6 @@ auto size_of_reference() -> std::size_t
     return PTR_SIZE;
 }
 
-auto is_type_fundamental(const type_name& type) -> bool
-{
-    return std::holds_alternative<type_fundamental>(type);
-}
-
 auto is_type_trivially_copyable(const type_name& type) -> bool
 {
     // TODO: Allow for trivially copyable struct types
@@ -262,7 +257,12 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
         [](const type_span&)         { return true; },
         [](const type_ptr&)          { return true; },
         [](const type_function_ptr&) { return true; },
-        [](const type_reference&)    { return false; }
+        [](const type_reference&)    {
+            print("Logic Error: Tried to check if a ref is trivially copyable, but it should "
+                  "have already been stripped away\n");
+            std::exit(1);
+            return false;
+        }
     }, type);
 }
 
