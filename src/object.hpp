@@ -171,6 +171,7 @@ public:
 };
 
 auto to_string(const type_name& type) -> std::string;
+auto to_string(type_fundamental t) -> std::string;
 auto to_string(const type_array& type) -> std::string;
 auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;

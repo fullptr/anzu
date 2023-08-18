@@ -13,5 +13,4 @@ struct noisy_drop
 }
 
 y := noisy_drop();
-r := y~;
 x := [y, y, y];

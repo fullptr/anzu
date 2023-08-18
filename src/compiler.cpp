@@ -215,7 +215,7 @@ public:
             call_destructor_named_var(*d_com, name, info.type);
         }
 
-        // deallocate all space in used by the space
+        // deallocate all space in used by the scope
         const auto scope_size = current_vars(*d_com).pop_scope();
         if (scope_size > 0) {
             push_value(d_com->program, op::pop, scope_size);
@@ -436,6 +436,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
                     push_object_ptr(drop->tok);
                     push_ptr_adjust(com, i * inner_size);
                     push_function_call(com, *drop);
+                    push_value(com.program, op::pop, com.types.size_of(drop->sig.return_type));
                 }
             }
         },
@@ -503,7 +504,7 @@ auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
 {
     const auto object_ptr = current_vars(com).top();
     call_destructor(com, type, [&](const token&) {
-        // Because the variable has not been delcared, the stack pointer has not
+        // Because the variable has not been declared, the stack pointer has not
         // incremented, so it is currently pointing to our temp value.
         push_value(com.program, op::push_ptr_rel, object_ptr);
     });
@@ -902,6 +903,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                                  "incorrect number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
+            }
+            if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
+                push_value(com.program, op::push_null);
             }
             return type;
         }
@@ -1390,7 +1394,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
             push_ptr_adjust(com, i * inner_size);
 
             push_function_call(com, *assign);
-            pop_object(com, assign->sig.return_type, node.token);
+            push_value(com.program, op::pop, 1);
         }
 
         return;
@@ -1416,7 +1420,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     }
 
     push_function_call(com, *assign);
-    pop_object(com, assign->sig.return_type, node.token);
+    push_value(com.program, op::pop, 1);
 }
 
 auto compile_function_body(

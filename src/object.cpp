@@ -26,6 +26,20 @@ auto to_string(const type_name& type) -> std::string
     return std::visit([](const auto& t) { return ::anzu::to_string(t); }, type);
 }
 
+auto to_string(type_fundamental t) -> std::string
+{
+    switch (t.type) {
+        case fundamental::null_type: return "null";
+        case fundamental::bool_type: return "bool";
+        case fundamental::char_type: return "char";
+        case fundamental::i32_type:  return "i32";
+        case fundamental::i64_type:  return "i64";
+        case fundamental::u64_type:  return "u64";
+        case fundamental::f64_type:  return "f64";
+        default: return "UNKNOWN";
+    }
+}
+
 auto to_string(const type_struct& type) -> std::string
 {
     return type.name;
