@@ -1,16 +1,6 @@
 
-struct noisy_drop
-{
-    fn drop(self: noisy_drop&)
-    {
-        println("Dropped");
-    }
+arr := [1, 2, 3];
 
-    fn copy(self: noisy_drop&) -> noisy_drop
-    {
-        return noisy_drop();
-    }
+for x in arr {
+    println(x);
 }
-
-y := noisy_drop();
-x := [y, y, y];

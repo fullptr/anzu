@@ -1248,14 +1248,14 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         } else {
             push_expr_ptr(com, *node.iter);
             if (is_span_type(iter_type)) {
-                push_value(com.program, op::load, com.types.size_of(concrete_ptr_type(inner)));
+                push_value(com.program, op::load, size_of_ptr());
             }
         }
         load_variable(com, node.token, "#:idx");
-        push_value(com.program, op::push_u64, com.types.size_of(inner_type(iter_type)));
+        push_value(com.program, op::push_u64, com.types.size_of(inner));
         push_value(com.program, op::u64_mul);
         push_value(com.program, op::u64_add);
-        declare_var(com, node.token, node.name, concrete_ptr_type(inner_type(iter_type)));
+        declare_var(com, node.token, node.name, concrete_reference_type(inner));
 
         // idx = idx + 1;
         load_variable(com, node.token, "#:idx");
