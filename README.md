@@ -72,7 +72,6 @@ An interpreted programming language written in C++. This started out as a stack-
         <body>
     }
     ```
-    NOTE: `name` is a pointer to the element in the array
 
 * `fn` function statements:
 
