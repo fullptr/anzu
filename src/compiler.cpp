@@ -1089,17 +1089,14 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, *node.expr);
-
-    // Trying to take a reference of a reference just returns the original reference, ie-
-    // creating a reference from a reference is the same as creating a new reference to the
-    // original object. Here we have a pointer to a pointer, so dereference it to get a pointer
-    // to the original value.
+    const auto type = type_of_expr(com, *node.expr);
     if (is_reference_type(type)) {
-        push_value(com.program, op::load, size_of_reference());
+        push_expr_val(com, *node.expr);
         return type;
+    } else {
+        push_expr_ptr(com, *node.expr);
+        return concrete_reference_type(type);
     }
-    return concrete_reference_type(type);
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -1331,14 +1328,25 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
+    print("{}\n", node.name);
     // If this is specifically an expression with a ~ at the end, create a reference to it
     if (std::holds_alternative<node_reference_expr>(*node.expr)) {
-        const auto type = push_expr_ptr(com, *std::get<node_reference_expr>(*node.expr).expr);
-        declare_var(com, node.token, node.name, concrete_reference_type(type));
+        const auto& expr = *std::get<node_reference_expr>(*node.expr).expr;
+        const auto type = type_of_expr(com, expr);
+        if (is_reference_type(type)) {
+            push_expr_val(com, expr);
+            declare_var(com, node.token, node.name, type);
+        } else {
+            print("{}\n", type);
+            push_expr_ptr(com, expr);
+            declare_var(com, node.token, node.name, concrete_reference_type(type));
+        }
+        
         return;
     }
 
     const auto type = push_object_copy(com, *node.expr, node.token);
+    print("{}\n", type);
     declare_var(com, node.token, node.name, type);
 }
 
