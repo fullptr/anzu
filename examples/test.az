@@ -1,4 +1,16 @@
-import std/string.az;
 
-s := new_string("hello world");
-println(s.get());
+struct foo
+{
+    val: i64;
+    fn assign(self: foo~, other: foo~)
+    {
+        println("assign");
+        self.val = other.val;
+    }
+}
+
+a := foo(1);
+b := foo(3);
+
+a = b;
+println(a.val);

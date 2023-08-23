@@ -1366,7 +1366,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
             push_ptr_adjust(com, i * inner_size);
 
             push_function_call(com, *assign);
-            push_value(com.program, op::pop, 1);
+            push_value(com.program, op::pop, std::size_t{1});
         }
 
         return;
@@ -1381,7 +1381,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     push_ptr_underlying(com, *node.position);
     push_ptr_underlying(com, *node.expr);
     push_function_call(com, *assign);
-    push_value(com.program, op::pop, 1);
+    push_value(com.program, op::pop, std::size_t{1});
 }
 
 auto compile_function_body(
