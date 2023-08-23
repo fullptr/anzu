@@ -1089,6 +1089,9 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
 {
+    // If we're taking a reference of an existing reference object, we just return the inner
+    // object; in order words we create a new reference to the same underlying object, rather
+    // than creating a reference to a reference.
     const auto type = type_of_expr(com, *node.expr);
     if (is_reference_type(type)) {
         push_expr_val(com, *node.expr);
@@ -1328,25 +1331,14 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    print("{}\n", node.name);
     // If this is specifically an expression with a ~ at the end, create a reference to it
-    if (std::holds_alternative<node_reference_expr>(*node.expr)) {
-        const auto& expr = *std::get<node_reference_expr>(*node.expr).expr;
-        const auto type = type_of_expr(com, expr);
-        if (is_reference_type(type)) {
-            push_expr_val(com, expr);
-            declare_var(com, node.token, node.name, type);
-        } else {
-            print("{}\n", type);
-            push_expr_ptr(com, expr);
-            declare_var(com, node.token, node.name, concrete_reference_type(type));
+    const auto type = [&] {
+        if (std::holds_alternative<node_reference_expr>(*node.expr)) {
+            return push_expr_val(com, *node.expr);
         }
-        
-        return;
-    }
+        return push_object_copy(com, *node.expr, node.token);
+    }();
 
-    const auto type = push_object_copy(com, *node.expr, node.token);
-    print("{}\n", type);
     declare_var(com, node.token, node.name, type);
 }
 

@@ -211,7 +211,7 @@ auto lexer::get_token() -> token
     d_start = d_curr;
     
     const auto c = advance();
-    if (std::isalpha(c)) return make_identifier();
+    if (std::isalpha(c) || '_') return make_identifier();
     if (std::isdigit(c)) return make_number();
 
     switch (c) {
