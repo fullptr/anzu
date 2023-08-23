@@ -143,10 +143,10 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
     auto new_node = std::make_shared<node_expr>();
     const auto tok = tokens.consume();
     if (tokens.peek_next(token_type::left_paren)) {
-        auto addrof = std::make_shared<node_expr>();
-        auto& addrof_inner = addrof->emplace<node_addrof_expr>();
-        addrof_inner.expr = node;
-        addrof_inner.token = tok;
+        auto self = std::make_shared<node_expr>();
+        auto& self_inner = self->emplace<node_reference_expr>();
+        self_inner.expr = node;
+        self_inner.token = tok;
         auto& expr = new_node->emplace<node_call_expr>();
         expr.expr = std::make_shared<node_expr>(node_name_expr{
             .struct_name = std::make_shared<node_type>(node_expr_type{node}),
@@ -154,7 +154,7 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         });
         expr.token = tok;
         tokens.consume_only(token_type::left_paren);
-        expr.args.push_back(addrof);
+        expr.args.push_back(self);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.args.push_back(parse_expression(tokens));
         });

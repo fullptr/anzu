@@ -1,8 +1,10 @@
 
-x := 5;
-y := x~;
+struct foo
+{
+    val: i64;
 
-p := y&;
-p@ = 10;
+    fn bar(self: foo~) { println(self.val); }
+}
 
-println(x);
+f := foo(1);
+f.bar();
