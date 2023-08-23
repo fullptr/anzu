@@ -1089,17 +1089,17 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, *node.expr);
-
-    // Trying to take a reference of a reference just returns the original reference, ie-
-    // creating a reference from a reference is the same as creating a new reference to the
-    // original object. Here we have a pointer to a pointer, so dereference it to get a pointer
-    // to the original value.
+    // If we're taking a reference of an existing reference object, we just return the inner
+    // object; in order words we create a new reference to the same underlying object, rather
+    // than creating a reference to a reference.
+    const auto type = type_of_expr(com, *node.expr);
     if (is_reference_type(type)) {
-        push_value(com.program, op::load, size_of_reference());
+        push_expr_val(com, *node.expr);
         return type;
+    } else {
+        push_expr_ptr(com, *node.expr);
+        return concrete_reference_type(type);
     }
-    return concrete_reference_type(type);
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -1332,13 +1332,13 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
     // If this is specifically an expression with a ~ at the end, create a reference to it
-    if (std::holds_alternative<node_reference_expr>(*node.expr)) {
-        const auto type = push_expr_ptr(com, *std::get<node_reference_expr>(*node.expr).expr);
-        declare_var(com, node.token, node.name, concrete_reference_type(type));
-        return;
-    }
+    const auto type = [&] {
+        if (std::holds_alternative<node_reference_expr>(*node.expr)) {
+            return push_expr_val(com, *node.expr);
+        }
+        return push_object_copy(com, *node.expr, node.token);
+    }();
 
-    const auto type = push_object_copy(com, *node.expr, node.token);
     declare_var(com, node.token, node.name, type);
 }
 

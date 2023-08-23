@@ -1,6 +1,8 @@
 
-arr := [1, 2, 3];
+x := 5;
+y := x~;
 
-for x in arr {
-    println(x);
-}
+p := y&;
+p@ = 10;
+
+println(x);
