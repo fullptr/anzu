@@ -21,6 +21,23 @@ auto format_error(const std::string& str) -> void
 
 }
 
+auto type_name::is_ref() const -> bool
+{
+    return std::holds_alternative<type_reference>(*this);
+}
+
+auto type_name::add_ref() const -> type_name
+{
+    if (is_reference_type(*this)) return *this;
+    return concrete_reference_type(*this);
+}
+
+auto type_name::remove_ref() const -> type_name
+{
+    return remove_reference(*this);
+}
+
+
 auto to_string(const type_name& type) -> std::string
 {
     return std::visit([](const auto& t) { return ::anzu::to_string(t); }, type);

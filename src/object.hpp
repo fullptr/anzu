@@ -82,6 +82,10 @@ struct type_name : public std::variant<
     type_reference>
 {
     using variant::variant;
+
+    auto is_ref() const -> bool;
+    auto add_ref() const -> type_name;
+    auto remove_ref() const -> type_name;
 };
 
 using type_names = std::vector<type_name>;

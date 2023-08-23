@@ -167,6 +167,26 @@ auto current_vars(compiler& com) -> var_locations&;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
 
+auto push_ptr_underlying(compiler& com, const node_expr& expr) -> type_name
+{
+    const auto type = type_of_expr(com, expr);
+    if (type.is_ref()) {
+        push_expr_val(com, expr);
+    } else {
+        push_expr_ptr(com, expr);
+    }
+    return type.remove_ref();
+}
+
+auto push_val_underlying(compiler& com, const node_expr& expr) -> type_name
+{
+    const auto type = push_expr_val(com, expr);
+    if (type.is_ref()) {
+        push_value(com.program, op::load, size_of_reference());
+    }
+    return type.remove_ref();
+}
+
 auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) -> type_name
 {
     if (!type) {
@@ -335,8 +355,6 @@ auto push_adjust_ptr_to_field(
 )
     -> type_name
 {
-    tok.assert(!is_reference_type(type), "cannot adjust pointer to field of a reference, "
-                                         "as the value should already be dereferenced");
     const auto field_type = push_field_offset(com, tok, type, field_name);
     push_value(com.program, op::u64_add); // modify ptr
     return field_type;
@@ -520,10 +538,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     const auto real_type = remove_reference(type);
 
     if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
-        push_expr_val(com, expr);
-        if (is_reference_type(type)) {
-            push_value(com.program, op::load, com.types.size_of(type));
-        }
+        push_val_underlying(com, expr);
     }
 
     else if (is_array_type(type)) {
@@ -536,11 +551,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
 
         for (std::size_t i = 0; i != array_length(type); ++i) {
             push_value(com.program, op::push_call_frame);
-            if (is_reference_type(type)) {
-                push_expr_val(com, expr);
-            } else {
-                push_expr_ptr(com, expr);
-            }
+            push_ptr_underlying(com, expr);
             push_ptr_adjust(com, i * esize);
             push_function_call(com, *copy);
         }
@@ -552,11 +563,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         tok.assert(copy.has_value(), "{} cannot be copied", real_type);
 
         push_value(com.program, op::push_call_frame);
-        if (is_reference_type(type)) {
-            push_expr_val(com, expr);
-        } else {
-            push_expr_ptr(com, expr);
-        }
+        push_ptr_underlying(com, expr);
         push_function_call(com, *copy);
     }
 
@@ -634,11 +641,7 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    auto type = push_expr_ptr(com, *node.expr);
-    if (is_reference_type(type)) {
-        push_value(com.program, op::load, size_of_reference());
-        type = inner_type(type);
-    }
+    const auto type = push_ptr_underlying(com, *node.expr);
     return push_adjust_ptr_to_field(com, node.token, type, node.field_name);
 }
 
@@ -658,11 +661,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     const auto is_span = is_span_type(real_type);
     node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
-    if (is_reference_type(expr_type)) {
-        push_expr_val(com, *node.expr);
-    } else {
-        push_expr_ptr(com, *node.expr);
-    }
+    push_ptr_underlying(com, *node.expr);
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
@@ -758,17 +757,8 @@ auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_na
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    auto lhs = push_expr_val(com, *node.lhs);
-    if (is_reference_type(lhs)) {
-        lhs = inner_type(lhs);
-        push_value(com.program, op::load, com.types.size_of(lhs));
-    }
-    auto rhs = push_expr_val(com, *node.rhs);
-    if (is_reference_type(rhs)) {
-        rhs = inner_type(rhs);
-        push_value(com.program, op::load, com.types.size_of(rhs));
-    }
-
+    auto lhs = push_val_underlying(com, *node.lhs);
+    auto rhs = push_val_underlying(com, *node.rhs);
     if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 
     const auto& type = lhs;
@@ -867,7 +857,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
-auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> type_name
+auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> void
 {
     const auto& actual = type_of_expr(com, expr);
     tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
@@ -875,18 +865,11 @@ auto push_function_arg(compiler& com, const node_expr& expr, const type_name& ex
     if (is_span_type(expected) && is_array_type(actual)) {
         push_expr_ptr(com, expr);
         push_value(com.program, op::push_u64, array_length(actual));
-        return concrete_span_type(inner_type(actual));
+    } else if (expected.is_ref()) {
+        push_ptr_underlying(com, expr);
+    } else {
+        push_object_copy(com, expr, tok);
     }
-
-    if (is_reference_type(expected)) {
-        if (is_reference_type(actual)) {
-            return push_expr_val(com, expr); // simple copy of the reference
-        } else {
-            return push_expr_ptr(com, expr); // push address of the object rather than the object itself
-        }
-    }
-
-    return push_object_copy(com, expr, tok);
 }
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
@@ -962,8 +945,8 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     push_value(com.program, op::push_call_frame);
     auto args_size = 2 * sizeof(std::uint64_t);
     for (std::size_t i = 0; i != node.args.size(); ++i) {
-        const auto arg = push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
-        args_size += com.types.size_of(arg);
+        push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
+        args_size += com.types.size_of(sig.param_types[i]);
     }
 
     // push the function pointer and call it
@@ -1092,20 +1075,17 @@ auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
     // If we're taking a reference of an existing reference object, we just return the inner
     // object; in order words we create a new reference to the same underlying object, rather
     // than creating a reference to a reference.
-    const auto type = type_of_expr(com, *node.expr);
-    if (is_reference_type(type)) {
-        push_expr_val(com, *node.expr);
-        return type;
-    } else {
-        push_expr_ptr(com, *node.expr);
-        return concrete_reference_type(type);
-    }
+    return push_ptr_underlying(com, *node.expr).add_ref();
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
 // we can load it by pushing the address to the stack and loading.
 auto push_expr_val(compiler& com, const auto& node) -> type_name
 {
+    // This has a bug in it, as it obviously doesn't run copy constructors. But this is
+    // needed to implement copy constructors, otherwise you wouldn't be able to return anything!
+    // This is quite a large bug, and will require a more robust implementation of construction,
+    // and likely move semantics
     const auto type = push_expr_ptr(com, node);
     push_value(com.program, op::load, com.types.size_of(type));
     return type;
@@ -1346,7 +1326,7 @@ auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 {
     if (lhs != rhs) {
         // Support assigning to references
-        if (is_reference_type(lhs) && inner_type(lhs) == rhs) {
+        if (lhs.is_ref() && lhs.remove_ref() == rhs) {
             return true;
         }
         return false;
@@ -1363,22 +1343,14 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     node.token.assert(is_assignable(lhs, rhs), "invalid assignment");
 
     if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(remove_reference(rhs))) {
-        push_expr_val(com, *node.expr);
-        if (is_reference_type(rhs)) {
-            push_value(com.program, op::load, com.types.size_of(rhs));
-        }
-        if (is_reference_type(lhs)) {
-            push_expr_val(com, *node.position);
-        } else {
-            push_expr_ptr(com, *node.position);
-        }
+        push_val_underlying(com, *node.expr);
+        push_ptr_underlying(com, *node.position);
         push_value(com.program, op::save, com.types.size_of(lhs));
         return;
     }
     
     if (is_array_type(rhs)) {
         const auto etype = inner_type(rhs);
-        node.token.assert(!is_reference_type(etype), "cannot have arrays of references");
         const auto inner_size = com.types.size_of(etype);
         const auto params = assign_fn_params(etype);
 
@@ -1406,19 +1378,8 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     node.token.assert(assign.has_value(), "{} cannot be assigned", type);
 
     push_value(com.program, op::push_call_frame);
-
-    if (is_reference_type(lhs)) {
-        push_expr_val(com, *node.position);
-    } else {
-        push_expr_ptr(com, *node.position);
-    }
-
-    if (is_reference_type(rhs)) {
-        push_expr_val(com, *node.expr);
-    } else {
-        push_expr_ptr(com, *node.expr);
-    }
-
+    push_ptr_underlying(com, *node.position);
+    push_ptr_underlying(com, *node.expr);
     push_function_call(com, *assign);
     push_value(com.program, op::pop, 1);
 }
