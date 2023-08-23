@@ -401,17 +401,17 @@ auto function_ends_with_return(const node_stmt& node) -> bool
 
 auto assign_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_ptr_type(type), concrete_ptr_type(type) };
+    return { concrete_reference_type(type), concrete_reference_type(type) };
 }
 
 auto copy_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_ptr_type(type) };
+    return { concrete_reference_type(type) };
 }
 
 auto drop_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_ptr_type(type) };
+    return { concrete_reference_type(type) };
 }
 
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
@@ -980,7 +980,7 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
 
 auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, *node.expr);
+    const auto type = push_ptr_underlying(com, *node.expr);
     return concrete_ptr_type(type);
 }
 
@@ -1360,9 +1360,9 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         for (std::size_t i = 0; i != array_length(rhs); ++i) {
             push_value(com.program, op::push_call_frame);
 
-            push_expr_ptr(com, *node.position); // i-th element of dst
+            push_ptr_underlying(com, *node.position); // i-th element of dst
             push_ptr_adjust(com, i * inner_size);
-            push_expr_ptr(com, *node.expr); // i-th element of src
+            push_ptr_underlying(com, *node.expr); // i-th element of src
             push_ptr_adjust(com, i * inner_size);
 
             push_function_call(com, *assign);

@@ -35,7 +35,7 @@ struct string
     fn append(self: string~, other: char[])
     {
         for c in other {
-            self.append_char(c@);
+            self.append_char(c);
         }
     }
 
@@ -80,19 +80,19 @@ struct string
     fn assign(self: string~, other: string~)
     {
         # Resize self if needed
-        if self.data.size() < other@.data.size() {
+        if self.data.size() < other.data.size() {
             delete self.data;
-            self.data = new char : other@.data.size();
+            self.data = new char : other.data.size();
         }
 
         # Copy over the data
         idx := 0u;
-        while idx != other@.size {
-            self.data[idx] = other@.data[idx];
+        while idx != other.size {
+            self.data[idx] = other.data[idx];
             idx = idx + 1u;
         }
 
-        self.size = other@.size;
+        self.size = other.size;
     }
 }
 
