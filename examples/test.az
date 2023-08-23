@@ -1,9 +1,8 @@
 
-arr := [1, 2, 3];
+x := 5;
+y := x~;
 
-y := arr~;
-z := y~;
-z[0u] = 10;
+p := y&;
+p@ = 10;
 
-z~[0u] = 20;
-print(arr[0u]);
+println(x);
