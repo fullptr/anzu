@@ -1,10 +1,4 @@
+import std/string.az;
 
-struct foo
-{
-    val: i64;
-
-    fn bar(self: foo~) { println(self.val); }
-}
-
-f := foo(1);
-f.bar();
+s := new_string("hello world");
+println(s.get());
