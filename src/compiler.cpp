@@ -1082,6 +1082,10 @@ auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
 // we can load it by pushing the address to the stack and loading.
 auto push_expr_val(compiler& com, const auto& node) -> type_name
 {
+    // This has a bug in it, as it obviously doesn't run copy constructors. But this is
+    // needed to implement copy constructors, otherwise you wouldn't be able to return anything!
+    // This is quite a large bug, and will require a more robust implementation of construction,
+    // and likely move semantics
     const auto type = push_expr_ptr(com, node);
     push_value(com.program, op::load, com.types.size_of(type));
     return type;
