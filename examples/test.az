@@ -1,16 +1,23 @@
+import std/string.az;
 
-struct foo
-{
-    val: i64;
-    fn assign(self: foo~, other: foo~)
-    {
-        println("assign");
-        self.val = other.val;
-    }
-}
+s := new_string();
+s.append_char('a');
+s.append_char('b');
+s.append("cdef");
+println(s.get());
 
-a := foo(1);
-b := foo(3);
-
-a = b;
-println(a.val);
+#struct foo
+#{
+#    val: i64;
+#    fn assign(self: foo~, other: foo~)
+#    {
+#        println("assign");
+#        self.val = other.val;
+#    }
+#}
+#
+#a := foo(1);
+#b := foo(3);
+#
+#a = b;
+#println(a.val);
