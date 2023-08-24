@@ -1,9 +1,5 @@
+import std/string.az;
 
 
-
-
-arr := ['1', '2', '3'];
-
-for x in arr {
-    println(x);
-}
+s := new_string("hello world");
+println(s.get());

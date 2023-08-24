@@ -178,6 +178,7 @@ auto push_ptr_underlying(compiler& com, const node_expr& expr) -> type_name
     return type.remove_ref();
 }
 
+// TODO: Add an assert; this is only safe to use on fundamental types
 auto push_val_underlying(compiler& com, const node_expr& expr) -> type_name
 {
     const auto type = push_expr_val(com, expr);
