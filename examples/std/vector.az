@@ -4,48 +4,48 @@ struct vector
     data: i64[];
     size: u64;
 
-    fn push(self: vector&, val: i64)
+    fn push(self: vector~, val: i64)
     {
-        if (self@.size == self@.data.size()) {
-            new_cap := 2u * self@.data.size();
+        if (self.size == self.data.size()) {
+            new_cap := 2u * self.data.size();
             if new_cap == 0u {
                 new_cap = 1u;
             }
             newdata := new i64 : new_cap;
 
             idx := 0u;
-            while idx != self@.size {
-                newdata[idx] = self@.data[idx];
+            while idx != self.size {
+                newdata[idx] = self.data[idx];
                 idx = idx + 1u;
             }
 
-            delete self@.data;
-            self@.data = newdata;
+            delete self.data;
+            self.data = newdata;
         }
-        self@.data[self@.size] = val;
-        self@.size = self@.size + 1u;
+        self.data[self.size] = val;
+        self.size = self.size + 1u;
     }
 
-    fn pop(self: vector&) -> i64
+    fn pop(self: vector~) -> i64
     {
-        self@.size = self@.size - 1u;
-        ret := self@.data[self@.size];
+        self.size = self.size - 1u;
+        ret := self.data[self.size];
         return ret;
     }
 
-    fn size(self: vector&) -> u64
+    fn size(self: vector~) -> u64
     {
-        return self@.size;
+        return self.size;
     }
 
-    fn capacity(self: vector&) -> u64
+    fn capacity(self: vector~) -> u64
     {
-        return self@.data.size();
+        return self.data.size();
     }
 
-    fn drop(self: vector&)
+    fn drop(self: vector~)
     {
-        delete self@.data;
+        delete self.data;
     }
 }
 

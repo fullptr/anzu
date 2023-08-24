@@ -2,10 +2,10 @@ struct object
 {
     inner: i64;
 
-    fn drop(self: &object) -> null
+    fn drop(self: object~) -> null
     {
         print("dropping object ");
-        println(self->inner);
+        println(self.inner);
     }
 }
 
