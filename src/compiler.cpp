@@ -1220,13 +1220,13 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_break(com, node.token);
         write_value(com.program, jump_pos, com.program.size());
 
-        // name := &iter[idx];
+        // name := iter[idx]~;
         const auto iter_type = type_of_expr(com, *node.iter);
         const auto inner = inner_type(iter_type);
         if (is_rvalue_expr(*node.iter)) {
             push_var_addr(com, node.token, "#:iter");
         } else {
-            push_expr_ptr(com, *node.iter);
+            push_ptr_underlying(com, *node.iter);
             if (is_span_type(iter_type)) {
                 push_value(com.program, op::load, size_of_ptr());
             }
@@ -1239,8 +1239,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
         // idx = idx + 1;
         load_variable(com, node.token, "#:idx");
-        push_value(com.program, op::push_u64, std::uint64_t{1});
-        push_value(com.program, op::u64_add);
+        push_value(com.program, op::push_u64, std::uint64_t{1}, op::u64_add);
         save_variable(com, node.token, "#:idx");
 
         // main body
@@ -1324,14 +1323,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 {
-    if (lhs != rhs) {
-        // Support assigning to references
-        if (lhs.is_ref() && lhs.remove_ref() == rhs) {
-            return true;
-        }
-        return false;
-    }
-    return true;
+    return lhs.remove_ref() == rhs.remove_ref();
 }
 
 // TODO: Fix assigning from a ref to a ref (currentl)
@@ -1340,7 +1332,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     const auto rhs = type_of_expr(com, *node.expr);
     const auto lhs = type_of_expr(com, *node.position);
     
-    node.token.assert(is_assignable(lhs, rhs), "invalid assignment");
+    node.token.assert(is_assignable(lhs, rhs), "invalid assignment (lhs={}, rhs={})", lhs, rhs);
 
     if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(remove_reference(rhs))) {
         push_val_underlying(com, *node.expr);
