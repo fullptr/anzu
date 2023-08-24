@@ -2,7 +2,8 @@
 
 
 
-str := "abc";
-for c in str {
-    println(c);
+arr := ['1', '2', '3'];
+
+for x in arr {
+    println(x);
 }

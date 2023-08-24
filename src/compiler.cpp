@@ -182,7 +182,7 @@ auto push_val_underlying(compiler& com, const node_expr& expr) -> type_name
 {
     const auto type = push_expr_val(com, expr);
     if (type.is_ref()) {
-        push_value(com.program, op::load, size_of_reference());
+        push_value(com.program, op::load, com.types.size_of(type.remove_ref()));
     }
     return type.remove_ref();
 }
@@ -859,14 +859,21 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 
 auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> void
 {
-    const auto& actual = type_of_expr(com, expr);
+    const auto actual = type_of_expr(com, expr);
     tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
 
     if (is_span_type(expected) && is_array_type(actual)) {
         push_expr_ptr(com, expr);
         push_value(com.program, op::push_u64, array_length(actual));
-    } else if (expected.is_ref()) {
-        push_ptr_underlying(com, expr);
+        return;
+    }
+    
+    if (expected.is_ref()) {
+        if (actual.is_ref()) {
+            push_expr_val(com, expr);
+        } else {
+            push_ptr_underlying(com, expr);
+        }
     } else {
         push_object_copy(com, expr, tok);
     }
@@ -1171,7 +1178,7 @@ becomes
     size := <<length of iter>>;
     loop {
         if idx == size break;
-        name := &iter[idx];
+        name := iter[idx]~;
         idx = idx + 1u;
         <body>
     }
