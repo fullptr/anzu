@@ -178,11 +178,12 @@ auto push_ptr_underlying(compiler& com, const node_expr& expr) -> type_name
     return type.remove_ref();
 }
 
+// TODO: Add an assert; this is only safe to use on fundamental types
 auto push_val_underlying(compiler& com, const node_expr& expr) -> type_name
 {
     const auto type = push_expr_val(com, expr);
     if (type.is_ref()) {
-        push_value(com.program, op::load, size_of_reference());
+        push_value(com.program, op::load, com.types.size_of(type.remove_ref()));
     }
     return type.remove_ref();
 }
@@ -401,17 +402,17 @@ auto function_ends_with_return(const node_stmt& node) -> bool
 
 auto assign_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_ptr_type(type), concrete_ptr_type(type) };
+    return { concrete_reference_type(type), concrete_reference_type(type) };
 }
 
 auto copy_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_ptr_type(type) };
+    return { concrete_reference_type(type) };
 }
 
 auto drop_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_ptr_type(type) };
+    return { concrete_reference_type(type) };
 }
 
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
@@ -859,7 +860,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 
 auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> void
 {
-    const auto& actual = type_of_expr(com, expr);
+    const auto actual = type_of_expr(com, expr);
     tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
 
     if (is_span_type(expected) && is_array_type(actual)) {
@@ -980,7 +981,7 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
 
 auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, *node.expr);
+    const auto type = push_ptr_underlying(com, *node.expr);
     return concrete_ptr_type(type);
 }
 
@@ -1171,7 +1172,7 @@ becomes
     size := <<length of iter>>;
     loop {
         if idx == size break;
-        name := &iter[idx];
+        name := iter[idx]~;
         idx = idx + 1u;
         <body>
     }
@@ -1220,13 +1221,13 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_break(com, node.token);
         write_value(com.program, jump_pos, com.program.size());
 
-        // name := &iter[idx];
+        // name := iter[idx]~;
         const auto iter_type = type_of_expr(com, *node.iter);
         const auto inner = inner_type(iter_type);
         if (is_rvalue_expr(*node.iter)) {
             push_var_addr(com, node.token, "#:iter");
         } else {
-            push_expr_ptr(com, *node.iter);
+            push_ptr_underlying(com, *node.iter);
             if (is_span_type(iter_type)) {
                 push_value(com.program, op::load, size_of_ptr());
             }
@@ -1239,8 +1240,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
         // idx = idx + 1;
         load_variable(com, node.token, "#:idx");
-        push_value(com.program, op::push_u64, std::uint64_t{1});
-        push_value(com.program, op::u64_add);
+        push_value(com.program, op::push_u64, std::uint64_t{1}, op::u64_add);
         save_variable(com, node.token, "#:idx");
 
         // main body
@@ -1324,14 +1324,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 {
-    if (lhs != rhs) {
-        // Support assigning to references
-        if (lhs.is_ref() && lhs.remove_ref() == rhs) {
-            return true;
-        }
-        return false;
-    }
-    return true;
+    return lhs.remove_ref() == rhs.remove_ref();
 }
 
 // TODO: Fix assigning from a ref to a ref (currentl)
@@ -1340,7 +1333,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     const auto rhs = type_of_expr(com, *node.expr);
     const auto lhs = type_of_expr(com, *node.position);
     
-    node.token.assert(is_assignable(lhs, rhs), "invalid assignment");
+    node.token.assert(is_assignable(lhs, rhs), "invalid assignment (lhs={}, rhs={})", lhs, rhs);
 
     if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(remove_reference(rhs))) {
         push_val_underlying(com, *node.expr);
@@ -1360,13 +1353,13 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         for (std::size_t i = 0; i != array_length(rhs); ++i) {
             push_value(com.program, op::push_call_frame);
 
-            push_expr_ptr(com, *node.position); // i-th element of dst
+            push_ptr_underlying(com, *node.position); // i-th element of dst
             push_ptr_adjust(com, i * inner_size);
-            push_expr_ptr(com, *node.expr); // i-th element of src
+            push_ptr_underlying(com, *node.expr); // i-th element of src
             push_ptr_adjust(com, i * inner_size);
 
             push_function_call(com, *assign);
-            push_value(com.program, op::pop, 1);
+            push_value(com.program, op::pop, std::size_t{1});
         }
 
         return;
@@ -1381,7 +1374,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     push_ptr_underlying(com, *node.position);
     push_ptr_underlying(com, *node.expr);
     push_function_call(com, *assign);
-    push_value(com.program, op::pop, 1);
+    push_value(com.program, op::pop, std::size_t{1});
 }
 
 auto compile_function_body(
@@ -1452,7 +1445,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
-    const auto expected = concrete_ptr_type(struct_type);
+    const auto expected = concrete_reference_type(struct_type);
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code

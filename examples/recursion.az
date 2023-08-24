@@ -1,5 +1,5 @@
 # fibbonacci to demonstrate functions and recursion
-import nested/string.az;
+
 fn fibb(n: i64) -> i64
 {
     if n == 0 {

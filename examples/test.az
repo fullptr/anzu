@@ -1,8 +1,5 @@
+import std/string.az;
 
-x := 5;
-y := x~;
 
-p := y&;
-p@ = 10;
-
-println(x);
+s := new_string("hello world");
+println(s.get());
