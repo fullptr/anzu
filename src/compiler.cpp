@@ -866,15 +866,8 @@ auto push_function_arg(compiler& com, const node_expr& expr, const type_name& ex
     if (is_span_type(expected) && is_array_type(actual)) {
         push_expr_ptr(com, expr);
         push_value(com.program, op::push_u64, array_length(actual));
-        return;
-    }
-    
-    if (expected.is_ref()) {
-        if (actual.is_ref()) {
-            push_expr_val(com, expr);
-        } else {
-            push_ptr_underlying(com, expr);
-        }
+    } else if (expected.is_ref()) {
+        push_ptr_underlying(com, expr);
     } else {
         push_object_copy(com, expr, tok);
     }
