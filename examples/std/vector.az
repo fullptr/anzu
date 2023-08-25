@@ -55,14 +55,5 @@ fn new_vector() -> vector
     return vector(new i64 : 1u, 0u);
 }
 
-v := new_vector();
-
-v.push(4);
-v.push(7);
-v.push(8);
-
-idx := 0u;
-while idx != v.size() {
-    println(v.data[idx]);
-    idx = idx + 1u;
-}
+x := i64;
+p := x&;

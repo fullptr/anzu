@@ -593,6 +593,20 @@ auto parse_assert_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_unsafe_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_shared<node_stmt>();
+    auto& stmt = node->emplace<node_unsafe_stmt>();
+
+    stmt.token = tokens.consume_only(token_type::kw_unsafe);
+    tokens.consume_only(token_type::left_brace);
+    while (!tokens.consume_maybe(token_type::right_brace)) {
+        stmt.sequence.push_back(parse_statement(tokens));
+    }
+
+    return node;
+}
+
 auto parse_break_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto ret = std::make_shared<node_stmt>(node_break_stmt{ tokens.consume() });
@@ -626,6 +640,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::kw_break:    return parse_break_stmt(tokens);
         case token_type::kw_continue: return parse_continue_stmt(tokens);
         case token_type::left_brace:  return parse_braced_statement_list(tokens);
+        case token_type::kw_unsafe:   return parse_unsafe_stmt(tokens);
     }
 
     if (tokens.peek(token_type::identifier) && tokens.peek_next(token_type::colon_equal)) {

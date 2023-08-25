@@ -35,9 +35,10 @@ struct var_scope
     {
         block,
         loop,
+        unsafe,
     };
 
-    scope_type type;
+    scope_type type; // doesnt need to be here?
     std::unordered_map<std::string, var_info> vars;
 };
 
@@ -156,6 +157,7 @@ struct compiler
     std::optional<current_function> current_func;
 
     std::stack<control_flow_frame> control_flow;
+    std::size_t unsafe_block_count = 0; // Number of unsafe scopes we are currently in
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 };
@@ -222,12 +224,18 @@ public:
         if (type == var_scope::scope_type::loop) {
             com.control_flow.emplace();
         }
+        if (type == var_scope::scope_type::unsafe) {
+            com.unsafe_block_count++;
+        }
     }
 
     ~scope_guard()
     {
         if (d_type == var_scope::scope_type::loop) {
             d_com->control_flow.pop();
+        }
+        if (d_type == var_scope::scope_type::unsafe) {
+            d_com->unsafe_block_count--;
         }
 
         // destruct all variables in the current scope
@@ -256,6 +264,11 @@ auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 auto current_vars(compiler& com) -> var_locations&
 {
     return com.current_func ? com.current_func->vars : com.globals;
+}
+
+auto in_unsafe(const compiler& com) -> bool
+{
+    return com.unsafe_block_count > 0;
 }
 
 auto get_function(
@@ -1057,6 +1070,10 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
+    if (!in_unsafe(com)) {
+        node.token.error("Cannot have a 'new' statement outside of an unsafe block");
+    }
+
     if (node.size) {
         const auto count = push_expr_val(com, *node.size);
         node.token.assert_eq(count, u64_type(), "invalid array size type");
@@ -1094,7 +1111,15 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = scope_guard{com};
+    const auto scope = scope_guard{com, var_scope::scope_type::block};
+    for (const auto& seq_node : node.sequence) {
+        push_stmt(com, *seq_node);
+    }
+}
+
+void push_stmt(compiler& com, const node_unsafe_stmt& node)
+{
+    const auto scope = scope_guard{com, var_scope::scope_type::unsafe};
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -1488,6 +1513,10 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 
 void push_stmt(compiler& com, const node_delete_stmt& node)
 {
+    if (!in_unsafe(com)) {
+        node.token.error("Cannot have a 'delete' statement outside of an unsafe block");
+    }
+
     const auto type = type_of_expr(com, *node.expr);
     if (is_span_type(type)) {
         push_expr_val(com, *node.expr);
