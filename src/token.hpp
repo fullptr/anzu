@@ -56,6 +56,7 @@ enum class token_type
     kw_true,
     kw_typeof,
     kw_u64,
+    kw_unsafe,
     kw_while,
     left_brace,
     left_bracket,

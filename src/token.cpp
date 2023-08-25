@@ -69,6 +69,7 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::kw_true:             return "true";
         case token_type::kw_typeof:           return "typeof";
         case token_type::kw_u64:              return "u64";
+        case token_type::kw_unsafe:           return "unsafe";
         case token_type::kw_while:            return "while";
         case token_type::left_brace:          return "{";        
         case token_type::left_bracket:        return "[";        
