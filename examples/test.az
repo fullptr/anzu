@@ -1,5 +1,2 @@
-import std/string.az;
-
-
-s := new_string("hello world");
-println(s.get());
+unsafe;
+true;
