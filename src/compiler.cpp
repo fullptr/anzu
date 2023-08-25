@@ -1070,10 +1070,8 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
-    // TODO: Combine all scope info into one stack, really we should be able to write
-    // com.current_scope().is_unsafe() since safeness is a property of the 
     if (!in_unsafe(com)) {
-        node.token.error("Cannot have a new statement outside of an unsafe block");
+        node.token.error("Cannot have a 'new' statement outside of an unsafe block");
     }
 
     if (node.size) {
@@ -1515,6 +1513,10 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 
 void push_stmt(compiler& com, const node_delete_stmt& node)
 {
+    if (!in_unsafe(com)) {
+        node.token.error("Cannot have a 'delete' statement outside of an unsafe block");
+    }
+
     const auto type = type_of_expr(com, *node.expr);
     if (is_span_type(type)) {
         push_expr_val(com, *node.expr);
