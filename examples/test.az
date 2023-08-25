@@ -1,3 +1,8 @@
 
 
 
+
+fn foo() {
+    unsafe x := new i64;
+    println(x@);
+}

@@ -35,6 +35,7 @@ struct var_scope
     {
         block,
         loop,
+        unsafe,
     };
 
     scope_type type;
@@ -100,6 +101,14 @@ public:
     auto scopes() const -> const std::vector<var_scope>&
     {
         return d_scopes;
+    }
+
+    auto is_unsafe() const -> bool
+    {
+        for (const auto& scope : d_scopes | std::views::reverse) {
+            if (scope.type == var_scope::scope_type::unsafe) return true;
+        }
+        return false;
     }
 };
 
@@ -1057,6 +1066,10 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
+    if (!current_vars(com).is_unsafe()) {
+        node.token.error("Cannot have a new statement outside of an unsafe block");
+    }
+
     if (node.size) {
         const auto count = push_expr_val(com, *node.size);
         node.token.assert_eq(count, u64_type(), "invalid array size type");
@@ -1513,7 +1526,8 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 
 void push_stmt(compiler& com, const node_unsafe_stmt& node)
 {
-
+    const auto scope = scope_guard{com, var_scope::scope_type::unsafe};
+    push_stmt(com, *node.body);
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
