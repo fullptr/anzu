@@ -27,6 +27,7 @@ An interpreted programming language written in C++. This started out as a stack-
     1. Create a span from an array using trailing `[]`.
     1. eg: If `l` is an array of 5 `i64`s, then `l[]` is an `int64[]`.
     1. Slicing syntax `l[0 : 2]` for creating subspans.
+    1. Arrays automatically convert to spans, useful for passing arrays to functions that accept spans as arguments.
 
 * Function Pointers:
     1. Function names resolve to function pointers which can be passed to functions.
@@ -35,6 +36,10 @@ An interpreted programming language written in C++. This started out as a stack-
 * Variables:
     * Declare with `:=` operator: `x := 5`.
     * Assign to existing variable with `=` operator: `x = 6`.
+
+* References:
+    * Similar to references in C++; cannot be rebound to different objects. Used to create aliases to existing objects and use simpler value syntax instead of pointer syntax. Soon these types will not be spellable directly and won't appear in the language; they will instead be used to implement nicer syntax across the language. A good example of this is the for-loop: the variable representing the current element is a reference, but you can treat it as if it's the original object itself.
+    * Will soon add `alias` as a keyword for creating alises of objects, as well as `read`, `mut` and `copy` as specifiers for functions arguments, which will use references where appropriate.
 
 * Comments using `#` symbol.
 
@@ -96,6 +101,14 @@ An interpreted programming language written in C++. This started out as a stack-
         }
     }
     ```
+* `unsafe` blocks:
+    ```cpp
+    unsafe
+    {
+        <body>
+    }
+    ```
+* `new` and `delete` for allocating memory. These are only useful within unsafe code and all usage should be wrapped in a safe container.
 * All the common arithmetic, comparison and logical operators. More will be implemented.
 * Builtin functions.
 
@@ -136,12 +149,6 @@ Utility Modules (in src/utility)
 -- value_ptr.hpp   : A value-semantic smart pointer
 -- views.hpp       : A collection of some helper views not in C++20
 ```
-
-# References TODO
-* Allow using sqaure brackets on references to arrays and spans.
-* Let arrays convert to spans for function arguments.
-* Refactor the compiler to call copy constructors in `push_expr_val` calls, which makes calling copy constructors more robust. Should be able to remove `push_object_copy` then.
-* Refactor for loops to use references instead of pointers.
 
 # Next Features
 * Complete modules
