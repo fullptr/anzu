@@ -38,7 +38,7 @@ struct var_scope
         unsafe,
     };
 
-    scope_type type;
+    scope_type type; // doesnt need to be here?
     std::unordered_map<std::string, var_info> vars;
 };
 
@@ -102,14 +102,6 @@ public:
     {
         return d_scopes;
     }
-
-    auto is_unsafe() const -> bool
-    {
-        for (const auto& scope : d_scopes | std::views::reverse) {
-            if (scope.type == var_scope::scope_type::unsafe) return true;
-        }
-        return false;
-    }
 };
 
 struct signature
@@ -165,6 +157,7 @@ struct compiler
     std::optional<current_function> current_func;
 
     std::stack<control_flow_frame> control_flow;
+    std::size_t unsafe_block_count; // Number of unsafe scopes we are currently in
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 };
@@ -231,12 +224,18 @@ public:
         if (type == var_scope::scope_type::loop) {
             com.control_flow.emplace();
         }
+        if (type == var_scope::scope_type::unsafe) {
+            com.unsafe_block_count++;
+        }
     }
 
     ~scope_guard()
     {
         if (d_type == var_scope::scope_type::loop) {
             d_com->control_flow.pop();
+        }
+        if (d_type == var_scope::scope_type::unsafe) {
+            d_com->unsafe_block_count--;
         }
 
         // destruct all variables in the current scope
@@ -265,6 +264,11 @@ auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 auto current_vars(compiler& com) -> var_locations&
 {
     return com.current_func ? com.current_func->vars : com.globals;
+}
+
+auto in_unsafe(const compiler& com) -> bool
+{
+    return com.unsafe_block_count > 0;
 }
 
 auto get_function(
@@ -1066,7 +1070,9 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
-    if (!current_vars(com).is_unsafe()) {
+    // TODO: Combine all scope info into one stack, really we should be able to write
+    // com.current_scope().is_unsafe() since safeness is a property of the 
+    if (in_unsafe(com)) {
         node.token.error("Cannot have a new statement outside of an unsafe block");
     }
 
