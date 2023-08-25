@@ -240,6 +240,13 @@ struct node_sequence_stmt
     anzu::token token;
 };
 
+struct node_unsafe_stmt
+{
+    std::vector<node_stmt_ptr> sequence;
+
+    anzu::token token;
+};
+
 struct node_loop_stmt
 {
     node_stmt_ptr body;
@@ -355,16 +362,10 @@ struct node_assert_stmt
     anzu::token token;
 };
 
-struct node_unsafe_stmt
-{
-    node_stmt_ptr body;
-
-    anzu::token token;
-};
-
 
 struct node_stmt : std::variant<
     node_sequence_stmt,
+    node_unsafe_stmt,
     node_loop_stmt,
     node_while_stmt,
     node_for_stmt,
@@ -379,8 +380,7 @@ struct node_stmt : std::variant<
     node_expression_stmt,
     node_return_stmt,
     node_delete_stmt,
-    node_assert_stmt,
-    node_unsafe_stmt>
+    node_assert_stmt>
 {
 };
 

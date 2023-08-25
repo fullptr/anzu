@@ -135,6 +135,12 @@ auto print_node(const node_stmt& root, int indent) -> void
                 print_node(*seq_node, indent + 1);
             }
         },
+        [&](const node_unsafe_stmt& node) {
+            print("{}Unsafe:\n", spaces);
+            for (const auto& seq_node : node.sequence) {
+                print_node(*seq_node, indent + 1);
+            }
+        },
         [&](const node_loop_stmt& node) {
             print("{}Loop:\n", spaces);
             print("{}- Body:\n", spaces);
@@ -227,10 +233,6 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_assert_stmt& node) {
             print("{}Assert:\n", spaces);
             print_node(*node.expr, indent + 1);
-        },
-        [&](const node_unsafe_stmt& node) {
-            print("{}Unsafe:\n", spaces);
-            print_node(*node.body, indent + 1);
         }
     }, root);
 }

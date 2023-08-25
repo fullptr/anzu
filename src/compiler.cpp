@@ -157,7 +157,7 @@ struct compiler
     std::optional<current_function> current_func;
 
     std::stack<control_flow_frame> control_flow;
-    std::size_t unsafe_block_count; // Number of unsafe scopes we are currently in
+    std::size_t unsafe_block_count = 0; // Number of unsafe scopes we are currently in
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 };
@@ -1072,7 +1072,7 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
     // TODO: Combine all scope info into one stack, really we should be able to write
     // com.current_scope().is_unsafe() since safeness is a property of the 
-    if (in_unsafe(com)) {
+    if (!in_unsafe(com)) {
         node.token.error("Cannot have a new statement outside of an unsafe block");
     }
 
@@ -1113,7 +1113,15 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = scope_guard{com};
+    const auto scope = scope_guard{com, var_scope::scope_type::block};
+    for (const auto& seq_node : node.sequence) {
+        push_stmt(com, *seq_node);
+    }
+}
+
+void push_stmt(compiler& com, const node_unsafe_stmt& node)
+{
+    const auto scope = scope_guard{com, var_scope::scope_type::unsafe};
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -1528,12 +1536,6 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
         push_expr_val(com, *node.expr);
         push_assert(com, std::format("line {}", node.token.line));
     }
-}
-
-void push_stmt(compiler& com, const node_unsafe_stmt& node)
-{
-    const auto scope = scope_guard{com, var_scope::scope_type::unsafe};
-    push_stmt(com, *node.body);
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
