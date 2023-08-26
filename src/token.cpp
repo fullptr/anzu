@@ -47,6 +47,7 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::kw_bool:             return "bool";
         case token_type::kw_break:            return "break";
         case token_type::kw_char:             return "char";
+        case token_type::kw_const:            return "const";
         case token_type::kw_continue:         return "continue";
         case token_type::kw_default:          return "default";
         case token_type::kw_delete:           return "delete";

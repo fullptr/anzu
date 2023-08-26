@@ -34,6 +34,7 @@ enum class token_type
     kw_bool,
     kw_break,
     kw_char,
+    kw_const,
     kw_continue,
     kw_default,
     kw_delete,

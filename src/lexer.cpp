@@ -59,6 +59,7 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "bool")     return token_type::kw_bool;
     if (token == "break")    return token_type::kw_break;
     if (token == "char")     return token_type::kw_char;
+    if (token == "const")    return token_type::kw_const;
     if (token == "continue") return token_type::kw_continue;
     if (token == "default")  return token_type::kw_default;
     if (token == "delete")   return token_type::kw_delete;
