@@ -333,6 +333,10 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
         },
         [](const type_reference&) {
             // references do not own anything to cloean up
+        },
+        [&](const type_const& t) {
+            // Strip off the const and call function again
+            call_destructor(com, type.remove_const(), push_object_ptr);
         }
     }, type);
 }

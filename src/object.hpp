@@ -72,6 +72,13 @@ struct type_reference
     auto operator==(const type_reference&) const -> bool = default;
 };
 
+struct type_const
+{
+    value_ptr<type_name> inner_type;
+    auto operator==(const type_const&) const -> bool = default;
+};
+
+
 struct type_name : public std::variant<
     type_fundamental,
     type_struct,
@@ -79,13 +86,18 @@ struct type_name : public std::variant<
     type_ptr,
     type_span,
     type_function_ptr,
-    type_reference>
+    type_reference,
+    type_const>
 {
     using variant::variant;
 
     auto is_ref() const -> bool;
     auto add_ref() const -> type_name;
     auto remove_ref() const -> type_name;
+
+    auto is_const() const -> bool;
+    auto add_const() const -> type_name;
+    auto remove_const() const -> type_name;
 };
 
 using type_names = std::vector<type_name>;
@@ -111,6 +123,7 @@ auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_reference& type) -> std::size_t;
+auto hash(const type_const& type) -> std::size_t;
 
 auto null_type() -> type_name;
 auto bool_type() -> type_name;
@@ -180,6 +193,7 @@ auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
 auto to_string(const type_reference& type) -> std::string;
+auto to_string(const type_const& type) -> std::string;
 
 // Runtime pointer helpers to determine if the pointer is in stack, heap or read-only memory.
 static constexpr auto heap_bit = std::uint64_t{1} << 63;

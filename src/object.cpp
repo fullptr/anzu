@@ -28,13 +28,31 @@ auto type_name::is_ref() const -> bool
 
 auto type_name::add_ref() const -> type_name
 {
-    if (is_reference_type(*this)) return *this;
-    return concrete_reference_type(*this);
+    if (is_ref()) return *this;
+    return { type_reference{ .inner_type{*this} } };
 }
 
 auto type_name::remove_ref() const -> type_name
 {
-    return remove_reference(*this);
+    if (!is_ref()) return *this;
+    return *std::get<type_reference>(*this).inner_type;
+}
+
+auto type_name::is_const() const -> bool
+{
+    return std::holds_alternative<type_const>(*this);
+}
+
+auto type_name::add_const() const -> type_name
+{
+    if (is_const()) return *this;
+    return { type_const{ .inner_type{*this} } };
+}
+
+auto type_name::remove_const() const -> type_name
+{
+    if (!is_const()) return *this;
+    return *std::get<type_const>(*this).inner_type;
 }
 
 auto to_string_paren(const type_name& type) -> std::string
@@ -100,6 +118,11 @@ auto to_string(const type_reference& type) -> std::string
     return std::format("ref {}", to_string_paren(*type.inner_type));
 }
 
+auto to_string(const type_const& type) -> std::string
+{
+    return std::format("const {}", to_string(*type.inner_type));
+}
+
 auto hash(const type_name& type) -> std::size_t
 {
     return std::visit([](const auto& t) { return hash(t); }, type);
@@ -144,6 +167,12 @@ auto hash(const type_function_ptr& type) -> std::size_t
 auto hash(const type_reference& type) -> std::size_t
 {
     static const auto base = std::hash<std::string_view>{}("type_reference");
+    return hash(*type.inner_type) ^ base;
+}
+
+auto hash(const type_const& type) -> std::size_t
+{
+    static const auto base = std::hash<std::string_view>{}("type_const");
     return hash(*type.inner_type) ^ base;
 }
 
@@ -243,8 +272,11 @@ auto inner_type(const type_name& t) -> type_name
     if (is_span_type(t)) {
         return *std::get<type_span>(t).inner_type; 
     }
-    if (is_reference_type(t)) {
-        return *std::get<type_reference>(t).inner_type;
+    if (t.is_ref()) {
+        return t.remove_ref();
+    }
+    if (t.is_const()) {
+        return t.remove_const();
     }
     print("COMPILER ERROR: Tried to get the inner type of an invalid type category, "
           "can only get the inner type for arrays, pointers, spans and references\n");
@@ -292,7 +324,8 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
                   "have already been stripped away\n");
             std::exit(1);
             return false;
-        }
+        },
+        [](const type_const& t)      { return is_type_trivially_copyable(*t.inner_type); }
     }, type);
 }
 
@@ -342,7 +375,8 @@ auto type_store::contains(const type_name& type) const -> bool
         [&](const type_span& t)       { return contains(*t.inner_type); },
         [&](const type_ptr& t)        { return contains(*t.inner_type); },
         [&](const type_function_ptr&) { return true; },
-        [&](const type_reference& t)  { return contains(*t.inner_type); }
+        [&](const type_reference& t)  { return contains(*t.inner_type); },
+        [&](const type_const& t)      { return contains(*t.inner_type); }
     }, type);
 }
 
@@ -393,6 +427,9 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         },
         [](const type_reference&) {
             return size_of_reference();
+        },
+        [&](const type_const& t) {
+            return size_of(*t.inner_type);
         }
     }, type);
 }
