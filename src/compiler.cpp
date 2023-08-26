@@ -3,6 +3,7 @@
 #include "object.hpp"
 #include "parser.hpp"
 #include "functions.hpp"
+#include "scope_manager.hpp"
 #include "utility/print.hpp"
 #include "utility/overloaded.hpp"
 #include "utility/views.hpp"
@@ -21,88 +22,6 @@ namespace anzu {
 namespace {
 
 static const auto global_namespace = make_type("<global>");
-
-struct var_info
-{
-    std::size_t location;
-    type_name   type;
-    std::size_t type_size;
-};
-
-struct var_scope
-{
-    enum class scope_type
-    {
-        block,
-        loop,
-        unsafe,
-    };
-
-    scope_type type; // doesnt need to be here?
-    std::unordered_map<std::string, var_info> vars;
-};
-
-class var_locations
-{
-    std::vector<var_scope> d_scopes;
-    std::size_t d_next = 0;
-
-public:
-    var_locations()
-    {
-        d_scopes.emplace_back();
-    }
-
-    auto declare(const std::string& name, const type_name& type, std::size_t type_size) -> bool
-    {
-        const auto [_, success] = d_scopes.back().vars.try_emplace(name, d_next, type, type_size);
-        if (success) {
-            d_next += type_size;
-        }
-        return success;
-    }
-
-    auto top() const -> std::size_t
-    {
-        return d_next;
-    }
-
-    auto find(const std::string& name) const -> std::optional<var_info>
-    {
-        for (const auto& scope : d_scopes | std::views::reverse) {
-            if (const auto it = scope.vars.find(name); it != scope.vars.end()) {
-                return it->second;
-            }
-        }
-        return std::nullopt;
-    }
-
-    auto push_scope(var_scope::scope_type type = var_scope::scope_type::block) -> void
-    {
-        d_scopes.emplace_back(type);
-    }
-
-    auto pop_scope() -> std::size_t // Returns the size of the scope just popped
-    {
-        auto scope_size = std::size_t{0};
-        for (const auto& [name, info] : d_scopes.back().vars) {
-            scope_size += info.type_size;
-        }
-        d_scopes.pop_back();
-        d_next -= scope_size;
-        return scope_size;
-    }
-
-    auto current_scope() const -> const var_scope&
-    {
-        return d_scopes.back();
-    }
-
-    auto scopes() const -> const std::vector<var_scope>&
-    {
-        return d_scopes;
-    }
-};
 
 struct signature
 {
@@ -126,12 +45,6 @@ auto hash(const type_names& params) -> std::size_t
     return hash_value;
 }
 
-struct current_function
-{
-    var_locations vars;
-    type_name     return_type;
-};
-
 struct control_flow_frame
 {
     std::unordered_set<std::size_t> continue_stmts;
@@ -153,13 +66,11 @@ struct compiler
     // namespace (type_name) -> function_name -> signatures -> function_info
     std::unordered_map<type_name, function_map, type_name_hash> functions;
 
-    var_locations globals;
-    std::optional<current_function> current_func;
-
     std::stack<control_flow_frame> control_flow;
-    std::size_t unsafe_block_count = 0; // Number of unsafe scopes we are currently in
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
+
+    exp::scope_manager scopes;
 };
 
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
