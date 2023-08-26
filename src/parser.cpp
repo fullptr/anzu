@@ -2,6 +2,7 @@
 #include "object.hpp"
 #include "functions.hpp"
 #include "lexer.hpp"
+#include "utility/scope_exit.hpp"
 
 #include <string_view>
 #include <vector>
@@ -631,8 +632,9 @@ auto parse_continue_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    while (tokens.consume_maybe(token_type::semicolon));
-    if (!tokens.valid()) return nullptr;
+    const auto drain_selicolons = scope_exit([&] {
+        while (tokens.consume_maybe(token_type::semicolon));
+    });
 
     const auto& curr = tokens.curr();
     switch (curr.type) {
@@ -673,7 +675,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    while (tokens.consume_maybe(token_type::semicolon));
+    const auto drain_selicolons = scope_exit([&] {
+        while (tokens.consume_maybe(token_type::semicolon));
+    });
     if (!tokens.valid()) return nullptr;
 
     const auto& curr = tokens.curr();
