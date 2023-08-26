@@ -352,6 +352,13 @@ auto parse_simple_type(tokenstream& tokens) -> type_name
 
 auto parse_type(tokenstream& tokens) -> type_name
 {
+    // Const
+    if (tokens.consume_maybe(token_type::kw_const)) {
+        auto ret = type_const{};
+        ret.inner_type = make_value<type_name>(parse_type(tokens));
+        return ret;
+    }
+
     // Function pointers
     if (tokens.consume_maybe(token_type::kw_function)) {
         tokens.consume_only(token_type::left_paren);
