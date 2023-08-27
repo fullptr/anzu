@@ -45,12 +45,6 @@ auto hash(const type_names& params) -> std::size_t
     return hash_value;
 }
 
-struct control_flow_frame
-{
-    std::unordered_set<std::size_t> continue_stmts;
-    std::unordered_set<std::size_t> break_stmts;
-};
-
 using type_name_hash = decltype([](const type_name& f) { return hash(f); });
 using function_map = std::unordered_map<std::string, std::vector<function_info>>;
 
@@ -66,8 +60,6 @@ struct compiler
     // namespace (type_name) -> function_name -> signatures -> function_info
     std::unordered_map<type_name, function_map, type_name_hash> functions;
 
-    std::stack<control_flow_frame> control_flow;
-
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 
     exp::scope_manager scopes;
@@ -76,7 +68,6 @@ struct compiler
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
-auto current_vars(compiler& com) -> var_locations&;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
 
@@ -121,65 +112,10 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
     return resolved_type;
 }
 
-class scope_guard
-{
-    compiler* d_com;
-    var_scope::scope_type d_type;
-
-public:
-    scope_guard(compiler& com, var_scope::scope_type type = var_scope::scope_type::block)
-        : d_com(&com)
-        , d_type(type)
-    {
-        current_vars(com).push_scope(type);
-        if (type == var_scope::scope_type::loop) {
-            com.control_flow.emplace();
-        }
-        if (type == var_scope::scope_type::unsafe) {
-            com.unsafe_block_count++;
-        }
-    }
-
-    ~scope_guard()
-    {
-        if (d_type == var_scope::scope_type::loop) {
-            d_com->control_flow.pop();
-        }
-        if (d_type == var_scope::scope_type::unsafe) {
-            d_com->unsafe_block_count--;
-        }
-
-        // destruct all variables in the current scope
-        auto& scope = current_vars(*d_com).current_scope();
-        for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            call_destructor_named_var(*d_com, name, info.type);
-        }
-
-        // deallocate all space in used by the scope
-        const auto scope_size = current_vars(*d_com).pop_scope();
-        if (scope_size > 0) {
-            push_value(d_com->program, op::pop, scope_size);
-        }
-    }
-
-    scope_guard(const scope_guard&) = delete;
-    scope_guard& operator=(const scope_guard&) = delete;
-};
-
 auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 {
     push_value(com.program, op::push_u64, offset);
     push_value(com.program, op::u64_add); // modify ptr
-}
-
-auto current_vars(compiler& com) -> var_locations&
-{
-    return com.current_func ? com.current_func->vars : com.globals;
-}
-
-auto in_unsafe(const compiler& com) -> bool
-{
-    return com.unsafe_block_count > 0;
 }
 
 auto get_function(
@@ -215,28 +151,20 @@ auto push_function_call(compiler& com, const function_info& function) -> void
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
-    if (!current_vars(com).declare(name, type, com.types.size_of(type))) {
+    if (!com.scopes.declare(name, type, com.types.size_of(type))) {
         tok.error("name already in use: '{}'", name);
     }
 }
 
 auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
 {
-    if (com.current_func) {
-        auto& locals = com.current_func->vars;
-        if (const auto info = locals.find(name); info.has_value()) {
-            push_value(com.program, op::push_ptr_rel, info->location);
-            return info->type;
-        }
+    const auto var = com.scopes.find(name);
+    if (!var) {
+        tok.error("could not find variable '{}'\n", name);
     }
-
-    auto& globals = com.globals;
-    if (const auto info = globals.find(name); info.has_value()) {
-        push_value(com.program, op::push_ptr, info->location);
-        return info->type;
-    }
-
-    tok.error("could not find variable '{}'\n", name);
+    const auto op = var->is_location_relative ? op::push_ptr_rel : op::push_ptr;
+    push_value(com.program, op, var->location);
+    return var->type;
 }
 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
@@ -408,13 +336,11 @@ auto call_destructor_named_var(compiler& com, const std::string& var, const type
 
 auto destruct_on_break_or_continue(compiler& com) -> void
 {
-    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
-        for (const auto& [name, info] : scope.vars | std::views::reverse) {
-            call_destructor_named_var(com, name, info.type);
+    for (const auto& scope : com.scopes.all() | std::views::reverse) {
+        for (const auto& var : scope->variables() | std::views::reverse) {
+            call_destructor_named_var(com, var.name, var.type);
         }
-        if (scope.type == var_scope::scope_type::loop) {
-            return;
-        }
+        if (scope->is<exp::loop_scope>()) return;
     }
 }
 
@@ -425,13 +351,13 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
     if (node && std::holds_alternative<node_name_expr>(*node->return_value)) {
         return_variable = std::get<node_name_expr>(*node->return_value).name;
     }
-    for (const auto& scope : current_vars(com).scopes() | std::views::reverse) {
-        for (const auto& [name, info] : scope.vars | std::views::reverse) {
+    for (const auto& scope : com.scopes.all() | std::views::reverse) {
+        for (const auto& var : scope->variables() | std::views::reverse) {
             // If the return expr is just a variable name, do not destruct that object.
             // Further, if there is a variable in an outer scope with the same name, make
             // sure to only destruct the inner name.
-            if (name != return_variable || !skip_return_destructor) {
-                call_destructor_named_var(com, name, info.type);
+            if (var.name != return_variable || !skip_return_destructor) {
+                call_destructor_named_var(com, var.name, var.type);
             }
             else {
                 skip_return_destructor = false;
@@ -440,18 +366,23 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
     }
 }
 
-// Assumes that the top of the stack is an object of the given type. This
-// function calls the destructor and pops the data. It MUST NOT already be a defined
-// variable
-auto pop_object(compiler& com, const type_name& type, const token& tok) -> void
+auto destruct_on_end_of_scope(compiler& com) -> void
 {
-    const auto object_ptr = current_vars(com).top();
-    call_destructor(com, type, [&](const token&) {
-        // Because the variable has not been declared, the stack pointer has not
-        // incremented, so it is currently pointing to our temp value.
-        push_value(com.program, op::push_ptr_rel, object_ptr);
-    });
-    push_value(com.program, op::pop, com.types.size_of(type));
+    auto current = com.scopes.current();
+
+    // destruct all variables in the current scope
+    auto scope_size = std::size_t{0};
+    for (const auto& variable : current->variables() | std::views::reverse) {
+        scope_size += variable.size;
+        call_destructor_named_var(com, variable.name, variable.type);
+    }
+
+    // deallocate all space in used by the scope
+    if (scope_size > 0) {
+        push_value(com.program, op::pop, scope_size);
+    }
+
+    com.scopes.pop_scope();
 }
 
 // Given an expression, evaluate it and push to the top of the stack. If the expression
@@ -981,7 +912,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
-    if (!in_unsafe(com)) {
+    if (!com.scopes.in_unsafe()) {
         node.token.error("Cannot have a 'new' statement outside of an unsafe block");
     }
 
@@ -1022,39 +953,44 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = scope_guard{com, var_scope::scope_type::block};
+    com.scopes.new_block_scope(false);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
+    destruct_on_end_of_scope(com);
 }
 
 void push_stmt(compiler& com, const node_unsafe_stmt& node)
 {
-    const auto scope = scope_guard{com, var_scope::scope_type::unsafe};
+    com.scopes.new_block_scope(true);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
+    destruct_on_end_of_scope(com);
 }
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    const auto scope = scope_guard{com, var_scope::scope_type::loop};
+    const auto block_scope = com.scopes.new_loop_scope();
     
     const auto begin_pos = com.program.size();
     {
-        const auto body_scope = scope_guard{com};
+        com.scopes.new_block_scope(false);
         body();
+        destruct_on_end_of_scope(com);
     }
     push_value(com.program, op::jump, begin_pos);
 
     // Fix up the breaks and continues
-    const auto& control_flow = com.control_flow.top();
-    for (const auto idx : control_flow.break_stmts) {
+    const auto& control_flow = block_scope->as<exp::loop_scope>();
+    for (const auto idx : control_flow.breaks) {
         write_value(com.program, idx, com.program.size()); // Jump past end
     }
-    for (const auto idx : control_flow.continue_stmts) {
+    for (const auto idx : control_flow.continues) {
         write_value(com.program, idx, begin_pos); // Jump to start
     }
+
+    destruct_on_end_of_scope(com);
 }
 
 void push_stmt(compiler& com, const node_loop_stmt& node)
@@ -1116,7 +1052,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    const auto scope = scope_guard{com};
+    com.scopes.new_block_scope(false);
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -1182,6 +1118,8 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         // main body
         push_stmt(com, *node.body);
     });
+
+    destruct_on_end_of_scope(com);
 }
 
 void push_stmt(compiler& com, const node_if_stmt& node)
@@ -1224,11 +1162,11 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 
 void push_break(compiler& com, const token& tok)
 {
-    tok.assert(!com.control_flow.empty(), "cannot use 'break' outside of a loop");
+    tok.assert(com.scopes.in_loop(), "cannot use 'break' outside of a loop");
     destruct_on_break_or_continue(com);
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.control_flow.top().break_stmts.insert(pos);
+    com.scopes.get_loop_info().breaks.insert(pos);
 }
 
 void push_stmt(compiler& com, const node_break_stmt& node)
@@ -1238,11 +1176,11 @@ void push_stmt(compiler& com, const node_break_stmt& node)
 
 void push_stmt(compiler& com, const node_continue_stmt& node)
 {
-    node.token.assert(!com.control_flow.empty(), "cannot use 'continue' outside of a loop");
+    node.token.assert(com.scopes.in_loop(), "cannot use 'continue' outside of a loop");
     destruct_on_break_or_continue(com);
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.control_flow.top().continue_stmts.insert(pos);
+    com.scopes.get_loop_info().continues.insert(pos);
 }
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
@@ -1328,10 +1266,10 @@ auto compile_function_body(
     const auto jump_op = push_value(com.program, std::uint64_t{0});
     const auto begin_pos = com.program.size(); // First op code after the jump
 
-    com.current_func.emplace(current_function{ .vars={}, .return_type=null_type() });
+    auto scope = com.scopes.new_function_scope(null_type());
 
     {
-        const auto scope = scope_guard{com}; // Ensures destructors for params called
+        com.scopes.new_block_scope(false);
 
         declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
         declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
@@ -1342,7 +1280,7 @@ auto compile_function_body(
         }
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
-        com.current_func->return_type = sig.return_type;
+        scope->as<exp::function_scope>().return_type = sig.return_type;
         for (const auto& function : com.functions[struct_type][name]) {
             if (are_types_convertible_to(sig.params, function.sig.params)) {
                 tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
@@ -1363,9 +1301,11 @@ auto compile_function_body(
                 tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
             }
         }
+        const auto block_scope = com.scopes.pop_scope();
     }
 
-    com.current_func.reset();
+    const auto function_scope = com.scopes.pop_scope();
+    // TODO: Call destructors of this popped scope
     write_value(com.program, jump_op, com.program.size());
     return sig;
 }
@@ -1409,22 +1349,25 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
-    node.token.assert(com.current_func.has_value(), "can only return within functions");
+    node.token.assert(com.scopes.in_function(), "can only return within functions");
     destruct_on_return(com, &node);
     const auto return_type = push_expr_val(com, *node.return_value);
-    node.token.assert_eq(return_type, com.current_func->return_type, "wrong return type");
+    node.token.assert_eq(return_type, com.scopes.get_function_info().return_type, "wrong return type");
     push_value(com.program, op::ret, com.types.size_of(return_type));
 }
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
+    // Create the temporary in a new scope, and use that to call it's destructor
+    com.scopes.new_block_scope(false);
     const auto type = push_expr_val(com, *node.expr);
-    pop_object(com, type, node.token);
+    declare_var(com, node.token, "#:temp", type);
+    destruct_on_end_of_scope(com);
 }
 
 void push_stmt(compiler& com, const node_delete_stmt& node)
 {
-    if (!in_unsafe(com)) {
+    if (!com.scopes.in_unsafe()) {
         node.token.error("Cannot have a 'delete' statement outside of an unsafe block");
     }
 
