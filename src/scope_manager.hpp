@@ -11,7 +11,6 @@
 #include <variant>
 
 namespace anzu {
-namespace exp {
 
 struct variable
 {
@@ -265,5 +264,4 @@ public:
     }
 };
 
-}
 }

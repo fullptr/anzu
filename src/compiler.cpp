@@ -62,7 +62,7 @@ struct compiler
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 
-    exp::scope_manager scopes;
+    scope_manager scopes;
 };
 
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
@@ -340,7 +340,7 @@ auto destruct_on_break_or_continue(compiler& com) -> void
         for (const auto& var : scope->variables() | std::views::reverse) {
             call_destructor_named_var(com, var.name, var.type);
         }
-        if (scope->is<exp::loop_scope>()) return;
+        if (scope->is<loop_scope>()) return;
     }
 }
 
@@ -363,7 +363,7 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
                 skip_return_destructor = false;
             }
         }
-        if (scope->is<exp::function_scope>()) return;
+        if (scope->is<function_scope>()) return;
     }
 }
 
@@ -379,9 +379,7 @@ auto destruct_on_end_of_scope(compiler& com) -> void
     }
 
     // deallocate all space used by the scope
-    // optimisation here; no need to explicitly dealloc the space as the runtime does it
-    // TODO: Look into making this the place that deallocs space for functions?
-    if (scope_size > 0 && !current->is<exp::function_scope>()) {
+    if (scope_size > 0) {
         push_value(com.program, op::pop, scope_size);
     }
 
