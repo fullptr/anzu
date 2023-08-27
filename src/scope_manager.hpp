@@ -166,6 +166,9 @@ public:
             print("Logic Error: Must also have at least one scope");
             std::exit(1);
         }
+        for (const auto var : d_scopes.back()->variables()) {
+            *d_scopes.back()->get_location_counter() -= var.size;
+        }
         d_scopes.pop_back();
     }
 
