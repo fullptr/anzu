@@ -69,6 +69,13 @@ public:
         , d_variables{}
     {}
 
+    ~scope()
+    {   
+        for (const auto var : d_variables) {
+            *d_next -= var.size;
+        }
+    }
+
     auto declare(
         const std::string& name,
         const type_name& type,
@@ -165,9 +172,6 @@ public:
         if (d_scopes.empty()) {
             print("Logic Error: Must also have at least one scope");
             std::exit(1);
-        }
-        for (const auto var : d_scopes.back()->variables()) {
-            *d_scopes.back()->get_location_counter() -= var.size;
         }
         d_scopes.pop_back();
     }

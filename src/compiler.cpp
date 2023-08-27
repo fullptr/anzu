@@ -355,7 +355,7 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
         for (const auto& var : scope->variables() | std::views::reverse) {
             // If the return expr is just a variable name, do not destruct that object.
             // Further, if there is a variable in an outer scope with the same name, make
-            // sure to only destruct the inner name.
+            // sure to only skip destructing the inner one
             if (var.name != return_variable || !skip_return_destructor) {
                 call_destructor_named_var(com, var.name, var.type);
             }
@@ -363,6 +363,7 @@ auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -
                 skip_return_destructor = false;
             }
         }
+        if (scope->is<exp::function_scope>()) return;
     }
 }
 
