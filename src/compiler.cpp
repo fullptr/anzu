@@ -378,7 +378,7 @@ auto destruct_on_end_of_scope(compiler& com) -> void
     }
 
     // deallocate all space used by the scope
-    if (scope_size > 0 && (current->is<exp::block_scope>() || current->is<exp::loop_scope>())) {
+    if (scope_size > 0) {
         push_value(com.program, op::pop, scope_size);
     }
 
@@ -1452,6 +1452,7 @@ auto compile(
             exit(1);
         }
     }
+    destruct_on_end_of_scope(com);
 
     auto read_only = std::vector<std::byte>{};
     read_only.reserve(com.read_only_data.size());
