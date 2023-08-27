@@ -1265,8 +1265,9 @@ auto compile_function_body(
     push_value(com.program, op::jump);
     const auto jump_op = push_value(com.program, std::uint64_t{0});
     const auto begin_pos = com.program.size(); // First op code after the jump
+    const auto return_type = resolve_type(com, tok, node_sig.return_type);
 
-    auto scope = com.scopes.new_function_scope(null_type());
+    com.scopes.new_function_scope(return_type);
 
     {
         com.scopes.new_block_scope(false);
@@ -1279,8 +1280,7 @@ auto compile_function_body(
             declare_var(com, tok, arg.name, type);
         }
 
-        sig.return_type = resolve_type(com, tok, node_sig.return_type);
-        scope->as<exp::function_scope>().return_type = sig.return_type;
+        sig.return_type = return_type;
         for (const auto& function : com.functions[struct_type][name]) {
             if (are_types_convertible_to(sig.params, function.sig.params)) {
                 tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
@@ -1301,11 +1301,11 @@ auto compile_function_body(
                 tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
             }
         }
-        const auto block_scope = com.scopes.pop_scope();
+        
+        destruct_on_end_of_scope(com);
     }
 
-    const auto function_scope = com.scopes.pop_scope();
-    // TODO: Call destructors of this popped scope
+    destruct_on_end_of_scope(com);
     write_value(com.program, jump_op, com.program.size());
     return sig;
 }
