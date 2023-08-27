@@ -1,10 +1,6 @@
-
-
-
-
-fn foo() {
-    unsafe {
-        x := new i64;
-        delete x;
-    }
+variable := 0;
+fn typeof_example(y: typeof(variable)) -> i64
+{
+    return y + y;
 }
+println(typeof_example(3)); # no error here!
