@@ -402,9 +402,15 @@ public:
         return scope_guard{com};
     }
 
-    static auto block(compiler& com, bool unsafe = false) -> scope_guard
+    static auto block(compiler& com) -> scope_guard
     {
-        com.scopes.new_block_scope(unsafe);
+        com.scopes.new_block_scope(false);
+        return scope_guard{com};
+    }
+
+    static auto unsafe_block(compiler& com) -> scope_guard
+    {
+        com.scopes.new_block_scope(true);
         return scope_guard{com};
     }
 
@@ -989,7 +995,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = scope_guard::block(com, false);
+    const auto scope = scope_guard::block(com);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -997,7 +1003,7 @@ void push_stmt(compiler& com, const node_sequence_stmt& node)
 
 void push_stmt(compiler& com, const node_unsafe_stmt& node)
 {
-    const auto scope = scope_guard::block(com, false);
+    const auto scope = scope_guard::unsafe_block(com);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
