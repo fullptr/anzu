@@ -119,8 +119,18 @@ class scope_manager
     std::vector<std::shared_ptr<scope>> d_scopes;
 
 public:
-    scope_manager()
+
+    auto current() -> std::shared_ptr<scope>
     {
+        return d_scopes.back();
+    }
+
+    auto new_global_scope() -> void
+    {
+        if (!d_scopes.empty()) {
+            print("Can only have a global scope at the top level\n");
+            std::exit(1);
+        }
         auto next = std::make_shared<std::size_t>(0);
         d_scopes.emplace_back(std::make_shared<scope>(
             global_scope{ .next_var_location = next },
@@ -129,13 +139,12 @@ public:
         ));
     }
 
-    auto current() -> std::shared_ptr<scope>
-    {
-        return d_scopes.back();
-    }
-
     auto new_block_scope(bool unsafe) -> void
     {
+        if (d_scopes.empty()) {
+            print("Cannot add a block scope before a global scope\n");
+            std::exit(1);
+        }
         d_scopes.emplace_back(std::make_shared<scope>(
             block_scope{},
             current()->get_location_counter(),
@@ -145,6 +154,10 @@ public:
 
     auto new_function_scope(const type_name& return_type) -> void
     {
+        if (d_scopes.empty()) {
+            print("Cannot add a function scope before a global scope\n");
+            std::exit(1);
+        }
         auto next = std::make_shared<std::size_t>(0);
         d_scopes.emplace_back(std::make_shared<scope>(
             function_scope{
@@ -158,6 +171,10 @@ public:
 
     auto new_loop_scope() -> void
     {
+        if (d_scopes.empty()) {
+            print("Cannot add a loop scope before a global scope\n");
+            std::exit(1);
+        }
         d_scopes.emplace_back(std::make_shared<scope>(
             loop_scope{},
             current()->get_location_counter(),
@@ -168,7 +185,7 @@ public:
     auto pop_scope() -> void
     {
         if (d_scopes.empty()) {
-            print("Logic Error: Must also have at least one scope");
+            print("Tried to pop a scope, but there are none!");
             std::exit(1);
         }
         d_scopes.pop_back();

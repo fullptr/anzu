@@ -388,6 +388,41 @@ auto destruct_on_end_of_scope(compiler& com) -> void
     com.scopes.pop_scope();
 }
 
+class scope_guard
+{
+    compiler* d_com;
+    scope_guard(compiler& com) : d_com{&com} {}
+    scope_guard(const scope_guard&) = delete;
+    scope_guard& operator=(const scope_guard&) = delete;
+
+public:
+    ~scope_guard() { destruct_on_end_of_scope(*d_com); }
+
+    static auto global(compiler& com) -> scope_guard
+    {
+        com.scopes.new_global_scope();
+        return scope_guard{com};
+    }
+
+    static auto block(compiler& com, bool unsafe = false) -> scope_guard
+    {
+        com.scopes.new_block_scope(unsafe);
+        return scope_guard{com};
+    }
+
+    static auto function(compiler& com, const type_name& return_type) -> scope_guard
+    {
+        com.scopes.new_function_scope(return_type);
+        return scope_guard{com};
+    }
+
+    static auto loop(compiler& com) -> scope_guard
+    {
+        com.scopes.new_loop_scope();
+        return scope_guard{com};
+    }
+};
+
 // Given an expression, evaluate it and push to the top of the stack. If the expression
 // is an lvalue, copy constructors are invoked. If the expression is a reference, it is
 // automatically dereferenced
@@ -956,31 +991,28 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    com.scopes.new_block_scope(false);
+    const auto scope = scope_guard::block(com, false);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
-    destruct_on_end_of_scope(com);
 }
 
 void push_stmt(compiler& com, const node_unsafe_stmt& node)
 {
-    com.scopes.new_block_scope(true);
+    const auto scope = scope_guard::block(com, false);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
-    destruct_on_end_of_scope(com);
 }
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    com.scopes.new_loop_scope();
+    const auto loop_scope = scope_guard::loop(com);
     
     const auto begin_pos = com.program.size();
     {
-        com.scopes.new_block_scope(false);
+        const auto body_scope = scope_guard::block(com);
         body();
-        destruct_on_end_of_scope(com);
     }
     push_value(com.program, op::jump, begin_pos);
 
@@ -992,8 +1024,6 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
     for (const auto idx : control_flow.continues) {
         write_value(com.program, idx, begin_pos); // Jump to start
     }
-
-    destruct_on_end_of_scope(com);
 }
 
 void push_stmt(compiler& com, const node_loop_stmt& node)
@@ -1055,7 +1085,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    com.scopes.new_block_scope(false);
+    const auto scope = scope_guard::block(com);
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -1121,8 +1151,6 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         // main body
         push_stmt(com, *node.body);
     });
-
-    destruct_on_end_of_scope(com);
 }
 
 void push_stmt(compiler& com, const node_if_stmt& node)
@@ -1269,47 +1297,45 @@ auto compile_function_body(
     const auto jump_op = push_value(com.program, std::uint64_t{0});
     const auto begin_pos = com.program.size(); // First op code after the jump
     
-    com.scopes.new_function_scope(null_type());
-
     {
-        com.scopes.new_block_scope(false);
+        const auto scope = scope_guard::function(com, null_type());
 
-        declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
-        declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
-        for (const auto& arg : node_sig.params) {
-            const auto type = resolve_type(com, tok, arg.type);
-            sig.params.push_back({type});
-            declare_var(com, tok, arg.name, type);
-        }
+        {
+            const auto block_scope = scope_guard::block(com);
 
-        const auto return_type = resolve_type(com, tok, node_sig.return_type);
-        com.scopes.get_function_info().return_type = return_type;
-        sig.return_type = return_type;
-        for (const auto& function : com.functions[struct_type][name]) {
-            if (are_types_convertible_to(sig.params, function.sig.params)) {
-                tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
+            declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
+            declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
+            for (const auto& arg : node_sig.params) {
+                const auto type = resolve_type(com, tok, arg.type);
+                sig.params.push_back({type});
+                declare_var(com, tok, arg.name, type);
+            }
+
+            const auto return_type = resolve_type(com, tok, node_sig.return_type);
+            com.scopes.get_function_info().return_type = return_type;
+            sig.return_type = return_type;
+            for (const auto& function : com.functions[struct_type][name]) {
+                if (are_types_convertible_to(sig.params, function.sig.params)) {
+                    tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
+                }
+            }
+            com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
+
+            push_stmt(com, *body);
+
+            if (!function_ends_with_return(*body)) {
+                // A function returning null does not need a final return statement, and in this case
+                // we manually add a return value of null here.
+                if (sig.return_type == null_type()) {
+                    destruct_on_return(com);
+                    push_value(com.program, op::push_null);
+                    push_value(com.program, op::ret, std::uint64_t{1});
+                } else {
+                    tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
+                }
             }
         }
-        com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
-
-        push_stmt(com, *body);
-
-        if (!function_ends_with_return(*body)) {
-            // A function returning null does not need a final return statement, and in this case
-            // we manually add a return value of null here.
-            if (sig.return_type == null_type()) {
-                destruct_on_return(com);
-                push_value(com.program, op::push_null);
-                push_value(com.program, op::ret, std::uint64_t{1});
-            } else {
-                tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
-            }
-        }
-        
-        destruct_on_end_of_scope(com);
     }
-
-    destruct_on_end_of_scope(com);
     write_value(com.program, jump_op, com.program.size());
     return sig;
 }
@@ -1363,10 +1389,9 @@ void push_stmt(compiler& com, const node_return_stmt& node)
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
     // Create the temporary in a new scope, and use that to call it's destructor
-    com.scopes.new_block_scope(false);
+    const auto scope = scope_guard::block(com);
     const auto type = push_expr_val(com, *node.expr);
     declare_var(com, node.token, "#:temp", type);
-    destruct_on_end_of_scope(com);
 }
 
 void push_stmt(compiler& com, const node_delete_stmt& node)
@@ -1429,34 +1454,36 @@ auto compile(
 {
     auto com = compiler{};
     com.debug = debug;
-    auto done = std::set<std::filesystem::path>{};
-    auto remaining = std::set<std::filesystem::path>{}; 
-    for (const auto& [file, mod] : modules) {
-        remaining.emplace(file);
-    }
-    while (!remaining.empty()) {
-        const auto before = remaining.size();
-        std::erase_if(remaining, [&](const std::filesystem::path& curr) {
-            const auto& mod = modules.at(curr);
-            if (compiled_all_requirements(mod, done)) {
-                print("    {}\n", curr.lexically_relative(main_dir).string());
-                push_stmt(com, *mod.root);
-                done.emplace(curr);
-                return true;
+    {
+        const auto global_scope = scope_guard::global(com);
+        auto done = std::set<std::filesystem::path>{};
+        auto remaining = std::set<std::filesystem::path>{}; 
+        for (const auto& [file, mod] : modules) {
+            remaining.emplace(file);
+        }
+        while (!remaining.empty()) {
+            const auto before = remaining.size();
+            std::erase_if(remaining, [&](const std::filesystem::path& curr) {
+                const auto& mod = modules.at(curr);
+                if (compiled_all_requirements(mod, done)) {
+                    print("    {}\n", curr.lexically_relative(main_dir).string());
+                    push_stmt(com, *mod.root);
+                    done.emplace(curr);
+                    return true;
+                }
+                return false;
+            });
+            const auto after = remaining.size();
+            if (before == after) {
+                print("Cyclic dependency detected among the following files:");
+                for (const auto& mod : remaining) {
+                    print(" {}", mod.lexically_relative(main_dir).string());
+                }
+                print("\n");
+                std::exit(1);
             }
-            return false;
-        });
-        const auto after = remaining.size();
-        if (before == after) {
-            print("Cyclic dependency detected among the following files:");
-            for (const auto& mod : remaining) {
-                print(" {}", mod.lexically_relative(main_dir).string());
-            }
-            print("\n");
-            std::exit(1);
         }
     }
-    destruct_on_end_of_scope(com);
 
     if (!com.scopes.all().empty()) {
         print(
