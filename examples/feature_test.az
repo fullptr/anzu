@@ -249,28 +249,28 @@ println(typeof_example2(6u));
 
 
 
-## test destructors
-#struct destructible
-#{
-#    val: i64;
-#
-#    fn drop(self: destructible~)
-#    {
-#        print("dropping ");
-#        println(self.val);
-#    }
-#}
-#
-#{
-#    a := destructible(1);
-#    b := destructible(2);
-#}
-#
-#{
-#    v1 := vec3(1.0, 1.0, 1.0);
-#    v2 := vec3(2.0, 2.0, 2.0);
-#    v3 := vec3(3.0, 3.0, 3.0);
-#
-#    v1 = v3;
-#    println(v1.x);
-#}
+# test destructors
+struct destructible
+{
+    val: i64;
+
+    fn drop(self: destructible~)
+    {
+        print("dropping ");
+        println(self.val);
+    }
+}
+
+{
+    a := destructible(1);
+    b := destructible(2);
+}
+
+{
+    v1 := vec3(1.0, 1.0, 1.0);
+    v2 := vec3(2.0, 2.0, 2.0);
+    v3 := vec3(3.0, 3.0, 3.0);
+
+    v1 = v3;
+    println(v1.x);
+}
