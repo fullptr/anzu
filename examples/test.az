@@ -1,10 +1,8 @@
+{
+    a := 10;
+}
 
-
-
-
-fn foo() {
-    unsafe {
-        x := new i64;
-        delete x;
-    }
+{
+    idx := 0;
+    println(idx);
 }

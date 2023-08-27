@@ -151,25 +151,22 @@ public:
         return current();
     }
 
-    auto new_loop_scope() -> std::shared_ptr<scope>
+    auto new_loop_scope() -> void
     {
         d_scopes.emplace_back(std::make_shared<scope>(
             loop_scope{},
             current()->get_location_counter(),
             current()->is_unsafe()
         ));
-        return current();
     }
 
-    auto pop_scope() -> std::shared_ptr<scope>
+    auto pop_scope() -> void
     {
         if (d_scopes.empty()) {
             print("Logic Error: Must also have at least one scope");
             std::exit(1);
         }
-        auto s = d_scopes.back();
         d_scopes.pop_back();
-        return s;
     }
 
     auto declare(

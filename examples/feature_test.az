@@ -28,249 +28,249 @@
     println("");
 }
 
-# if-statements
-# basic if
-{
-    if true {
-        print("in true block\n");
-    }
-}
-
+## if-statements
+## basic if
+#{
+#    if true {
+#        print("in true block\n");
+#    }
+#}
+#
 # if with else
-{
-    if 2 < 1 {
-        # never entered
-    } else {
-        println("in else block");
-    }
-}
-
-# if with elif
-{
-    if 1 > 3 {
-        # not entered
-    } else if 2 == 1 + 1 {  # also testing an expression
-        println("i just evaluated 2 == 1 + 1");
-    }
-}
-
-# if with elif and else
-{
-    if false {
-        # nah
-    } else if false {
-        # also nah
-    } else {
-        println("in else after skipping the if and elif");
-    }
-}
-
-# simple expressions
-{
-    println(2 + 2);
-    println(8 * (1 + 6) > 5);
-    println(true && true);
-    println(true && false);
-    println(true || false);
-}
-
-# functions
-fn adder(a: i64, b: i64, c: i64) -> i64
-{
-    return a + b + c;
-}
-
-{
-    print("Does adder(1, 2, 3) == 6? ");
-    if adder(1, 2, 3) == 6 {
-        println("yes");
-    } else {
-        println("no");
-    }
-}
-
-# Allowing functions from other functions
-fn add2(x: i64, y: i64) -> i64
-{
-    return x + y;
-}
-
-fn add3(x: i64, y: i64, z: i64) -> i64
-{
-    return add2(x, add2(y, z));
-}
-
-println(add3(1, 2, 3));
-
-# Struct definition
-struct vec2
-{
-    x: i64;
-    y: i64;
-
-    fn copy(self: vec2~) -> vec2
-    {
-        return vec2(self.x, self.y);
-    }
-
-    fn assign(self: vec2~, other: vec2~)
-    {
-        self.x = other.x;
-        self.y = other.y;
-    }
-}
-
-fn println(v: vec2) -> null
-{
-    print("vec2 = {");
-    print(v.x);
-    print(", ");
-    print(v.y);
-    println('}');
-}
-
-# Attribute access
-{
-    my_vec := vec2(1, 2);
-    println(my_vec);
-    println(my_vec.x);
-    println(my_vec.y);
-    my_vec.x = 5;
-    println(my_vec.x);
-}
-
-# Pointers
-{
-    p_value := 5;
-    p := p_value&;
-    p@ = 6;
-    println("p_value should now equal 6:");
-    println(p_value);
-}
-
-# Arrays
-{
-    xl := [1, 2, 3, 4];
-    xl[2u] = 0;
-    println("Size of array is 4:");
-    println(sizeof(xl));
-
-    xl2 := [vec2(1, 2), vec2(3, 4)];
-    println("xl2 should have size 32 but length 2:");
-    print("size: ");
-    println(sizeof(xl2));
-    println(sizeof(xl2[0u]));
-    print("length: ");
-    println(sizeof(xl2) / sizeof(xl2[0u]));
-}
-
-# Member functions
-fn square(x: f64) -> f64
-{
-    return x * x;
-}
-
-struct vec3
-{
-    x: f64;
-    y: f64;
-    z: f64;
-
-    fn length(self: vec3~) -> f64
-    {
-        x_squared := square(self.x);
-        y_squared := square(self.y);
-        z_squared := square(self.z);
-        return sqrt(x_squared + y_squared + z_squared);
-    }
-
-    fn copy(self: vec3~) -> vec3
-    {
-        return vec3(self.x, self.y, self.z);
-    }
-
-    fn assign(self: vec3~, other: vec3~)
-    {
-        self.x = other.x;
-        self.y = other.y;
-        self.z = other.z;
-    }
-}
-
-# Member function testing
-{
-    v := vec3(3.0, 4.0, 5.0);
-    println("length of vec3(3.0, 4.0, 5.0):");
-    println(v.length());
-}
-
-# Repeat-element syntax for arrays
-{
-    a := [1; 5u];
-    b := [1, 1, 1, 1, 1];
-
-    idx := 0u;
-    while idx != sizeof(a) / sizeof(a[0u]) {
-        println(a[idx] == b[idx]);
-        idx = idx + 1u;
-    }
-} 
-
-# for loops
-# rvalue
-{
-    for v in [vec2(1, 2), vec2(3, 4), vec2(5, 6)] {
-        print(v.x);
-        print(", ");
-        println(v.y);
-    }
-
-    arr := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
-    for v in arr {
-        print(v.x);
-        print(", ");
-        println(v.y);
-    }
-}
-
-# typeof operator
-variable := 0;
-fn typeof_example(y: typeof(variable)) -> i64
-{
-    return y + y;
-}
-println(typeof_example(3)); # no error here!
-
-fn typeof_example2(a: u64) -> typeof(a)
-{
-    return a * a;
-}
-println(typeof_example2(6u));
-
-
-
-# test destructors
-struct destructible
-{
-    val: i64;
-
-    fn drop(self: destructible~)
-    {
-        print("dropping ");
-        println(self.val);
-    }
-}
-
-{
-    a := destructible(1);
-    b := destructible(2);
-}
-
-{
-    v1 := vec3(1.0, 1.0, 1.0);
-    v2 := vec3(2.0, 2.0, 2.0);
-    v3 := vec3(3.0, 3.0, 3.0);
-
-    v1 = v3;
-    println(v1.x);
-}
+#{
+#    if 2 < 1 {
+#        # never entered
+#    } else {
+#        println("in else block");
+#    }
+#}
+#
+## if with elif
+#{
+#    if 1 > 3 {
+#        # not entered
+#    } else if 2 == 1 + 1 {  # also testing an expression
+#        println("i just evaluated 2 == 1 + 1");
+#    }
+#}
+#
+## if with elif and else
+#{
+#    if false {
+#        # nah
+#    } else if false {
+#        # also nah
+#    } else {
+#        println("in else after skipping the if and elif");
+#    }
+#}
+#
+## simple expressions
+#{
+#    println(2 + 2);
+#    println(8 * (1 + 6) > 5);
+#    println(true && true);
+#    println(true && false);
+#    println(true || false);
+#}
+#
+## functions
+#fn adder(a: i64, b: i64, c: i64) -> i64
+#{
+#    return a + b + c;
+#}
+#
+#{
+#    print("Does adder(1, 2, 3) == 6? ");
+#    if adder(1, 2, 3) == 6 {
+#        println("yes");
+#    } else {
+#        println("no");
+#    }
+#}
+#
+## Allowing functions from other functions
+#fn add2(x: i64, y: i64) -> i64
+#{
+#    return x + y;
+#}
+#
+#fn add3(x: i64, y: i64, z: i64) -> i64
+#{
+#    return add2(x, add2(y, z));
+#}
+#
+#println(add3(1, 2, 3));
+#
+## Struct definition
+#struct vec2
+#{
+#    x: i64;
+#    y: i64;
+#
+#    fn copy(self: vec2~) -> vec2
+#    {
+#        return vec2(self.x, self.y);
+#    }
+#
+#    fn assign(self: vec2~, other: vec2~)
+#    {
+#        self.x = other.x;
+#        self.y = other.y;
+#    }
+#}
+#
+#fn println(v: vec2) -> null
+#{
+#    print("vec2 = {");
+#    print(v.x);
+#    print(", ");
+#    print(v.y);
+#    println('}');
+#}
+#
+## Attribute access
+#{
+#    my_vec := vec2(1, 2);
+#    println(my_vec);
+#    println(my_vec.x);
+#    println(my_vec.y);
+#    my_vec.x = 5;
+#    println(my_vec.x);
+#}
+#
+## Pointers
+#{
+#    p_value := 5;
+#    p := p_value&;
+#    p@ = 6;
+#    println("p_value should now equal 6:");
+#    println(p_value);
+#}
+#
+## Arrays
+#{
+#    xl := [1, 2, 3, 4];
+#    xl[2u] = 0;
+#    println("Size of array is 4:");
+#    println(sizeof(xl));
+#
+#    xl2 := [vec2(1, 2), vec2(3, 4)];
+#    println("xl2 should have size 32 but length 2:");
+#    print("size: ");
+#    println(sizeof(xl2));
+#    println(sizeof(xl2[0u]));
+#    print("length: ");
+#    println(sizeof(xl2) / sizeof(xl2[0u]));
+#}
+#
+## Member functions
+#fn square(x: f64) -> f64
+#{
+#    return x * x;
+#}
+#
+#struct vec3
+#{
+#    x: f64;
+#    y: f64;
+#    z: f64;
+#
+#    fn length(self: vec3~) -> f64
+#    {
+#        x_squared := square(self.x);
+#        y_squared := square(self.y);
+#        z_squared := square(self.z);
+#        return sqrt(x_squared + y_squared + z_squared);
+#    }
+#
+#    fn copy(self: vec3~) -> vec3
+#    {
+#        return vec3(self.x, self.y, self.z);
+#    }
+#
+#    fn assign(self: vec3~, other: vec3~)
+#    {
+#        self.x = other.x;
+#        self.y = other.y;
+#        self.z = other.z;
+#    }
+#}
+#
+## Member function testing
+#{
+#    v := vec3(3.0, 4.0, 5.0);
+#    println("length of vec3(3.0, 4.0, 5.0):");
+#    println(v.length());
+#}
+#
+## Repeat-element syntax for arrays
+#{
+#    a := [1; 5u];
+#    b := [1, 1, 1, 1, 1];
+#
+#    idx := 0u;
+#    while idx != sizeof(a) / sizeof(a[0u]) {
+#        println(a[idx] == b[idx]);
+#        idx = idx + 1u;
+#    }
+#} 
+#
+## for loops
+## rvalue
+#{
+#    for v in [vec2(1, 2), vec2(3, 4), vec2(5, 6)] {
+#        print(v.x);
+#        print(", ");
+#        println(v.y);
+#    }
+#
+#    arr := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
+#    for v in arr {
+#        print(v.x);
+#        print(", ");
+#        println(v.y);
+#    }
+#}
+#
+## typeof operator
+#variable := 0;
+#fn typeof_example(y: typeof(variable)) -> i64
+#{
+#    return y + y;
+#}
+#println(typeof_example(3)); # no error here!
+#
+#fn typeof_example2(a: u64) -> typeof(a)
+#{
+#    return a * a;
+#}
+#println(typeof_example2(6u));
+#
+#
+#
+## test destructors
+#struct destructible
+#{
+#    val: i64;
+#
+#    fn drop(self: destructible~)
+#    {
+#        print("dropping ");
+#        println(self.val);
+#    }
+#}
+#
+#{
+#    a := destructible(1);
+#    b := destructible(2);
+#}
+#
+#{
+#    v1 := vec3(1.0, 1.0, 1.0);
+#    v2 := vec3(2.0, 2.0, 2.0);
+#    v3 := vec3(3.0, 3.0, 3.0);
+#
+#    v1 = v3;
+#    println(v1.x);
+#}

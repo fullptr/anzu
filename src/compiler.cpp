@@ -377,8 +377,8 @@ auto destruct_on_end_of_scope(compiler& com) -> void
         call_destructor_named_var(com, variable.name, variable.type);
     }
 
-    // deallocate all space in used by the scope
-    if (scope_size > 0) {
+    // deallocate all space used by the scope
+    if (scope_size > 0 && (current->is<exp::block_scope>() || current->is<exp::loop_scope>())) {
         push_value(com.program, op::pop, scope_size);
     }
 
@@ -971,7 +971,7 @@ void push_stmt(compiler& com, const node_unsafe_stmt& node)
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    const auto block_scope = com.scopes.new_loop_scope();
+    com.scopes.new_loop_scope();
     
     const auto begin_pos = com.program.size();
     {
@@ -982,7 +982,7 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
     push_value(com.program, op::jump, begin_pos);
 
     // Fix up the breaks and continues
-    const auto& control_flow = block_scope->as<exp::loop_scope>();
+    const auto& control_flow = com.scopes.get_loop_info();
     for (const auto idx : control_flow.breaks) {
         write_value(com.program, idx, com.program.size()); // Jump past end
     }
@@ -1265,9 +1265,8 @@ auto compile_function_body(
     push_value(com.program, op::jump);
     const auto jump_op = push_value(com.program, std::uint64_t{0});
     const auto begin_pos = com.program.size(); // First op code after the jump
-    const auto return_type = resolve_type(com, tok, node_sig.return_type);
-
-    com.scopes.new_function_scope(return_type);
+    
+    com.scopes.new_function_scope(null_type());
 
     {
         com.scopes.new_block_scope(false);
@@ -1280,6 +1279,8 @@ auto compile_function_body(
             declare_var(com, tok, arg.name, type);
         }
 
+        const auto return_type = resolve_type(com, tok, node_sig.return_type);
+        com.scopes.get_function_info().return_type = return_type;
         sig.return_type = return_type;
         for (const auto& function : com.functions[struct_type][name]) {
             if (are_types_convertible_to(sig.params, function.sig.params)) {
@@ -1305,7 +1306,6 @@ auto compile_function_body(
         destruct_on_end_of_scope(com);
     }
 
-    destruct_on_end_of_scope(com);
     write_value(com.program, jump_op, com.program.size());
     return sig;
 }
