@@ -1309,6 +1309,7 @@ auto compile_function_body(
         destruct_on_end_of_scope(com);
     }
 
+    destruct_on_end_of_scope(com);
     write_value(com.program, jump_op, com.program.size());
     return sig;
 }
@@ -1452,10 +1453,18 @@ auto compile(
                 print(" {}", mod.lexically_relative(main_dir).string());
             }
             print("\n");
-            exit(1);
+            std::exit(1);
         }
     }
     destruct_on_end_of_scope(com);
+
+    if (!com.scopes.all().empty()) {
+        print(
+            "Logic Error: There are {} unhandled scopes at the end of compilation\n",
+            com.scopes.all().size()
+        );
+        std::exit(1);
+    }
 
     auto read_only = std::vector<std::byte>{};
     read_only.reserve(com.read_only_data.size());

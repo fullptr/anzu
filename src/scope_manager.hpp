@@ -134,17 +134,16 @@ public:
         return d_scopes.back();
     }
 
-    auto new_block_scope(bool unsafe) -> std::shared_ptr<scope>
+    auto new_block_scope(bool unsafe) -> void
     {
         d_scopes.emplace_back(std::make_shared<scope>(
             block_scope{},
             current()->get_location_counter(),
             unsafe || current()->is_unsafe()
         ));
-        return current();
     }
 
-    auto new_function_scope(const type_name& return_type) -> std::shared_ptr<scope>
+    auto new_function_scope(const type_name& return_type) -> void
     {
         auto next = std::make_shared<std::size_t>(0);
         d_scopes.emplace_back(std::make_shared<scope>(
@@ -155,7 +154,6 @@ public:
             next,
             current()->is_unsafe()
         ));
-        return current();
     }
 
     auto new_loop_scope() -> void
