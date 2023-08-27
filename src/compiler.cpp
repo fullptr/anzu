@@ -378,7 +378,9 @@ auto destruct_on_end_of_scope(compiler& com) -> void
     }
 
     // deallocate all space used by the scope
-    if (scope_size > 0) {
+    // optimisation here; no need to explicitly dealloc the space as the runtime does it
+    // TODO: Look into making this the place that deallocs space for functions?
+    if (scope_size > 0 && !current->is<exp::function_scope>()) {
         push_value(com.program, op::pop, scope_size);
     }
 

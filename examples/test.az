@@ -1,18 +1,6 @@
+variable := 0;
+fn typeof_example(y: typeof(variable)) -> i64
 {
-    a := 10;
+    return y + y;
 }
-
-f := 6;
-
-{
-    idx := 0;
-    println(idx);
-}
-
-b := 5;
-
-fn foo(x: i64) {
-    y := x;
-}
-
-c := 10;
+println(typeof_example(3)); # no error here!
