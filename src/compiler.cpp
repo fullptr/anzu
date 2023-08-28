@@ -675,8 +675,8 @@ auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_na
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    auto lhs = push_val_underlying(com, *node.lhs);
-    auto rhs = push_val_underlying(com, *node.rhs);
+    auto lhs = push_val_underlying(com, *node.lhs).remove_const();
+    auto rhs = push_val_underlying(com, *node.rhs).remove_const();
     if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 
     const auto& type = lhs;
