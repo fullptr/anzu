@@ -55,6 +55,7 @@ auto type_name::remove_const() const -> type_name
     return *std::get<type_const>(*this).inner_type;
 }
 
+<<<<<<< HEAD
 auto to_string_paren(const type_name& type) -> std::string
 {
     const auto str = to_string(type);
@@ -63,6 +64,13 @@ auto to_string_paren(const type_name& type) -> std::string
     }
     return str;
 }
+=======
+auto type_name::remove_cr() const -> type_name
+{
+    return remove_const().remove_ref();
+}
+
+>>>>>>> ff0d37f (Start to remove the are_types_convertible function, push_function_arg no longer uses it)
 
 auto to_string(const type_name& type) -> std::string
 {

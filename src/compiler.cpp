@@ -778,16 +778,28 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> void
 {
     const auto actual = type_of_expr(com, expr);
-    tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
-
+    print("pushing actual = {}, expected = {}\n", actual, expected);
+    
     if (is_span_type(expected) && is_array_type(actual)) {
+        print("Binding an array to a span\n");
         push_expr_ptr(com, expr);
         push_value(com.program, op::push_u64, array_length(actual));
-    } else if (expected.is_ref()) {
-        push_ptr_underlying(com, expr);
-    } else {
-        push_object_copy(com, expr, tok);
+        return;
     }
+    
+    if (expected.remove_cr() == actual.remove_cr() && expected.is_ref() && !actual.is_const()) {
+        print("Binding a non-const value to a reference\n");
+        push_ptr_underlying(com, expr);
+        return;
+    }
+    
+    if (actual == expected) {
+        print("Binding identical types\n");
+        push_object_copy(com, expr, tok);
+        return;
+    }
+
+    tok.error("Could not convert arg of type {} to {}", actual, expected);
 }
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name

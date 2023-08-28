@@ -98,6 +98,8 @@ struct type_name : public std::variant<
     auto is_const() const -> bool;
     auto add_const() const -> type_name;
     auto remove_const() const -> type_name;
+
+    auto remove_cr() const -> type_name;
 };
 
 using type_names = std::vector<type_name>;
