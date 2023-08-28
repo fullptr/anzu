@@ -336,8 +336,10 @@ auto is_type_convertible_to(const type_name& type, const type_name& expected) ->
         type == expected
 
         // References can convert to a non-ref via copy-construction, and
+        || (type.is_ref() && type.remove_ref() == expected)
+
         // non-refs convert to references by taking the address
-        || (type.is_ref() && type.remove_ref() == expected.remove_ref())
+        || (!type.is_ref() && type.add_ref() == expected)
 
         // Arrays can convert to spans if the underlying types match
         || (is_array_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected))

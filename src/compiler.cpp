@@ -448,14 +448,14 @@ public:
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
     const auto type = type_of_expr(com, expr);
-    const auto real_type = remove_reference(type);
+    const auto real_type = type.remove_ref().remove_const();
 
     if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
         push_val_underlying(com, expr);
     }
 
     else if (is_array_type(type)) {
-        const auto etype = inner_type(type);
+        const auto etype = inner_type(type).remove_const();
         const auto esize = com.types.size_of(etype);
 
         const auto params = copy_fn_params(etype);
