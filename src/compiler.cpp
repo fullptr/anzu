@@ -1319,42 +1319,38 @@ auto compile_function_body(
     {
         const auto scope = scope_guard::function(com, null_type());
 
-        {
-            const auto block_scope = scope_guard::block(com);
+        declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
+        declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
+        for (const auto& arg : node_sig.params) {
+            const auto type = resolve_type(com, tok, arg.type);
+            sig.params.push_back({type});
+            declare_var(com, tok, arg.name, type);
+        }
 
-            declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
-            declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
-            for (const auto& arg : node_sig.params) {
-                const auto type = resolve_type(com, tok, arg.type);
-                sig.params.push_back({type});
-                declare_var(com, tok, arg.name, type);
+        sig.return_type = resolve_type(com, tok, node_sig.return_type);
+        com.scopes.get_function_info().return_type = sig.return_type;
+        for (const auto& function : com.functions[struct_type][name]) {
+            if (are_types_convertible_to(sig.params, function.sig.params)) {
+                tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
             }
+        }
+        com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
 
-            const auto return_type = resolve_type(com, tok, node_sig.return_type);
-            com.scopes.get_function_info().return_type = return_type;
-            sig.return_type = return_type;
-            for (const auto& function : com.functions[struct_type][name]) {
-                if (are_types_convertible_to(sig.params, function.sig.params)) {
-                    tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
-                }
-            }
-            com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
+        push_stmt(com, *body);
 
-            push_stmt(com, *body);
-
-            if (!function_ends_with_return(*body)) {
-                // A function returning null does not need a final return statement, and in this case
-                // we manually add a return value of null here.
-                if (sig.return_type == null_type()) {
-                    destruct_on_return(com);
-                    push_value(com.program, op::push_null);
-                    push_value(com.program, op::ret, std::uint64_t{1});
-                } else {
-                    tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
-                }
+        if (!function_ends_with_return(*body)) {
+            // A function returning null does not need a final return statement, and in this case
+            // we manually add a return value of null here.
+            if (sig.return_type == null_type()) {
+                destruct_on_return(com);
+                push_value(com.program, op::push_null);
+                push_value(com.program, op::ret, std::uint64_t{1});
+            } else {
+                tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
             }
         }
     }
+
     write_value(com.program, jump_op, com.program.size());
     return sig;
 }
