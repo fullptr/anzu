@@ -571,7 +571,11 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     const bool is_const = tokens.consume_maybe(token_type::kw_const);
     stmt.expr = parse_expression(tokens);
     if (is_const) {
-        // TODO
+        auto const_node = std::make_shared<node_expr>();
+        auto& inner_const_node = const_node->emplace<node_const_expr>();
+        inner_const_node.token = stmt.token;
+        inner_const_node.expr = stmt.expr;
+        stmt.expr = const_node;
     }
     tokens.consume_only(token_type::semicolon);
     return node;
