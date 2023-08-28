@@ -331,10 +331,23 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
 
 auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool
 {
-    return type == expected
-        || (is_reference_type(type) && inner_type(type) == expected)
-        || (is_reference_type(expected) && inner_type(expected) == type)
-        || (is_array_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected));
+    return
+        // Trivial, no conversion needed
+        type == expected
+
+        // References can convert to a non-ref via copy-construction, and
+        // non-refs convert to references by taking the address
+        || (type.is_ref() && type.remove_ref() == expected.remove_ref())
+
+        // Arrays can convert to spans if the underlying types match
+        || (is_array_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected))
+        
+        // Non-const type can bind to a bind type
+        || (type.add_const() == expected)
+
+        // So long as we're not dealing with references, const objects can bind to non-const
+        // arguments because we can make a copy
+        || (!expected.is_ref() && !expected.is_const() && type.remove_const() == expected);
 }
 
 // Checks if the set of given args is convertible to the signature for a function.
