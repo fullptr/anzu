@@ -608,6 +608,11 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     return inner;
 }
 
+auto push_expr_ptr(compiler& com, const node_const_expr& node) -> type_name
+{
+    return push_expr_ptr(com, *node.expr).add_const();
+}
+
 [[noreturn]] auto push_expr_ptr(compiler& com, const auto& node) -> type_name
 {
     node.token.error("cannot take address of a non-lvalue\n");
@@ -993,6 +998,11 @@ auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
     // object; in order words we create a new reference to the same underlying object, rather
     // than creating a reference to a reference.
     return push_ptr_underlying(com, *node.expr).add_ref();
+}
+
+auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
+{
+    return push_expr_val(com, *node.expr).add_const();
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case

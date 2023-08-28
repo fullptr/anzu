@@ -568,7 +568,11 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.name = parse_name(tokens);
     stmt.token = tokens.consume_only(token_type::colon_equal);
+    const bool is_const = tokens.consume_maybe(token_type::kw_const);
     stmt.expr = parse_expression(tokens);
+    if (is_const) {
+        // TODO
+    }
     tokens.consume_only(token_type::semicolon);
     return node;
 }
