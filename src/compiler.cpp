@@ -448,7 +448,7 @@ public:
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
     const auto type = type_of_expr(com, expr);
-    const auto real_type = type.remove_ref().remove_const();
+    const auto real_type = type.remove_cr();
 
     if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
         push_val_underlying(com, expr);
@@ -480,7 +480,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         push_function_call(com, *copy);
     }
 
-    return real_type;
+    return type.remove_ref(); // Keep constness intact
 }
 
 // Gets the type of the expression by compiling it, then removes the added
@@ -775,31 +775,29 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
-auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> void
+[[nodiscard]] auto push_function_arg(
+    compiler& com, const node_expr& expr, const type_name& expected, const token& tok
+) -> bool
 {
     const auto actual = type_of_expr(com, expr);
-    print("pushing actual = {}, expected = {}\n", actual, expected);
     
     if (is_span_type(expected) && is_array_type(actual)) {
-        print("Binding an array to a span\n");
         push_expr_ptr(com, expr);
         push_value(com.program, op::push_u64, array_length(actual));
-        return;
+        return true;
     }
     
     if (expected.remove_cr() == actual.remove_cr() && expected.is_ref() && !actual.is_const()) {
-        print("Binding a non-const value to a reference\n");
         push_ptr_underlying(com, expr);
-        return;
+        return true;
     }
     
     if (actual == expected) {
-        print("Binding identical types\n");
         push_object_copy(com, expr, tok);
-        return;
+        return true;
     }
 
-    tok.error("Could not convert arg of type {} to {}", actual, expected);
+    return false;
 }
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
@@ -815,7 +813,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             node.token.assert_eq(expected_params.size(), node.args.size(),
                                  "incorrect number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
+                if (!push_function_arg(com, *node.args.at(i), expected_params[i], node.token)) {
+                    node.token.error(
+                        "Could not convert arg of type '{}' to '{}'",
+                        type_of_expr(com, *node.args.at(i)),
+                        expected_params[i]
+                    );
+                }
             }
             if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
                 push_value(com.program, op::push_null);
@@ -834,7 +838,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto func = get_function(com, struct_type, inner.name, params); func) {
             push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
+                if (!push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token)) {
+                    node.token.error(
+                        "Could not convert arg of type '{}' to '{}'",
+                        type_of_expr(com, *node.args.at(i)),
+                        func->sig.params[i]
+                    );
+                }
             }
             push_function_call(com, *func);
             return func->sig.return_type;
@@ -859,7 +869,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
             const auto& builtin = get_builtin(*b);
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
+                if (!push_function_arg(com, *node.args.at(i), builtin.args[i], node.token)) {
+                    node.token.error(
+                        "Could not convert arg of type '{}' to '{}'",
+                        type_of_expr(com, *node.args.at(i)),
+                        builtin.args[i]
+                    );
+                }
             }
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;
@@ -875,7 +891,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     push_value(com.program, op::push_call_frame);
     auto args_size = 2 * sizeof(std::uint64_t);
     for (std::size_t i = 0; i != node.args.size(); ++i) {
-        push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
+        if (!push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token)) {
+            node.token.error(
+                "Could not convert arg of type '{}' to '{}'",
+                type_of_expr(com, *node.args.at(i)),
+                sig.param_types[i]
+            );
+        }
         args_size += com.types.size_of(sig.param_types[i]);
     }
 
@@ -1265,6 +1287,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
         return push_object_copy(com, *node.expr, node.token);
     }();
 
+    print("declaring val {} of type {}\n", node.name, type);
     declare_var(com, node.token, node.name, type);
 }
 
@@ -1352,6 +1375,9 @@ auto compile_function_body(
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.scopes.get_function_info().return_type = sig.return_type;
         for (const auto& function : com.functions[struct_type][name]) {
+            // TODO Remove use of this, use push_function_arg instead using the same trick as with
+            // type_of_expr where we compile the actual expression then remove the op codes from
+            // the program
             if (are_types_convertible_to(sig.params, function.sig.params)) {
                 tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
             }
