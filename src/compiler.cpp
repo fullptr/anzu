@@ -1293,7 +1293,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 {
-    return lhs.remove_ref() == rhs.remove_ref();
+    return lhs.remove_cr() == rhs.remove_cr() && !lhs.is_const();
 }
 
 // TODO: Fix assigning from a ref to a ref (currentl)
@@ -1302,7 +1302,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     const auto rhs = type_of_expr(com, *node.expr);
     const auto lhs = type_of_expr(com, *node.position);
     
-    node.token.assert(is_assignable(lhs, rhs), "invalid assignment (lhs={}, rhs={})", lhs, rhs);
+    node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs, lhs);
 
     if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(remove_reference(rhs))) {
         push_val_underlying(com, *node.expr);
