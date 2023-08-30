@@ -69,7 +69,7 @@ auto to_string(const type_array& type) -> std::string
 
 auto to_string(const type_ptr& type) -> std::string
 {
-    return std::format("&{}", to_string(*type.inner_type));
+    return std::format("{}&", to_string(*type.inner_type));
 }
 
 auto to_string(const type_span& type) -> std::string
@@ -79,7 +79,12 @@ auto to_string(const type_span& type) -> std::string
 
 auto to_string(const type_function_ptr& type) -> std::string
 {
-    return std::format("({}) -> {}", format_comma_separated(type.param_types), *type.return_type);
+    return std::format(
+        "{}({}) -> {}",
+        to_string(token_type::kw_function),
+        format_comma_separated(type.param_types),
+        *type.return_type
+    );
 }
 
 auto to_string(const type_reference& type) -> std::string

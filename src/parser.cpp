@@ -352,7 +352,8 @@ auto parse_simple_type(tokenstream& tokens) -> type_name
 auto parse_type(tokenstream& tokens) -> type_name
 {
     // Function pointers
-    if (tokens.consume_maybe(token_type::left_paren)) {
+    if (tokens.consume_maybe(token_type::kw_function)) {
+        tokens.consume_only(token_type::left_paren);
         auto ret = type_function_ptr{};
         tokens.consume_comma_separated_list(token_type::right_paren, [&]{
             ret.param_types.push_back(parse_type(tokens));
