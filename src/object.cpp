@@ -67,7 +67,7 @@ auto to_string_paren(const type_name& type) -> std::string
 =======
 auto type_name::remove_cr() const -> type_name
 {
-    return remove_const().remove_ref();
+    return remove_ref().remove_const();
 }
 
 >>>>>>> ff0d37f (Start to remove the are_types_convertible function, push_function_arg no longer uses it)
