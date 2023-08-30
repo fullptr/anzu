@@ -7,20 +7,22 @@ struct string
     fn append_char(self: string~, c: char)
     {
         if (self.size == self.data.size()) {
-            new_cap := 2u * self.data.size();
-            if new_cap == 0u {
-                new_cap = 1u;
-            }
-            newdata := new char : new_cap;
+            unsafe {
+                new_cap := 2u * self.data.size();
+                if new_cap == 0u {
+                    new_cap = 1u;
+                }
+                newdata := new char : new_cap;
 
-            idx := 0u;
-            while idx != self.size {
-                newdata[idx] = self.data[idx];
-                idx = idx + 1u;
-            }
+                idx := 0u;
+                while idx != self.size {
+                    newdata[idx] = self.data[idx];
+                    idx = idx + 1u;
+                }
 
-            delete self.data;
-            self.data = newdata;
+                delete self.data;
+                self.data = newdata;
+            }
         }
         self.data[self.size] = c;
         self.size = self.size + 1u;      
@@ -55,7 +57,7 @@ struct string
         self.append(value);
     }
 
-    fn transform(self: string~, func: (char&) -> null)
+    fn transform(self: string~, func: fn(char&) -> null)
     {
         span := self.get();
         for c in span {
@@ -67,22 +69,28 @@ struct string
 
     fn drop(self: string~)
     {
-        delete self.data;
+        unsafe {
+            delete self.data;
+        }
     }
 
     fn copy(self: string~) -> string
     {
-        cpy := string(new char : self.data.size(), self.size);
-        cpy.append(self.get());
-        return cpy;
+        unsafe {
+            cpy := string(new char : self.data.size(), self.size);
+            cpy.append(self.get());
+            return cpy;
+        }
     }
 
     fn assign(self: string~, other: string~)
     {
         # Resize self if needed
         if self.data.size() < other.data.size() {
-            delete self.data;
-            self.data = new char : other.data.size();
+            unsafe {
+                delete self.data;
+                self.data = new char : other.data.size();
+            }
         }
 
         # Copy over the data
@@ -99,7 +107,9 @@ struct string
 fn new_string() -> string
 {
     # We don't have nullptr yet, so we must allocate some space here for now
-    return string(new char : 1u, 0u);
+    unsafe {
+        return string(new char : 1u, 0u);
+    }
 }
 
 fn new_string(data: char[]) -> string
