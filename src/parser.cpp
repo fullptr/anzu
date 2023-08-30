@@ -351,13 +351,6 @@ auto parse_simple_type(tokenstream& tokens) -> type_name
 
 auto parse_type(tokenstream& tokens) -> type_name
 {
-    // Parens take highest precendence
-    if (tokens.consume_maybe(token_type::left_paren)) {
-        auto type = parse_type(tokens);
-        tokens.consume_only(token_type::right_paren);
-        return type;
-    }
-
     // Function pointers
     if (tokens.consume_maybe(token_type::kw_function)) {
         tokens.consume_only(token_type::left_paren);
@@ -370,7 +363,14 @@ auto parse_type(tokenstream& tokens) -> type_name
         return ret;
     }
 
-    auto type = parse_simple_type(tokens);
+    auto type = null_type();
+    if (tokens.consume_maybe(token_type::left_paren)) {
+        type = parse_type(tokens);
+        tokens.consume_only(token_type::right_paren);
+    } else {
+        type = parse_simple_type(tokens);
+    }
+
     while (true) {
         if (tokens.consume_maybe(token_type::left_bracket)) {
             if (tokens.consume_maybe(token_type::right_bracket)) {
