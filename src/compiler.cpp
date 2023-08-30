@@ -240,14 +240,25 @@ auto get_constructor_params(const compiler& com, const type_name& type) -> std::
     return params;
 }
 
+// TODO: Generalise further
 auto function_ends_with_return(const node_stmt& node) -> bool
 {
     if (std::holds_alternative<node_sequence_stmt>(node)) {
         const auto& seq = std::get<node_sequence_stmt>(node).sequence;
-        if (seq.empty() || !std::holds_alternative<node_return_stmt>(*seq.back())) {
+        if (seq.empty()) {
             return false;
         }
-        return true;
+        if (std::holds_alternative<node_return_stmt>(*seq.back())) {
+            return true;
+        }
+        if (std::holds_alternative<node_unsafe_stmt>(*seq.back())) {
+            const auto& back = std::get<node_unsafe_stmt>(*seq.back());
+            if (back.sequence.empty() || !std::holds_alternative<node_return_stmt>(*back.sequence.back())) {
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
     return std::holds_alternative<node_return_stmt>(node);
 }
