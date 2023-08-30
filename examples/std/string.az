@@ -118,6 +118,3 @@ fn new_string(data: char[]) -> string
     str.append(data);
     return str;
 }
-
-s := new_string("hello world");
-println(s.get());
