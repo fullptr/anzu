@@ -34,7 +34,6 @@ auto unary_op(bytecode_context& ctx) -> void
 {
     static constexpr auto op = Op<Type>{};
     const auto obj = pop_value<Type>(ctx.stack);
-    print("obj = {}\n", obj);
     push_value(ctx.stack, op(obj));
 }
 

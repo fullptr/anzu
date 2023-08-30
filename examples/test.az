@@ -1,2 +1,21 @@
 
-x := -5;
+
+fn foo(x: fn(i64) -> bool[3u])
+{
+    y := x(-5);
+    println(y[0u]);
+    println(y[1u]);
+    println(y[2u]);
+
+    y = x(5);
+    println(y[0u]);
+    println(y[1u]);
+    println(y[2u]);
+}
+
+fn cb(x1: i64) -> bool[3u]
+{
+    return [x1 > 0, x1 < 0, x1 == 0];
+}
+
+foo(cb);
