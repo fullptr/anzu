@@ -567,8 +567,8 @@ auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 {
     const auto type = push_expr_val(com, *node.expr); // Push the address
-    node.token.assert(is_ptr_type(type), "cannot use deref operator on non-ptr type '{}'", type);
-    return inner_type(type);
+    node.token.assert(is_ptr_type(type.remove_const()), "cannot use deref operator on non-ptr type '{}'", type);
+    return inner_type(type.remove_const());
 }
 
 auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name

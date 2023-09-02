@@ -1,11 +1,11 @@
 
 
-struct foo
-{
-    x: i64;
-    y: i64;
-};
+x := 1;
 
-f := const foo(1, 2);
-f.y = 5;
-println(f.y);
+p := const x&;
+
+
+p@ = 10;
+
+y := 20;
+p = y&;
