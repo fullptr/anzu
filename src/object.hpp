@@ -5,6 +5,7 @@
 #include <variant>
 #include <unordered_map>
 #include <vector>
+#include <utility>
 
 #include "utility/print.hpp"
 #include "utility/value_ptr.hpp"
@@ -98,6 +99,9 @@ struct type_name : public std::variant<
     auto is_const() const -> bool;
     auto add_const() const -> type_name;
     auto remove_const() const -> type_name;
+
+    auto strip_const() const -> std::pair<type_name, bool>;
+    auto strip_qualifiers() const -> std::tuple<type_name, bool, bool>;
 
     auto remove_cr() const -> type_name;
 };

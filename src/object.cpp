@@ -55,6 +55,18 @@ auto type_name::remove_const() const -> type_name
     return *std::get<type_const>(*this).inner_type;
 }
 
+auto type_name::strip_const() const -> std::pair<type_name, bool>
+{
+    return {remove_const(), is_const()};
+}
+
+auto type_name::strip_qualifiers() const -> std::tuple<type_name, bool, bool>
+{
+    const auto this_is_ref = is_ref();
+    const auto [type, this_is_const] = remove_ref().strip_const();
+    return {type, this_is_const, this_is_ref};
+}
+
 auto type_name::remove_cr() const -> type_name
 {
     return remove_ref().remove_const();
@@ -291,8 +303,8 @@ auto inner_type(const type_name& t) -> type_name
 
 auto array_length(const type_name& t) -> std::size_t
 {
-    if (is_array_type(t)) {
-        return std::get<type_array>(t).count;
+    if (is_array_type(t.remove_const())) {
+        return std::get<type_array>(t.remove_const()).count;
     }
     print("COMPILER ERROR: Tried to get length of a non-array type\n");
     std::exit(1);
