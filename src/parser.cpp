@@ -690,7 +690,7 @@ auto parse_continue_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    const auto drain_selicolons = scope_exit([&] {
+    const auto drain_semicolons = scope_exit([&] {
         while (tokens.consume_maybe(token_type::semicolon));
     });
 
@@ -731,7 +731,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    const auto drain_selicolons = scope_exit([&] {
+    const auto drain_semicolons = scope_exit([&] {
         while (tokens.consume_maybe(token_type::semicolon));
     });
     if (!tokens.valid()) return nullptr;
