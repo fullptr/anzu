@@ -1,6 +1,6 @@
 
 
-fn add(x: const i64~, y: i64) -> i64
+fn add(x: (const i64)~, y: i64) -> i64
 {
     return x + y;
 }

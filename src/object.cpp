@@ -120,7 +120,7 @@ auto to_string(const type_function_ptr& type) -> std::string
 
 auto to_string(const type_reference& type) -> std::string
 {
-    return std::format("ref {}", to_string_paren(*type.inner_type));
+    return std::format("{}~", to_string_paren(*type.inner_type));
 }
 
 auto to_string(const type_const& type) -> std::string
