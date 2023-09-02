@@ -1,25 +1,39 @@
 # tests all language features, here is a comment
 
-# declaring variables from literals
+# declaring immutable variables
 {
-    a := 1;               # ints
-    b := true;            # bools
-    c := "hello world\n"; # string literal
-    d := [1, 2, 3];       # array
+    # from literals
+    let a := 1;               # ints
+    let b := true;            # bools
+    let c := "hello world\n"; # string literal
+    let d := [1, 2, 3];       # array
 
-    # variables from variables
-    e := a;
+    # from variables
+    let e := a;
 }
+
+# declaring mutable variables
+{
+    # from literals
+    var a := 1;               # ints
+    var b := true;            # bools
+    var c := "hello world\n"; # string literal
+    var d := [1, 2, 3];       # array
+
+    # from variables
+    var e := a;
+}
+
 
 # modulus
 {
-    a := 10;
-    b := 5 % 2;
+    let a := 10;
+    let b := 5 % 2;
 }
 
 # while-statements
 {
-    idx := 0;
+    var idx := 0;
     while idx < 10 {
         print(idx);
         print(", ");
@@ -131,7 +145,7 @@ fn println(v: vec2) -> null
 
 # Attribute access
 {
-    my_vec := vec2(1, 2);
+    var my_vec := vec2(1, 2);
     println(my_vec);
     println(my_vec.x);
     println(my_vec.y);
@@ -141,8 +155,8 @@ fn println(v: vec2) -> null
 
 # Pointers
 {
-    p_value := 5;
-    p := p_value&;
+    var p_value := 5;
+    let p := p_value&;
     p@ = 6;
     println("p_value should now equal 6:");
     println(p_value);
@@ -150,12 +164,12 @@ fn println(v: vec2) -> null
 
 # Arrays
 {
-    xl := [1, 2, 3, 4];
+    var xl := [1, 2, 3, 4];
     xl[2u] = 0;
     println("Size of array is 4:");
     println(sizeof(xl));
 
-    xl2 := [vec2(1, 2), vec2(3, 4)];
+    let xl2 := [vec2(1, 2), vec2(3, 4)];
     println("xl2 should have size 32 but length 2:");
     print("size: ");
     println(sizeof(xl2));
@@ -176,11 +190,11 @@ struct vec3
     y: f64;
     z: f64;
 
-    fn length(self: vec3~) -> f64
+    fn length(self: (const vec3)~) -> f64
     {
-        x_squared := square(self.x);
-        y_squared := square(self.y);
-        z_squared := square(self.z);
+        let x_squared := square(self.x);
+        let y_squared := square(self.y);
+        let z_squared := square(self.z);
         return sqrt(x_squared + y_squared + z_squared);
     }
 
@@ -199,17 +213,17 @@ struct vec3
 
 # Member function testing
 {
-    v := vec3(3.0, 4.0, 5.0);
+    var v := vec3(3.0, 4.0, 5.0);
     println("length of vec3(3.0, 4.0, 5.0):");
     println(v.length());
 }
 
 # Repeat-element syntax for arrays
 {
-    a := [1; 5u];
-    b := [1, 1, 1, 1, 1];
+    let a := [1; 5u];
+    let b := [1, 1, 1, 1, 1];
 
-    idx := 0u;
+    var idx := 0u;
     while idx != sizeof(a) / sizeof(a[0u]) {
         println(a[idx] == b[idx]);
         idx = idx + 1u;
@@ -225,7 +239,7 @@ struct vec3
         println(v.y);
     }
 
-    arr := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
+    let arr := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
     for v in arr {
         print(v.x);
         print(", ");
@@ -234,7 +248,7 @@ struct vec3
 }
 
 # typeof operator
-variable := 0;
+let variable := 0;
 fn typeof_example(y: typeof(variable)) -> i64
 {
     return y + y;
@@ -262,14 +276,14 @@ struct destructible
 }
 
 {
-    a := destructible(1);
-    b := destructible(2);
+    let a := destructible(1);
+    let b := destructible(2);
 }
 
 {
-    v1 := vec3(1.0, 1.0, 1.0);
-    v2 := vec3(2.0, 2.0, 2.0);
-    v3 := vec3(3.0, 3.0, 3.0);
+    var v1 := vec3(1.0, 1.0, 1.0);
+    var v2 := vec3(2.0, 2.0, 2.0);
+    var v3 := vec3(3.0, 3.0, 3.0);
 
     v1 = v3;
     println(v1.x);

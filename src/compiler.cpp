@@ -785,6 +785,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
+// This function is an absolute mess and need rewriting. Should also try and combine with
 [[nodiscard]] auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> bool
@@ -824,6 +825,11 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 
     if (actual.remove_cr() == expected && !expected.is_ref()) {
         push_object_copy(com, expr, tok);
+        return true;
+    }
+
+    if (actual.add_ref() == expected) {
+        push_ptr_underlying(com, expr);
         return true;
     }
 
@@ -1473,13 +1479,16 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
     const auto expected = concrete_reference_type(struct_type);
+    const auto const_expected = concrete_reference_type(struct_type.add_const());
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code
     node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
 
     const auto actual = sig.params.front();
-    node.token.assert_eq(actual, expected, "'{}' bad 1st arg", node.function_name);
+    if (actual != expected && actual !=const_expected) {
+        node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
+    }
 
     // Special function extra checks
     if (node.function_name == "drop") {

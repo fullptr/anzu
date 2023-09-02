@@ -10,6 +10,6 @@ struct object
 }
 
 
-x := 10; # makes the address of the following array non-zero, to make sure offsets work
-l := [object(1), object(2), object(3)];
+let x := 10; # makes the address of the following array non-zero, to make sure offsets work
+let l := [object(1), object(2), object(3)];
 println("end");
