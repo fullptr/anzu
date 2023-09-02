@@ -171,9 +171,6 @@ auto is_type_convertible_to(const type_name& lhs, const type_name& rhs) -> bool;
 auto are_types_convertible_to(const std::vector<type_name>& lhs,
                               const std::vector<type_name>& rhs) -> bool;
 
-// If the type is a reference, returns the inner type, otherwise returns the type.
-auto remove_reference(const type_name& type) -> type_name;
-
 class type_store
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });

@@ -104,7 +104,7 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
         },
         [&](const node_expr_type& node) {
             // References act like aliases, so taking the typeof a reference strips the reference away.
-            return remove_reference(type_of_expr(com, *node.expr));
+            return type_of_expr(com, *node.expr).remove_ref();
         }
     }, *type);
 
@@ -568,7 +568,7 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
 {
     const auto expr_type = type_of_expr(com, *node.expr);
-    const auto real_type = remove_reference(expr_type);
+    const auto real_type = expr_type.remove_ref();
 
     const auto is_array = is_array_type(real_type);
     const auto is_span = is_span_type(real_type);
@@ -944,7 +944,7 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 
     // References act like aliases, so calling sizeof on a reference returns the size
     // of the inner type. References will not be directly spellable eventually.
-    push_value(com.program, op::push_u64, com.types.size_of(remove_reference(type)));
+    push_value(com.program, op::push_u64, com.types.size_of(type.remove_ref()));
     return u64_type();
 }
 
@@ -1306,7 +1306,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     
     node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs, lhs);
 
-    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(remove_reference(rhs))) {
+    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(rhs.remove_cr())) {
         push_val_underlying(com, *node.expr);
         push_ptr_underlying(com, *node.position);
         push_value(com.program, op::save, com.types.size_of(lhs));
@@ -1336,7 +1336,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         return;
     }
 
-    const auto type = remove_reference(rhs);
+    const auto type = rhs.remove_ref();
     const auto params = assign_fn_params(type);
     const auto assign = get_function(com, type, "assign", params);
     node.token.assert(assign.has_value(), "{} cannot be assigned", type);
