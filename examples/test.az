@@ -1,4 +1,6 @@
 
 
-fn foo1(_: i64~) {}
-fn foo2(x: (i64~)[3u]) {}
+fn add(x: const i64~, y: i64) -> i64
+{
+    return x + y;
+}
