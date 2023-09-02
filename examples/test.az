@@ -1,6 +1,8 @@
 
 
-let x := 10;
-var y := x~;
-y = 20;
-println(x);
+var x := 10;
+let y := x~;
+
+println(y);
+x = 15;
+println(y);

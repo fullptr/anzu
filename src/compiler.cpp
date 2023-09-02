@@ -817,6 +817,16 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
         return true;
     }
 
+    if (actual.remove_ref() == expected) {
+        push_object_copy(com, expr, tok);
+        return true;
+    }
+
+    if (actual.remove_cr() == expected && !expected.is_ref()) {
+        push_object_copy(com, expr, tok);
+        return true;
+    }
+
     return false;
 }
 
@@ -1310,28 +1320,30 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto rhs_is_ref = std::holds_alternative<node_reference_expr>(*node.expr);
+    const auto is_ref = std::holds_alternative<node_reference_expr>(*node.expr);
 
     // If this is specifically an expression with a ~ at the end, create a reference to it
     auto type = [&] {
-        if (rhs_is_ref) {
+        if (is_ref) {
             return push_expr_val(com, *node.expr);
         }
         return push_object_copy(com, *node.expr, node.token);
     }();
 
-    const auto [t, is_const, is_ref] = type.strip_qualifiers();
-
-    if (!node.is_const && rhs_is_ref && type.remove_ref().is_const()) {
+    if (!node.is_const && is_ref && type.remove_ref().is_const()) {
         node.token.error("Tried to declare a non-const value as reference to const, "
                          "use 'let' instead of 'var'");
     }
 
     // Constness does not propagate to the lhs as it is a new object (may need to be careful
     // with references here). The lhs is only const if the declaration is a 'let'.
+    type = type.remove_ref();
     type = type.remove_const();
-    if (node.is_const && !rhs_is_ref) {
+    if (node.is_const) {
         type = type.add_const();
+    }
+    if (is_ref) {
+        type = type.add_ref();
     }
 
     declare_var(com, node.token, node.name, type);
@@ -1339,7 +1351,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 {
-    return lhs.remove_cr() == rhs.remove_cr() && !lhs.is_const();
+    return lhs.remove_cr() == rhs.remove_cr() && !lhs.remove_ref().is_const();
 }
 
 // TODO: Fix assigning from a ref to a ref (currentl)
@@ -1348,7 +1360,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     const auto rhs = type_of_expr(com, *node.expr);
     const auto lhs = type_of_expr(com, *node.position);
     
-    node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs, lhs);
+    node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs.remove_ref(), lhs.remove_ref());
 
     if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(rhs.remove_cr())) {
         push_val_underlying(com, *node.expr);

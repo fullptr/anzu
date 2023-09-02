@@ -366,7 +366,10 @@ auto is_type_convertible_to(const type_name& type, const type_name& expected) ->
 
         // So long as we're not dealing with references, const objects can bind to non-const
         // arguments because we can make a copy
-        || (!expected.is_ref() && !expected.is_const() && type.remove_const() == expected);
+        || (!expected.is_ref() && !expected.is_const() && type.remove_const() == expected)
+
+        || (type.remove_cr() == expected)
+        || (expected.add_const() == type && !type.is_ref());
 }
 
 // Checks if the set of given args is convertible to the signature for a function.
