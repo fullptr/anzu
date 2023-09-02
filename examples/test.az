@@ -8,7 +8,7 @@ struct vec3
     y: f64;
     z: f64;
 
-    fn length(self: (const vec3)~) -> f64
+    fn length(self: vec3) -> f64
     {
         let x_squared := square(self.x);
         let y_squared := square(self.y);
