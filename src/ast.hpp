@@ -302,6 +302,7 @@ struct node_continue_stmt
 struct node_declaration_stmt
 {
     std::string   name;
+    bool          is_const;
     node_expr_ptr expr;
 
     anzu::token token;

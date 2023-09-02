@@ -2,6 +2,8 @@
 #include "object.hpp"
 #include "functions.hpp"
 #include "lexer.hpp"
+#include "utility/overloaded.hpp"
+#include "utility/scope_exit.hpp"
 
 #include <string_view>
 #include <vector>
@@ -349,23 +351,30 @@ auto parse_simple_type(tokenstream& tokens) -> type_name
     return {type_struct{ .name=std::string{tok.text} }};
 }
 
-auto parse_type(tokenstream& tokens) -> type_name
+auto parse_type_inner(tokenstream& tokens) -> type_name
 {
+    // Const
+    if (tokens.consume_maybe(token_type::kw_const)) {
+        auto ret = type_const{};
+        ret.inner_type = make_value<type_name>(parse_type_inner(tokens));
+        return ret;
+    }
+
     // Function pointers
     if (tokens.consume_maybe(token_type::kw_function)) {
         tokens.consume_only(token_type::left_paren);
         auto ret = type_function_ptr{};
         tokens.consume_comma_separated_list(token_type::right_paren, [&]{
-            ret.param_types.push_back(parse_type(tokens));
+            ret.param_types.push_back(parse_type_inner(tokens));
         });
         tokens.consume_only(token_type::arrow);
-        ret.return_type = make_value<type_name>(parse_type(tokens));
+        ret.return_type = make_value<type_name>(parse_type_inner(tokens));
         return ret;
     }
 
     auto type = null_type();
     if (tokens.consume_maybe(token_type::left_paren)) {
-        type = parse_type(tokens);
+        type = parse_type_inner(tokens);
         tokens.consume_only(token_type::right_paren);
     } else {
         type = parse_simple_type(tokens);
@@ -393,6 +402,47 @@ auto parse_type(tokenstream& tokens) -> type_name
         else {
             break;
         }
+    }
+    return type;
+}
+
+auto validate_type_inner(const type_name& type) -> std::optional<std::string_view>
+{
+    using Ret = std::optional<std::string_view>;
+    return std::visit(overloaded{
+        [](type_fundamental) { return Ret{}; },
+        [](const type_struct&) { return Ret{}; },
+        [](const type_array& t) { return validate_type_inner(*t.inner_type); },
+        [](const type_ptr& t) { return validate_type_inner(*t.inner_type); },
+        [](const type_span& t) { return validate_type_inner(*t.inner_type); },
+        [](const type_function_ptr& t) {
+            for (const auto& param : t.param_types) {
+                const auto err = validate_type_inner(param.remove_ref());
+                if (err) {
+                    return Ret{"invalid function param of fn ptr type"};
+                }
+            }
+            const auto err = validate_type_inner(*t.return_type);
+            if (err) {
+                return Ret{"invalid return type of fn ptr type"};
+            }
+            return Ret{};
+        },
+        [](const type_reference&) {
+            return Ret{"reference types cannot be nested inside other types"};
+        },
+        [](const type_const& t) { return validate_type_inner(*t.inner_type); }
+    }, type);
+}
+
+// Parses a type, then checks it's valid (no internal references)
+auto parse_type(tokenstream& tokens) -> type_name
+{
+    const auto token = tokens.curr();
+    const auto type = parse_type_inner(tokens);
+    const auto err = validate_type_inner(type.remove_ref());
+    if (err) {
+        token.error("Invalid type ({}) - {}", type, *err);
     }
     return type;
 }
@@ -558,8 +608,17 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_declaration_stmt>();
 
+    stmt.token = tokens.consume();
+    stmt.is_const = [&] {
+        switch (stmt.token.type) {
+            case token_type::kw_let: return true;
+            case token_type::kw_var: return false;
+            default: stmt.token.error("declaration must start with 'let' or 'var'");
+        }
+    }();
+
     stmt.name = parse_name(tokens);
-    stmt.token = tokens.consume_only(token_type::colon_equal);
+    tokens.consume_only(token_type::colon_equal);
     stmt.expr = parse_expression(tokens);
     tokens.consume_only(token_type::semicolon);
     return node;
@@ -631,8 +690,9 @@ auto parse_continue_stmt(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    while (tokens.consume_maybe(token_type::semicolon));
-    if (!tokens.valid()) return nullptr;
+    const auto drain_semicolons = scope_exit([&] {
+        while (tokens.consume_maybe(token_type::semicolon));
+    });
 
     const auto& curr = tokens.curr();
     switch (curr.type) {
@@ -649,10 +709,8 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::kw_continue: return parse_continue_stmt(tokens);
         case token_type::left_brace:  return parse_braced_statement_list(tokens);
         case token_type::kw_unsafe:   return parse_unsafe_stmt(tokens);
-    }
-
-    if (tokens.peek(token_type::identifier) && tokens.peek_next(token_type::colon_equal)) {
-        return parse_declaration_stmt(tokens);
+        case token_type::kw_let:
+        case token_type::kw_var:      return parse_declaration_stmt(tokens);
     }
 
     auto node = std::make_shared<node_stmt>();
@@ -673,7 +731,9 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
 
 auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
 {
-    while (tokens.consume_maybe(token_type::semicolon));
+    const auto drain_semicolons = scope_exit([&] {
+        while (tokens.consume_maybe(token_type::semicolon));
+    });
     if (!tokens.valid()) return nullptr;
 
     const auto& curr = tokens.curr();

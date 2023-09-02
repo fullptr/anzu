@@ -28,13 +28,48 @@ auto type_name::is_ref() const -> bool
 
 auto type_name::add_ref() const -> type_name
 {
-    if (is_reference_type(*this)) return *this;
-    return concrete_reference_type(*this);
+    if (is_ref()) return *this;
+    return { type_reference{ .inner_type{*this} } };
 }
 
 auto type_name::remove_ref() const -> type_name
 {
-    return remove_reference(*this);
+    if (!is_ref()) return *this;
+    return *std::get<type_reference>(*this).inner_type;
+}
+
+auto type_name::is_const() const -> bool
+{
+    return std::holds_alternative<type_const>(*this);
+}
+
+auto type_name::add_const() const -> type_name
+{
+    if (is_const()) return *this;
+    return { type_const{ .inner_type{*this} } };
+}
+
+auto type_name::remove_const() const -> type_name
+{
+    if (!is_const()) return *this;
+    return *std::get<type_const>(*this).inner_type;
+}
+
+auto type_name::strip_const() const -> std::pair<type_name, bool>
+{
+    return {remove_const(), is_const()};
+}
+
+auto type_name::strip_qualifiers() const -> std::tuple<type_name, bool, bool>
+{
+    const auto this_is_ref = is_ref();
+    const auto [type, this_is_const] = remove_ref().strip_const();
+    return {type, this_is_const, this_is_ref};
+}
+
+auto type_name::remove_cr() const -> type_name
+{
+    return remove_ref().remove_const();
 }
 
 auto to_string_paren(const type_name& type) -> std::string
@@ -97,7 +132,12 @@ auto to_string(const type_function_ptr& type) -> std::string
 
 auto to_string(const type_reference& type) -> std::string
 {
-    return std::format("ref {}", to_string_paren(*type.inner_type));
+    return std::format("{}~", to_string_paren(*type.inner_type));
+}
+
+auto to_string(const type_const& type) -> std::string
+{
+    return std::format("const {}", to_string(*type.inner_type));
 }
 
 auto hash(const type_name& type) -> std::size_t
@@ -144,6 +184,12 @@ auto hash(const type_function_ptr& type) -> std::size_t
 auto hash(const type_reference& type) -> std::size_t
 {
     static const auto base = std::hash<std::string_view>{}("type_reference");
+    return hash(*type.inner_type) ^ base;
+}
+
+auto hash(const type_const& type) -> std::size_t
+{
+    static const auto base = std::hash<std::string_view>{}("type_const");
     return hash(*type.inner_type) ^ base;
 }
 
@@ -243,8 +289,11 @@ auto inner_type(const type_name& t) -> type_name
     if (is_span_type(t)) {
         return *std::get<type_span>(t).inner_type; 
     }
-    if (is_reference_type(t)) {
-        return *std::get<type_reference>(t).inner_type;
+    if (t.is_ref()) {
+        return t.remove_ref();
+    }
+    if (t.is_const()) {
+        return t.remove_const();
     }
     print("COMPILER ERROR: Tried to get the inner type of an invalid type category, "
           "can only get the inner type for arrays, pointers, spans and references\n");
@@ -254,8 +303,8 @@ auto inner_type(const type_name& t) -> type_name
 
 auto array_length(const type_name& t) -> std::size_t
 {
-    if (is_array_type(t)) {
-        return std::get<type_array>(t).count;
+    if (is_array_type(t.remove_const())) {
+        return std::get<type_array>(t.remove_const()).count;
     }
     print("COMPILER ERROR: Tried to get length of a non-array type\n");
     std::exit(1);
@@ -292,16 +341,35 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
                   "have already been stripped away\n");
             std::exit(1);
             return false;
-        }
+        },
+        [](const type_const& t)      { return is_type_trivially_copyable(*t.inner_type); }
     }, type);
 }
 
 auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool
 {
-    return type == expected
-        || (is_reference_type(type) && inner_type(type) == expected)
-        || (is_reference_type(expected) && inner_type(expected) == type)
-        || (is_array_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected));
+    return
+        // Trivial, no conversion needed
+        type == expected
+
+        // References can convert to a non-ref via copy-construction, and
+        || (type.is_ref() && type.remove_ref() == expected)
+
+        // non-refs convert to references by taking the address
+        || (!type.is_ref() && type.add_ref() == expected)
+
+        // Arrays can convert to spans if the underlying types match
+        || (is_array_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected))
+        
+        // Non-const type can bind to a bind type
+        || (type.add_const() == expected)
+
+        // So long as we're not dealing with references, const objects can bind to non-const
+        // arguments because we can make a copy
+        || (!expected.is_ref() && !expected.is_const() && type.remove_const() == expected)
+
+        || (type.remove_cr() == expected)
+        || (expected.add_const() == type && !type.is_ref());
 }
 
 // Checks if the set of given args is convertible to the signature for a function.
@@ -317,11 +385,6 @@ auto are_types_convertible_to(const std::vector<type_name>& args,
         }
     }
     return true;
-}
-
-auto remove_reference(const type_name& type) -> type_name
-{
-    return is_reference_type(type) ? inner_type(type) : type;
 }
 
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
@@ -342,7 +405,8 @@ auto type_store::contains(const type_name& type) const -> bool
         [&](const type_span& t)       { return contains(*t.inner_type); },
         [&](const type_ptr& t)        { return contains(*t.inner_type); },
         [&](const type_function_ptr&) { return true; },
-        [&](const type_reference& t)  { return contains(*t.inner_type); }
+        [&](const type_reference& t)  { return contains(*t.inner_type); },
+        [&](const type_const& t)      { return contains(*t.inner_type); }
     }, type);
 }
 
@@ -393,13 +457,16 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
         },
         [](const type_reference&) {
             return size_of_reference();
+        },
+        [&](const type_const& t) {
+            return size_of(*t.inner_type);
         }
     }, type);
 }
 
 auto type_store::fields_of(const type_name& t) const -> type_fields
 {
-    if (auto it = d_classes.find(t); it != d_classes.end()) {
+    if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
         return it->second.fields;
     }
     return {};

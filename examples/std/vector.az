@@ -7,13 +7,13 @@ struct vector
     fn push(self: vector~, val: i64)
     {
         if (self.size == self.data.size()) {
-            new_cap := 2u * self.data.size();
+            var new_cap := 2u * self.data.size();
             if new_cap == 0u {
                 new_cap = 1u;
             }
-            newdata := new i64 : new_cap;
+            var newdata := new i64 : new_cap;
 
-            idx := 0u;
+            var idx := 0u;
             while idx != self.size {
                 newdata[idx] = self.data[idx];
                 idx = idx + 1u;
@@ -29,8 +29,7 @@ struct vector
     fn pop(self: vector~) -> i64
     {
         self.size = self.size - 1u;
-        ret := self.data[self.size];
-        return ret;
+        return self.data[self.size];
     }
 
     fn size(self: vector~) -> u64

@@ -34,7 +34,8 @@ An interpreted programming language written in C++. This started out as a stack-
     1. Syntax for function pointer types: `(<arg_types>) -> <return_type>`.
 
 * Variables:
-    * Declare with `:=` operator: `x := 5`.
+    * Declare with `:=` operator and either `let` or `var`: `let x := 5` or `var x := 5`.
+    * `let` declares a const value, `var` declares a mutable value.
     * Assign to existing variable with `=` operator: `x = 6`.
 
 * References:

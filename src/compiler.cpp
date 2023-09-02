@@ -104,7 +104,7 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
         },
         [&](const node_expr_type& node) {
             // References act like aliases, so taking the typeof a reference strips the reference away.
-            return remove_reference(type_of_expr(com, *node.expr));
+            return type_of_expr(com, *node.expr).remove_ref();
         }
     }, *type);
 
@@ -333,6 +333,10 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
         },
         [](const type_reference&) {
             // references do not own anything to cloean up
+        },
+        [&](const type_const& t) {
+            // Strip off the const and call function again
+            call_destructor(com, type.remove_const(), push_object_ptr);
         }
     }, type);
 }
@@ -444,14 +448,14 @@ public:
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
     const auto type = type_of_expr(com, expr);
-    const auto real_type = remove_reference(type);
+    const auto real_type = type.remove_cr();
 
     if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
         push_val_underlying(com, expr);
     }
 
     else if (is_array_type(type)) {
-        const auto etype = inner_type(type);
+        const auto etype = inner_type(type).remove_const();
         const auto esize = com.types.size_of(etype);
 
         const auto params = copy_fn_params(etype);
@@ -476,7 +480,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         push_function_call(com, *copy);
     }
 
-    return real_type;
+    return type.remove_ref(); // Keep constness intact
 }
 
 // Gets the type of the expression by compiling it, then removes the added
@@ -550,21 +554,24 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto type = push_ptr_underlying(com, *node.expr);
-    return push_adjust_ptr_to_field(com, node.token, type, node.field_name);
+    const auto [type, is_const, is_ref] = push_ptr_underlying(com, *node.expr).strip_qualifiers();
+
+    auto ret = push_adjust_ptr_to_field(com, node.token, type, node.field_name);
+    if (is_const) ret = ret.add_const(); // Propagate const to members
+    return ret;
 }
 
 auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 {
-    const auto type = push_expr_val(com, *node.expr); // Push the address
-    node.token.assert(is_ptr_type(type), "cannot use deref operator on non-ptr type '{}'", type);
-    return inner_type(type);
+    const auto type = push_val_underlying(com, *node.expr); // Push the address
+    node.token.assert(is_ptr_type(type.remove_const()), "cannot use deref operator on non-ptr type '{}'", type);
+    return inner_type(type.remove_const());
 }
 
 auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
 {
     const auto expr_type = type_of_expr(com, *node.expr);
-    const auto real_type = remove_reference(expr_type);
+    const auto [real_type, is_const, is_ref] = expr_type.strip_qualifiers();
 
     const auto is_array = is_array_type(real_type);
     const auto is_span = is_span_type(real_type);
@@ -601,6 +608,9 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     push_value(com.program, op::push_u64, com.types.size_of(inner));
     push_value(com.program, op::u64_mul);
     push_value(com.program, op::u64_add); // modify ptr
+    if (is_array && is_const) {
+        return inner.add_const();
+    }
     return inner;
 }
 
@@ -648,7 +658,7 @@ auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_
 {
     push_value(com.program, op::push_string_literal);
     push_value(com.program, insert_into_rom(com, node.value), node.value.size());
-    return concrete_span_type(char_type());
+    return concrete_span_type(char_type().add_const());
 }
 
 auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
@@ -668,9 +678,12 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     using tt = token_type;
     auto lhs = push_val_underlying(com, *node.lhs);
     auto rhs = push_val_underlying(com, *node.rhs);
-    if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    auto lhs_real = lhs.remove_const();
+    auto rhs_real = rhs.remove_const();
 
-    const auto& type = lhs;
+    if (lhs_real != rhs_real) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    const auto& type = lhs_real;
+
     if (type == char_type()) {
         switch (node.token.type) {
             case tt::equal_equal: { push_value(com.program, op::char_eq); return bool_type(); }
@@ -751,7 +764,8 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    const auto type = push_expr_val(com, *node.expr);
+    const auto raw_type = push_val_underlying(com, *node.expr);
+    const auto type = raw_type.remove_const();
 
     switch (node.token.type) {
         case tt::minus: {
@@ -766,19 +780,55 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
-auto push_function_arg(compiler& com, const node_expr& expr, const type_name& expected, const token& tok) -> void
+// This function is an absolute mess and need rewriting. Should also try and combine with
+[[nodiscard]] auto push_function_arg(
+    compiler& com, const node_expr& expr, const type_name& expected, const token& tok
+) -> bool
 {
     const auto actual = type_of_expr(com, expr);
-    tok.assert(is_type_convertible_to(actual, expected), "Could not convert arg of type {} to {}", actual, expected);
-
+    
     if (is_span_type(expected) && is_array_type(actual)) {
         push_expr_ptr(com, expr);
         push_value(com.program, op::push_u64, array_length(actual));
-    } else if (expected.is_ref()) {
-        push_ptr_underlying(com, expr);
-    } else {
-        push_object_copy(com, expr, tok);
+        return true;
     }
+    
+    if (expected.remove_cr() == actual.remove_cr() && expected.is_ref() && !actual.is_const()) {
+        push_ptr_underlying(com, expr);
+        return true;
+    }
+    
+    if (actual == expected) {
+        push_object_copy(com, expr, tok);
+        return true;
+    }
+
+    if (actual.add_const() == expected) {
+        push_object_copy(com, expr, tok);
+        return true;
+    }
+
+    if (expected.add_const() == actual && !actual.is_ref()) {
+        push_object_copy(com, expr, tok);
+        return true;
+    }
+
+    if (actual.remove_ref() == expected) {
+        push_object_copy(com, expr, tok);
+        return true;
+    }
+
+    if (actual.remove_cr() == expected && !expected.is_ref()) {
+        push_object_copy(com, expr, tok);
+        return true;
+    }
+
+    if (actual.add_ref() == expected) {
+        push_ptr_underlying(com, expr);
+        return true;
+    }
+
+    return false;
 }
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
@@ -794,7 +844,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             node.token.assert_eq(expected_params.size(), node.args.size(),
                                  "incorrect number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
+                if (!push_function_arg(com, *node.args.at(i), expected_params[i], node.token)) {
+                    node.token.error(
+                        "Could not convert arg of type '{}' to '{}'",
+                        type_of_expr(com, *node.args.at(i)),
+                        expected_params[i]
+                    );
+                }
             }
             if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
                 push_value(com.program, op::push_null);
@@ -813,7 +869,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto func = get_function(com, struct_type, inner.name, params); func) {
             push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
+                if (!push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token)) {
+                    node.token.error(
+                        "Could not convert arg of type '{}' to '{}'",
+                        type_of_expr(com, *node.args.at(i)),
+                        func->sig.params[i]
+                    );
+                }
             }
             push_function_call(com, *func);
             return func->sig.return_type;
@@ -838,7 +900,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
             const auto& builtin = get_builtin(*b);
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
+                if (!push_function_arg(com, *node.args.at(i), builtin.args[i], node.token)) {
+                    node.token.error(
+                        "Could not convert arg of type '{}' to '{}'",
+                        type_of_expr(com, *node.args.at(i)),
+                        builtin.args[i]
+                    );
+                }
             }
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;
@@ -854,7 +922,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     push_value(com.program, op::push_call_frame);
     auto args_size = 2 * sizeof(std::uint64_t);
     for (std::size_t i = 0; i != node.args.size(); ++i) {
-        push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
+        if (!push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token)) {
+            node.token.error(
+                "Could not convert arg of type '{}' to '{}'",
+                type_of_expr(com, *node.args.at(i)),
+                sig.param_types[i]
+            );
+        }
         args_size += com.types.size_of(sig.param_types[i]);
     }
 
@@ -899,7 +973,7 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 
     // References act like aliases, so calling sizeof on a reference returns the size
     // of the inner type. References will not be directly spellable eventually.
-    push_value(com.program, op::push_u64, com.types.size_of(remove_reference(type)));
+    push_value(com.program, op::push_u64, com.types.size_of(type.remove_ref()));
     return u64_type();
 }
 
@@ -909,14 +983,14 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         node.token.error("a span must either have both bounds set, or neither");
     }
 
-    const auto expr_type = type_of_expr(com, *node.expr);
+    const auto [type, is_const, is_ref] = type_of_expr(com, *node.expr).strip_qualifiers();
     node.token.assert(
-        is_array_type(expr_type) || is_span_type(expr_type),
-        "can only span arrays and other spans, not {}", expr_type
+        is_array_type(type) || is_span_type(type),
+        "can only span arrays and other spans, not {}", type
     );
 
     // Bounds checking (TODO: BOUNDS CHECKING ON SPANS TOO)
-    if (is_array_type(expr_type) && com.debug && node.lower_bound && node.upper_bound) {
+    if (is_array_type(type) && com.debug && node.lower_bound && node.upper_bound) {
         const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
         const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
@@ -925,21 +999,25 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_assert(com, "lower bound must be stricly less than the upper bound");
 
         push_expr_val(com, *node.upper_bound);
-        push_value(com.program, op::push_u64, array_length(expr_type));
+        push_value(com.program, op::push_u64, array_length(type));
         push_value(com.program, op::u64_lt);
         push_assert(com, "upper bound must be strictly less than the array size");
     }
 
-    push_expr_ptr(com, *node.expr);
+    if (is_ref) {
+        push_expr_val(com, *node.expr);
+    } else {
+        push_expr_ptr(com, *node.expr);
+    }
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
-    if (is_span_type(expr_type)) {
+    if (is_span_type(type)) {
         push_value(com.program, op::load, size_of_ptr());
     }
 
     if (node.lower_bound) {// move first index of span up
-        push_value(com.program, op::push_u64, com.types.size_of(inner_type(expr_type)));
+        push_value(com.program, op::push_u64, com.types.size_of(inner_type(type)));
         const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
         push_value(com.program, op::u64_mul);
@@ -951,16 +1029,23 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_expr_val(com, *node.upper_bound);
         push_expr_val(com, *node.lower_bound);
         push_value(com.program, op::u64_sub);
-    } else if (is_span_type(expr_type)) {
+    } else if (is_span_type(type)) {
         // Push the span pointer, offset to the size, and load the size
-        push_expr_ptr(com, *node.expr);
+        if (is_ref) {
+            push_expr_val(com, *node.expr);
+        } else {
+            push_expr_ptr(com, *node.expr);
+        }
         push_value(com.program, op::push_u64, size_of_ptr(), op::u64_add);
         push_value(com.program, op::load, com.types.size_of(u64_type()));
     } else {
-        push_value(com.program, op::push_u64, array_length(expr_type));
+        push_value(com.program, op::push_u64, array_length(type));
     }
 
-    return concrete_span_type(inner_type(expr_type));
+    if (is_const && is_array_type(type)) {
+        return concrete_span_type(inner_type(type).add_const());
+    }
+    return concrete_span_type(inner_type(type));
 }
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
@@ -1231,20 +1316,38 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
+    const auto is_ref = std::holds_alternative<node_reference_expr>(*node.expr);
+
     // If this is specifically an expression with a ~ at the end, create a reference to it
-    const auto type = [&] {
-        if (std::holds_alternative<node_reference_expr>(*node.expr)) {
+    auto type = [&] {
+        if (is_ref) {
             return push_expr_val(com, *node.expr);
         }
         return push_object_copy(com, *node.expr, node.token);
     }();
+
+    if (!node.is_const && is_ref && type.remove_ref().is_const()) {
+        node.token.error("Tried to declare a non-const value as reference to const, "
+                         "use 'let' instead of 'var'");
+    }
+
+    // Constness does not propagate to the lhs as it is a new object (may need to be careful
+    // with references here). The lhs is only const if the declaration is a 'let'.
+    type = type.remove_ref();
+    type = type.remove_const();
+    if (node.is_const) {
+        type = type.add_const();
+    }
+    if (is_ref) {
+        type = type.add_ref();
+    }
 
     declare_var(com, node.token, node.name, type);
 }
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 {
-    return lhs.remove_ref() == rhs.remove_ref();
+    return lhs.remove_cr() == rhs.remove_cr() && !lhs.remove_ref().is_const();
 }
 
 // TODO: Fix assigning from a ref to a ref (currentl)
@@ -1253,9 +1356,9 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     const auto rhs = type_of_expr(com, *node.expr);
     const auto lhs = type_of_expr(com, *node.position);
     
-    node.token.assert(is_assignable(lhs, rhs), "invalid assignment (lhs={}, rhs={})", lhs, rhs);
+    node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs.remove_ref(), lhs.remove_ref());
 
-    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(remove_reference(rhs))) {
+    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(rhs.remove_cr())) {
         push_val_underlying(com, *node.expr);
         push_ptr_underlying(com, *node.position);
         push_value(com.program, op::save, com.types.size_of(lhs));
@@ -1285,7 +1388,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         return;
     }
 
-    const auto type = remove_reference(rhs);
+    const auto type = rhs.remove_ref();
     const auto params = assign_fn_params(type);
     const auto assign = get_function(com, type, "assign", params);
     node.token.assert(assign.has_value(), "{} cannot be assigned", type);
@@ -1315,42 +1418,41 @@ auto compile_function_body(
     {
         const auto scope = scope_guard::function(com, null_type());
 
-        {
-            const auto block_scope = scope_guard::block(com);
+        declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
+        declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
+        for (const auto& arg : node_sig.params) {
+            const auto type = resolve_type(com, tok, arg.type);
+            sig.params.push_back({type});
+            declare_var(com, tok, arg.name, type);
+        }
 
-            declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
-            declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
-            for (const auto& arg : node_sig.params) {
-                const auto type = resolve_type(com, tok, arg.type);
-                sig.params.push_back({type});
-                declare_var(com, tok, arg.name, type);
+        sig.return_type = resolve_type(com, tok, node_sig.return_type);
+        com.scopes.get_function_info().return_type = sig.return_type;
+        for (const auto& function : com.functions[struct_type][name]) {
+            // TODO Remove use of this, use push_function_arg instead using the same trick as with
+            // type_of_expr where we compile the actual expression then remove the op codes from
+            // the program
+            if (are_types_convertible_to(sig.params, function.sig.params)) {
+                tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
             }
+        }
+        com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
 
-            const auto return_type = resolve_type(com, tok, node_sig.return_type);
-            com.scopes.get_function_info().return_type = return_type;
-            sig.return_type = return_type;
-            for (const auto& function : com.functions[struct_type][name]) {
-                if (are_types_convertible_to(sig.params, function.sig.params)) {
-                    tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
-                }
-            }
-            com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
+        push_stmt(com, *body);
 
-            push_stmt(com, *body);
-
-            if (!function_ends_with_return(*body)) {
-                // A function returning null does not need a final return statement, and in this case
-                // we manually add a return value of null here.
-                if (sig.return_type == null_type()) {
-                    destruct_on_return(com);
-                    push_value(com.program, op::push_null);
-                    push_value(com.program, op::ret, std::uint64_t{1});
-                } else {
-                    tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
-                }
+        if (!function_ends_with_return(*body)) {
+            // A function returning null does not need a final return statement, and in this case
+            // we manually add a return value of null here.
+            if (sig.return_type == null_type()) {
+                destruct_on_return(com);
+                push_value(com.program, op::push_null);
+                push_value(com.program, op::ret, std::uint64_t{1});
+            } else {
+                tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
             }
         }
     }
+
     write_value(com.program, jump_op, com.program.size());
     return sig;
 }
@@ -1367,13 +1469,16 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
     const auto expected = concrete_reference_type(struct_type);
+    const auto const_expected = concrete_reference_type(struct_type.add_const());
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code
     node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
 
     const auto actual = sig.params.front();
-    node.token.assert_eq(actual, expected, "'{}' bad 1st arg", node.function_name);
+    if (actual != expected && actual !=const_expected) {
+        node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
+    }
 
     // Special function extra checks
     if (node.function_name == "drop") {
