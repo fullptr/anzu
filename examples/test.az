@@ -1,5 +1,6 @@
 
 
-let str := "hello world";
-str = "no";
-println(str);
+let x := 10;
+var y := x;
+y = 20;
+println(x);

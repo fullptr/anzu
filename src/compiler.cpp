@@ -1318,6 +1318,9 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
         return push_object_copy(com, *node.expr, node.token);
     }();
 
+    // Constness does not propagate to the lhs as it is a new object (may need to be careful
+    // with references here). The lhs is only const if the declaration is a 'let'.
+    type = type.remove_const();
     if (node.is_const) {
         type = type.add_const();
     }
