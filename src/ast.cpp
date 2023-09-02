@@ -121,10 +121,6 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_reference_expr& node) {
             print("{}Reference:\n", spaces);
             print_node(*node.expr, indent + 1);
-        },
-        [&](const node_const_expr& node) {
-            print("{}Const:\n", spaces);
-            print_node(*node.expr, indent + 1);
         }
     }, root);
 }
