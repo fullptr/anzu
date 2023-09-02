@@ -807,6 +807,11 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
         return true;
     }
 
+    if (actual.add_const() == expected) {
+        push_object_copy(com, expr, tok);
+        return true;
+    }
+
     return false;
 }
 

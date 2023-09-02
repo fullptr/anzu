@@ -3,8 +3,9 @@
 struct foo
 {
     x: i64;
+    y: i64;
 };
 
-f := const foo(1);
-f.x = 5;
-println(f.x);
+f := const foo(1, 2);
+f.y = 5;
+println(f.y);
