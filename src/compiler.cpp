@@ -555,7 +555,13 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
     const auto type = push_ptr_underlying(com, *node.expr);
-    return push_adjust_ptr_to_field(com, node.token, type, node.field_name);
+    const auto is_const = type.is_const();
+
+    const auto ret = push_adjust_ptr_to_field(com, node.token, type, node.field_name);
+    if (is_const) {
+        return ret.add_const();
+    }
+    return ret;
 }
 
 auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
