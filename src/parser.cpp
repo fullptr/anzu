@@ -419,18 +419,17 @@ auto validate_type_inner(const type_name& type) -> std::optional<std::string_vie
             for (const auto& param : t.param_types) {
                 const auto err = validate_type_inner(param.remove_ref());
                 if (err) {
-                    return Ret{"Invalid function param of fn ptr type"};
+                    return Ret{"invalid function param of fn ptr type"};
                 }
             }
             const auto err = validate_type_inner(*t.return_type);
             if (err) {
-                return Ret{"Invalid return type of fn ptr type"};
+                return Ret{"invalid return type of fn ptr type"};
             }
             return Ret{};
         },
         [](const type_reference&) {
-            return Ret{"Invalid type, reference types cannot be nested inside other types. "
-                       "perhaps you have a const of a reference rather than a reference to const?"};
+            return Ret{"reference types cannot be nested inside other types"};
         },
         [](const type_const& t) { return validate_type_inner(*t.inner_type); }
     }, type);
@@ -443,7 +442,7 @@ auto parse_type(tokenstream& tokens) -> type_name
     const auto type = parse_type_inner(tokens);
     const auto err = validate_type_inner(type.remove_ref());
     if (err) {
-        token.error("{}", *err);
+        token.error("Invalid type ({}) - {}", type, *err);
     }
     return type;
 }

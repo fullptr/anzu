@@ -4,3 +4,7 @@ fn add(x: (const i64)~, y: i64) -> i64
 {
     return x + y;
 }
+
+x := 6;
+y := 11;
+println(add(x, y));
