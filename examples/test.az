@@ -1,10 +1,10 @@
 
 
-fn add(x: (const i64)~, y: i64) -> i64
+fn add(x: bool~)
 {
-    return x + y;
+    x = !x;
 }
 
-x := 6;
-y := 11;
-println(add(x, y));
+x := true;
+add(x);
+println(x);

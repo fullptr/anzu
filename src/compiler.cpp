@@ -680,9 +680,9 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     auto lhs_real = lhs.remove_const();
     auto rhs_real = rhs.remove_const();
 
-    if (lhs_real != rhs_real) node.token.error("could not find op '{} {} {}'", lhs_real, node.token.type, rhs_real);
+    if (lhs_real != rhs_real) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     const auto& type = lhs_real;
-    
+
     if (type == char_type()) {
         switch (node.token.type) {
             case tt::equal_equal: { push_value(com.program, op::char_eq); return bool_type(); }
@@ -757,13 +757,14 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
         }
     }
 
-    node.token.error("could not find op '{} {} {}'", lhs_real, node.token.type, rhs_real);
+    node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    const auto type = push_expr_val(com, *node.expr);
+    const auto raw_type = push_val_underlying(com, *node.expr);
+    const auto type = raw_type.remove_const();
 
     switch (node.token.type) {
         case tt::minus: {
@@ -1290,7 +1291,6 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
         return push_object_copy(com, *node.expr, node.token);
     }();
 
-    print("declaring val {} of type {}\n", node.name, type);
     declare_var(com, node.token, node.name, type);
 }
 
