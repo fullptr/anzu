@@ -54,7 +54,7 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::kw_f64:              return "f64";
         case token_type::kw_false:            return "false";
         case token_type::kw_for:              return "for";
-        case token_type::kw_function:         return "function";
+        case token_type::kw_function:         return "fn";
         case token_type::kw_i32:              return "i32";
         case token_type::kw_i64:              return "i64";
         case token_type::kw_if:               return "if";

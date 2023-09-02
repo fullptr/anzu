@@ -1,26 +1,4 @@
 
 
-fn foo(x: (fn(i64) -> bool)[3u])
-{
-    println(x[0u](0));
-    println(x[1u](0));
-    println(x[2u](0));
-}
-
-fn positive(x: i64) -> bool
-{
-    return x > 0;
-}
-
-fn negative(x: i64) -> bool
-{
-    return x < 0;
-}
-
-fn zero(x: i64) -> bool
-{
-    return x == 0;
-}
-
-ops := [positive, negative, zero];
-foo(ops);
+fn foo1(_: i64~) {}
+fn foo2(x: (i64~)[3u]) {}

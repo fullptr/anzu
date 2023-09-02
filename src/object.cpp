@@ -37,6 +37,14 @@ auto type_name::remove_ref() const -> type_name
     return remove_reference(*this);
 }
 
+auto to_string_paren(const type_name& type) -> std::string
+{
+    const auto str = to_string(type);
+    if (str.contains(' ')) {
+        return std::format("({})", str);
+    }
+    return str;
+}
 
 auto to_string(const type_name& type) -> std::string
 {
@@ -64,17 +72,17 @@ auto to_string(const type_struct& type) -> std::string
 
 auto to_string(const type_array& type) -> std::string
 {
-    return std::format("{}[{}]", to_string(*type.inner_type), type.count);
+    return std::format("{}[{}]", to_string_paren(*type.inner_type), type.count);
 }
 
 auto to_string(const type_ptr& type) -> std::string
 {
-    return std::format("{}&", to_string(*type.inner_type));
+    return std::format("{}&", to_string_paren(*type.inner_type));
 }
 
 auto to_string(const type_span& type) -> std::string
 {
-    return std::format("{}[]", to_string(*type.inner_type));
+    return std::format("{}[]", to_string_paren(*type.inner_type));
 }
 
 auto to_string(const type_function_ptr& type) -> std::string
@@ -82,14 +90,14 @@ auto to_string(const type_function_ptr& type) -> std::string
     return std::format(
         "{}({}) -> {}",
         to_string(token_type::kw_function),
-        format_comma_separated(type.param_types),
+        format_comma_separated(type.param_types, to_string_paren),
         *type.return_type
     );
 }
 
 auto to_string(const type_reference& type) -> std::string
 {
-    return std::format("{}~", to_string(*type.inner_type));
+    return std::format("ref {}", to_string_paren(*type.inner_type));
 }
 
 auto hash(const type_name& type) -> std::size_t
