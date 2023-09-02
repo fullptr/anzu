@@ -451,7 +451,7 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
 
 auto type_store::fields_of(const type_name& t) const -> type_fields
 {
-    if (auto it = d_classes.find(t); it != d_classes.end()) {
+    if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
         return it->second.fields;
     }
     return {};

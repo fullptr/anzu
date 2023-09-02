@@ -1,10 +1,10 @@
 
 
-fn add(x: bool~)
+struct foo
 {
-    x = !x;
-}
+    x: i64;
+};
 
-x := true;
-add(x);
-println(x);
+f := const foo(1);
+f.x = 5;
+println(f.x);
