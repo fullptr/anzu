@@ -554,19 +554,16 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto type = push_ptr_underlying(com, *node.expr);
-    const auto is_const = type.is_const();
+    const auto [type, is_const, is_ref] = push_ptr_underlying(com, *node.expr).strip_qualifiers();
 
-    const auto ret = push_adjust_ptr_to_field(com, node.token, type, node.field_name);
-    if (is_const) {
-        return ret.add_const();
-    }
+    auto ret = push_adjust_ptr_to_field(com, node.token, type, node.field_name);
+    if (is_const) ret = ret.add_const(); // Propagate const to members
     return ret;
 }
 
 auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 {
-    const auto type = push_expr_val(com, *node.expr); // Push the address
+    const auto type = push_val_underlying(com, *node.expr); // Push the address
     node.token.assert(is_ptr_type(type.remove_const()), "cannot use deref operator on non-ptr type '{}'", type);
     return inner_type(type.remove_const());
 }
@@ -574,7 +571,7 @@ auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
 {
     const auto expr_type = type_of_expr(com, *node.expr);
-    const auto [real_type, is_const] = expr_type.remove_ref().strip_const();
+    const auto [real_type, is_const, is_ref] = expr_type.strip_qualifiers();
 
     const auto is_array = is_array_type(real_type);
     const auto is_span = is_span_type(real_type);
@@ -666,7 +663,7 @@ auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_
 {
     push_value(com.program, op::push_string_literal);
     push_value(com.program, insert_into_rom(com, node.value), node.value.size());
-    return concrete_span_type(char_type());
+    return concrete_span_type(char_type().add_const());
 }
 
 auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name

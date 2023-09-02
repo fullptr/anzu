@@ -1,9 +1,5 @@
 
 
-x := const [1, 2, 3];
-y := x[];
-
-z := const [4, 5, 6];
-y = z[];
-y[0u] = 30;
-println(y[0u]);
+str := "hello world";
+str[0u] = 'b';
+println(str);
