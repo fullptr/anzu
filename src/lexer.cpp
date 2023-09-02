@@ -73,6 +73,7 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "if")       return token_type::kw_if;
     if (token == "import")   return token_type::kw_import;
     if (token == "in")       return token_type::kw_in;
+    if (token == "let")      return token_type::kw_let;
     if (token == "loop")     return token_type::kw_loop;
     if (token == "new")      return token_type::kw_new;
     if (token == "null")     return token_type::kw_null;
@@ -83,6 +84,7 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "typeof")   return token_type::kw_typeof;
     if (token == "u64")      return token_type::kw_u64;
     if (token == "unsafe")   return token_type::kw_unsafe;
+    if (token == "var")      return token_type::kw_var;
     if (token == "while")    return token_type::kw_while;
     return token_type::identifier;
 }
