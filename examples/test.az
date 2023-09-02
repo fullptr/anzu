@@ -1,6 +1,6 @@
 
 
 let x := 10;
-var y := x;
+var y := x~;
 y = 20;
 println(x);

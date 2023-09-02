@@ -1310,18 +1310,27 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
+    const auto rhs_is_ref = std::holds_alternative<node_reference_expr>(*node.expr);
+
     // If this is specifically an expression with a ~ at the end, create a reference to it
     auto type = [&] {
-        if (std::holds_alternative<node_reference_expr>(*node.expr)) {
+        if (rhs_is_ref) {
             return push_expr_val(com, *node.expr);
         }
         return push_object_copy(com, *node.expr, node.token);
     }();
 
+    const auto [t, is_const, is_ref] = type.strip_qualifiers();
+
+    if (!node.is_const && rhs_is_ref && type.remove_ref().is_const()) {
+        node.token.error("Tried to declare a non-const value as reference to const, "
+                         "use 'let' instead of 'var'");
+    }
+
     // Constness does not propagate to the lhs as it is a new object (may need to be careful
     // with references here). The lhs is only const if the declaration is a 'let'.
     type = type.remove_const();
-    if (node.is_const) {
+    if (node.is_const && !rhs_is_ref) {
         type = type.add_const();
     }
 
