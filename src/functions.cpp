@@ -146,7 +146,7 @@ auto builtin_fputs(bytecode_context& ctx) -> void
 
 auto construct_builtin_array() -> std::vector<builtin>
 {
-    const auto char_span = concrete_span_type(char_type());
+    const auto char_span = concrete_span_type(char_type().add_const()).add_const();
 
     auto b = std::vector<builtin>{};
 

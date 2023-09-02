@@ -6,7 +6,7 @@
 
 namespace anzu {
 
-void token::error(std::string_view message) const
+[[noreturn]] void token::error(std::string_view message) const
 {
     print("[ERROR] ({}:{}) {}\n", line, col, message);
     std::exit(1);

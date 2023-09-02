@@ -1311,12 +1311,16 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
     // If this is specifically an expression with a ~ at the end, create a reference to it
-    const auto type = [&] {
+    auto type = [&] {
         if (std::holds_alternative<node_reference_expr>(*node.expr)) {
             return push_expr_val(com, *node.expr);
         }
         return push_object_copy(com, *node.expr, node.token);
     }();
+
+    if (node.is_const) {
+        type = type.add_const();
+    }
 
     declare_var(com, node.token, node.name, type);
 }

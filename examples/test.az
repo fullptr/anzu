@@ -1,5 +1,5 @@
 
 
-str := "hello world";
-str[0u] = 'b';
+let str := "hello world";
+str = "no";
 println(str);

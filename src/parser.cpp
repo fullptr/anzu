@@ -608,17 +608,18 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_declaration_stmt>();
 
+    stmt.token = tokens.consume();
+    stmt.is_const = [&] {
+        switch (stmt.token.type) {
+            case token_type::kw_let: return true;
+            case token_type::kw_var: return false;
+            default: stmt.token.error("declaration must start with 'let' or 'var'");
+        }
+    }();
+
     stmt.name = parse_name(tokens);
-    stmt.token = tokens.consume_only(token_type::colon_equal);
-    const bool is_const = tokens.consume_maybe(token_type::kw_const);
+    tokens.consume_only(token_type::colon_equal);
     stmt.expr = parse_expression(tokens);
-    if (is_const) {
-        auto const_node = std::make_shared<node_expr>();
-        auto& inner_const_node = const_node->emplace<node_const_expr>();
-        inner_const_node.token = stmt.token;
-        inner_const_node.expr = stmt.expr;
-        stmt.expr = const_node;
-    }
     tokens.consume_only(token_type::semicolon);
     return node;
 }
@@ -708,10 +709,8 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::kw_continue: return parse_continue_stmt(tokens);
         case token_type::left_brace:  return parse_braced_statement_list(tokens);
         case token_type::kw_unsafe:   return parse_unsafe_stmt(tokens);
-    }
-
-    if (tokens.peek(token_type::identifier) && tokens.peek_next(token_type::colon_equal)) {
-        return parse_declaration_stmt(tokens);
+        case token_type::kw_let:
+        case token_type::kw_var:      return parse_declaration_stmt(tokens);
     }
 
     auto node = std::make_shared<node_stmt>();

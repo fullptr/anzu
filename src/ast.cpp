@@ -196,6 +196,7 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_declaration_stmt& node) {
             print("{}Declaration:\n", spaces);
             print("{}- Name: {}\n", spaces, node.name);
+            print("{}- IsConst: {}\n", spaces, node.is_const);
             print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
