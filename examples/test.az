@@ -1,0 +1,11 @@
+
+fn foo(cond: bool) -> i64
+{
+    if (cond) {
+        return 5;
+    } else {
+        return 6;
+    }
+}
+
+println(foo(false));
