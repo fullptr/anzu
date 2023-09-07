@@ -250,11 +250,8 @@ auto ends_in_return(const node_stmt& node) -> bool
             return ends_in_return(*n.sequence.back());
         },
         [&](const node_if_stmt& n) {
-            auto ret = ends_in_return(*n.body);
-            if (n.else_body) {
-                ret = ret && ends_in_return(*n.else_body);
-            }
-            return ret;
+            if (!n.else_body) { return false; } // both branches must exist
+            return ends_in_return(*n.body) && ends_in_return(*n.else_body);
         },
         [](const node_return_stmt&) { return true; },
         [](const auto&)             { return false; }
