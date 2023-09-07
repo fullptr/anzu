@@ -1,5 +1,5 @@
 #include "token.hpp"
-#include "utility/print.hpp"
+#include "utility/common.hpp"
 
 #include <format>
 #include <source_location>
@@ -8,8 +8,7 @@ namespace anzu {
 
 [[noreturn]] void token::error(std::string_view message) const
 {
-    print("[ERROR] ({}:{}) {}\n", line, col, message);
-    std::exit(1);
+    panic("[ERROR] ({}:{}) {}\n", line, col, message);
 }
 
 auto print_token(token tok) -> void

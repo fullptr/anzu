@@ -4,9 +4,7 @@
 #include "parser.hpp"
 #include "functions.hpp"
 #include "scope_manager.hpp"
-#include "utility/print.hpp"
-#include "utility/overloaded.hpp"
-#include "utility/views.hpp"
+#include "utility/common.hpp"
 #include "utility/memory.hpp"
 
 #include <string_view>
@@ -1606,11 +1604,10 @@ auto compile(
     }
 
     if (!com.scopes.all().empty()) {
-        print(
-            "Logic Error: There are {} unhandled scopes at the end of compilation\n",
+        panic(
+            "Logic Error: There are {} unhandled scopes at the end of compilation",
             com.scopes.all().size()
         );
-        std::exit(1);
     }
 
     auto read_only = std::vector<std::byte>{};

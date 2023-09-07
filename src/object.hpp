@@ -7,7 +7,7 @@
 #include <vector>
 #include <utility>
 
-#include "utility/print.hpp"
+#include "utility/common.hpp"
 #include "utility/value_ptr.hpp"
 
 namespace anzu {

@@ -1,6 +1,6 @@
 #pragma once
 #include "object.hpp"
-#include "utility/print.hpp"
+#include "utility/common.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -126,10 +126,7 @@ public:
 
     auto new_global_scope() -> void
     {
-        if (!d_scopes.empty()) {
-            print("Can only have a global scope at the top level\n");
-            std::exit(1);
-        }
+        panic_if(!d_scopes.empty(), "Can only have a global scope at the top level");
         auto next = std::make_shared<std::size_t>(0);
         d_scopes.emplace_back(std::make_shared<scope>(
             global_scope{ .next_var_location = next },
@@ -140,10 +137,7 @@ public:
 
     auto new_block_scope(bool unsafe) -> void
     {
-        if (d_scopes.empty()) {
-            print("Cannot add a block scope before a global scope\n");
-            std::exit(1);
-        }
+        panic_if(d_scopes.empty(), "Cannot add a block scope before a global scope");
         d_scopes.emplace_back(std::make_shared<scope>(
             block_scope{},
             current()->get_location_counter(),
@@ -153,10 +147,7 @@ public:
 
     auto new_function_scope(const type_name& return_type) -> void
     {
-        if (d_scopes.empty()) {
-            print("Cannot add a function scope before a global scope\n");
-            std::exit(1);
-        }
+        panic_if(d_scopes.empty(), "Cannot add a function scope before a global scope");
         auto next = std::make_shared<std::size_t>(0);
         d_scopes.emplace_back(std::make_shared<scope>(
             function_scope{
@@ -170,10 +161,7 @@ public:
 
     auto new_loop_scope() -> void
     {
-        if (d_scopes.empty()) {
-            print("Cannot add a loop scope before a global scope\n");
-            std::exit(1);
-        }
+        panic_if(d_scopes.empty(), "Cannot add a loop scope before a global scope");
         d_scopes.emplace_back(std::make_shared<scope>(
             loop_scope{},
             current()->get_location_counter(),
@@ -183,10 +171,7 @@ public:
 
     auto pop_scope() -> void
     {
-        if (d_scopes.empty()) {
-            print("Tried to pop a scope, but there are none!");
-            std::exit(1);
-        }
+        panic_if(d_scopes.empty(), "Tried to pop a scope, but there are none!");
         d_scopes.pop_back();
     }
 
@@ -243,8 +228,7 @@ public:
                 return scope->as<loop_scope>();
             }
         }
-        print("Could not get loop info, not in a loop!\n");
-        std::exit(1);
+        panic("could not get loop info, not in a loop!");
     }
 
     auto get_function_info() -> function_scope&
@@ -254,8 +238,7 @@ public:
                 return scope->as<function_scope>();
             }
         }
-        print("Could not get function info, not in a function!\n");
-        std::exit(1);
+        panic("could not get function info, not in a function!");
     }
 
     auto all() -> std::span<const std::shared_ptr<scope>>

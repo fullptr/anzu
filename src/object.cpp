@@ -1,7 +1,6 @@
 #include "object.hpp"
 #include "token.hpp"
-#include "utility/print.hpp"
-#include "utility/overloaded.hpp"
+#include "utility/common.hpp"
 
 #include <cassert>
 #include <algorithm>
@@ -12,12 +11,6 @@ namespace anzu {
 namespace {
 
 static constexpr auto PTR_SIZE = std::size_t{8};
-
-auto format_error(const std::string& str) -> void
-{
-    anzu::print("format error: could not format special chars in '{}'\n", str);
-    std::exit(1);
-}
 
 }
 
@@ -295,20 +288,15 @@ auto inner_type(const type_name& t) -> type_name
     if (t.is_const()) {
         return t.remove_const();
     }
-    print("COMPILER ERROR: Tried to get the inner type of an invalid type category, "
-          "can only get the inner type for arrays, pointers, spans and references\n");
-    std::exit(1);
-    return {};
+    panic("tried to get the inner type of an invalid type category, "
+          "can only get the inner type for arrays, pointers, spans and references");
 }
 
 auto array_length(const type_name& t) -> std::size_t
 {
-    if (is_array_type(t.remove_const())) {
-        return std::get<type_array>(t.remove_const()).count;
-    }
-    print("COMPILER ERROR: Tried to get length of a non-array type\n");
-    std::exit(1);
-    return {};
+    const auto mut_type = t.remove_const();
+    panic_if(!is_array_type(mut_type), "Tried to get length of a non-array type");
+    return std::get<type_array>(mut_type).count;
 }
 
 auto size_of_ptr() -> std::size_t
@@ -337,9 +325,8 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
         [](const type_ptr&)          { return true; },
         [](const type_function_ptr&) { return true; },
         [](const type_reference&)    {
-            print("Logic Error: Tried to check if a ref is trivially copyable, but it should "
-                  "have already been stripped away\n");
-            std::exit(1);
+            panic("tried to check if a ref is trivially copyable, but it should "
+                  "have already been stripped away");
             return false;
         },
         [](const type_const& t)      { return is_type_trivially_copyable(*t.inner_type); }
@@ -427,15 +414,13 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
                 case fundamental::f64_type:
                     return 8;
                 default:
-                    print("unknown fundamental type\n");
-                    std::exit(1);
+                    panic("unknown fundamental type");
                 return 0;
             }
         },
         [&](const type_struct& t) -> std::size_t {
             if (!d_classes.contains(type)) {
-                print("unknown type '{}'\n", type);
-                std::exit(1);
+                panic("unknown type '{}'", type);
             }
             auto size = std::size_t{0};
             for (const auto& field : fields_of(type)) {
