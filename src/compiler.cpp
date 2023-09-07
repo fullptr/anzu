@@ -157,9 +157,7 @@ void declare_var(compiler& com, const token& tok, const std::string& name, const
 auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
 {
     const auto var = com.scopes.find(name);
-    if (!var) {
-        tok.error("could not find variable '{}'\n", name);
-    }
+    tok.assert(var.has_value(), "could not find variable '{}'\n", name);
     const auto op = var->is_location_relative ? op::push_ptr_rel : op::push_ptr;
     push_value(com.program, op, var->location);
     return var->type;
@@ -168,6 +166,7 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
+    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", type);
     const auto size = com.types.size_of(type);
     push_value(com.program, op::load, size);
 }
@@ -175,6 +174,7 @@ auto load_variable(compiler& com, const token& tok, const std::string& name) -> 
 auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
+    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", type);
     const auto size = com.types.size_of(type);
     push_value(com.program, op::save, size);
 }
@@ -238,27 +238,24 @@ auto get_constructor_params(const compiler& com, const type_name& type) -> std::
     return params;
 }
 
-// TODO: Generalise further
-auto function_ends_with_return(const node_stmt& node) -> bool
+auto ends_in_return(const node_stmt& node) -> bool
 {
-    if (std::holds_alternative<node_sequence_stmt>(node)) {
-        const auto& seq = std::get<node_sequence_stmt>(node).sequence;
-        if (seq.empty()) {
-            return false;
-        }
-        if (std::holds_alternative<node_return_stmt>(*seq.back())) {
-            return true;
-        }
-        if (std::holds_alternative<node_unsafe_stmt>(*seq.back())) {
-            const auto& back = std::get<node_unsafe_stmt>(*seq.back());
-            if (back.sequence.empty() || !std::holds_alternative<node_return_stmt>(*back.sequence.back())) {
-                return false;
-            }
-            return true;
-        }
-        return false;
-    }
-    return std::holds_alternative<node_return_stmt>(node);
+    return std::visit(overloaded{
+        [&](const node_sequence_stmt& n) {
+            if (n.sequence.empty()) { return false; }
+            return ends_in_return(*n.sequence.back());
+        },
+        [&](const node_unsafe_stmt& n) {
+            if (n.sequence.empty()) { return false; }
+            return ends_in_return(*n.sequence.back());
+        },
+        [&](const node_if_stmt& n) {
+            if (!n.else_body) { return false; } // both branches must exist
+            return ends_in_return(*n.body) && ends_in_return(*n.else_body);
+        },
+        [](const node_return_stmt&) { return true; },
+        [](const auto&)             { return false; }
+    }, node);
 }
 
 auto assign_fn_params(const type_name& type) -> type_names
@@ -1438,7 +1435,7 @@ auto compile_function_body(
 
         push_stmt(com, *body);
 
-        if (!function_ends_with_return(*body)) {
+        if (!ends_in_return(*body)) {
             // A function returning null does not need a final return statement, and in this case
             // we manually add a return value of null here.
             if (sig.return_type == null_type()) {
