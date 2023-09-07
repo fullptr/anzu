@@ -1,6 +1,6 @@
 #include "lexer.hpp"
 #include "object.hpp"
-#include "utility/print.hpp"
+#include "utility/common.hpp"
 
 #include <fstream>
 
@@ -12,8 +12,7 @@ template <typename... Args>
     std::int64_t lineno, std::int64_t col, std::format_string<Args...> msg, Args&&... args)
 {
     const auto formatted_msg = std::format(msg, std::forward<Args>(args)...);
-    anzu::print("[ERROR] ({}:{}) {}\n", lineno, col, formatted_msg);
-    std::exit(1);
+    panic("[ERROR] ({}:{}) {}", lineno, col, formatted_msg);
 }
 
 }
@@ -285,10 +284,7 @@ auto tokenstream::consume_maybe(token_type tt) -> bool
 
 auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
 {
-    if (!valid()) {
-        anzu::print("[ERROR] (EOF) expected '{}'\n", tt);
-        std::exit(1);
-    }
+    panic_if(!valid(), "[ERROR] (EOF) expected '{}'", tt);
     if (curr().type != tt) {
         curr().error("expected '{}', got '{}' [PARSER:{}]\n", tt, curr().type, loc.line());
     }
@@ -297,10 +293,7 @@ auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
 
 auto tokenstream::consume_u64() -> std::uint64_t
 {
-    if (!valid()) {
-        anzu::print("[ERROR] (EOF) expected a uint\n");
-        std::exit(1);
-    }
+    panic_if(!valid(), "[ERROR] (EOF) expected a uint\n");
     if (curr().type != token_type::uint64) {
         curr().error("expected u64, got '{}'\n", token_type::uint64, curr().type);
     }

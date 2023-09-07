@@ -1,6 +1,5 @@
 #include "ast.hpp"
-#include "utility/print.hpp"
-#include "utility/overloaded.hpp"
+#include "utility/common.hpp"
 
 #include <functional>
 #include <ranges>

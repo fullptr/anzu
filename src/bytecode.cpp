@@ -1,9 +1,8 @@
 #include "bytecode.hpp"
 #include "object.hpp"
 #include "functions.hpp"
-#include "utility/scope_timer.hpp"
-#include "utility/print.hpp"
 #include "utility/memory.hpp"
+#include "utility/common.hpp"
 
 #include <concepts>
 #include <utility>
@@ -12,21 +11,10 @@ namespace anzu {
 namespace {
 
 template <typename ...Args>
-auto runtime_assert(bool condition, std::format_string<Args...> msg, Args&&... args)
-{
-    if (!condition) {
-        anzu::print(msg, std::forward<Args>(args)...);
-        std::exit(1);
-    }
-}
-
-
-template <typename ...Args>
 [[noreturn]] auto runtime_error(std::format_string<Args...> message, Args&&... args)
 {
     const auto msg = std::format(message, std::forward<Args>(args)...);
-    print("Runtime assertion failed! {}\n", msg);
-    std::exit(1);
+    panic("runtime assertion failed! {}", msg);
 }
 
 template <typename Type, template <typename> typename Op>
@@ -130,7 +118,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
                 runtime_error("cannot assign into read only memory");
             }
             else {
-                runtime_assert(ptr + size <= ctx.stack.size(), "tried to access invalid memory address {}", ptr);
+                panic_if(ptr + size > ctx.stack.size(), "tried to access invalid memory address {}", ptr);
                 if (ptr + size < ctx.stack.size()) {
                     std::memcpy(&ctx.stack[ptr], &ctx.stack[ctx.stack.size() - size], size);
                     ctx.stack.resize(ctx.stack.size() - size);
@@ -151,7 +139,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto type_size = read_advance<std::uint64_t>(prog, ctx.prog_ptr);
             const auto count = pop_value<std::uint64_t>(ctx.stack);
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-            runtime_assert(is_heap_ptr(ptr), "cannot delete a span to stack memory\n");
+            panic_if(!is_heap_ptr(ptr), "cannot delete a span to non-heap memory");
             ctx.allocator.deallocate(unset_heap_bit(ptr), count * type_size);
         } break;
         case op::alloc_ptr: {
@@ -162,7 +150,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::dealloc_ptr: {
             const auto type_size = read_advance<std::uint64_t>(prog, ctx.prog_ptr);
             const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-            runtime_assert(is_heap_ptr(ptr), "cannot delete a pointer to stack memory\n");
+            panic_if(!is_heap_ptr(ptr), "cannot delete a pointer to non-heap memory");
             ctx.allocator.deallocate(unset_heap_bit(ptr), type_size);
         } break;
         case op::jump: {

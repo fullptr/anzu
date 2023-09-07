@@ -1,5 +1,5 @@
 #include "allocator.hpp"
-#include "utility/print.hpp"
+#include "utility/common.hpp"
 
 #include <limits>
 
@@ -67,10 +67,7 @@ auto memory_allocator::deallocate(std::size_t ptr, std::size_t size) -> void
     d_bytes_allocated -= size;
     
     auto [it, success] = d_pools.emplace(ptr, size);
-    if (!success) {
-        print("logic error, double deallocation of ptr={}\n", ptr);
-        std::exit(1);
-    }
+    panic_if(!success, "double deallocation of ptr={}", ptr);
 
     if (it != d_pools.begin()) { // Try to merge into the one before
         it = try_merge_left(d_pools, std::prev(it), it);

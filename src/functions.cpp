@@ -1,8 +1,7 @@
 #include "functions.hpp"
 #include "object.hpp"
 #include "bytecode.hpp"
-#include "utility/print.hpp"
-#include "utility/overloaded.hpp"
+#include "utility/common.hpp"
 #include "utility/memory.hpp"
 
 #include <unordered_map>
