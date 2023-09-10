@@ -1,5 +1,6 @@
-fn foo(x: const i64) {}
+fn foo(x: i64~) { x = 6; }
 
-var x := 50;
+var x := 5;
 foo(x);
+
 println(x);
