@@ -776,6 +776,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 }
 
 // This function is an absolute mess and need rewriting. Should also try and combine with
+// is_type_convertible_to
 [[nodiscard]] auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> bool
@@ -853,6 +854,17 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return type;
         }
 
+        // Hack to allow for an easy way to dump types of expressions
+        if (inner.struct_name == nullptr & inner.name == "__dump_type") {
+            print("__dump_type(\n");
+            for (const auto& arg : node.args) {
+                print("    {},\n", type_of_expr(com, *arg));
+            }
+            print(")\n");
+            push_value(com.program, op::push_null);
+            return null_type();
+        }
+
         // Second, it might be a function call
         auto params = type_names{};
         params.reserve(node.args.size());
@@ -860,7 +872,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             params.push_back(type_of_expr(com, *arg));
         }
         
-        const auto struct_type = resolve_type(com, node.token, inner.struct_name);
+        const auto struct_type = resolve_type(com, node.token, inner.struct_name).remove_cr();
         if (const auto func = get_function(com, struct_type, inner.name, params); func) {
             push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
