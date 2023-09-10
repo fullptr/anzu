@@ -1,10 +1,45 @@
 
-let a := 5;
-var b := 6;
+fn min(a: f64, b: f64) -> f64
+{
+    if (a < b) { return a; } else { return b; }
+}
 
-let c := a~;
-#var d := a~;
-let e := b~;
-var f := b~;
+fn max(a: f64, b: f64) -> f64
+{
+    if (a > b) { return a; } else { return b; }
+}
 
-__dump_type(a, b, c, e, f);
+fn root(n: f64) -> f64
+{
+    var lo := min(1.0, n);
+    var hi := max(1.0, n);
+    var mid := 0.0;
+
+    while 100.0 * lo * lo < n {
+        lo = lo * 10.0;
+    }
+
+    while 0.01 * hi * hi > n {
+        hi = hi * 0.1;
+    }
+
+    var count := 0;
+    while count < 100 {
+        mid = (lo + hi) / 2.0;
+        if (mid * mid > n) {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+        count = count + 1;
+    }
+    return mid;
+}
+
+var count := 0;
+while count < 1000 {
+    sqrt(10.0);
+    count = count + 1;
+}
+println(sqrt(10.0));
+println(root(10.0));
