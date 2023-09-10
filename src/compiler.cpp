@@ -856,6 +856,12 @@ auto is_type_convertible_to(const type_name& type, const type_name& expected) ->
         || (expected.add_const() == type && !type.is_ref());
 }
 
+auto get_converter(const type_name& src, const type_name& dst)
+    -> std::optional<std::function<void(compiler&, const node_expr&, const type_name&, const token&)>>
+{
+    return std::nullopt;
+}
+
 // Checks if the set of given args is convertible to the signature for a function.
 // Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
 // rvalues should not be bindable to references
