@@ -811,7 +811,7 @@ auto get_converter(const type_name& src, const type_name& dst)
     //    ref       val ->     const val : copy underlying
     //    ref const val ->     val       : copy underlying
     //    ref const val ->     const val : copy underlying
-    if (!src_is_ref) {
+    if (!dst_is_ref) {
         return [](compiler& com, const node_expr& expr, const token& tok) {
             push_object_copy(com, expr, tok);
         };
