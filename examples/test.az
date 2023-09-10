@@ -1,0 +1,15 @@
+
+struct foo
+{
+    #fn bar(self: (const foo)~) {
+    #    println("const");
+    #}
+    fn bar(self: foo~) {
+        println("non-const");
+    }
+}
+let f := foo();
+f.bar();
+
+
+

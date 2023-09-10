@@ -860,7 +860,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             params.push_back(type_of_expr(com, *arg));
         }
         
-        const auto struct_type = resolve_type(com, node.token, inner.struct_name);
+        const auto struct_type = resolve_type(com, node.token, inner.struct_name).remove_cr();
         if (const auto func = get_function(com, struct_type, inner.name, params); func) {
             push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {

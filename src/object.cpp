@@ -363,7 +363,7 @@ auto is_type_convertible_to(const type_name& type, const type_name& expected) ->
 // Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
 // rvalues should not be bindable to references
 auto are_types_convertible_to(const std::vector<type_name>& args,
-                       const std::vector<type_name>& actuals) -> bool
+                              const std::vector<type_name>& actuals) -> bool
 {
     if (args.size() != actuals.size()) return false;
     for (std::size_t i = 0; i != args.size(); ++i) {
