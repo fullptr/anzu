@@ -776,6 +776,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 }
 
 // This function is an absolute mess and need rewriting. Should also try and combine with
+// is_type_convertible_to
 [[nodiscard]] auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> bool
@@ -851,6 +852,17 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                 push_value(com.program, op::push_null);
             }
             return type;
+        }
+
+        // Hack to allow for an easy way to dump types of expressions
+        if (inner.struct_name == nullptr & inner.name == "__dump_type") {
+            print("__dump_type(\n");
+            for (const auto& arg : node.args) {
+                print("    {},\n", type_of_expr(com, *arg));
+            }
+            print(")\n");
+            push_value(com.program, op::push_null);
+            return null_type();
         }
 
         // Second, it might be a function call

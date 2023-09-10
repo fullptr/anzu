@@ -1,15 +1,10 @@
 
-struct foo
-{
-    fn bar(self: (const foo)~) {
-        println("const by ref");
-    }
-    fn bar(self: foo~) {
-        println("non-const");
-    }
-}
-let f := foo();
-f.bar();
+let a := 5;
+var b := 6;
 
+let c := a~;
+#var d := a~;
+let e := b~;
+var f := b~;
 
-
+__dump_type(a, b, c, e, f);
