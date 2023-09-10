@@ -851,12 +851,6 @@ auto push_function_arg(
     (*converter)(com, expr, tok);
 }
 
-auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool
-{
-    const auto converter = get_converter(type, expected);
-    return converter.has_value();
-}
-
 // Checks if the set of given args is convertible to the signature for a function.
 // Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
 // rvalues should not be bindable to references
@@ -865,7 +859,7 @@ auto are_types_convertible_to(const std::vector<type_name>& args,
 {
     if (args.size() != actuals.size()) return false;
     for (std::size_t i = 0; i != args.size(); ++i) {
-        if (!is_type_convertible_to(args[i], actuals[i])) {
+        if (get_converter(args[i], actuals[i]).has_value()) {
             return false;
         }
     }
