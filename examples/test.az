@@ -1,9 +1,9 @@
 
 struct foo
 {
-    #fn bar(self: (const foo)~) {
-    #    println("const");
-    #}
+    fn bar(self: (const foo)~) {
+        println("const by ref");
+    }
     fn bar(self: foo~) {
         println("non-const");
     }
