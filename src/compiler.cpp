@@ -860,10 +860,10 @@ auto are_types_convertible_to(const std::vector<type_name>& args,
     if (args.size() != actuals.size()) return false;
     for (std::size_t i = 0; i != args.size(); ++i) {
         if (get_converter(args[i], actuals[i]).has_value()) {
-            return false;
+            return true;
         }
     }
-    return true;
+    return false;
 }
 
 auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
