@@ -796,31 +796,22 @@ auto get_converter(const type_name& src, const type_name& dst)
     }
 
     // Cannot take a non-const ref to a const value
-    //        const val -> ref       val : error
-    //    ref const val -> ref       val : error
+    //    (ref)  const  val -> ref         val : error
     if (src_is_const && dst_is_ref && !dst_is_const) {
         return std::nullopt;
     }
 
     // If the dst type is not a reference, then we can copy the src regardless of const
-    //              val ->     val       : copy underlying
-    //              val ->     const val : copy underlying
-    //        const val ->     val       : copy underlying
-    //        const val ->     const val : copy underlying
-    //    ref       val ->     val       : copy underlying
-    //    ref       val ->     const val : copy underlying
-    //    ref const val ->     val       : copy underlying
-    //    ref const val ->     const val : copy underlying
+    //    (ref) (const) val -> (const)     val : copy underlying
     if (!dst_is_ref) {
         return [](compiler& com, const node_expr& expr, const token& tok) {
             push_object_copy(com, expr, tok);
         };
     }
 
-    // Values can convert to references (constness taken care of above)
-    //              val -> ref       val : ptr
-    //              val -> ref const val : ptr
-    //        const val -> ref const val : ptr
+    // Values can convert to references (removing const taken care of above)
+    //              val -> ref (const) val : ptr
+    //        const val -> ref  const  val : ptr
     if (!src_is_ref && dst_is_ref) {
         return [](compiler& com, const node_expr& expr, const token& tok) {
             push_expr_ptr(com, expr);
@@ -828,9 +819,8 @@ auto get_converter(const type_name& src, const type_name& dst)
     }
 
     // Lastly, refs to refs, just need to copy the values
-    //    ref       val -> ref       val : copy bytes
-    //    ref       val -> ref const val : copy bytes
-    //    ref const val -> ref const val : copy bytes
+    //    ref       val -> ref (const) val : copy bytes
+    //    ref const val -> ref  const  val : copy bytes
     return [](compiler& com, const node_expr& expr, const token& tok) {
         push_expr_val(com, expr);
     };
