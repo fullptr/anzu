@@ -809,7 +809,7 @@ auto get_converter(const type_name& src, const type_name& dst)
         };
     }
 
-    // Values can convert to references (removing const taken care of above)
+    // Values can convert to references (except const -> non-const but that's above)
     //              val -> ref (const) val : ptr
     //        const val -> ref  const  val : ptr
     if (!src_is_ref && dst_is_ref) {
