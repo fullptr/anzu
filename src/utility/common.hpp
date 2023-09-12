@@ -78,6 +78,10 @@ auto panic_if(
     }
 }
 
+inline auto range(std::size_t max) {
+    return std::views::iota(std::size_t{0}, max);
+}
+
 template <typename R1, typename R2>
 auto zip(const R1& r1, const R2& r2)
 {
