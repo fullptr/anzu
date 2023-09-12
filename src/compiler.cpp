@@ -271,11 +271,6 @@ auto copy_fn_params(const type_name& type) -> type_names
     return { concrete_reference_type(type) };
 }
 
-auto drop_fn_params(const type_name& type) -> type_names
-{
-    return { concrete_reference_type(type) };
-}
-
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
 // a pointer to an object of the given type. This function compiles
 // code to destruct that object.
@@ -284,7 +279,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
 {
     std::visit(overloaded{
         [&](const type_struct&) {
-            const auto params = drop_fn_params(type);
+            const auto params = type_names{ concrete_reference_type(type) };
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
@@ -303,6 +298,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
             }
         },
         [&](const type_array& type) {
+            // Loop backwards through each element in the array and call the destructor
             for (const auto idx : range(array_length(type)) | std::views::reverse) {
                 call_destructor(com, *type.inner_type, [&] (const token& tok) {
                     push_object_ptr(tok);
