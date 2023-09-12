@@ -333,47 +333,6 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
     }, type);
 }
 
-auto is_type_convertible_to(const type_name& type, const type_name& expected) -> bool
-{
-    return
-        // Trivial, no conversion needed
-        type == expected
-
-        // References can convert to a non-ref via copy-construction, and
-        || (type.is_ref() && type.remove_ref() == expected)
-
-        // non-refs convert to references by taking the address
-        || (!type.is_ref() && type.add_ref() == expected)
-
-        // Arrays can convert to spans if the underlying types match
-        || (is_array_type(type) && is_span_type(expected) && inner_type(type) == inner_type(expected))
-        
-        // Non-const type can bind to a bind type
-        || (type.add_const() == expected)
-
-        // So long as we're not dealing with references, const objects can bind to non-const
-        // arguments because we can make a copy
-        || (!expected.is_ref() && !expected.is_const() && type.remove_const() == expected)
-
-        || (type.remove_cr() == expected)
-        || (expected.add_const() == type && !type.is_ref());
-}
-
-// Checks if the set of given args is convertible to the signature for a function.
-// Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
-// rvalues should not be bindable to references
-auto are_types_convertible_to(const std::vector<type_name>& args,
-                              const std::vector<type_name>& actuals) -> bool
-{
-    if (args.size() != actuals.size()) return false;
-    for (std::size_t i = 0; i != args.size(); ++i) {
-        if (!is_type_convertible_to(args[i], actuals[i])) {
-            return false;
-        }
-    }
-    return true;
-}
-
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
 {
     if (d_classes.contains(name)) {

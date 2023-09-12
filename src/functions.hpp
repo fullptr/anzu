@@ -20,9 +20,7 @@ struct builtin
     type_name              return_type;
 };
 
-auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
-    -> std::optional<std::size_t>;
-
+auto get_builtins() -> std::span<const builtin>;
 auto get_builtin(std::size_t id) -> const builtin&;
 
 }

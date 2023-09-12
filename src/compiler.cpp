@@ -116,6 +116,9 @@ auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
     push_value(com.program, op::u64_add); // modify ptr
 }
 
+auto are_types_convertible_to(const std::vector<type_name>& args,
+                              const std::vector<type_name>& actuals) -> bool;
+
 auto get_function(
     const compiler& com,
     const type_name& struct_name,
@@ -775,56 +778,95 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
+auto get_converter(const type_name& src, const type_name& dst)
+    -> std::optional<std::function<void(compiler&, const node_expr&, const token&)>>
+{
+    if (is_array_type(src) && is_span_type(dst)) {
+        return [&](compiler& com, const node_expr& expr, const token& tok) {
+            push_expr_ptr(com, expr);
+            push_value(com.program, op::push_u64, array_length(src));
+        };
+    }
+
+    const auto [src_raw, src_is_const, src_is_ref] = src.strip_qualifiers();
+    const auto [dst_raw, dst_is_const, dst_is_ref] = dst.strip_qualifiers();
+
+    if (src_raw != dst_raw) {
+        return std::nullopt;
+    }
+
+    // Cannot take a non-const ref to a const value
+    //    (ref)  const  val -> ref         val : error
+    if (src_is_const && dst_is_ref && !dst_is_const) {
+        return std::nullopt;
+    }
+
+    // If the dst type is not a reference, then we can copy the src regardless of const
+    //    (ref) (const) val -> (const)     val : copy underlying
+    if (!dst_is_ref) {
+        return [](compiler& com, const node_expr& expr, const token& tok) {
+            push_object_copy(com, expr, tok);
+        };
+    }
+
+    // Values can convert to references (except const -> non-const but that's above)
+    //              val -> ref (const) val : ptr
+    //        const val -> ref  const  val : ptr
+    if (!src_is_ref && dst_is_ref) {
+        return [](compiler& com, const node_expr& expr, const token& tok) {
+            push_expr_ptr(com, expr);
+        };
+    }
+
+    // Lastly, refs to refs, just need to copy the values
+    //    ref       val -> ref (const) val : copy bytes
+    //    ref const val -> ref  const  val : copy bytes
+    return [](compiler& com, const node_expr& expr, const token& tok) {
+        push_expr_val(com, expr);
+    };
+}
+
 // This function is an absolute mess and need rewriting. Should also try and combine with
 // is_type_convertible_to
-[[nodiscard]] auto push_function_arg(
+auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
-) -> bool
+) -> void
 {
     const auto actual = type_of_expr(com, expr);
+    const auto converter = get_converter(actual, expected);
+    tok.assert(
+        converter.has_value(), "Could not convert arg of type '{}' to '{}'", actual, expected
+    );
     
-    if (is_span_type(expected) && is_array_type(actual)) {
-        push_expr_ptr(com, expr);
-        push_value(com.program, op::push_u64, array_length(actual));
-        return true;
-    }
-    
-    if (expected.remove_cr() == actual.remove_cr() && expected.is_ref() && !actual.is_const()) {
-        push_ptr_underlying(com, expr);
-        return true;
-    }
-    
-    if (actual == expected) {
-        push_object_copy(com, expr, tok);
-        return true;
-    }
+    (*converter)(com, expr, tok);
+}
 
-    if (actual.add_const() == expected) {
-        push_object_copy(com, expr, tok);
-        return true;
+// Checks if the set of given args is convertible to the signature for a function.
+// Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
+// rvalues should not be bindable to references
+auto are_types_convertible_to(const std::vector<type_name>& args,
+                              const std::vector<type_name>& actuals) -> bool
+{
+    if (args.size() != actuals.size()) return false;
+    for (std::size_t i = 0; i != args.size(); ++i) {
+        if (get_converter(args[i], actuals[i]).has_value()) {
+            return true;
+        }
     }
-
-    if (expected.add_const() == actual && !actual.is_ref()) {
-        push_object_copy(com, expr, tok);
-        return true;
-    }
-
-    if (actual.remove_ref() == expected) {
-        push_object_copy(com, expr, tok);
-        return true;
-    }
-
-    if (actual.remove_cr() == expected && !expected.is_ref()) {
-        push_object_copy(com, expr, tok);
-        return true;
-    }
-
-    if (actual.add_ref() == expected) {
-        push_ptr_underlying(com, expr);
-        return true;
-    }
-
     return false;
+}
+
+auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
+    -> std::optional<std::size_t>
+{
+    auto index = std::size_t{0};
+    for (const auto& b : get_builtins()) {
+        if (name == b.name && are_types_convertible_to(args, b.args)) {
+            return index;
+        }
+        ++index;
+    }
+    return std::nullopt;
 }
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
@@ -840,13 +882,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             node.token.assert_eq(expected_params.size(), node.args.size(),
                                  "incorrect number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                if (!push_function_arg(com, *node.args.at(i), expected_params[i], node.token)) {
-                    node.token.error(
-                        "Could not convert arg of type '{}' to '{}'",
-                        type_of_expr(com, *node.args.at(i)),
-                        expected_params[i]
-                    );
-                }
+                push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
             }
             if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
                 push_value(com.program, op::push_null);
@@ -876,13 +912,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto func = get_function(com, struct_type, inner.name, params); func) {
             push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                if (!push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token)) {
-                    node.token.error(
-                        "Could not convert arg of type '{}' to '{}'",
-                        type_of_expr(com, *node.args.at(i)),
-                        func->sig.params[i]
-                    );
-                }
+                push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
             push_function_call(com, *func);
             return func->sig.return_type;
@@ -907,13 +937,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
             const auto& builtin = get_builtin(*b);
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
-                if (!push_function_arg(com, *node.args.at(i), builtin.args[i], node.token)) {
-                    node.token.error(
-                        "Could not convert arg of type '{}' to '{}'",
-                        type_of_expr(com, *node.args.at(i)),
-                        builtin.args[i]
-                    );
-                }
+                push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
             }
             push_value(com.program, op::builtin_call, *b);
             return get_builtin(*b).return_type;
@@ -929,13 +953,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     push_value(com.program, op::push_call_frame);
     auto args_size = 2 * sizeof(std::uint64_t);
     for (std::size_t i = 0; i != node.args.size(); ++i) {
-        if (!push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token)) {
-            node.token.error(
-                "Could not convert arg of type '{}' to '{}'",
-                type_of_expr(com, *node.args.at(i)),
-                sig.param_types[i]
-            );
-        }
+        push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
         args_size += com.types.size_of(sig.param_types[i]);
     }
 

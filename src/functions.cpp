@@ -178,17 +178,9 @@ auto construct_builtin_array() -> std::vector<builtin>
 
 static const auto builtins = construct_builtin_array();
 
-auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
-    -> std::optional<std::size_t>
+auto get_builtins() -> std::span<const builtin>
 {
-    auto index = std::size_t{0};
-    for (const auto& b : builtins) {
-        if (name == b.name && are_types_convertible_to(args, b.args)) {
-            return index;
-        }
-        ++index;
-    }
-    return std::nullopt;
+    return builtins;
 }
 
 auto get_builtin(std::size_t id) -> const builtin&
