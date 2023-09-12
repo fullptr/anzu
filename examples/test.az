@@ -1,2 +1,12 @@
-    var idx := 0;
-    print(idx);
+struct foo
+{
+    fn drop(self: foo~) { println("drop"); }
+}
+
+struct wrapper
+{
+    f: foo;
+}
+
+let arr1 := [foo(), foo()];
+let arr2 := [wrapper(foo()), wrapper(foo())];

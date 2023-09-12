@@ -271,11 +271,6 @@ auto copy_fn_params(const type_name& type) -> type_names
     return { concrete_reference_type(type) };
 }
 
-auto drop_fn_params(const type_name& type) -> type_names
-{
-    return { concrete_reference_type(type) };
-}
-
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
 // a pointer to an object of the given type. This function compiles
 // code to destruct that object.
@@ -283,11 +278,8 @@ using compile_obj_ptr_cb = std::function<void(const token&)>;
 auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb push_object_ptr) -> void
 {
     std::visit(overloaded{
-        [](type_fundamental) {
-            // nothing to do
-        },
         [&](const type_struct&) {
-            const auto params = drop_fn_params(type);
+            const auto params = type_names{ concrete_reference_type(type) };
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
@@ -301,41 +293,27 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
             for (const auto& field : fields | std::views::reverse) {
                 call_destructor(com, field.type, [&](const token& tok) {
                     push_object_ptr(tok);
-                    push_adjust_ptr_to_field(com, tok, field.type, field.name);
+                    push_adjust_ptr_to_field(com, tok, type, field.name);
                 });
             }
         },
         [&](const type_array& type) {
-            const auto inner_size = com.types.size_of(*type.inner_type);
-            const auto params = drop_fn_params(*type.inner_type);
-
-            if (const auto drop = get_function(com, *type.inner_type, "drop", params)) {
-                for (std::size_t i = array_length(type); i != 0;) {
-                    --i;
-                    push_value(com.program, op::push_call_frame);
-                    push_object_ptr(drop->tok);
-                    push_ptr_adjust(com, i * inner_size);
-                    push_function_call(com, *drop);
-                    push_value(com.program, op::pop, com.types.size_of(drop->sig.return_type));
-                }
+            // Loop backwards through each element in the array and call the destructor
+            for (const auto idx : range(array_length(type)) | std::views::reverse) {
+                call_destructor(com, *type.inner_type, [&] (const token& tok) {
+                    push_object_ptr(tok);
+                    push_ptr_adjust(com, idx * com.types.size_of(*type.inner_type));
+                });
             }
         },
-        [](const type_ptr&) {
-            // pointers do not own anything to cloean up
-        },
-        [](const type_span&) {
-            // spans do not own anything to cloean up
-        },
-        [](const type_function_ptr&) {
-            // functions pointers do not own anything to cloean up
-        },
-        [](const type_reference&) {
-            // references do not own anything to cloean up
-        },
-        [&](const type_const& t) {
-            // Strip off the const and call function again
+        [&](const type_const& t) { // Strip off the const and call function again
             call_destructor(com, type.remove_const(), push_object_ptr);
-        }
+        },
+        [](type_fundamental) {},
+        [](const type_ptr&) {},
+        [](const type_span&) {},
+        [](const type_function_ptr&) {},
+        [](const type_reference&) {}
     }, type);
 }
 
@@ -517,8 +495,7 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
         node.token.error("cannot take address of a function pointer");
     }
 
-    const auto type = push_var_addr(com, node.token, node.name);
-    return type;
+    return push_var_addr(com, node.token, node.name);
 }
 
 // I think this is a bit of a hack; when pushing the value of a function pointer, we need
@@ -826,30 +803,24 @@ auto get_converter(const type_name& src, const type_name& dst)
     };
 }
 
-// This function is an absolute mess and need rewriting. Should also try and combine with
-// is_type_convertible_to
 auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> void
 {
     const auto actual = type_of_expr(com, expr);
     const auto converter = get_converter(actual, expected);
-    tok.assert(
-        converter.has_value(), "Could not convert arg of type '{}' to '{}'", actual, expected
-    );
-    
+    tok.assert(converter.has_value(), "Could not convert arg from '{}' to '{}'", actual, expected);
     (*converter)(com, expr, tok);
 }
 
-// Checks if the set of given args is convertible to the signature for a function.
-// Type A is convertible to B is A == ref B or B == ref A. TODO: Consider value categories,
-// rvalues should not be bindable to references
-auto are_types_convertible_to(const std::vector<type_name>& args,
-                              const std::vector<type_name>& actuals) -> bool
+auto are_types_convertible_to(
+    const std::vector<type_name>& args, const std::vector<type_name>& expecteds
+)
+    -> bool
 {
-    if (args.size() != actuals.size()) return false;
-    for (std::size_t i = 0; i != args.size(); ++i) {
-        if (get_converter(args[i], actuals[i]).has_value()) {
+    if (args.size() != expecteds.size()) return false;
+    for (const auto& [arg, expected] : zip(args, expecteds)) {
+        if (get_converter(arg, expected).has_value()) {
             return true;
         }
     }
