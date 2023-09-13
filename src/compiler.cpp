@@ -263,12 +263,12 @@ auto ends_in_return(const node_stmt& node) -> bool
 
 auto assign_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_reference_type(type), concrete_reference_type(type) };
+    return { type.add_ref(), type.add_ref() };
 }
 
 auto copy_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_reference_type(type) };
+    return { type.add_ref() };
 }
 
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
@@ -279,7 +279,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
 {
     std::visit(overloaded{
         [&](const type_struct&) {
-            const auto params = type_names{ concrete_reference_type(type) };
+            const auto params = type_names{ type.add_ref() };
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
@@ -1237,7 +1237,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_value(com.program, op::push_u64, com.types.size_of(inner));
         push_value(com.program, op::u64_mul);
         push_value(com.program, op::u64_add);
-        declare_var(com, node.token, node.name, concrete_reference_type(inner));
+        declare_var(com, node.token, node.name, inner.add_ref());
 
         // idx = idx + 1;
         load_variable(com, node.token, "#:idx");
@@ -1464,8 +1464,8 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
-    const auto expected = concrete_reference_type(struct_type);
-    const auto const_expected = concrete_reference_type(struct_type.add_const());
+    const auto expected = struct_type.add_ref();
+    const auto const_expected = struct_type.add_const().add_ref();
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code
