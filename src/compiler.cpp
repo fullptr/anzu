@@ -756,12 +756,12 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 }
 
 auto get_converter(const type_name& src, const type_name& dst)
-    -> std::optional<std::function<void(compiler&, const node_expr&, const token&)>>
+    -> void(*)(compiler&, const node_expr&, const token&)
 {
     if (is_array_type(src) && is_span_type(dst)) {
-        return [&](compiler& com, const node_expr& expr, const token& tok) {
-            push_expr_ptr(com, expr);
-            push_value(com.program, op::push_u64, array_length(src));
+        return [](compiler& com, const node_expr& expr, const token& tok) {
+            const auto type = push_expr_ptr(com, expr);
+            push_value(com.program, op::push_u64, array_length(type));
         };
     }
 
@@ -769,13 +769,13 @@ auto get_converter(const type_name& src, const type_name& dst)
     const auto [dst_raw, dst_is_const, dst_is_ref] = dst.strip_qualifiers();
 
     if (src_raw != dst_raw) {
-        return std::nullopt;
+        return nullptr;
     }
 
     // Cannot take a non-const ref to a const value
     //    (ref)  const  val -> ref         val : error
     if (src_is_const && dst_is_ref && !dst_is_const) {
-        return std::nullopt;
+        return nullptr;
     }
 
     // If the dst type is not a reference, then we can copy the src regardless of const
@@ -809,7 +809,7 @@ auto push_function_arg(
 {
     const auto actual = type_of_expr(com, expr);
     const auto converter = get_converter(actual, expected);
-    tok.assert(converter.has_value(), "Could not convert arg from '{}' to '{}'", actual, expected);
+    tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
     (*converter)(com, expr, tok);
 }
 
@@ -820,7 +820,7 @@ auto are_types_convertible_to(
 {
     if (args.size() != expecteds.size()) return false;
     for (const auto& [arg, expected] : zip(args, expecteds)) {
-        if (get_converter(arg, expected).has_value()) {
+        if (get_converter(arg, expected)) {
             return true;
         }
     }
@@ -1000,11 +1000,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_assert(com, "upper bound must be strictly less than the array size");
     }
 
-    if (is_ref) {
-        push_expr_val(com, *node.expr);
-    } else {
-        push_expr_ptr(com, *node.expr);
-    }
+    push_ptr_underlying(com, *node.expr);
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
@@ -1027,11 +1023,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_value(com.program, op::u64_sub);
     } else if (is_span_type(type)) {
         // Push the span pointer, offset to the size, and load the size
-        if (is_ref) {
-            push_expr_val(com, *node.expr);
-        } else {
-            push_expr_ptr(com, *node.expr);
-        }
+        push_ptr_underlying(com, *node.expr);
         push_value(com.program, op::push_u64, size_of_ptr(), op::u64_add);
         push_value(com.program, op::load, com.types.size_of(u64_type()));
     } else {
@@ -1046,9 +1038,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
-    if (!com.scopes.in_unsafe()) {
-        node.token.error("Cannot have a 'new' statement outside of an unsafe block");
-    }
+    node.token.assert(com.scopes.in_unsafe(), "'new' requires an unsafe block");
 
     if (node.size) {
         const auto count = push_expr_val(com, *node.size);
