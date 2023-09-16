@@ -112,8 +112,9 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 
 auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 {
-    push_value(com.program, op::push_u64, offset);
-    push_value(com.program, op::u64_add); // modify ptr
+    if (offset > 0) {
+        push_value(com.program, op::push_u64, offset, op::u64_add); // modify ptr
+    }
 }
 
 auto are_types_convertible_to(const std::vector<type_name>& args,
@@ -423,10 +424,9 @@ public:
 // automatically dereferenced
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
-    const auto type = type_of_expr(com, expr);
-    const auto real_type = type.remove_cr();
+    const auto [type, is_const, is_ref] = type_of_expr(com, expr).strip_qualifiers();
 
-    if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
+    if (is_rvalue_expr(expr) || is_type_trivially_copyable(type)) {
         push_val_underlying(com, expr);
     }
 
@@ -438,25 +438,25 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         const auto copy = get_function(com, etype, "copy", params);
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
 
-        for (std::size_t i = 0; i != array_length(type); ++i) {
+        for (const auto idx : range(array_length(type))) {
             push_value(com.program, op::push_call_frame);
             push_ptr_underlying(com, expr);
-            push_ptr_adjust(com, i * esize);
+            push_ptr_adjust(com, idx * esize);
             push_function_call(com, *copy);
         }
     }
     
     else {
-        const auto params = copy_fn_params(real_type);
-        const auto copy = get_function(com, real_type, "copy", params);
-        tok.assert(copy.has_value(), "{} cannot be copied", real_type);
+        const auto params = copy_fn_params(type);
+        const auto copy = get_function(com, type, "copy", params);
+        tok.assert(copy.has_value(), "{} cannot be copied", type);
 
         push_value(com.program, op::push_call_frame);
         push_ptr_underlying(com, expr);
         push_function_call(com, *copy);
     }
 
-    return type.remove_ref(); // Keep constness intact
+    return is_const ? type.add_const() : type;  // Keep constness intact
 }
 
 // Gets the type of the expression by compiling it, then removes the added
@@ -1461,26 +1461,29 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     // Verification code
     node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
 
-    const auto actual = sig.params.front();
-    if (actual != expected && actual !=const_expected) {
-        node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
-    }
-
     // Special function extra checks
     if (node.function_name == "drop") {
         node.token.assert_eq(sig.return_type, null_type(), "'drop' bad return type");
         node.token.assert_eq(sig.params.size(), 1, "'drop' bad number of args");
+        node.token.assert_eq(sig.params[0], expected, "'drop' bad 1st arg");
     }
     else if (node.function_name == "copy") {
         node.token.assert_eq(sig.return_type, struct_type, "'copy' bad return type");
         node.token.assert_eq(sig.params.size(), 1, "'copy' bad number of args");
+        node.token.assert_eq(sig.params[0], const_expected, "'copy' bad 1st arg");
     }
     else if (node.function_name == "assign") {
         node.token.assert_eq(sig.return_type, null_type(), "'assign' bad return type");
         node.token.assert_eq(sig.params.size(), 2, "'assign' bad number of args");
-        node.token.assert_eq(sig.params.back(), expected, "'assign' bad 2nd arg");
+        node.token.assert_eq(sig.params[0], expected, "'assign' bad 1st arg");
+        node.token.assert_eq(sig.params[1], const_expected, "'assign' bad 2nd arg");
     }
-
+    else {
+        const auto actual = sig.params.front();
+        if (actual != expected && actual != const_expected) {
+            node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
+        }
+    }
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
