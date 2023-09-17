@@ -385,12 +385,6 @@ auto parse_type_inner(tokenstream& tokens) -> type_name
         else if (tokens.consume_maybe(token_type::ampersand)) {
             type = type_name{type_ptr{ .inner_type=type }};
         }
-        else if (tokens.consume_maybe(token_type::tilde)) {
-            if (std::holds_alternative<type_reference>(type)) {
-                tokens.consume().error("Invalid type, cannot have reference to reference");
-            }
-            type = type_name{type_reference{ .inner_type=type }};
-        }
         else {
             break;
         }
@@ -465,6 +459,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};
+        param.is_ref = tokens.consume_maybe(token_type::kw_ref);
         param.name = parse_name(tokens);
         tokens.consume_only(token_type::colon);
         param.type = parse_type_node(tokens);
@@ -492,6 +487,7 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};
+        param.is_ref = tokens.consume_maybe(token_type::kw_ref);
         param.name = parse_name(tokens);
         tokens.consume_only(token_type::colon);
         param.type = parse_type_node(tokens);

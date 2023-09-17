@@ -2,8 +2,8 @@
 struct foo {
     val: i64;
 
-    fn print(self: (const foo)~) {
-        print(self.val);
+    fn print(ref self: const foo) {
+        println(self.val);
     }
 }
 

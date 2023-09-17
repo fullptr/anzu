@@ -1395,7 +1395,8 @@ auto compile_function_body(
         declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
         declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
         for (const auto& arg : node_sig.params) {
-            const auto type = resolve_type(com, tok, arg.type);
+            auto type = resolve_type(com, tok, arg.type);
+            if (arg.is_ref) type = type.add_ref();
             sig.params.push_back({type});
             declare_var(com, tok, arg.name, type);
         }

@@ -42,6 +42,7 @@ struct node_parameter
 {
     std::string   name;
     node_type_ptr type;
+    bool          is_ref;
 };
 
 struct node_signature
