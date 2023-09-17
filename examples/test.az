@@ -1,6 +1,11 @@
 
-let x := 5;
-ref y := x;
-var z := 10;
+struct foo {
+    val: i64;
 
-fn foo(x: i64, y : const i64, ref z: i64)
+    fn print(self: (const foo)~) {
+        print(self.val);
+    }
+}
+
+var f := foo(1);
+f.print();

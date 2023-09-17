@@ -1054,6 +1054,14 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
     return concrete_ptr_type(type);
 }
 
+auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
+{
+    // If we're taking a reference of an existing reference object, we just return the inner
+    // object; in order words we create a new reference to the same underlying object, rather
+    // than creating a reference to a reference.
+    return push_ptr_underlying(com, *node.expr).add_ref();
+}
+
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
 // we can load it by pushing the address to the stack and loading.
 auto push_expr_val(compiler& com, const auto& node) -> type_name

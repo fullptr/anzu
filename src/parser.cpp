@@ -604,10 +604,11 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     switch (stmt.token.type) {
         using enum node_declaration_stmt::qualifier;
-        case token_type::kw_let: stmt.qual = let;
-        case token_type::kw_var: stmt.qual = var;
-        case token_type::kw_ref: stmt.qual = ref;
-        default: stmt.token.error("declaration must start with 'let', 'var' or 'ref'");
+        case token_type::kw_let: { stmt.qual = let; } break;
+        case token_type::kw_var: { stmt.qual = var; } break;
+        case token_type::kw_ref: { stmt.qual = ref; } break;
+        default: stmt.token.error("declaration must start with 'let', 'var' or 'ref', not {}",
+                                  stmt.token.text);
     }
 
     stmt.name = parse_name(tokens);
@@ -703,7 +704,8 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::left_brace:  return parse_braced_statement_list(tokens);
         case token_type::kw_unsafe:   return parse_unsafe_stmt(tokens);
         case token_type::kw_let:
-        case token_type::kw_var:      return parse_declaration_stmt(tokens);
+        case token_type::kw_var:
+        case token_type::kw_ref:      return parse_declaration_stmt(tokens);
     }
 
     auto node = std::make_shared<node_stmt>();
