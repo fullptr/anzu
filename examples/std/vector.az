@@ -4,7 +4,7 @@ struct vector
     data: i64[];
     size: u64;
 
-    fn push(self: vector~, val: i64)
+    fn push(ref self: vector, val: i64)
     {
         if (self.size == self.data.size()) {
             var new_cap := 2u * self.data.size();
@@ -26,23 +26,23 @@ struct vector
         self.size = self.size + 1u;
     }
 
-    fn pop(self: vector~) -> i64
+    fn pop(ref self: vector) -> i64
     {
         self.size = self.size - 1u;
         return self.data[self.size];
     }
 
-    fn size(self: vector~) -> u64
+    fn size(ref self: vector) -> u64
     {
         return self.size;
     }
 
-    fn capacity(self: vector~) -> u64
+    fn capacity(ref self: vector) -> u64
     {
         return self.data.size();
     }
 
-    fn drop(self: vector~)
+    fn drop(ref self: vector)
     {
         delete self.data;
     }

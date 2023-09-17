@@ -3,12 +3,12 @@ struct file
 {
     handle: u64;
 
-    fn drop(self: file&)
+    fn drop(ref self: file)
     {
         fclose(self@.handle);
     }
 
-    fn write(self: file&, str: char[])
+    fn write(ref self: file, str: char[])
     {
         fputs(self@.handle, str);
     }
