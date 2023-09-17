@@ -210,7 +210,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_function_def_stmt& node) {
             print("{}Function: {} (", spaces, node.name);
             print_comma_separated(node.sig.params, [](const auto& arg) {
-                return std::format("{}: {}", arg.name, *arg.type);
+                if (arg.is_ref) {
+                    return std::format("ref {}: {}", arg.name, *arg.type);
+                } else {
+                    return std::format("{}: {}", arg.name, *arg.type);
+                }
             });
             print(") -> {}\n", *node.sig.return_type);
             print_node(*node.body, indent + 1);
@@ -218,7 +222,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_member_function_def_stmt& node) {
             print("{}MemberFunction: {}::{} (", spaces, node.struct_name, node.function_name);
             print_comma_separated(node.sig.params, [](const auto& arg) {
-                return std::format("{}: {}", arg.name, *arg.type);
+                if (arg.is_ref) {
+                    return std::format("ref {}: {}", arg.name, *arg.type);
+                } else {
+                    return std::format("{}: {}", arg.name, *arg.type);
+                }
             });
             print(") -> {}\n", *node.sig.return_type);
             print_node(*node.body, indent + 1);

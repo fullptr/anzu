@@ -865,7 +865,8 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (inner.struct_name == nullptr & inner.name == "__dump_type") {
             print("__dump_type(\n");
             for (const auto& arg : node.args) {
-                print("    {},\n", type_of_expr(com, *arg));
+                const auto dump = type_of_expr(com, *arg);
+                print("    {}{},\n", dump.is_ref() ? "[ref] " : "", dump.remove_ref());
             }
             print(")\n");
             push_value(com.program, op::push_null);
@@ -1404,9 +1405,6 @@ auto compile_function_body(
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.scopes.get_function_info().return_type = sig.return_type;
         for (const auto& function : com.functions[struct_type][name]) {
-            // TODO Remove use of this, use push_function_arg instead using the same trick as with
-            // type_of_expr where we compile the actual expression then remove the op codes from
-            // the program
             if (are_types_convertible_to(sig.params, function.sig.params)) {
                 tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
             }

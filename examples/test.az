@@ -4,6 +4,7 @@ struct foo {
 
     fn print(ref self: const foo) {
         println(self.val);
+        __dump_type(self);
     }
 }
 
