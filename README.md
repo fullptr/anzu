@@ -25,17 +25,17 @@ An interpreted programming language written in C++. This started out as a stack-
 * Spans:
     1. Non-owning views over arrays, made up of a pointer + a size.
     1. Create a span from an array using trailing `[]`.
-    1. eg: If `l` is an array of 5 `i64`s, then `l[]` is an `int64[]`.
+    1. eg: If `l` is an array of 5 `i64`s, then `l[]` is an `i64[]`.
     1. Slicing syntax `l[0 : 2]` for creating subspans.
-    1. Arrays automatically convert to spans, useful for passing arrays to functions that accept spans as arguments.
+    1. Arrays can automatically convert to spans when passing to functions.
 
 * Function Pointers:
     1. Function names resolve to function pointers which can be passed to functions.
-    1. Syntax for function pointer types: `(<arg_types>) -> <return_type>`.
+    1. Syntax for function pointer types: `fn(<arg_types>) -> <return_type>`.
 
 * Variables:
-    * Declare with `:=` operator and either `let` or `var`: `let x := 5` or `var x := 5`.
-    * `let` declares a const value, `var` declares a mutable value.
+    * Declare with `:=` operator and either `let`, `var` or 'ref': `let x := 5` or `var x := 5`.
+    * `let` declares a const value, `var` declares a mutable value, and 'ref' declares a new name for an existing object.
     * Assign to existing variable with `=` operator: `x = 6`.
 
 * References:
@@ -96,9 +96,9 @@ An interpreted programming language written in C++. This started out as a stack-
         x: f64;
         y: f64;
 
-        fn length2(self: vec2&) -> f64
+        fn length2(ref self: const vec2) -> f64
         {
-            return (self@.x * self@.x) + (self@.y * self@.y);
+            return (self.x * self.x) + (self.y * self.y);
         }
     }
     ```
