@@ -301,8 +301,10 @@ struct node_continue_stmt
 
 struct node_declaration_stmt
 {
+    enum class qualifier { var, let, ref };
+
     std::string   name;
-    bool          is_const;
+    qualifier     qual;
     node_expr_ptr expr;
 
     anzu::token token;

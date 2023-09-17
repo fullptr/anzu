@@ -1054,14 +1054,6 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
     return concrete_ptr_type(type);
 }
 
-auto push_expr_val(compiler& com, const node_reference_expr& node) -> type_name
-{
-    // If we're taking a reference of an existing reference object, we just return the inner
-    // object; in order words we create a new reference to the same underlying object, rather
-    // than creating a reference to a reference.
-    return push_ptr_underlying(com, *node.expr).add_ref();
-}
-
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
 // we can load it by pushing the address to the stack and loading.
 auto push_expr_val(compiler& com, const auto& node) -> type_name
@@ -1302,33 +1294,21 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto is_ref = std::holds_alternative<node_reference_expr>(*node.expr);
-
-    // If this is specifically an expression with a ~ at the end, create a reference to it
-    auto type = [&] {
-        if (is_ref) {
-            return push_expr_val(com, *node.expr);
-        }
-        return push_object_copy(com, *node.expr, node.token);
-    }();
-
-    if (!node.is_const && is_ref && type.remove_ref().is_const()) {
-        node.token.error("Tried to declare a non-const value as reference to const, "
-                         "use 'let' instead of 'var'");
+    switch (node.qual) {
+        using enum node_declaration_stmt::qualifier;
+        case var: {
+            const auto type = push_object_copy(com, *node.expr, node.token);
+            declare_var(com, node.token, node.name, type);
+        } break;
+        case let: {
+            const auto type = push_object_copy(com, *node.expr, node.token);
+            declare_var(com, node.token, node.name, type.add_const());
+        } break;
+        case ref: {
+            const auto type = push_ptr_underlying(com, *node.expr);
+            declare_var(com, node.token, node.name, type);
+        } break;
     }
-
-    // Constness does not propagate to the lhs as it is a new object (may need to be careful
-    // with references here). The lhs is only const if the declaration is a 'let'.
-    type = type.remove_ref();
-    type = type.remove_const();
-    if (node.is_const) {
-        type = type.add_const();
-    }
-    if (is_ref) {
-        type = type.add_ref();
-    }
-
-    declare_var(com, node.token, node.name, type);
 }
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool

@@ -191,7 +191,12 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_declaration_stmt& node) {
             print("{}Declaration:\n", spaces);
             print("{}- Name: {}\n", spaces, node.name);
-            print("{}- IsConst: {}\n", spaces, node.is_const);
+            switch (node.qual) {
+                using enum node_declaration_stmt::qualifier;
+                case var: { print("{}- Var\n", spaces); } break;
+                case let: { print("{}- Let\n", spaces); } break;
+                case ref: { print("{}- Ref\n", spaces); } break;
+            }
             print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },

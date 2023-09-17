@@ -236,13 +236,6 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
     // Handle postfix expressions
     while (true) {
         switch (tokens.curr().type) {
-            case token_type::tilde: {
-                auto new_node = std::make_shared<node_expr>();
-                auto& inner = new_node->emplace<node_reference_expr>();
-                inner.token = tokens.consume();
-                inner.expr = node;
-                node = new_node;
-            } break;
             case token_type::at: {
                 auto new_node = std::make_shared<node_expr>();
                 auto& inner = new_node->emplace<node_deref_expr>();
@@ -608,13 +601,14 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_declaration_stmt>();
 
     stmt.token = tokens.consume();
-    stmt.is_const = [&] {
-        switch (stmt.token.type) {
-            case token_type::kw_let: return true;
-            case token_type::kw_var: return false;
-            default: stmt.token.error("declaration must start with 'let' or 'var'");
-        }
-    }();
+
+    switch (stmt.token.type) {
+        using enum node_declaration_stmt::qualifier;
+        case token_type::kw_let: stmt.qual = let;
+        case token_type::kw_var: stmt.qual = var;
+        case token_type::kw_ref: stmt.qual = ref;
+        default: stmt.token.error("declaration must start with 'let', 'var' or 'ref'");
+    }
 
     stmt.name = parse_name(tokens);
     tokens.consume_only(token_type::colon_equal);
