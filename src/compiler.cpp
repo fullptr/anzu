@@ -1303,21 +1303,16 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    switch (node.qual) {
-        using enum node_declaration_stmt::qualifier;
-        case var: {
-            const auto type = push_object_copy(com, *node.expr, node.token);
-            declare_var(com, node.token, node.name, type);
-        } break;
-        case let: {
-            const auto type = push_object_copy(com, *node.expr, node.token);
-            declare_var(com, node.token, node.name, type.add_const());
-        } break;
-        case ref: {
-            const auto type = push_ptr_underlying(com, *node.expr);
-            declare_var(com, node.token, node.name, type);
-        } break;
-    }
+    const auto type = [&] {
+        switch (node.qual) {
+            using enum node_declaration_stmt::qualifier;
+            case var: return push_object_copy(com, *node.expr, node.token);
+            case let: return push_object_copy(com, *node.expr, node.token).add_const();
+            case ref: return push_ptr_underlying(com, *node.expr);
+        }
+    }();
+    
+    declare_var(com, node.token, node.name, type);
 }
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
