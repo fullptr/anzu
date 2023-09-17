@@ -42,6 +42,7 @@ struct node_parameter
 {
     std::string   name;
     node_type_ptr type;
+    bool          is_ref;
 };
 
 struct node_signature
@@ -301,8 +302,10 @@ struct node_continue_stmt
 
 struct node_declaration_stmt
 {
+    enum class qualifier { var, let, ref };
+
     std::string   name;
-    bool          is_const;
+    qualifier     qual;
     node_expr_ptr expr;
 
     anzu::token token;

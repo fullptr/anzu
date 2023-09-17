@@ -261,16 +261,6 @@ auto is_function_ptr_type(const type_name& t) -> bool
     return std::holds_alternative<type_function_ptr>(t);
 }
 
-auto concrete_reference_type(const type_name& t) -> type_name
-{
-    return {type_reference{ .inner_type = { t } }};
-}
-
-auto is_reference_type(const type_name& t) -> bool
-{
-    return std::holds_alternative<type_reference>(t);
-}
-
 auto inner_type(const type_name& t) -> type_name
 {
     if (is_array_type(t)) {
@@ -300,16 +290,6 @@ auto array_length(const type_name& t) -> std::size_t
 }
 
 auto size_of_ptr() -> std::size_t
-{
-    return PTR_SIZE;
-}
-
-auto size_of_span() -> std::size_t
-{
-    return 2 * PTR_SIZE; // actually a pointer + a size, but they are both 8 bytes
-}
-
-auto size_of_reference() -> std::size_t
 {
     return PTR_SIZE;
 }
@@ -391,16 +371,16 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             return size_of(*t.inner_type) * t.count;
         },
         [](const type_ptr&) {
-            return size_of_ptr();
+            return PTR_SIZE;
         },
         [](const type_span&) {
-            return size_of_span();
+            return 2 * PTR_SIZE; // actually a pointer + a size, but they are both 8 bytes
         },
         [](const type_function_ptr&) {
-            return size_of_ptr();
+            return PTR_SIZE;
         },
         [](const type_reference&) {
-            return size_of_reference();
+            return PTR_SIZE;
         },
         [&](const type_const& t) {
             return size_of(*t.inner_type);

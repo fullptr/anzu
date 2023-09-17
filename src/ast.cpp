@@ -191,7 +191,12 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_declaration_stmt& node) {
             print("{}Declaration:\n", spaces);
             print("{}- Name: {}\n", spaces, node.name);
-            print("{}- IsConst: {}\n", spaces, node.is_const);
+            switch (node.qual) {
+                using enum node_declaration_stmt::qualifier;
+                case var: { print("{}- Var\n", spaces); } break;
+                case let: { print("{}- Let\n", spaces); } break;
+                case ref: { print("{}- Ref\n", spaces); } break;
+            }
             print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
@@ -205,7 +210,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_function_def_stmt& node) {
             print("{}Function: {} (", spaces, node.name);
             print_comma_separated(node.sig.params, [](const auto& arg) {
-                return std::format("{}: {}", arg.name, *arg.type);
+                if (arg.is_ref) {
+                    return std::format("ref {}: {}", arg.name, *arg.type);
+                } else {
+                    return std::format("{}: {}", arg.name, *arg.type);
+                }
             });
             print(") -> {}\n", *node.sig.return_type);
             print_node(*node.body, indent + 1);
@@ -213,7 +222,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_member_function_def_stmt& node) {
             print("{}MemberFunction: {}::{} (", spaces, node.struct_name, node.function_name);
             print_comma_separated(node.sig.params, [](const auto& arg) {
-                return std::format("{}: {}", arg.name, *arg.type);
+                if (arg.is_ref) {
+                    return std::format("ref {}: {}", arg.name, *arg.type);
+                } else {
+                    return std::format("{}: {}", arg.name, *arg.type);
+                }
             });
             print(") -> {}\n", *node.sig.return_type);
             print_node(*node.body, indent + 1);

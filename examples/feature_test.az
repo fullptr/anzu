@@ -122,12 +122,12 @@ struct vec2
     x: i64;
     y: i64;
 
-    fn copy(self: vec2~) -> vec2
+    fn copy(ref self: const vec2) -> vec2
     {
         return vec2(self.x, self.y);
     }
 
-    fn assign(self: vec2~, other: vec2~)
+    fn assign(ref self: vec2, ref other: const vec2)
     {
         self.x = other.x;
         self.y = other.y;
@@ -190,7 +190,7 @@ struct vec3
     y: f64;
     z: f64;
 
-    fn length(self: vec3~) -> f64
+    fn length(ref self: const vec3) -> f64
     {
         let x_squared := square(self.x);
         let y_squared := square(self.y);
@@ -198,12 +198,12 @@ struct vec3
         return sqrt(x_squared + y_squared + z_squared);
     }
 
-    fn copy(self: vec3~) -> vec3
+    fn copy(ref self: const vec3) -> vec3
     {
         return vec3(self.x, self.y, self.z);
     }
 
-    fn assign(self: vec3~, other: vec3~)
+    fn assign(ref self: vec3, ref other: const vec3)
     {
         self.x = other.x;
         self.y = other.y;
@@ -268,7 +268,7 @@ struct destructible
 {
     val: i64;
 
-    fn drop(self: destructible~)
+    fn drop(ref self: destructible)
     {
         print("dropping ");
         println(self.val);

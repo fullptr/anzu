@@ -1,12 +1,12 @@
-struct foo
-{
-    fn drop(self: foo~) { println("drop"); }
+
+struct foo {
+    val: i64;
+
+    fn print(ref self: const foo) {
+        println(self.val);
+        __dump_type(self);
+    }
 }
 
-struct wrapper
-{
-    f: foo;
-}
-
-let arr1 := [foo(), foo()];
-let arr2 := [wrapper(foo()), wrapper(foo())];
+var f := foo(1);
+f.print();

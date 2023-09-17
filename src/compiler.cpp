@@ -112,8 +112,9 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 
 auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 {
-    push_value(com.program, op::push_u64, offset);
-    push_value(com.program, op::u64_add); // modify ptr
+    if (offset > 0) {
+        push_value(com.program, op::push_u64, offset, op::u64_add); // modify ptr
+    }
 }
 
 auto are_types_convertible_to(const std::vector<type_name>& args,
@@ -263,12 +264,12 @@ auto ends_in_return(const node_stmt& node) -> bool
 
 auto assign_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_reference_type(type), concrete_reference_type(type) };
+    return { type.add_ref(), type.add_ref() };
 }
 
 auto copy_fn_params(const type_name& type) -> type_names
 {
-    return { concrete_reference_type(type) };
+    return { type.add_ref() };
 }
 
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
@@ -279,7 +280,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
 {
     std::visit(overloaded{
         [&](const type_struct&) {
-            const auto params = type_names{ concrete_reference_type(type) };
+            const auto params = type_names{ type.add_ref() };
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
@@ -423,10 +424,9 @@ public:
 // automatically dereferenced
 auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
 {
-    const auto type = type_of_expr(com, expr);
-    const auto real_type = type.remove_cr();
+    const auto [type, is_const, is_ref] = type_of_expr(com, expr).strip_qualifiers();
 
-    if (is_rvalue_expr(expr) || is_type_trivially_copyable(real_type)) {
+    if (is_rvalue_expr(expr) || is_type_trivially_copyable(type)) {
         push_val_underlying(com, expr);
     }
 
@@ -438,25 +438,25 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         const auto copy = get_function(com, etype, "copy", params);
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
 
-        for (std::size_t i = 0; i != array_length(type); ++i) {
+        for (const auto idx : range(array_length(type))) {
             push_value(com.program, op::push_call_frame);
             push_ptr_underlying(com, expr);
-            push_ptr_adjust(com, i * esize);
+            push_ptr_adjust(com, idx * esize);
             push_function_call(com, *copy);
         }
     }
     
     else {
-        const auto params = copy_fn_params(real_type);
-        const auto copy = get_function(com, real_type, "copy", params);
-        tok.assert(copy.has_value(), "{} cannot be copied", real_type);
+        const auto params = copy_fn_params(type);
+        const auto copy = get_function(com, type, "copy", params);
+        tok.assert(copy.has_value(), "{} cannot be copied", type);
 
         push_value(com.program, op::push_call_frame);
         push_ptr_underlying(com, expr);
         push_function_call(com, *copy);
     }
 
-    return type.remove_ref(); // Keep constness intact
+    return is_const ? type.add_const() : type;  // Keep constness intact
 }
 
 // Gets the type of the expression by compiling it, then removes the added
@@ -756,12 +756,12 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 }
 
 auto get_converter(const type_name& src, const type_name& dst)
-    -> std::optional<std::function<void(compiler&, const node_expr&, const token&)>>
+    -> void(*)(compiler&, const node_expr&, const token&)
 {
     if (is_array_type(src) && is_span_type(dst)) {
-        return [&](compiler& com, const node_expr& expr, const token& tok) {
-            push_expr_ptr(com, expr);
-            push_value(com.program, op::push_u64, array_length(src));
+        return [](compiler& com, const node_expr& expr, const token& tok) {
+            const auto type = push_expr_ptr(com, expr);
+            push_value(com.program, op::push_u64, array_length(type));
         };
     }
 
@@ -769,13 +769,13 @@ auto get_converter(const type_name& src, const type_name& dst)
     const auto [dst_raw, dst_is_const, dst_is_ref] = dst.strip_qualifiers();
 
     if (src_raw != dst_raw) {
-        return std::nullopt;
+        return nullptr;
     }
 
     // Cannot take a non-const ref to a const value
     //    (ref)  const  val -> ref         val : error
     if (src_is_const && dst_is_ref && !dst_is_const) {
-        return std::nullopt;
+        return nullptr;
     }
 
     // If the dst type is not a reference, then we can copy the src regardless of const
@@ -809,7 +809,7 @@ auto push_function_arg(
 {
     const auto actual = type_of_expr(com, expr);
     const auto converter = get_converter(actual, expected);
-    tok.assert(converter.has_value(), "Could not convert arg from '{}' to '{}'", actual, expected);
+    tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
     (*converter)(com, expr, tok);
 }
 
@@ -820,7 +820,7 @@ auto are_types_convertible_to(
 {
     if (args.size() != expecteds.size()) return false;
     for (const auto& [arg, expected] : zip(args, expecteds)) {
-        if (get_converter(arg, expected).has_value()) {
+        if (get_converter(arg, expected)) {
             return true;
         }
     }
@@ -865,7 +865,8 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (inner.struct_name == nullptr & inner.name == "__dump_type") {
             print("__dump_type(\n");
             for (const auto& arg : node.args) {
-                print("    {},\n", type_of_expr(com, *arg));
+                const auto dump = type_of_expr(com, *arg);
+                print("    {}{},\n", dump.is_ref() ? "[ref] " : "", dump.remove_ref());
             }
             print(")\n");
             push_value(com.program, op::push_null);
@@ -1000,11 +1001,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_assert(com, "upper bound must be strictly less than the array size");
     }
 
-    if (is_ref) {
-        push_expr_val(com, *node.expr);
-    } else {
-        push_expr_ptr(com, *node.expr);
-    }
+    push_ptr_underlying(com, *node.expr);
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
@@ -1027,11 +1024,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_value(com.program, op::u64_sub);
     } else if (is_span_type(type)) {
         // Push the span pointer, offset to the size, and load the size
-        if (is_ref) {
-            push_expr_val(com, *node.expr);
-        } else {
-            push_expr_ptr(com, *node.expr);
-        }
+        push_ptr_underlying(com, *node.expr);
         push_value(com.program, op::push_u64, size_of_ptr(), op::u64_add);
         push_value(com.program, op::load, com.types.size_of(u64_type()));
     } else {
@@ -1046,9 +1039,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
-    if (!com.scopes.in_unsafe()) {
-        node.token.error("Cannot have a 'new' statement outside of an unsafe block");
-    }
+    node.token.assert(com.scopes.in_unsafe(), "'new' requires an unsafe block");
 
     if (node.size) {
         const auto count = push_expr_val(com, *node.size);
@@ -1237,7 +1228,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_value(com.program, op::push_u64, com.types.size_of(inner));
         push_value(com.program, op::u64_mul);
         push_value(com.program, op::u64_add);
-        declare_var(com, node.token, node.name, concrete_reference_type(inner));
+        declare_var(com, node.token, node.name, inner.add_ref());
 
         // idx = idx + 1;
         load_variable(com, node.token, "#:idx");
@@ -1312,32 +1303,15 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto is_ref = std::holds_alternative<node_reference_expr>(*node.expr);
-
-    // If this is specifically an expression with a ~ at the end, create a reference to it
-    auto type = [&] {
-        if (is_ref) {
-            return push_expr_val(com, *node.expr);
+    const auto type = [&] {
+        switch (node.qual) {
+            using enum node_declaration_stmt::qualifier;
+            case var: return push_object_copy(com, *node.expr, node.token);
+            case let: return push_object_copy(com, *node.expr, node.token).add_const();
+            case ref: return push_ptr_underlying(com, *node.expr);
         }
-        return push_object_copy(com, *node.expr, node.token);
     }();
-
-    if (!node.is_const && is_ref && type.remove_ref().is_const()) {
-        node.token.error("Tried to declare a non-const value as reference to const, "
-                         "use 'let' instead of 'var'");
-    }
-
-    // Constness does not propagate to the lhs as it is a new object (may need to be careful
-    // with references here). The lhs is only const if the declaration is a 'let'.
-    type = type.remove_ref();
-    type = type.remove_const();
-    if (node.is_const) {
-        type = type.add_const();
-    }
-    if (is_ref) {
-        type = type.add_ref();
-    }
-
+    
     declare_var(com, node.token, node.name, type);
 }
 
@@ -1417,7 +1391,8 @@ auto compile_function_body(
         declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
         declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
         for (const auto& arg : node_sig.params) {
-            const auto type = resolve_type(com, tok, arg.type);
+            auto type = resolve_type(com, tok, arg.type);
+            if (arg.is_ref) type = type.add_ref();
             sig.params.push_back({type});
             declare_var(com, tok, arg.name, type);
         }
@@ -1425,9 +1400,6 @@ auto compile_function_body(
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.scopes.get_function_info().return_type = sig.return_type;
         for (const auto& function : com.functions[struct_type][name]) {
-            // TODO Remove use of this, use push_function_arg instead using the same trick as with
-            // type_of_expr where we compile the actual expression then remove the op codes from
-            // the program
             if (are_types_convertible_to(sig.params, function.sig.params)) {
                 tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
             }
@@ -1464,33 +1436,36 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
-    const auto expected = concrete_reference_type(struct_type);
-    const auto const_expected = concrete_reference_type(struct_type.add_const());
+    const auto expected = struct_type.add_ref();
+    const auto const_expected = struct_type.add_const().add_ref();
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code
     node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
 
-    const auto actual = sig.params.front();
-    if (actual != expected && actual !=const_expected) {
-        node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
-    }
-
     // Special function extra checks
     if (node.function_name == "drop") {
         node.token.assert_eq(sig.return_type, null_type(), "'drop' bad return type");
         node.token.assert_eq(sig.params.size(), 1, "'drop' bad number of args");
+        node.token.assert_eq(sig.params[0], expected, "'drop' bad 1st arg");
     }
     else if (node.function_name == "copy") {
         node.token.assert_eq(sig.return_type, struct_type, "'copy' bad return type");
         node.token.assert_eq(sig.params.size(), 1, "'copy' bad number of args");
+        node.token.assert_eq(sig.params[0], const_expected, "'copy' bad 1st arg");
     }
     else if (node.function_name == "assign") {
         node.token.assert_eq(sig.return_type, null_type(), "'assign' bad return type");
         node.token.assert_eq(sig.params.size(), 2, "'assign' bad number of args");
-        node.token.assert_eq(sig.params.back(), expected, "'assign' bad 2nd arg");
+        node.token.assert_eq(sig.params[0], expected, "'assign' bad 1st arg");
+        node.token.assert_eq(sig.params[1], const_expected, "'assign' bad 2nd arg");
     }
-
+    else {
+        const auto actual = sig.params.front();
+        if (actual != expected && actual != const_expected) {
+            node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
+        }
+    }
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
