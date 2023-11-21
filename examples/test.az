@@ -1,12 +1,13 @@
 
 struct foo {
     val: i64;
-
-    fn print(ref self: const foo) {
-        println(self.val);
-        __dump_type(self);
-    }
 }
 
 var f := foo(1);
-f.print();
+var p := f&;
+var p2 := p&;
+
+f.val = 5;
+p2.val = 10;
+
+println(p2.val);
