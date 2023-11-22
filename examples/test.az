@@ -1,6 +1,10 @@
 
 struct foo {
     val: i64;
+
+    fn pr(ref self: foo) {
+        println(self.val);
+    }
 }
 
 var f := foo(1);
@@ -10,4 +14,4 @@ var p2 := p&;
 f.val = 5;
 p2.val = 10;
 
-println(p2.val);
+p2@@.pr();
