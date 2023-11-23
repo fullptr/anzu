@@ -529,7 +529,13 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto [type, is_const, is_ref] = push_ptr_underlying(com, *node.expr).strip_qualifiers();
+    auto [type, is_const, is_ref] = push_ptr_underlying(com, *node.expr).strip_qualifiers();
+
+    // Allow for field access on a pointer
+    while (is_ptr_type(type)) {
+        push_value(com.program, op::load, size_of_ptr());
+        type = inner_type(type);
+    }
 
     auto ret = push_adjust_ptr_to_field(com, node.token, type, node.field_name);
     if (is_const) ret = ret.add_const(); // Propagate const to members
@@ -1228,7 +1234,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_value(com.program, op::push_u64, com.types.size_of(inner));
         push_value(com.program, op::u64_mul);
         push_value(com.program, op::u64_add);
-        declare_var(com, node.token, node.name, inner.add_ref());
+        declare_var(com, node.token, node.name, concrete_ptr_type(inner));
 
         // idx = idx + 1;
         load_variable(com, node.token, "#:idx");
@@ -1309,6 +1315,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
             case var: return push_object_copy(com, *node.expr, node.token);
             case let: return push_object_copy(com, *node.expr, node.token).add_const();
             case ref: return push_ptr_underlying(com, *node.expr);
+            default: node.token.error("Logic error: declaration isn't using var, let or ref");
         }
     }();
     

@@ -288,3 +288,15 @@ struct destructible
     v1 = v3;
     println(v1.x);
 }
+
+struct container
+{
+    val: i64;
+}
+
+# Pointer auto dereference
+{
+    let x := container(5);
+    let p := x&;
+    println(p.val);
+}
