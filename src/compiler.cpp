@@ -531,6 +531,7 @@ auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
     auto [type, is_const, is_ref] = push_ptr_underlying(com, *node.expr).strip_qualifiers();
 
+    // Allow for field access on a pointer
     while (is_ptr_type(type)) {
         push_value(com.program, op::load, size_of_ptr());
         type = inner_type(type);
