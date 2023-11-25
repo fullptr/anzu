@@ -944,7 +944,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         push_value(com.program, op::push_call_frame);
         push_expr_ptr(com, *node.expr); // self
         for (std::size_t i = 0; i != node.other_args.size(); ++i) {
-            push_function_arg(com, *node.other_args.at(i), func->sig.params[i], node.token);
+            push_function_arg(com, *node.other_args.at(i), func->sig.params[i + 1], node.token);
         }
         push_function_call(com, *func);
         return func->sig.return_type;

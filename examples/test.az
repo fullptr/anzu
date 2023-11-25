@@ -2,10 +2,10 @@
 struct foo {
     val: i64;
 
-    fn pr(self: foo&) {
-        println(self.val);
+    fn pr(self: foo&, x: i64) {
+        println(self.val + x);
     }
 }
 
 var f := foo(1);
-f.pr();
+f.pr(6);
