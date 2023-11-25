@@ -264,12 +264,12 @@ auto ends_in_return(const node_stmt& node) -> bool
 
 auto assign_fn_params(const type_name& type) -> type_names
 {
-    return { type.add_ref(), type.add_ref() };
+    return { type.add_ptr(), type.add_const().add_ptr() };
 }
 
 auto copy_fn_params(const type_name& type) -> type_names
 {
-    return { type.add_ref() };
+    return { type.add_const().add_ptr() };
 }
 
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
@@ -768,6 +768,13 @@ auto get_converter(const type_name& src, const type_name& dst)
         return [](compiler& com, const node_expr& expr, const token& tok) {
             const auto type = push_expr_ptr(com, expr);
             push_value(com.program, op::push_u64, array_length(type));
+        };
+    }
+
+    // pointers can convert to pointers-to-const
+    if (src.is_ptr() && dst.is_ptr() && src.remove_ptr() == dst.remove_ptr().remove_const()) {
+        return [](compiler& com, const node_expr& expr, const token& tok) {
+            push_object_copy(com, expr, tok);
         };
     }
 
