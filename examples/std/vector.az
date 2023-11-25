@@ -4,55 +4,56 @@ struct vector
     data: i64[];
     size: u64;
 
-    fn push(ref self: vector, val: i64)
+    fn push(self: vector&, val: i64)
     {
-        if (self.size == self.data.size()) {
-            var new_cap := 2u * self.data.size();
-            if new_cap == 0u {
-                new_cap = 1u;
-            }
-            var newdata := new i64 : new_cap;
+        unsafe {
+            if (self.size == self.data.size()) {
+                var new_cap := 2u * self.data.size();
+                if new_cap == 0u {
+                    new_cap = 1u;
+                }
+                var newdata := new i64 : new_cap;
 
-            var idx := 0u;
-            while idx != self.size {
-                newdata[idx] = self.data[idx];
-                idx = idx + 1u;
-            }
+                var idx := 0u;
+                while idx != self.size {
+                    newdata[idx] = self.data[idx];
+                    idx = idx + 1u;
+                }
 
-            delete self.data;
-            self.data = newdata;
+                delete self.data;
+                self.data = newdata;
+            }
+            self.data[self.size] = val;
+            self.size = self.size + 1u;
         }
-        self.data[self.size] = val;
-        self.size = self.size + 1u;
     }
 
-    fn pop(ref self: vector) -> i64
+    fn pop(self: vector&) -> i64
     {
         self.size = self.size - 1u;
         return self.data[self.size];
     }
 
-    fn size(ref self: vector) -> u64
+    fn size(self: (const vector)&) -> u64
     {
         return self.size;
     }
 
-    fn capacity(ref self: vector) -> u64
+    fn capacity(self: (const vector)&) -> u64
     {
         return self.data.size();
     }
 
-    fn drop(ref self: vector)
+    fn drop(self: vector&)
     {
-        delete self.data;
+        unsafe { delete self.data; }
     }
 }
 
 fn new_vector() -> vector
 {
     # We don't have nullptr yet, so we must allocate some space here for now
-    return vector(new i64 : 1u, 0u);
+    unsafe {
+        return vector(new i64 : 1u, 0u);
+    }
 }
-
-x := i64;
-p := x&;

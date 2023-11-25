@@ -1,17 +1,6 @@
+import std/vector.az;
 
-struct foo
-{
-    val: i64;
-
-    fn bar(self: foo&) 
-    {
-        println("HERE");
-        println(self.val);
-    }
-}
-
-var v := foo(1);
-var p := v&;
-var p2 := p&;
-
-p2@@.bar();
+var v := new_vector();
+v.push(5);
+v.push(10);
+println(v.size());
