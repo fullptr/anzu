@@ -928,7 +928,28 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
-    // Third, it might be a .size member function on a span, TODO: make it easier to add
+    const auto type = [&] {
+        auto t = type_of_expr(com, *node.expr);
+        while (is_ptr_type(t)) { t = inner_type(t); }
+        return t;
+    }();
+
+    auto params = std::vector<type_name>{};
+    params.push_back(concrete_ptr_type(type));
+    for (const auto& arg : node.other_args) {
+        params.push_back(type_of_expr(com, *arg));
+    }
+
+    if (const auto func = get_function(com, type, node.function_name, params); func.has_value()) {
+        push_value(com.program, op::push_call_frame);
+        push_expr_ptr(com, *node.expr); // self
+        for (std::size_t i = 0; i != node.other_args.size(); ++i) {
+            push_function_arg(com, *node.other_args.at(i), func->sig.params[i], node.token);
+        }
+        push_function_call(com, *func);
+        return func->sig.return_type;
+    }
+    // It might be a .size member function on a span, TODO: make it easier to add
     // builtin member functions first arg is a pointer to a span, so need to deref with
     // inner_type before checking if its a span. BUG: This will match ANY call a size
     // function, and if the type of the argument is not an array, ptr or span, inner_type is
@@ -1447,8 +1468,8 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
-    const auto expected = struct_type.add_ref();
-    const auto const_expected = struct_type.add_const().add_ref();
+    const auto expected = struct_type.add_ptr();
+    const auto const_expected = struct_type.add_const().add_ptr();
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code

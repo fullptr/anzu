@@ -96,6 +96,10 @@ struct type_name : public std::variant<
     auto add_ref() const -> type_name;
     auto remove_ref() const -> type_name;
 
+    auto is_ptr() const -> bool;
+    auto add_ptr() const -> type_name;
+    auto remove_ptr() const -> type_name;
+
     auto is_const() const -> bool;
     auto add_const() const -> type_name;
     auto remove_const() const -> type_name;

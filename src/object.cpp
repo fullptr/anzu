@@ -31,6 +31,23 @@ auto type_name::remove_ref() const -> type_name
     return *std::get<type_reference>(*this).inner_type;
 }
 
+auto type_name::is_ptr() const -> bool
+{
+    return std::holds_alternative<type_ptr>(*this);
+}
+
+auto type_name::add_ptr() const -> type_name
+{
+    if (is_ptr()) return *this;
+    return { type_ptr{ .inner_type{*this} } };
+}
+
+auto type_name::remove_ptr() const -> type_name
+{
+    if (!is_ptr()) return *this;
+    return *std::get<type_ptr>(*this).inner_type;
+}
+
 auto type_name::is_const() const -> bool
 {
     return std::holds_alternative<type_const>(*this);
