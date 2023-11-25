@@ -126,10 +126,6 @@ auto print_node(const node_expr& root, int indent) -> void
                 print("{}LowerBound:\n", spaces);
                 print_node(*node.upper_bound, indent + 1);
             }
-        },
-        [&](const node_reference_expr& node) {
-            print("{}Reference:\n", spaces);
-            print_node(*node.expr, indent + 1);
         }
     }, root);
 }
@@ -220,11 +216,7 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_function_def_stmt& node) {
             print("{}Function: {} (", spaces, node.name);
             print_comma_separated(node.sig.params, [](const auto& arg) {
-                if (arg.is_ref) {
-                    return std::format("ref {}: {}", arg.name, *arg.type);
-                } else {
-                    return std::format("{}: {}", arg.name, *arg.type);
-                }
+                return std::format("{}: {}", arg.name, *arg.type);
             });
             print(") -> {}\n", *node.sig.return_type);
             print_node(*node.body, indent + 1);
@@ -232,11 +224,7 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_member_function_def_stmt& node) {
             print("{}MemberFunction: {}::{} (", spaces, node.struct_name, node.function_name);
             print_comma_separated(node.sig.params, [](const auto& arg) {
-                if (arg.is_ref) {
-                    return std::format("ref {}: {}", arg.name, *arg.type);
-                } else {
-                    return std::format("{}: {}", arg.name, *arg.type);
-                }
+                return std::format("{}: {}", arg.name, *arg.type);
             });
             print(") -> {}\n", *node.sig.return_type);
             print_node(*node.body, indent + 1);

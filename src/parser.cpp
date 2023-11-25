@@ -396,7 +396,7 @@ auto validate_type_inner(const type_name& type) -> std::optional<std::string_vie
         [](const type_span& t) { return validate_type_inner(*t.inner_type); },
         [](const type_function_ptr& t) {
             for (const auto& param : t.param_types) {
-                const auto err = validate_type_inner(param.remove_ref());
+                const auto err = validate_type_inner(param);
                 if (err) {
                     return Ret{"invalid function param of fn ptr type"};
                 }
@@ -407,9 +407,6 @@ auto validate_type_inner(const type_name& type) -> std::optional<std::string_vie
             }
             return Ret{};
         },
-        [](const type_reference&) {
-            return Ret{"reference types cannot be nested inside other types"};
-        },
         [](const type_const& t) { return validate_type_inner(*t.inner_type); }
     }, type);
 }
@@ -419,7 +416,7 @@ auto parse_type(tokenstream& tokens) -> type_name
 {
     const auto token = tokens.curr();
     const auto type = parse_type_inner(tokens);
-    const auto err = validate_type_inner(type.remove_ref());
+    const auto err = validate_type_inner(type);
     if (err) {
         token.error("Invalid type ({}) - {}", type, *err);
     }
@@ -452,7 +449,6 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};
-        param.is_ref = tokens.consume_maybe(token_type::kw_ref);
         param.name = parse_name(tokens);
         tokens.consume_only(token_type::colon);
         param.type = parse_type_node(tokens);
@@ -480,7 +476,6 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};
-        param.is_ref = tokens.consume_maybe(token_type::kw_ref);
         param.name = parse_name(tokens);
         tokens.consume_only(token_type::colon);
         param.type = parse_type_node(tokens);
@@ -595,8 +590,7 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
         using enum node_declaration_stmt::qualifier;
         case token_type::kw_let: { stmt.qual = let; } break;
         case token_type::kw_var: { stmt.qual = var; } break;
-        case token_type::kw_ref: { stmt.qual = ref; } break;
-        default: stmt.token.error("declaration must start with 'let', 'var' or 'ref', not {}",
+        default: stmt.token.error("declaration must start with 'let' or 'var', not {}",
                                   stmt.token.text);
     }
 
@@ -693,8 +687,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::left_brace:  return parse_braced_statement_list(tokens);
         case token_type::kw_unsafe:   return parse_unsafe_stmt(tokens);
         case token_type::kw_let:
-        case token_type::kw_var:
-        case token_type::kw_ref:      return parse_declaration_stmt(tokens);
+        case token_type::kw_var:      return parse_declaration_stmt(tokens);
     }
 
     auto node = std::make_shared<node_stmt>();

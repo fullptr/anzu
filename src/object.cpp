@@ -14,23 +14,6 @@ static constexpr auto PTR_SIZE = std::size_t{8};
 
 }
 
-auto type_name::is_ref() const -> bool
-{
-    return std::holds_alternative<type_reference>(*this);
-}
-
-auto type_name::add_ref() const -> type_name
-{
-    if (is_ref()) return *this;
-    return { type_reference{ .inner_type{*this} } };
-}
-
-auto type_name::remove_ref() const -> type_name
-{
-    if (!is_ref()) return *this;
-    return *std::get<type_reference>(*this).inner_type;
-}
-
 auto type_name::is_ptr() const -> bool
 {
     return std::holds_alternative<type_ptr>(*this);
@@ -68,18 +51,6 @@ auto type_name::remove_const() const -> type_name
 auto type_name::strip_const() const -> std::pair<type_name, bool>
 {
     return {remove_const(), is_const()};
-}
-
-auto type_name::strip_qualifiers() const -> std::tuple<type_name, bool, bool>
-{
-    const auto this_is_ref = is_ref();
-    const auto [type, this_is_const] = remove_ref().strip_const();
-    return {type, this_is_const, this_is_ref};
-}
-
-auto type_name::remove_cr() const -> type_name
-{
-    return remove_ref().remove_const();
 }
 
 auto to_string_paren(const type_name& type) -> std::string
@@ -140,11 +111,6 @@ auto to_string(const type_function_ptr& type) -> std::string
     );
 }
 
-auto to_string(const type_reference& type) -> std::string
-{
-    return std::format("{}~", to_string_paren(*type.inner_type));
-}
-
 auto to_string(const type_const& type) -> std::string
 {
     return std::format("const {}", to_string(*type.inner_type));
@@ -189,12 +155,6 @@ auto hash(const type_function_ptr& type) -> std::size_t
         val ^= hash(param);
     }
     return val;
-}
-
-auto hash(const type_reference& type) -> std::size_t
-{
-    static const auto base = std::hash<std::string_view>{}("type_reference");
-    return hash(*type.inner_type) ^ base;
 }
 
 auto hash(const type_const& type) -> std::size_t
@@ -243,66 +203,59 @@ auto make_type(const std::string& name) -> type_name
     return { type_struct{ .name=name } };
 }
 
-auto concrete_array_type(const type_name& t, std::size_t size) -> type_name
+auto type_name::is_array() const -> bool
 {
-    return {type_array{ .inner_type = { t }, .count = size }};
+    return std::holds_alternative<type_array>(*this);
 }
 
-auto is_array_type(const type_name& t) -> bool
+auto type_name::add_array(std::size_t size) const -> type_name
 {
-    return std::holds_alternative<type_array>(t);
+    return {type_array{ .inner_type = { *this }, .count = size }};
 }
 
-auto concrete_ptr_type(const type_name& t) -> type_name
+auto type_name::remove_array() const -> type_name
 {
-    return {type_ptr{ .inner_type = { t } }};
+    panic_if(!is_array(), "Tried to strip array from non-array type {}", *this);
+    return *std::get<type_array>(*this).inner_type;
 }
 
-auto is_ptr_type(const type_name& t) -> bool
+auto type_name::is_span() const -> bool
 {
-    return std::holds_alternative<type_ptr>(t);
+    return std::holds_alternative<type_span>(*this);
 }
 
-auto concrete_span_type(const type_name& t) -> type_name
+auto type_name::add_span() const -> type_name
 {
-    return {type_span{ .inner_type = { t } }};
+    return {type_span{ .inner_type = { *this } }};
 }
 
-auto is_span_type(const type_name& t) -> bool
+auto type_name::remove_span() const -> type_name
 {
-    return std::holds_alternative<type_span>(t);
+    panic_if(!is_span(), "Tried to strip span from non-span type {}", *this);
+    return *std::get<type_span>(*this).inner_type;
 }
 
-auto is_function_ptr_type(const type_name& t) -> bool
+auto type_name::is_function_ptr() const -> bool
 {
-    return std::holds_alternative<type_function_ptr>(t);
+    return std::holds_alternative<type_function_ptr>(*this);
 }
 
 auto inner_type(const type_name& t) -> type_name
 {
-    if (is_array_type(t)) {
+    if (t.is_array()) {
         return *std::get<type_array>(t).inner_type;
     }
-    if (is_ptr_type(t)) {
-        return *std::get<type_ptr>(t).inner_type;
-    }
-    if (is_span_type(t)) {
+    if (t.is_span()) {
         return *std::get<type_span>(t).inner_type; 
     }
-    if (t.is_ref()) {
-        return t.remove_ref();
-    }
-    if (t.is_const()) {
-        return t.remove_const();
-    }
     panic("tried to get the inner type of an invalid type category, "
-          "can only get the inner type for arrays, pointers, spans and references");
+          "can only get the inner type for arrays and spans");
 }
 
 auto array_length(const type_name& t) -> std::size_t
 {
     const auto mut_type = t.remove_const();
-    panic_if(!is_array_type(mut_type), "Tried to get length of a non-array type");
+    panic_if(!mut_type.is_array(), "Tried to get length of a non-array type");
     return std::get<type_array>(mut_type).count;
 }
 
@@ -321,11 +274,6 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
         [](const type_span&)         { return true; },
         [](const type_ptr&)          { return true; },
         [](const type_function_ptr&) { return true; },
-        [](const type_reference&)    {
-            panic("tried to check if a ref is trivially copyable, but it should "
-                  "have already been stripped away");
-            return false;
-        },
         [](const type_const& t)      { return is_type_trivially_copyable(*t.inner_type); }
     }, type);
 }
@@ -348,7 +296,6 @@ auto type_store::contains(const type_name& type) const -> bool
         [&](const type_span& t)       { return contains(*t.inner_type); },
         [&](const type_ptr& t)        { return contains(*t.inner_type); },
         [&](const type_function_ptr&) { return true; },
-        [&](const type_reference& t)  { return contains(*t.inner_type); },
         [&](const type_const& t)      { return contains(*t.inner_type); }
     }, type);
 }
@@ -394,9 +341,6 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             return 2 * PTR_SIZE; // actually a pointer + a size, but they are both 8 bytes
         },
         [](const type_function_ptr&) {
-            return PTR_SIZE;
-        },
-        [](const type_reference&) {
             return PTR_SIZE;
         },
         [&](const type_const& t) {

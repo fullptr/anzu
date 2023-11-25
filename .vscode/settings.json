@@ -81,6 +81,7 @@
         "mutex": "cpp",
         "numeric": "cpp",
         "filesystem": "cpp",
-        "source_location": "cpp"
+        "source_location": "cpp",
+        "random": "cpp"
     }
 }
