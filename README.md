@@ -34,13 +34,9 @@ An interpreted programming language written in C++. This started out as a stack-
     1. Syntax for function pointer types: `fn(<arg_types>) -> <return_type>`.
 
 * Variables:
-    * Declare with `:=` operator and either `let`, `var` or 'ref': `let x := 5` or `var x := 5`.
-    * `let` declares a const value, `var` declares a mutable value, and 'ref' declares a new name for an existing object.
+    * Declare with `:=` operator and either `let` or `var`: `let x := 5` or `var x := 5`.
+    * `let` declares a const value and `var` declares a mutable value.
     * Assign to existing variable with `=` operator: `x = 6`.
-
-* References:
-    * Similar to references in C++; cannot be rebound to different objects. Used to create aliases to existing objects and use simpler value syntax instead of pointer syntax. Soon these types will not be spellable directly and won't appear in the language; they will instead be used to implement nicer syntax across the language. A good example of this is the for-loop: the variable representing the current element is a reference, but you can treat it as if it's the original object itself.
-    * Will soon add `alias` as a keyword for creating alises of objects, as well as `read`, `mut` and `copy` as specifiers for functions arguments, which will use references where appropriate.
 
 * Comments using `#` symbol.
 
@@ -96,7 +92,7 @@ An interpreted programming language written in C++. This started out as a stack-
         x: f64;
         y: f64;
 
-        fn length2(ref self: const vec2) -> f64
+        fn length2(self: (const vec2)&) -> f64
         {
             return (self.x * self.x) + (self.y * self.y);
         }
