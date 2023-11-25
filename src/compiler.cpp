@@ -408,7 +408,7 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     }
 
     else if (type.is_array()) {
-        const auto etype = inner_type(type).remove_const();
+        const auto etype = type.remove_array().remove_const();
         const auto esize = com.types.size_of(etype);
 
         const auto params = copy_fn_params(etype);
@@ -1327,7 +1327,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     }
     
     if (rhs.is_array()) {
-        const auto etype = inner_type(rhs);
+        const auto etype = rhs.remove_array();
         const auto inner_size = com.types.size_of(etype);
         const auto params = assign_fn_params(etype);
 
@@ -1484,10 +1484,10 @@ void push_stmt(compiler& com, const node_delete_stmt& node)
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_span()) {
         push_expr_val(com, *node.expr);
-        push_value(com.program, op::dealloc_span, com.types.size_of(inner_type(type)));
+        push_value(com.program, op::dealloc_span, com.types.size_of(type.remove_span()));
     } else if (type.is_ptr()) {
         push_expr_val(com, *node.expr);
-        push_value(com.program, op::dealloc_ptr, com.types.size_of(inner_type(type)));
+        push_value(com.program, op::dealloc_ptr, com.types.size_of(type.remove_ptr()));
     } else {
         node.token.error("can only call delete spans and pointers, not {}", type);
     }
