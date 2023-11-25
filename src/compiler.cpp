@@ -970,15 +970,10 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
 
     push_value(com.program, op::push_call_frame);
-    if (type.is_ptr()) {
-        push_expr_val(com, *node.expr); // self
-        auto t = type;
-        while (t.is_ptr() && t.remove_ptr().is_ptr()) { // allow for calling member functions through pointers
-            push_value(com.program, op::load, size_of_ptr());
-            t = t.remove_ptr();
-        }
-    } else {
-        push_expr_ptr(com, *node.expr); // self
+    auto t = push_expr_ptr(com, *node.expr); // self
+    while (t.is_ptr()) { // allow for calling member functions through pointers
+        push_value(com.program, op::load, size_of_ptr());
+        t = t.remove_ptr();
     }
     for (std::size_t i = 0; i != node.other_args.size(); ++i) {
         push_function_arg(com, *node.other_args.at(i), func->sig.params[i + 1], node.token);
