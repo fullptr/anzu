@@ -1,15 +1,9 @@
 
-struct foo
-{
-    val: i64;
+let x := 30;
+var y := 10;
 
-    fn bar(self: foo&)
-    {
-        println(self.val);
-    }
-}
+var p1 := x&; # pointer-to-const
+var p2 := y&; # pointer
 
-var f := foo(10);
-var p := f&;
-var p2 := p&;
-p2.bar();
+
+p1 = p2;

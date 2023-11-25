@@ -85,15 +85,25 @@ struct type_name : public std::variant<
 {
     using variant::variant;
 
-    auto is_ptr() const -> bool;
-    auto add_ptr() const -> type_name;
-    auto remove_ptr() const -> type_name;
+    [[nodicard]] auto is_ptr() const -> bool;
+    [[nodicard]] auto add_ptr() const -> type_name;
+    [[nodicard]] auto remove_ptr() const -> type_name;
+ 
+    [[nodicard]] auto is_const() const -> bool;
+    [[nodicard]] auto add_const() const -> type_name;
+    [[nodicard]] auto remove_const() const -> type_name;
 
-    auto is_const() const -> bool;
-    auto add_const() const -> type_name;
-    auto remove_const() const -> type_name;
+    [[nodicard]] auto is_array() const -> bool;
+    [[nodicard]] auto add_array(std::size_t size) const -> type_name;
+    [[nodicard]] auto remove_array() const -> type_name;
 
-    auto strip_const() const -> std::pair<type_name, bool>;
+    [[nodicard]] auto is_span() const -> bool;
+    [[nodicard]] auto add_span() const -> type_name;
+    [[nodicard]] auto remove_span() const -> type_name;
+
+    [[nodicard]] auto is_function_ptr() const -> bool;
+
+    [[nodicard]] auto strip_const() const -> std::pair<type_name, bool>;
 };
 
 using type_names = std::vector<type_name>;
@@ -129,17 +139,6 @@ auto u64_type() -> type_name;
 auto f64_type() -> type_name;
 
 auto make_type(const std::string& name) -> type_name;
-
-auto concrete_array_type(const type_name& t, std::size_t size) -> type_name;
-auto is_array_type(const type_name& t) -> bool;
-
-auto concrete_ptr_type(const type_name& t) -> type_name;
-auto is_ptr_type(const type_name& t) -> bool;
-
-auto concrete_span_type(const type_name& t) -> type_name;
-auto is_span_type(const type_name& t) -> bool;
-
-auto is_function_ptr_type(const type_name& t) -> bool;
 
 auto size_of_ptr() -> std::size_t;
 
