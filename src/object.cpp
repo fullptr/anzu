@@ -215,7 +215,7 @@ auto type_name::add_array(std::size_t size) const -> type_name
 
 auto type_name::remove_array() const -> type_name
 {
-    if (!is_array()) return *this;
+    panic_if(!is_array(), "Tried to strip array from non-array type {}", *this);
     return *std::get<type_array>(*this).inner_type;
 }
 
@@ -231,7 +231,7 @@ auto type_name::add_span() const -> type_name
 
 auto type_name::remove_span() const -> type_name
 {
-    if (!is_span()) return *this;
+    panic_if(!is_span(), "Tried to strip span from non-span type {}", *this);
     return *std::get<type_span>(*this).inner_type;
 }
 
