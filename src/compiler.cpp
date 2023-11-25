@@ -948,7 +948,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     }
 
     const auto stripped_type = [&] {
-        auto t = type_of_expr(com, *node.expr);
+        auto t = type;
         while (is_ptr_type(t)) { t = inner_type(t); }
         return t;
     }();
@@ -963,10 +963,10 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
 
     push_value(com.program, op::push_call_frame);
-    if (is_ptr_type(type)) {
+    if (type.is_ptr()) {
         push_expr_val(com, *node.expr); // self
         auto t = type;
-        while (t.is_ptr() && t.remove_ptr().is_ptr()) {
+        while (t.is_ptr() && t.remove_ptr().is_ptr()) { // allow for calling member functions through pointers
             push_value(com.program, op::load, size_of_ptr());
             t = t.remove_ptr();
         }
