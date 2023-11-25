@@ -14,23 +14,6 @@ static constexpr auto PTR_SIZE = std::size_t{8};
 
 }
 
-auto type_name::is_ref() const -> bool
-{
-    return std::holds_alternative<type_reference>(*this);
-}
-
-auto type_name::add_ref() const -> type_name
-{
-    if (is_ref()) return *this;
-    return { type_reference{ .inner_type{*this} } };
-}
-
-auto type_name::remove_ref() const -> type_name
-{
-    if (!is_ref()) return *this;
-    return *std::get<type_reference>(*this).inner_type;
-}
-
 auto type_name::is_ptr() const -> bool
 {
     return std::holds_alternative<type_ptr>(*this);
@@ -68,18 +51,6 @@ auto type_name::remove_const() const -> type_name
 auto type_name::strip_const() const -> std::pair<type_name, bool>
 {
     return {remove_const(), is_const()};
-}
-
-auto type_name::strip_qualifiers() const -> std::tuple<type_name, bool, bool>
-{
-    const auto this_is_ref = is_ref();
-    const auto [type, this_is_const] = remove_ref().strip_const();
-    return {type, this_is_const, this_is_ref};
-}
-
-auto type_name::remove_cr() const -> type_name
-{
-    return remove_ref().remove_const();
 }
 
 auto to_string_paren(const type_name& type) -> std::string
@@ -140,11 +111,6 @@ auto to_string(const type_function_ptr& type) -> std::string
     );
 }
 
-auto to_string(const type_reference& type) -> std::string
-{
-    return std::format("{}~", to_string_paren(*type.inner_type));
-}
-
 auto to_string(const type_const& type) -> std::string
 {
     return std::format("const {}", to_string(*type.inner_type));
@@ -189,12 +155,6 @@ auto hash(const type_function_ptr& type) -> std::size_t
         val ^= hash(param);
     }
     return val;
-}
-
-auto hash(const type_reference& type) -> std::size_t
-{
-    static const auto base = std::hash<std::string_view>{}("type_reference");
-    return hash(*type.inner_type) ^ base;
 }
 
 auto hash(const type_const& type) -> std::size_t
@@ -289,9 +249,6 @@ auto inner_type(const type_name& t) -> type_name
     if (is_span_type(t)) {
         return *std::get<type_span>(t).inner_type; 
     }
-    if (t.is_ref()) {
-        return t.remove_ref();
-    }
     if (t.is_const()) {
         return t.remove_const();
     }
@@ -321,11 +278,6 @@ auto is_type_trivially_copyable(const type_name& type) -> bool
         [](const type_span&)         { return true; },
         [](const type_ptr&)          { return true; },
         [](const type_function_ptr&) { return true; },
-        [](const type_reference&)    {
-            panic("tried to check if a ref is trivially copyable, but it should "
-                  "have already been stripped away");
-            return false;
-        },
         [](const type_const& t)      { return is_type_trivially_copyable(*t.inner_type); }
     }, type);
 }
@@ -348,7 +300,6 @@ auto type_store::contains(const type_name& type) const -> bool
         [&](const type_span& t)       { return contains(*t.inner_type); },
         [&](const type_ptr& t)        { return contains(*t.inner_type); },
         [&](const type_function_ptr&) { return true; },
-        [&](const type_reference& t)  { return contains(*t.inner_type); },
         [&](const type_const& t)      { return contains(*t.inner_type); }
     }, type);
 }
@@ -394,9 +345,6 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             return 2 * PTR_SIZE; // actually a pointer + a size, but they are both 8 bytes
         },
         [](const type_function_ptr&) {
-            return PTR_SIZE;
-        },
-        [](const type_reference&) {
             return PTR_SIZE;
         },
         [&](const type_const& t) {

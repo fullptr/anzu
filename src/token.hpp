@@ -52,7 +52,6 @@ enum class token_type
     kw_loop,
     kw_new,
     kw_null,
-    kw_ref,
     kw_return,
     kw_sizeof,
     kw_struct,

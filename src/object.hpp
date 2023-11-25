@@ -67,12 +67,6 @@ struct type_function_ptr
     auto operator==(const type_function_ptr&) const -> bool = default;
 };
 
-struct type_reference
-{
-    value_ptr<type_name> inner_type;
-    auto operator==(const type_reference&) const -> bool = default;
-};
-
 struct type_const
 {
     value_ptr<type_name> inner_type;
@@ -87,14 +81,9 @@ struct type_name : public std::variant<
     type_ptr,
     type_span,
     type_function_ptr,
-    type_reference,
     type_const>
 {
     using variant::variant;
-
-    auto is_ref() const -> bool;
-    auto add_ref() const -> type_name;
-    auto remove_ref() const -> type_name;
 
     auto is_ptr() const -> bool;
     auto add_ptr() const -> type_name;
@@ -105,9 +94,6 @@ struct type_name : public std::variant<
     auto remove_const() const -> type_name;
 
     auto strip_const() const -> std::pair<type_name, bool>;
-    auto strip_qualifiers() const -> std::tuple<type_name, bool, bool>;
-
-    auto remove_cr() const -> type_name;
 };
 
 using type_names = std::vector<type_name>;
@@ -132,7 +118,6 @@ auto hash(const type_array& type) -> std::size_t;
 auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
-auto hash(const type_reference& type) -> std::size_t;
 auto hash(const type_const& type) -> std::size_t;
 
 auto null_type() -> type_name;
@@ -187,7 +172,6 @@ auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
-auto to_string(const type_reference& type) -> std::string;
 auto to_string(const type_const& type) -> std::string;
 
 // Runtime pointer helpers to determine if the pointer is in stack, heap or read-only memory.
