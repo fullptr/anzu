@@ -940,7 +940,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     // Handle .size() calls on spans
     if (is_span_type(type) && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
-        push_expr_val(com, *node.expr); // push pointer to span
+        push_expr_ptr(com, *node.expr); // push pointer to span
         push_value(com.program, op::push_u64, size_of_ptr());
         push_value(com.program, op::u64_add); // offset to the size value
         push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
