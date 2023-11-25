@@ -1,11 +1,6 @@
 
-struct foo {
-    val: i64;
+var x := [1, 2, 3, 4, 5];
+var y := x[];
 
-    fn pr(self: foo&, x: i64) {
-        println(self.val + x);
-    }
-}
-
-var f := foo(1);
-f.pr(6);
+println(x.size());
+println(y.size());
