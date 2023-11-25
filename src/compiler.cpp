@@ -280,7 +280,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
 {
     std::visit(overloaded{
         [&](const type_struct&) {
-            const auto params = type_names{ type.add_ref() };
+            const auto params = type_names{ type.add_ptr() };
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);

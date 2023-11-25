@@ -2,7 +2,7 @@ struct object
 {
     inner: i64;
 
-    fn drop(ref self: object) -> null
+    fn drop(self: object&) -> null
     {
         print("dropping object ");
         println(self.inner);
