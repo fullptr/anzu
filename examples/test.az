@@ -1,17 +1,15 @@
 
-struct foo {
+struct foo
+{
     val: i64;
 
-    fn pr(ref self: foo) {
+    fn bar(self: foo&)
+    {
         println(self.val);
     }
 }
 
-var f := foo(1);
+var f := foo(10);
 var p := f&;
 var p2 := p&;
-
-f.val = 5;
-p2.val = 10;
-
-p2@@.pr();
+p2.bar();

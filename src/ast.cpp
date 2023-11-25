@@ -66,6 +66,16 @@ auto print_node(const node_expr& root, int indent) -> void
                 print_node(*arg, indent + 1);
             }
         },
+        [&](const node_member_call_expr& node) {
+            print("{}MemberCall:\n", spaces);
+            print("{}- Expr:\n", spaces);
+            print_node(*node.expr, indent + 1);
+            print("{}- FunctionName: {}\n", spaces, node.function_name);
+            print("{}- OtherArgs:\n", spaces);
+            for (const auto& arg : node.other_args) {
+                print_node(*arg, indent + 1);
+            }
+        },
         [&](const node_array_expr& node) {
             print("{}Array:\n", spaces);
             print("{}- Elements:\n", spaces);

@@ -139,25 +139,27 @@ auto get_precedence(token token) -> int
     }
 }
 
+auto parse_name(tokenstream& tokens)
+{
+    const auto token = tokens.consume();
+    if (token.type != token_type::identifier) {
+        token.error("'{}' is not a valid name", token.text);
+    }
+    return token.text;
+}
+
 auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 {
     auto new_node = std::make_shared<node_expr>();
     const auto tok = tokens.consume();
     if (tokens.peek_next(token_type::left_paren)) {
-        auto self = std::make_shared<node_expr>();
-        auto& self_inner = self->emplace<node_reference_expr>();
-        self_inner.expr = node;
-        self_inner.token = tok;
-        auto& expr = new_node->emplace<node_call_expr>();
-        expr.expr = std::make_shared<node_expr>(node_name_expr{
-            .struct_name = std::make_shared<node_type>(node_expr_type{node}),
-            .name = std::string{tokens.consume().text}
-        });
+        auto& expr = new_node->emplace<node_member_call_expr>();
+        expr.expr = node;
         expr.token = tok;
+        expr.function_name = parse_name(tokens);
         tokens.consume_only(token_type::left_paren);
-        expr.args.push_back(self);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            expr.args.push_back(parse_expression(tokens));
+            expr.other_args.push_back(parse_expression(tokens));
         });
     } else {
         auto& expr = new_node->emplace<node_field_expr>();
@@ -318,15 +320,6 @@ auto parse_compound_factor(tokenstream& tokens, int level) -> node_expr_ptr
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 {
     return parse_compound_factor(tokens, 0);
-}
-
-auto parse_name(tokenstream& tokens)
-{
-    const auto token = tokens.consume();
-    if (token.type != token_type::identifier) {
-        token.error("'{}' is not a valid name", token.text);
-    }
-    return token.text;
 }
 
 // If it's a fundamental type, return that, otherwise return a struct_type

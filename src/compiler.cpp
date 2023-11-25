@@ -264,12 +264,12 @@ auto ends_in_return(const node_stmt& node) -> bool
 
 auto assign_fn_params(const type_name& type) -> type_names
 {
-    return { type.add_ref(), type.add_ref() };
+    return { type.add_ptr(), type.add_const().add_ptr() };
 }
 
 auto copy_fn_params(const type_name& type) -> type_names
 {
-    return { type.add_ref() };
+    return { type.add_const().add_ptr() };
 }
 
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
@@ -280,7 +280,7 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
 {
     std::visit(overloaded{
         [&](const type_struct&) {
-            const auto params = type_names{ type.add_ref() };
+            const auto params = type_names{ type.add_ptr() };
             if (const auto func = get_function(com, type, "drop", params); func) {
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
@@ -771,6 +771,13 @@ auto get_converter(const type_name& src, const type_name& dst)
         };
     }
 
+    // pointers can convert to pointers-to-const
+    if (src.is_ptr() && dst.is_ptr() && src.remove_ptr() == dst.remove_ptr().remove_const()) {
+        return [](compiler& com, const node_expr& expr, const token& tok) {
+            push_object_copy(com, expr, tok);
+        };
+    }
+
     const auto [src_raw, src_is_const, src_is_ref] = src.strip_qualifiers();
     const auto [dst_raw, dst_is_const, dst_is_ref] = dst.strip_qualifiers();
 
@@ -896,21 +903,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return func->sig.return_type;
         }
 
-        // Third, it might be a .size member function on a span, TODO: make it easier to add
-        // builtin member functions first arg is a pointer to a span, so need to deref with
-        // inner_type before checking if its a span. BUG: This will match ANY call a size
-        // function, and if the type of the argument is not an array, ptr or span, inner_type is
-        // not defined and we fail compilation.
-        if (inner.name == "size" && node.args.size() == 1 &&
-            is_span_type(inner_type(type_of_expr(com, *node.args[0]))))
-        {
-            push_expr_val(com, *node.args[0]); // push pointer to span
-            push_value(com.program, op::push_u64, size_of_ptr());
-            push_value(com.program, op::u64_add); // offset to the size value
-            push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
-            return u64_type();
-        }
-
         // Lastly, it might be a builtin function
         if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
             const auto& builtin = get_builtin(*b);
@@ -939,6 +931,55 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     push_expr_val(com, *node.expr);
     push_value(com.program, op::call, args_size);
     return *sig.return_type;
+}
+
+auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+
+    // Handle .size() calls on arrays
+    if (is_array_type(type) && node.function_name == "size") {
+        node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
+        push_value(com.program, op::push_u64, array_length(type));
+        return u64_type();
+    }
+
+    // Handle .size() calls on spans
+    if (is_span_type(type) && node.function_name == "size") {
+        node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
+        push_expr_ptr(com, *node.expr); // push pointer to span
+        push_value(com.program, op::push_u64, size_of_ptr());
+        push_value(com.program, op::u64_add); // offset to the size value
+        push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
+        return u64_type();
+    }
+
+    const auto stripped_type = [&] {
+        auto t = type;
+        while (is_ptr_type(t)) { t = inner_type(t); }
+        return t;
+    }();
+
+    auto params = std::vector<type_name>{};
+    params.push_back(concrete_ptr_type(stripped_type));
+    for (const auto& arg : node.other_args) {
+        params.push_back(type_of_expr(com, *arg));
+    }
+
+    const auto func = get_function(com, stripped_type, node.function_name, params);
+    node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
+
+    push_value(com.program, op::push_call_frame);
+    auto t = push_expr_ptr(com, *node.expr); // self
+    while (t.is_ptr()) { // allow for calling member functions through pointers
+        push_value(com.program, op::load, size_of_ptr());
+        t = t.remove_ptr();
+    }
+    for (std::size_t i = 0; i != node.other_args.size(); ++i) {
+        push_function_arg(com, *node.other_args.at(i), func->sig.params[i + 1], node.token);
+    }
+    push_function_call(com, *func);
+    return func->sig.return_type;
 }
 
 auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
@@ -1443,8 +1484,8 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
-    const auto expected = struct_type.add_ref();
-    const auto const_expected = struct_type.add_const().add_ref();
+    const auto expected = struct_type.add_ptr();
+    const auto const_expected = struct_type.add_const().add_ptr();
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code
