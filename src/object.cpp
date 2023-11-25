@@ -245,17 +245,11 @@ auto inner_type(const type_name& t) -> type_name
     if (t.is_array()) {
         return *std::get<type_array>(t).inner_type;
     }
-    if (t.is_ptr()) {
-        return *std::get<type_ptr>(t).inner_type;
-    }
     if (t.is_span()) {
         return *std::get<type_span>(t).inner_type; 
     }
-    if (t.is_const()) {
-        return t.remove_const();
-    }
     panic("tried to get the inner type of an invalid type category, "
-          "can only get the inner type for arrays, pointers, spans and references");
+          "can only get the inner type for arrays and spans");
 }
 
 auto array_length(const type_name& t) -> std::size_t
