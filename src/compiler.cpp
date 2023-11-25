@@ -896,21 +896,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return func->sig.return_type;
         }
 
-        // Third, it might be a .size member function on a span, TODO: make it easier to add
-        // builtin member functions first arg is a pointer to a span, so need to deref with
-        // inner_type before checking if its a span. BUG: This will match ANY call a size
-        // function, and if the type of the argument is not an array, ptr or span, inner_type is
-        // not defined and we fail compilation.
-        if (inner.name == "size" && node.args.size() == 1 &&
-            is_span_type(inner_type(type_of_expr(com, *node.args[0]))))
-        {
-            push_expr_val(com, *node.args[0]); // push pointer to span
-            push_value(com.program, op::push_u64, size_of_ptr());
-            push_value(com.program, op::u64_add); // offset to the size value
-            push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
-            return u64_type();
-        }
-
         // Lastly, it might be a builtin function
         if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
             const auto& builtin = get_builtin(*b);
@@ -939,6 +924,25 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     push_expr_val(com, *node.expr);
     push_value(com.program, op::call, args_size);
     return *sig.return_type;
+}
+
+auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
+{
+    // Third, it might be a .size member function on a span, TODO: make it easier to add
+    // builtin member functions first arg is a pointer to a span, so need to deref with
+    // inner_type before checking if its a span. BUG: This will match ANY call a size
+    // function, and if the type of the argument is not an array, ptr or span, inner_type is
+    // not defined and we fail compilation.
+    //if (inner.name == "size" && node.args.size() == 1 &&
+    //    is_span_type(inner_type(type_of_expr(com, *node.args[0]))))
+    //{
+    //    push_expr_val(com, *node.args[0]); // push pointer to span
+    //    push_value(com.program, op::push_u64, size_of_ptr());
+    //    push_value(com.program, op::u64_add); // offset to the size value
+    //    push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
+    //    return u64_type();
+    //}
+    return null_type();
 }
 
 auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
