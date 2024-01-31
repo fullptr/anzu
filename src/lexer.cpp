@@ -284,9 +284,9 @@ auto tokenstream::consume_maybe(token_type tt) -> bool
 
 auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
 {
-    panic_if(!valid(), "[ERROR] (EOF) expected '{}'", tt);
+    panic_if(!valid(), "[ERROR] (EOF) expected '{}'", to_string(tt));
     if (curr().type != tt) {
-        curr().error("expected '{}', got '{}' [PARSER:{}]\n", tt, curr().type, loc.line());
+        curr().error("expected '{}', got '{}' [PARSER:{}]\n", to_string(tt), to_string(curr().type), loc.line());
     }
     return consume();
 }
@@ -295,7 +295,7 @@ auto tokenstream::consume_u64() -> std::uint64_t
 {
     panic_if(!valid(), "[ERROR] (EOF) expected a uint\n");
     if (curr().type != token_type::uint64) {
-        curr().error("expected u64, got '{}'\n", token_type::uint64, curr().type);
+        curr().error("expected u64, got '{}'\n", to_string(curr().type));
     }
     return std::stoull(std::string{consume().text}); // todo - use from_chars
 }

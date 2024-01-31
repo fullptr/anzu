@@ -1,9 +1,10 @@
 
-let x := 30;
-var y := 10;
+fn foob() { println("Hello"); }
 
-var p1 := x&; # pointer-to-const
-var p2 := y&; # pointer
+foob();
 
+var f := foob;
+f();
 
-p1 = p2;
+var arr := [foob];
+arr[0u]();

@@ -15,6 +15,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <expected>
 
 namespace anzu {
 namespace {
@@ -43,9 +44,6 @@ auto hash(const type_names& params) -> std::size_t
     return hash_value;
 }
 
-using type_name_hash = decltype([](const type_name& f) { return hash(f); });
-using function_map = std::unordered_map<std::string, std::vector<function_info>>;
-
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler
@@ -55,8 +53,7 @@ struct compiler
 
     bool debug = false;
 
-    // namespace (type_name) -> function_name -> signatures -> function_info
-    std::unordered_map<type_name, function_map, type_name_hash> functions;
+    std::unordered_map<std::string, function_info> funcs;
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 
@@ -84,7 +81,7 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
         }
     }, *type);
 
-    tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", resolved_type);
+    tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", to_string(resolved_type));
     return resolved_type;
 }
 
@@ -98,22 +95,22 @@ auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 auto are_types_convertible_to(const std::vector<type_name>& args,
                               const std::vector<type_name>& actuals) -> bool;
 
+auto verify_function_call(const function_info& func, const type_names& params, const token& tok) -> void
+{
+    if (!are_types_convertible_to(params, func.sig.params)) {
+        tok.error("tried to call function (TODO - ADD NAME) with wrong signature");
+    }
+}
+
 auto get_function(
     const compiler& com,
-    const type_name& struct_name,
-    const std::string& function_name,
-    const type_names& params
+    const std::string& struct_name,
+    const std::string& function_name
 )
     -> std::optional<function_info>
 {
-    if (const auto it = com.functions.find(struct_name); it != com.functions.end()) {
-        if (const auto it2 = it->second.find(function_name); it2 != it->second.end()) {
-            for (const auto& function_info : it2->second) {
-                if (are_types_convertible_to(params, function_info.sig.params)) {
-                    return function_info;
-                }
-            }
-        }
+    if (auto it = com.funcs.find(std::format("{}::{}", struct_name, function_name)); it != com.funcs.end()) {
+        return it->second;
     }
     return std::nullopt;
 }
@@ -148,7 +145,7 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
-    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", type);
+    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", to_string(type));
     const auto size = com.types.size_of(type);
     push_value(com.program, op::load, size);
 }
@@ -156,7 +153,7 @@ auto load_variable(compiler& com, const token& tok, const std::string& name) -> 
 auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
-    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", type);
+    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", to_string(type));
     const auto size = com.types.size_of(type);
     push_value(com.program, op::save, size);
 }
@@ -177,7 +174,7 @@ auto push_field_offset(
         offset += com.types.size_of(field.type);
     }
     
-    tok.error("could not find field '{}' for type '{}'\n", field_name, type);
+    tok.error("could not find field '{}' for type '{}'\n", field_name, to_string(type));
 }
 
 // Given a type and field name, and assuming that the top of the stack at runtime is a pointer
@@ -205,7 +202,7 @@ void verify_sig(
     auto arg_index = std::size_t{0};
     for (const auto& [expected_param, actual_param] : zip(expected, actual)) {
         if (actual_param != expected_param) {
-            tok.error("arg {} type '{}' does not match '{}'", arg_index, actual_param, expected_param);
+            tok.error("arg {} type '{}' does not match '{}'", arg_index, to_string(actual_param), to_string(expected_param));
             ++arg_index;
         }
     }
@@ -259,7 +256,8 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
     std::visit(overloaded{
         [&](const type_struct&) {
             const auto params = type_names{ type.add_ptr() };
-            if (const auto func = get_function(com, type, "drop", params); func) {
+            if (const auto func = get_function(com, to_string(type), "drop"); func) {
+                verify_function_call(*func, params, func->tok);
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
                 push_object_ptr(func->tok);
@@ -411,9 +409,9 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         const auto etype = type.remove_array().remove_const();
         const auto esize = com.types.size_of(etype);
 
-        const auto params = copy_fn_params(etype);
-        const auto copy = get_function(com, etype, "copy", params);
+        const auto copy = get_function(com, to_string(etype), "copy");
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
+        verify_function_call(*copy, copy_fn_params(etype), tok);
 
         for (const auto idx : range(array_length(type))) {
             push_value(com.program, op::push_call_frame);
@@ -424,9 +422,9 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     }
     
     else {
-        const auto params = copy_fn_params(type);
-        const auto copy = get_function(com, type, "copy", params);
+        const auto copy = get_function(com, to_string(type), "copy");
         tok.assert(copy.has_value(), "{} cannot be copied", type);
+        verify_function_call(*copy, copy_fn_params(type), tok);
 
         push_value(com.program, op::push_call_frame);
         push_expr_ptr(com, expr);
@@ -467,8 +465,7 @@ auto push_assert(compiler& com, std::string_view message) -> void
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
-    auto& global_fns = com.functions[global_namespace];
-    if (auto it = global_fns.find(node.name); it != global_fns.end()) {
+    if (auto func = get_function(com, "", node.name)) {
         node.token.error("cannot take address of a function pointer");
     }
 
@@ -480,14 +477,8 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 // are lvalues, so that may cause trouble; we should find out how.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
-    auto& global_fns = com.functions[global_namespace];
-    if (auto it = global_fns.find(node.name); it != global_fns.end()) {
-        // We are dealing with a function, so return a function pointer provided
-        // this isn't an overloaded function
-        if (it->second.size() > 1) {
-            node.token.error("cannot get function pointer to an overloaded function\n");
-        }
-        const auto& info = *it->second.begin();
+    if (auto func = get_function(com, "", node.name)) {
+        const auto& info = *func;
         push_value(com.program, op::push_u64, info.ptr);
 
         // next, construct the return type.
@@ -845,7 +836,8 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
         
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
-        if (const auto func = get_function(com, struct_type, inner.name, params); func) {
+        if (const auto func = get_function(com, to_string(struct_type), inner.name); func) {
+            verify_function_call(*func, params, node.token);
             push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
@@ -917,8 +909,9 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         params.push_back(type_of_expr(com, *arg));
     }
 
-    const auto func = get_function(com, stripped_type, node.function_name, params);
+    const auto func = get_function(com, to_string(stripped_type), node.function_name);
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
+    verify_function_call(*func, params, node.token);
 
     push_value(com.program, op::push_call_frame);
     auto t = push_expr_ptr(com, *node.expr); // self
@@ -1255,7 +1248,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     const auto message = std::format("type '{}' already defined", node.name);
     node.token.assert(!com.types.contains(make_type(node.name)), "{}", message);
-    node.token.assert(!com.functions[global_namespace].contains(node.name), "{}", message);
+    node.token.assert(!com.funcs.contains(node.name), "{}", message);
 
     auto fields = type_fields{};
     for (const auto& p : node.fields) {
@@ -1329,10 +1322,10 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     if (rhs.is_array()) {
         const auto etype = rhs.remove_array();
         const auto inner_size = com.types.size_of(etype);
-        const auto params = assign_fn_params(etype);
 
-        const auto assign = get_function(com, etype, "assign", params);
+        const auto assign = get_function(com, to_string(etype), "assign");
         node.token.assert(assign.has_value(), "{} cannot be assigned", etype);
+        verify_function_call(*assign, assign_fn_params(etype), node.token);
 
         for (std::size_t i = 0; i != array_length(rhs); ++i) {
             push_value(com.program, op::push_call_frame);
@@ -1350,9 +1343,9 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     }
 
     const auto type = rhs;
-    const auto params = assign_fn_params(type);
-    const auto assign = get_function(com, type, "assign", params);
+    const auto assign = get_function(com, to_string(type), "assign");
     node.token.assert(assign.has_value(), "{} cannot be assigned", type);
+    verify_function_call(*assign, assign_fn_params(type), node.token);
 
     push_value(com.program, op::push_call_frame);
     push_expr_ptr(com, *node.position);
@@ -1371,6 +1364,10 @@ auto compile_function_body(
 )
     -> signature
 {
+    if (get_function(com, to_string(struct_type), name)) {
+        tok.error("multiple definitions of function {}", name);
+    }
+
     auto sig = signature{};
     push_value(com.program, op::jump);
     const auto jump_op = push_value(com.program, std::uint64_t{0});
@@ -1389,12 +1386,8 @@ auto compile_function_body(
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.scopes.get_function_info().return_type = sig.return_type;
-        for (const auto& function : com.functions[struct_type][name]) {
-            if (are_types_convertible_to(sig.params, function.sig.params)) {
-                tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
-            }
-        }
-        com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
+        const auto full_name = std::format("{}::{}", to_string(struct_type), name);
+        com.funcs[full_name] = function_info{.sig=sig, .ptr=begin_pos, .tok=tok};
 
         push_stmt(com, *body);
 

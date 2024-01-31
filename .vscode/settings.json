@@ -82,6 +82,7 @@
         "numeric": "cpp",
         "filesystem": "cpp",
         "source_location": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "execution": "cpp"
     }
 }

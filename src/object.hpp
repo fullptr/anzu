@@ -187,16 +187,11 @@ inline auto is_rom_ptr(std::uint64_t x)    -> bool          { return x & rom_bit
 
 }
 
-template <> struct std::formatter<std::byte> : std::formatter<std::string> {
-    auto format(std::byte b, auto& ctx) {
+template <>
+struct std::formatter<std::byte, char> : std::formatter<std::string>
+{
+    auto format(std::byte b, auto& ctx) const noexcept {
         const auto str = std::format("{:X}", static_cast<unsigned char>(b));
         return std::formatter<std::string>::format(str, ctx);
-    }
-};
-
-template <> struct std::formatter<anzu::type_name> : std::formatter<std::string>
-{
-    auto format(const anzu::type_name& type, auto& ctx) {
-        return std::formatter<std::string>::format(anzu::to_string(type), ctx);
     }
 };
