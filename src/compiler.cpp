@@ -1496,6 +1496,11 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
     }
 }
 
+void push_stmt(compiler& com, const node_print_stmt& node)
+{
+    
+}
+
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
 {
     return std::visit([&](const auto& node) { return push_expr_val(com, node); }, expr);

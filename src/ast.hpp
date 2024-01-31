@@ -367,6 +367,14 @@ struct node_assert_stmt
     anzu::token token;
 };
 
+struct node_print_stmt
+{
+    std::string message;
+    std::vector<node_expr_ptr> args;
+
+    anzu::token token;
+};
+
 
 struct node_stmt : std::variant<
     node_sequence_stmt,
@@ -385,7 +393,8 @@ struct node_stmt : std::variant<
     node_expression_stmt,
     node_return_stmt,
     node_delete_stmt,
-    node_assert_stmt>
+    node_assert_stmt,
+    node_print_stmt>
 {
 };
 
