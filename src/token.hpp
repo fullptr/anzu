@@ -125,8 +125,10 @@ auto to_string(token_type tt) -> std::string_view;
     
 }
 
-template <> struct std::formatter<anzu::token_type> : std::formatter<std::string_view> {
-    auto format(const anzu::token_type& tt, auto& ctx) {
+template <>
+struct std::formatter<anzu::token_type> : std::formatter<std::string_view>
+{
+    auto format(const anzu::token_type& tt, auto& ctx) const {
         return std::formatter<std::string_view>::format(to_string(tt), ctx);
     }
 };
