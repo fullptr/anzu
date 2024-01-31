@@ -601,6 +601,25 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_print_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_shared<node_stmt>();
+    auto& stmt = node->emplace<node_print_stmt>();
+
+    stmt.token = tokens.consume_only(token_type::kw_print);
+    tokens.consume_only(token_type::left_paren);
+    const auto message_token = tokens.consume_only(token_type::string);
+    stmt.message = std::string{message_token.text};
+    if (tokens.consume_maybe(token_type::comma)) {
+        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+            stmt.args.push_back(parse_expression(tokens));
+        });
+    } else {
+        tokens.consume_only(token_type::right_paren);
+    }
+    return node;
+}
+
 auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
@@ -688,6 +707,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::kw_unsafe:   return parse_unsafe_stmt(tokens);
         case token_type::kw_let:
         case token_type::kw_var:      return parse_declaration_stmt(tokens);
+        case token_type::kw_print:    return parse_print_stmt(tokens);
     }
 
     auto node = std::make_shared<node_stmt>();

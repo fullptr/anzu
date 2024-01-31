@@ -1,10 +1,2 @@
 
-fn foob() { println("Hello"); }
-
-foob();
-
-var f := foob;
-f();
-
-var arr := [foob];
-arr[0u]();
+print("this is the message");
