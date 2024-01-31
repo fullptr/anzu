@@ -6,6 +6,7 @@
 
 #include <concepts>
 #include <utility>
+#include <print>
 
 namespace anzu {
 namespace {
@@ -32,6 +33,13 @@ auto binary_op(bytecode_context& ctx) -> void
     const auto rhs = pop_value<Type>(ctx.stack);
     const auto lhs = pop_value<Type>(ctx.stack);
     push_value(ctx.stack, op(lhs, rhs));
+}
+
+template <typename Type>
+auto print_op(bytecode_context& ctx) -> void
+{
+    const auto obj = pop_value<Type>(ctx.stack);
+    std::print("{}", obj);
 }
 
 template <typename T>
@@ -257,6 +265,9 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::i32_neg: { unary_op<std::int32_t, std::negate>(ctx); } break;
         case op::i64_neg: { unary_op<std::int64_t, std::negate>(ctx); } break;
         case op::f64_neg: { unary_op<double, std::negate>(ctx); } break;
+
+        case op::print_i32: { print_op<std::int32_t>(ctx); } break;
+
         default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
     }
 }
@@ -264,173 +275,174 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
 auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
 {
     std::size_t start = ptr;
-    print("[{:>3}] ", ptr);
+    std::print("[{:>3}] ", ptr);
     const auto op_code = static_cast<op>(prog.code[ptr++]);
     switch (op_code) {
         case op::push_i32: {
             const auto value = read_advance<std::int32_t>(prog, ptr);
-            print("PUSH_I32: {}\n", value);
+            std::print("PUSH_I32: {}\n", value);
         } break;
         case op::push_i64: {
             const auto value = read_advance<std::int64_t>(prog, ptr);
-            print("PUSH_I64: {}\n", value);
+            std::print("PUSH_I64: {}\n", value);
         } break;
         case op::push_u64: {
             const auto value = read_advance<std::uint64_t>(prog, ptr);
-            print("PUSH_U64: {}\n", value);
+            std::print("PUSH_U64: {}\n", value);
         } break;
         case op::push_f64: {
             const auto value = read_advance<double>(prog, ptr);
-            print("PUSH_F64: {}\n", value);
+            std::print("PUSH_F64: {}\n", value);
         } break;
         case op::push_char: {
             const auto value = read_advance<char>(prog, ptr);
-            print("PUSH_CHAR: {}\n", value);
+            std::print("PUSH_CHAR: {}\n", value);
         } break;
         case op::push_bool: {
             const auto value = read_advance<bool>(prog, ptr);
-            print("PUSH_BOOL: {}\n", value);
+            std::print("PUSH_BOOL: {}\n", value);
         } break;
         case op::push_null: {
-            print("PUSH_NULL\n");
+            std::print("PUSH_NULL\n");
         } break;
         case op::push_string_literal: {
             const auto index = unset_rom_bit(read_advance<std::uint64_t>(prog, ptr));
             const auto size = read_advance<std::uint64_t>(prog, ptr);
             const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
             const auto m = std::string_view(data, size);
-            print("PUSH_STRING_LITERAL: '{}'\n", m);
+            std::print("PUSH_STRING_LITERAL: '{}'\n", m);
         } break;
         case op::push_ptr: {
             const auto pos = read_advance<std::uint64_t>(prog, ptr);
             if (is_heap_ptr(pos)) {
-                print("PUSH_PTR: {} (HEAP)\n", unset_heap_bit(pos));
+                std::print("PUSH_PTR: {} (HEAP)\n", unset_heap_bit(pos));
             }
             else if (is_rom_ptr(pos)) {
-                print("PUSH_PTR: {} (ROM)\n", unset_rom_bit(pos));
+                std::print("PUSH_PTR: {} (ROM)\n", unset_rom_bit(pos));
             }
             else {
-                print("PUSH_PTR: {} (STACK)\n", pos);
+                std::print("PUSH_PTR: {} (STACK)\n", pos);
             }
         } break;
         case op::push_ptr_rel: {
             const auto offset = read_advance<std::uint64_t>(prog, ptr);
-            print("PUSH_PTR_REL: base_ptr + {}\n", offset);
+            std::print("PUSH_PTR_REL: base_ptr + {}\n", offset);
         } break;
         case op::push_call_frame: {
-            print("PUSH_CALL_FRAME\n");
+            std::print("PUSH_CALL_FRAME\n");
         } break;
         case op::load: {
             const auto size = read_advance<std::uint64_t>(prog, ptr);
-            print("LOAD: {}\n", size);
+            std::print("LOAD: {}\n", size);
         } break;
         case op::save: {
             const auto size = read_advance<std::uint64_t>(prog, ptr);
-            print("SAVE: {}\n", size);
+            std::print("SAVE: {}\n", size);
         } break;
         case op::pop: {
             const auto size = read_advance<std::uint64_t>(prog, ptr);
-            print("POP: {}\n", size);
+            std::print("POP: {}\n", size);
         } break;
         case op::alloc_span: {
             const auto type_size = read_advance<std::uint64_t>(prog, ptr);
-            print("ALLOC_SPAN: type_size={}\n", type_size);
+            std::print("ALLOC_SPAN: type_size={}\n", type_size);
         } break;
         case op::dealloc_span: {
             const auto type_size = read_advance<std::uint64_t>(prog, ptr);
-            print("DEALLOC_SPAN: type_size={}\n", type_size);
+            std::print("DEALLOC_SPAN: type_size={}\n", type_size);
         } break;
         case op::alloc_ptr: {
             const auto type_size = read_advance<std::uint64_t>(prog, ptr);
-            print("ALLOC_PTR: type_size={}\n", type_size);
+            std::print("ALLOC_PTR: type_size={}\n", type_size);
         } break;
         case op::dealloc_ptr: {
             const auto type_size = read_advance<std::uint64_t>(prog, ptr);
-            print("DEALLOC_PTR: type_size={}\n", type_size);
+            std::print("DEALLOC_PTR: type_size={}\n", type_size);
         } break;
         case op::jump: {
             const auto jump = read_advance<std::uint64_t>(prog, ptr);
-            print("JUMP: jump={}\n", jump);
+            std::print("JUMP: jump={}\n", jump);
         } break;
         case op::jump_if_false: {
             const auto jump = read_advance<std::uint64_t>(prog, ptr);
-            print("JUMP_IF_FALSE: jump={}\n", jump);
+            std::print("JUMP_IF_FALSE: jump={}\n", jump);
         } break;
         case op::ret: {
             const auto type_size = read_advance<std::uint64_t>(prog, ptr);
-            print("RETURN: type_size={}\n", type_size);
+            std::print("RETURN: type_size={}\n", type_size);
         } break;
         case op::call: {
             const auto args_size = read_advance<std::uint64_t>(prog, ptr);
-            print("CALL: args_size={}\n", args_size);
+            std::print("CALL: args_size={}\n", args_size);
         } break;
         case op::builtin_call: {
             const auto id = read_advance<std::uint64_t>(prog, ptr);
             const auto& b = get_builtin(id);
-            print("BUILTIN_CALL: {}({}) -> {}\n",
+            std::print("BUILTIN_CALL: {}({}) -> {}\n",
                   b.name, format_comma_separated(b.args), b.return_type);
         } break;
         case op::assert: {
             const auto index = read_advance<std::uint64_t>(prog, ptr);
             const auto size = read_advance<std::uint64_t>(prog, ptr);
             const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
-            print("ASSERT: msg={}\n", std::string_view{data, size});
+            std::print("ASSERT: msg={}\n", std::string_view{data, size});
         } break;
-        case op::char_eq: { print("CHAR_EQ\n"); } break;
-        case op::char_ne: { print("CHAR_NE\n"); } break;
-        case op::i32_add: { print("I32_ADD\n"); } break;
-        case op::i32_sub: { print("I32_SUB\n"); } break;
-        case op::i32_mul: { print("I32_MUL\n"); } break;
-        case op::i32_div: { print("I32_DIV\n"); } break;
-        case op::i32_mod: { print("I32_MOD\n"); } break;
-        case op::i32_eq:  { print("I32_EQ\n"); } break;
-        case op::i32_ne:  { print("I32_NE\n"); } break;
-        case op::i32_lt:  { print("I32_LT\n"); } break;
-        case op::i32_le:  { print("I32_LE\n"); } break;
-        case op::i32_gt:  { print("I32_GT\n"); } break;
-        case op::i32_ge:  { print("I32_GE\n"); } break;
-        case op::i64_add: { print("I64_ADD\n"); } break;
-        case op::i64_sub: { print("I64_SUB\n"); } break;
-        case op::i64_mul: { print("I64_MUL\n"); } break;
-        case op::i64_div: { print("I64_DIV\n"); } break;
-        case op::i64_mod: { print("I64_MOD\n"); } break;
-        case op::i64_eq:  { print("I64_EQ\n"); } break;
-        case op::i64_ne:  { print("I64_NE\n"); } break;
-        case op::i64_lt:  { print("I64_LT\n"); } break;
-        case op::i64_le:  { print("I64_LE\n"); } break;
-        case op::i64_gt:  { print("I64_GT\n"); } break;
-        case op::i64_ge:  { print("I64_GE\n"); } break;
-        case op::u64_add: { print("U64_ADD\n"); } break;
-        case op::u64_sub: { print("U64_SUB\n"); } break;
-        case op::u64_mul: { print("U64_MUL\n"); } break;
-        case op::u64_div: { print("U64_DIV\n"); } break;
-        case op::u64_mod: { print("U64_MOD\n"); } break;
-        case op::u64_eq:  { print("U64_EQ\n"); } break;
-        case op::u64_ne:  { print("U64_NE\n"); } break;
-        case op::u64_lt:  { print("U64_LT\n"); } break;
-        case op::u64_le:  { print("U64_LE\n"); } break;
-        case op::u64_gt:  { print("U64_GT\n"); } break;
-        case op::u64_ge:  { print("U64_GE\n"); } break;
-        case op::f64_add: { print("F64_ADD\n"); } break;
-        case op::f64_sub: { print("F64_SUB\n"); } break;
-        case op::f64_mul: { print("F64_MUL\n"); } break;
-        case op::f64_div: { print("F64_DIV\n"); } break;
-        case op::f64_eq:  { print("F64_EQ\n"); } break;
-        case op::f64_ne:  { print("F64_NE\n"); } break;
-        case op::f64_lt:  { print("F64_LT\n"); } break;
-        case op::f64_le:  { print("F64_LE\n"); } break;
-        case op::f64_gt:  { print("F64_GT\n"); } break;
-        case op::f64_ge:  { print("F64_GE\n"); } break;
-        case op::bool_and: { print("BOOL_AND\n"); } break;
-        case op::bool_or:  { print("BOOL_OR\n"); } break;
-        case op::bool_eq:  { print("BOOL_EQ\n"); } break;
-        case op::bool_ne:  { print("BOOL_NE\n"); } break;
-        case op::bool_not: { print("BOOL_NOT\n"); } break;
-        case op::i32_neg: { print("I32_NEG\n"); } break;
-        case op::i64_neg: { print("I64_NEG\n"); } break;
-        case op::f64_neg: { print("F64_NEG\n"); } break;
+        case op::char_eq: { std::print("CHAR_EQ\n"); } break;
+        case op::char_ne: { std::print("CHAR_NE\n"); } break;
+        case op::i32_add: { std::print("I32_ADD\n"); } break;
+        case op::i32_sub: { std::print("I32_SUB\n"); } break;
+        case op::i32_mul: { std::print("I32_MUL\n"); } break;
+        case op::i32_div: { std::print("I32_DIV\n"); } break;
+        case op::i32_mod: { std::print("I32_MOD\n"); } break;
+        case op::i32_eq:  { std::print("I32_EQ\n"); } break;
+        case op::i32_ne:  { std::print("I32_NE\n"); } break;
+        case op::i32_lt:  { std::print("I32_LT\n"); } break;
+        case op::i32_le:  { std::print("I32_LE\n"); } break;
+        case op::i32_gt:  { std::print("I32_GT\n"); } break;
+        case op::i32_ge:  { std::print("I32_GE\n"); } break;
+        case op::i64_add: { std::print("I64_ADD\n"); } break;
+        case op::i64_sub: { std::print("I64_SUB\n"); } break;
+        case op::i64_mul: { std::print("I64_MUL\n"); } break;
+        case op::i64_div: { std::print("I64_DIV\n"); } break;
+        case op::i64_mod: { std::print("I64_MOD\n"); } break;
+        case op::i64_eq:  { std::print("I64_EQ\n"); } break;
+        case op::i64_ne:  { std::print("I64_NE\n"); } break;
+        case op::i64_lt:  { std::print("I64_LT\n"); } break;
+        case op::i64_le:  { std::print("I64_LE\n"); } break;
+        case op::i64_gt:  { std::print("I64_GT\n"); } break;
+        case op::i64_ge:  { std::print("I64_GE\n"); } break;
+        case op::u64_add: { std::print("U64_ADD\n"); } break;
+        case op::u64_sub: { std::print("U64_SUB\n"); } break;
+        case op::u64_mul: { std::print("U64_MUL\n"); } break;
+        case op::u64_div: { std::print("U64_DIV\n"); } break;
+        case op::u64_mod: { std::print("U64_MOD\n"); } break;
+        case op::u64_eq:  { std::print("U64_EQ\n"); } break;
+        case op::u64_ne:  { std::print("U64_NE\n"); } break;
+        case op::u64_lt:  { std::print("U64_LT\n"); } break;
+        case op::u64_le:  { std::print("U64_LE\n"); } break;
+        case op::u64_gt:  { std::print("U64_GT\n"); } break;
+        case op::u64_ge:  { std::print("U64_GE\n"); } break;
+        case op::f64_add: { std::print("F64_ADD\n"); } break;
+        case op::f64_sub: { std::print("F64_SUB\n"); } break;
+        case op::f64_mul: { std::print("F64_MUL\n"); } break;
+        case op::f64_div: { std::print("F64_DIV\n"); } break;
+        case op::f64_eq:  { std::print("F64_EQ\n"); } break;
+        case op::f64_ne:  { std::print("F64_NE\n"); } break;
+        case op::f64_lt:  { std::print("F64_LT\n"); } break;
+        case op::f64_le:  { std::print("F64_LE\n"); } break;
+        case op::f64_gt:  { std::print("F64_GT\n"); } break;
+        case op::f64_ge:  { std::print("F64_GE\n"); } break;
+        case op::bool_and: { std::print("BOOL_AND\n"); } break;
+        case op::bool_or:  { std::print("BOOL_OR\n"); } break;
+        case op::bool_eq:  { std::print("BOOL_EQ\n"); } break;
+        case op::bool_ne:  { std::print("BOOL_NE\n"); } break;
+        case op::bool_not: { std::print("BOOL_NOT\n"); } break;
+        case op::i32_neg: { std::print("I32_NEG\n"); } break;
+        case op::i64_neg: { std::print("I64_NEG\n"); } break;
+        case op::f64_neg: { std::print("F64_NEG\n"); } break;
+        case op::print_i32: { std::print("PRINT_I32\n"); } break;
         default: {
-            print("UNKNOWN\n");
+            std::print("UNKNOWN\n");
             return 0;
         } break;
     }
@@ -450,11 +462,11 @@ auto run_program(const bytecode_program& prog) -> void
     }
 
     if (ctx.stack.size() > 0) {
-        anzu::print("\n -> Stack Size: {}, bug in the compiler!\n", ctx.stack.size());
+        std::print("\n -> Stack Size: {}, bug in the compiler!\n", ctx.stack.size());
     }
 
     if (ctx.allocator.bytes_allocated() > 0) {
-        anzu::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
+        std::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
     }
 }
 
@@ -470,7 +482,7 @@ auto run_program_debug(const bytecode_program& prog) -> void
     }
 
     if (ctx.allocator.bytes_allocated() > 0) {
-        anzu::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
+        std::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
     }
 }
 

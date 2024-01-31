@@ -94,6 +94,8 @@ enum class op : std::uint8_t
     i32_neg,
     i64_neg,
     f64_neg,
+
+    print_i32,
 };
 
 using bytecode = std::vector<std::byte>;

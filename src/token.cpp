@@ -14,7 +14,7 @@ namespace anzu {
 auto print_token(token tok) -> void
 {
     const auto text = std::format("'{}'", tok.text);
-    anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", tok.type, text, tok.line, tok.col);
+    std::print("{:<15} - {:<20} {:<5} {:<5}\n", tok.type, text, tok.line, tok.col);
 }
 
 auto to_string(token_type tt) -> std::string_view

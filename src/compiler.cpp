@@ -817,12 +817,12 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
         // Hack to allow for an easy way to dump types of expressions
         if (inner.struct_name == nullptr & inner.name == "__dump_type") {
-            print("__dump_type(\n");
+            std::print("__dump_type(\n");
             for (const auto& arg : node.args) {
                 const auto dump = type_of_expr(com, *arg);
-                print("    {},\n", dump);
+                std::print("    {},\n", dump);
             }
-            print(")\n");
+            std::print(")\n");
             push_value(com.program, op::push_null);
             return null_type();
         }
@@ -1498,7 +1498,9 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 
 void push_stmt(compiler& com, const node_print_stmt& node)
 {
-    
+    node.token.assert(node.args.size() == 0, "arguments to print function not yet supported");
+    push_value(com.program, op::push_string_literal);
+    push_value(com.program, insert_into_rom(com, node.message), node.message.size());
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
@@ -1544,7 +1546,7 @@ auto compile(
             std::erase_if(remaining, [&](const std::filesystem::path& curr) {
                 const auto& mod = modules.at(curr);
                 if (compiled_all_requirements(mod, done)) {
-                    print("    {}\n", curr.lexically_relative(main_dir).string());
+                    std::print("    {}\n", curr.lexically_relative(main_dir).string());
                     push_stmt(com, *mod.root);
                     done.emplace(curr);
                     return true;
@@ -1553,11 +1555,11 @@ auto compile(
             });
             const auto after = remaining.size();
             if (before == after) {
-                print("Cyclic dependency detected among the following files:");
+                std::print("Cyclic dependency detected among the following files:");
                 for (const auto& mod : remaining) {
-                    print(" {}", mod.lexically_relative(main_dir).string());
+                    std::print(" {}", mod.lexically_relative(main_dir).string());
                 }
-                print("\n");
+                std::print("\n");
                 std::exit(1);
             }
         }

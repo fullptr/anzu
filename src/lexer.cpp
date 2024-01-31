@@ -264,7 +264,7 @@ auto lex_print(std::string_view source_code) -> void
     auto ctx = lexer{source_code};
     for (auto token = ctx.get_token(); token.type != token_type::eof; token = ctx.get_token()) {
         const auto text = std::format("'{}'", token.text);
-        anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", token.type, text, token.line, token.col);
+        std::print("{:<15} - {:<20} {:<5} {:<5}\n", token.type, text, token.line, token.col);
     }
 }
 
