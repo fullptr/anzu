@@ -263,7 +263,7 @@ auto lex_print(std::string_view source_code) -> void
     auto ctx = lexer{source_code};
     for (auto token = ctx.get_token(); token.type != token_type::eof; token = ctx.get_token()) {
         const auto text = std::format("'{}'", token.text);
-        anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
+        anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", token.type, text, token.line, token.col);
     }
 }
 
@@ -284,9 +284,9 @@ auto tokenstream::consume_maybe(token_type tt) -> bool
 
 auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
 {
-    panic_if(!valid(), "[ERROR] (EOF) expected '{}'", to_string(tt));
+    panic_if(!valid(), "[ERROR] (EOF) expected '{}'", tt);
     if (curr().type != tt) {
-        curr().error("expected '{}', got '{}' [PARSER:{}]\n", to_string(tt), to_string(curr().type), loc.line());
+        curr().error("expected '{}', got '{}' [PARSER:{}]\n", tt, curr().type, loc.line());
     }
     return consume();
 }
@@ -295,7 +295,7 @@ auto tokenstream::consume_u64() -> std::uint64_t
 {
     panic_if(!valid(), "[ERROR] (EOF) expected a uint\n");
     if (curr().type != token_type::uint64) {
-        curr().error("expected u64, got '{}'\n", to_string(curr().type));
+        curr().error("expected u64, got '{}'\n", curr().type);
     }
     return std::stoull(std::string{consume().text}); // todo - use from_chars
 }

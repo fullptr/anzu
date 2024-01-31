@@ -22,7 +22,7 @@ auto parse_number(const token& tok) -> node_expr_ptr
     auto text = tok.text;
 
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, to_string(TokenType));
+    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, TokenType);
     return node;
 }
 
@@ -74,14 +74,14 @@ auto parse_bool(const token& tok) -> node_expr_ptr
     switch (tok.type) {
         case token_type::kw_true:  { inner.value = true;  } break;
         case token_type::kw_false: { inner.value = false; } break;
-        default: tok.error("cannot parse bool literal from {}\n", to_string(tok.type));
+        default: tok.error("cannot parse bool literal from {}\n", tok.type);
     }
     return node;
 }
 
 auto parse_null(const token& tok) -> node_expr_ptr
 {
-    tok.assert_type(token_type::kw_null, "cannot parse null literal from {}\n", to_string(tok.type));
+    tok.assert_type(token_type::kw_null, "cannot parse null literal from {}\n", tok.type);
     auto node = std::make_shared<node_expr>();
     auto& inner = node->emplace<node_literal_null_expr>();
     inner.token = tok;
@@ -418,7 +418,7 @@ auto parse_type(tokenstream& tokens) -> type_name
     const auto type = parse_type_inner(tokens);
     const auto err = validate_type_inner(type);
     if (err) {
-        token.error("Invalid type ({}) - {}", to_string(type), *err);
+        token.error("Invalid type ({}) - {}", type, *err);
     }
     return type;
 }

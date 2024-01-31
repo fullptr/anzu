@@ -15,7 +15,6 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
-#include <expected>
 
 namespace anzu {
 namespace {
@@ -53,7 +52,7 @@ struct compiler
 
     bool debug = false;
 
-    std::unordered_map<std::string, function_info> funcs;
+    std::unordered_map<std::string, function_info> functions;
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 
@@ -81,7 +80,7 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
         }
     }, *type);
 
-    tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", to_string(resolved_type));
+    tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", resolved_type);
     return resolved_type;
 }
 
@@ -109,7 +108,7 @@ auto get_function(
 )
     -> std::optional<function_info>
 {
-    if (auto it = com.funcs.find(std::format("{}::{}", struct_name, function_name)); it != com.funcs.end()) {
+    if (auto it = com.functions.find(std::format("{}::{}", struct_name, function_name)); it != com.functions.end()) {
         return it->second;
     }
     return std::nullopt;
@@ -145,7 +144,7 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
-    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", to_string(type));
+    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", type);
     const auto size = com.types.size_of(type);
     push_value(com.program, op::load, size);
 }
@@ -153,7 +152,7 @@ auto load_variable(compiler& com, const token& tok, const std::string& name) -> 
 auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
-    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", to_string(type));
+    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", type);
     const auto size = com.types.size_of(type);
     push_value(com.program, op::save, size);
 }
@@ -174,7 +173,7 @@ auto push_field_offset(
         offset += com.types.size_of(field.type);
     }
     
-    tok.error("could not find field '{}' for type '{}'\n", field_name, to_string(type));
+    tok.error("could not find field '{}' for type '{}'\n", field_name, type);
 }
 
 // Given a type and field name, and assuming that the top of the stack at runtime is a pointer
@@ -202,7 +201,7 @@ void verify_sig(
     auto arg_index = std::size_t{0};
     for (const auto& [expected_param, actual_param] : zip(expected, actual)) {
         if (actual_param != expected_param) {
-            tok.error("arg {} type '{}' does not match '{}'", arg_index, to_string(actual_param), to_string(expected_param));
+            tok.error("arg {} type '{}' does not match '{}'", arg_index, actual_param, expected_param);
             ++arg_index;
         }
     }
@@ -1248,7 +1247,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     const auto message = std::format("type '{}' already defined", node.name);
     node.token.assert(!com.types.contains(make_type(node.name)), "{}", message);
-    node.token.assert(!com.funcs.contains(node.name), "{}", message);
+    node.token.assert(!com.functions.contains(node.name), "{}", message);
 
     auto fields = type_fields{};
     for (const auto& p : node.fields) {
@@ -1386,8 +1385,8 @@ auto compile_function_body(
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.scopes.get_function_info().return_type = sig.return_type;
-        const auto full_name = std::format("{}::{}", to_string(struct_type), name);
-        com.funcs[full_name] = function_info{.sig=sig, .ptr=begin_pos, .tok=tok};
+        const auto full_name = std::format("{}::{}", struct_type, name);
+        com.functions[full_name] = function_info{.sig=sig, .ptr=begin_pos, .tok=tok};
 
         push_stmt(com, *body);
 

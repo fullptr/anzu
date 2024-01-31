@@ -136,11 +136,11 @@ struct vec2
 
 fn println(v: vec2) -> null
 {
-    print("vec2 = {");
+    print("vec2 = <");
     print(v.x);
     print(", ");
     print(v.y);
-    println('}');
+    println('>');
 }
 
 # Attribute access
