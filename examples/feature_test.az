@@ -35,10 +35,9 @@
 {
     var idx := 0;
     while idx < 10 {
-        print("a{}b, ", idx);
+        print("{}, ", idx);
         idx = idx + 1;
     }
-    print("-");
 }
 
 # if-statements
@@ -135,11 +134,7 @@ struct vec2
 
 fn print_vec2(v: vec2) -> null
 {
-    print("vec2 = <");
-    print("{}", v.x);
-    print(", ");
-    print("{}", v.y);
-    print(">");
+    print("vec2 = ({}, {})", v.x, v.y);
 }
 
 # Attribute access
@@ -157,24 +152,21 @@ fn print_vec2(v: vec2) -> null
     var p_value := 5;
     let p := p_value&;
     p@ = 6;
-    print("p_value should now equal 6:");
-    print("{}", p_value);
+    print("p_value should now equal 6: {}", p_value);
 }
 
 # Arrays
 {
     var xl := [1, 2, 3, 4];
     xl[2u] = 0;
-    print("Size of array is 4:");
-    print("{}", sizeof(xl));
+    print("Size of array is 4: {}", sizeof(xl));
 
     let xl2 := [vec2(1, 2), vec2(3, 4)];
-    print("xl2 should have size 32 but length 2:");
-    print("size: ");
-    print("{}", sizeof(xl2));
-    print("{}", sizeof(xl2[0u]));
-    print("length: ");
-    print("{}", sizeof(xl2) / sizeof(xl2[0u]));
+    print(
+        "xl2 should have size 32 but length 2: size={} length={}",
+        sizeof(xl2),
+        sizeof(xl2) / sizeof(xl2[0u])
+    );
 }
 
 # Member functions
@@ -213,8 +205,7 @@ struct vec3
 # Member function testing
 {
     var v := vec3(3.0, 4.0, 5.0);
-    print("length of vec3(3.0, 4.0, 5.0):");
-    print("{}", v.length());
+    print("length of vec3(3.0, 4.0, 5.0): {}", v.length());
 }
 
 # Repeat-element syntax for arrays
@@ -233,16 +224,12 @@ struct vec3
 # rvalue
 {
     for v in [vec2(1, 2), vec2(3, 4), vec2(5, 6)] {
-        print("{}", v.x);
-        print(", ");
-        print("{}", v.y);
+        print("({}, {})", v.x, v.y);
     }
 
     var arr := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
     for v in arr {
-        print("{}", v.x);
-        print(", ");
-        print("{}", v.y);
+        print("({}, {})", v.x, v.y);
     }
 }
 
@@ -259,8 +246,6 @@ fn typeof_example2(a: u64) -> typeof(a)
     return a * a;
 }
 print("{}", typeof_example2(6u));
-
-
 
 # test destructors
 struct destructible
