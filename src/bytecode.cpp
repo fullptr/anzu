@@ -267,6 +267,12 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::f64_neg: { unary_op<double, std::negate>(ctx); } break;
 
         case op::print_i32: { print_op<std::int32_t>(ctx); } break;
+        case op::print_string_literal: {
+            const auto size = pop_value<std::uint64_t>(ctx.stack);
+            const auto index = pop_value<std::uint64_t>(ctx.stack);
+            const auto data = std::string_view{reinterpret_cast<const char*>(&prog.rom[index]), size};
+            std::print("{}", data);
+        } break;
 
         default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
     }
@@ -441,6 +447,8 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::i64_neg: { std::print("I64_NEG\n"); } break;
         case op::f64_neg: { std::print("F64_NEG\n"); } break;
         case op::print_i32: { std::print("PRINT_I32\n"); } break;
+        case op::print_string_literal: { std::print("PRINT_STRING_LITERAL\n");
+        } break;
         default: {
             std::print("UNKNOWN\n");
             return 0;

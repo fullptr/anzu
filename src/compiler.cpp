@@ -1500,7 +1500,8 @@ void push_stmt(compiler& com, const node_print_stmt& node)
 {
     node.token.assert(node.args.size() == 0, "arguments to print function not yet supported");
     push_value(com.program, op::push_string_literal);
-    push_value(com.program, insert_into_rom(com, node.message), node.message.size());
+    push_value(com.program, unset_rom_bit(insert_into_rom(com, node.message)), node.message.size());
+    push_value(com.program, op::print_string_literal);
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
