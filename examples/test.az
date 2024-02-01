@@ -1,3 +1,8 @@
+# while-statements
 
-let b := true;
-print("2 + 2 == {}, 1 > 0 == {}", 4, b);
+    var idx := 0;
+    while idx < 10 {
+        print("a{}b, ", idx);
+        idx = idx + 1;
+    }
+    print("--");

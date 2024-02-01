@@ -1534,16 +1534,21 @@ void push_stmt(compiler& com, const node_print_stmt& node)
         node.token.error("Not enough args to fill all placeholders");
     }
 
-    push_value(com.program, op::push_string_literal);
-    push_value(com.program, unset_rom_bit(insert_into_rom(com, parts.front())), parts.front().size());
-    push_value(com.program, op::print_string_literal);
+    if (!parts.front().empty()) {
+        push_value(com.program, op::push_string_literal);
+        push_value(com.program, unset_rom_bit(insert_into_rom(com, parts.front())), parts.front().size());
+        push_value(com.program, op::print_string_literal);
+    }
     for (std::size_t i = 0; i != node.args.size(); ++i) {
         push_print_fundamental(com, *node.args.at(i), node.token);
 
-        push_value(com.program, op::push_string_literal);
-        push_value(com.program, unset_rom_bit(insert_into_rom(com, parts[i+1])), parts[i+1].size());
-        push_value(com.program, op::print_string_literal);
+        if (!parts[i+1].empty()) {
+            push_value(com.program, op::push_string_literal);
+            push_value(com.program, unset_rom_bit(insert_into_rom(com, parts[i+1])), parts[i+1].size());
+            push_value(com.program, op::print_string_literal);
+        }
     }
+    push_value(com.program, op::push_char, '\n', op::print_char); // just make it println for now
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
