@@ -12,4 +12,4 @@ while i < 100000 {
     i = i + 1;
 }
 
-println(count);
+print("count={}", count);

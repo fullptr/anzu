@@ -367,6 +367,14 @@ struct node_assert_stmt
     anzu::token token;
 };
 
+struct node_print_stmt
+{
+    std::string message;
+    std::vector<node_expr_ptr> args;
+
+    anzu::token token;
+};
+
 
 struct node_stmt : std::variant<
     node_sequence_stmt,
@@ -385,7 +393,8 @@ struct node_stmt : std::variant<
     node_expression_stmt,
     node_return_stmt,
     node_delete_stmt,
-    node_assert_stmt>
+    node_assert_stmt,
+    node_print_stmt>
 {
 };
 
@@ -400,9 +409,10 @@ auto to_string(const node_type& node) -> std::string;
 
 }
 
-template <> struct std::formatter<anzu::node_type> : std::formatter<std::string>
+template <>
+struct std::formatter<anzu::node_type> : std::formatter<std::string>
 {
-    auto format(const anzu::node_type& type, auto& ctx) {
+    auto format(const anzu::node_type& type, auto& ctx) const {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
     }
 };

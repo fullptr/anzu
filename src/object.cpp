@@ -14,6 +14,11 @@ static constexpr auto PTR_SIZE = std::size_t{8};
 
 }
 
+auto type_name::is_fundamental() const -> bool
+{
+    return std::holds_alternative<type_fundamental>(*this);
+}
+
 auto type_name::is_ptr() const -> bool
 {
     return std::holds_alternative<type_ptr>(*this);

@@ -76,6 +76,7 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "loop")     return token_type::kw_loop;
     if (token == "new")      return token_type::kw_new;
     if (token == "null")     return token_type::kw_null;
+    if (token == "print")    return token_type::kw_print;
     if (token == "return")   return token_type::kw_return;
     if (token == "sizeof")   return token_type::kw_sizeof;
     if (token == "struct")   return token_type::kw_struct;
@@ -263,7 +264,7 @@ auto lex_print(std::string_view source_code) -> void
     auto ctx = lexer{source_code};
     for (auto token = ctx.get_token(); token.type != token_type::eof; token = ctx.get_token()) {
         const auto text = std::format("'{}'", token.text);
-        anzu::print("{:<15} - {:<20} {:<5} {:<5}\n", to_string(token.type), text, token.line, token.col);
+        std::print("{:<15} - {:<20} {:<5} {:<5}\n", token.type, text, token.line, token.col);
     }
 }
 
@@ -295,7 +296,7 @@ auto tokenstream::consume_u64() -> std::uint64_t
 {
     panic_if(!valid(), "[ERROR] (EOF) expected a uint\n");
     if (curr().type != token_type::uint64) {
-        curr().error("expected u64, got '{}'\n", token_type::uint64, curr().type);
+        curr().error("expected u64, got '{}'\n", curr().type);
     }
     return std::stoull(std::string{consume().text}); // todo - use from_chars
 }

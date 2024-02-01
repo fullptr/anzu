@@ -9,18 +9,19 @@
 #include <map>
 #include <set>
 #include <filesystem>
+#include <print>
 
 void print_usage()
 {
-    anzu::print("usage: anzu.exe <program_file> <option>\n\n");
-    anzu::print("The Anzu Programming Language\n\n");
-    anzu::print("options:\n");
-    anzu::print("    lex      - runs the lexer and prints the tokens for a single file\n");
-    anzu::print("    parse    - runs the parser and prints the AST for a single file\n");
-    anzu::print("    discover - runs the parser and prints all modules\n");
-    anzu::print("    com      - runs the compiler and prints the bytecode\n");
-    anzu::print("    debug    - runs the program and prints each op code executed\n");
-    anzu::print("    run      - runs the program\n");
+    std::print("usage: anzu.exe <program_file> <option>\n\n");
+    std::print("The Anzu Programming Language\n\n");
+    std::print("options:\n");
+    std::print("    lex      - runs the lexer and prints the tokens for a single file\n");
+    std::print("    parse    - runs the parser and prints the AST for a single file\n");
+    std::print("    discover - runs the parser and prints all modules\n");
+    std::print("    com      - runs the compiler and prints the bytecode\n");
+    std::print("    debug    - runs the program and prints each op code executed\n");
+    std::print("    run      - runs the program\n");
 }
 
 auto main(const int argc, const char* argv[]) -> int
@@ -35,19 +36,19 @@ auto main(const int argc, const char* argv[]) -> int
     const auto mode = std::string{argv[2]};
 
     if (mode == "lex") {
-        anzu::print("Lexing file '{}'\n", file.string());
+        std::print("Lexing file '{}'\n", file.string());
         const auto code = anzu::read_file(file);
         auto ctx = anzu::lexer{*code};
         for (auto token = ctx.get_token(); token.type != anzu::token_type::eof; token = ctx.get_token()) {
-            anzu::print_token(token);
+            print_token(token);
         }
         return 0;
     }
 
     if (mode == "parse") {
-        anzu::print("Parsing file '{}'\n", file.string());
+        std::print("Parsing file '{}'\n", file.string());
         const auto mod = anzu::parse(file);
-        anzu::print_node(*mod.root);
+        print_node(*mod.root);
         return 0;
     }
 
@@ -58,7 +59,7 @@ auto main(const int argc, const char* argv[]) -> int
     auto modules = std::set<std::filesystem::path>{file};
     while (!modules.empty()) {
         const auto curr = modules.extract(modules.begin()).value();
-        anzu::print("-> Processing '{}'\n", curr.lexically_relative(root).string());
+        std::print("-> Processing '{}'\n", curr.lexically_relative(root).string());
         auto current_module = anzu::parse(curr);
         for (const auto& m : current_module.required_modules) {
             if (!parsed_program.contains(m)) {
@@ -69,24 +70,24 @@ auto main(const int argc, const char* argv[]) -> int
     }
 
     if (mode == "discover") {
-        anzu::print("\nFound modules:\n");
+        std::print("\nFound modules:\n");
         for (const auto& [file, mod] : parsed_program) {
-            anzu::print("- {}\n", file.string());
+            std::print("- {}\n", file.string());
             for (const auto& dep : mod.required_modules) {
-                anzu::print("  | - {}\n", dep.string());
+                std::print("  | - {}\n", dep.string());
             }
         }
         return 0;
     }
 
-    anzu::print("-> Compiling\n");
+    std::print("-> Compiling\n");
     const auto program = anzu::compile(root, parsed_program, true); // TODO: Make debug a switch
     if (mode == "com") {
-        anzu::print_program(program);
+        print_program(program);
         return 0;
     }
 
-    anzu::print("-> Running\n\n");
+    std::print("-> Running\n\n");
     if (mode == "run") {
         anzu::run_program(program);
         return 0;
@@ -96,7 +97,7 @@ auto main(const int argc, const char* argv[]) -> int
         return 0;
     }
 
-    anzu::print("unknown mode: '{}'\n", mode);
+    std::print("unknown mode: '{}'\n", mode);
     print_usage();
     return 1;
 }

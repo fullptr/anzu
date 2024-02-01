@@ -43,9 +43,6 @@ auto hash(const type_names& params) -> std::size_t
     return hash_value;
 }
 
-using type_name_hash = decltype([](const type_name& f) { return hash(f); });
-using function_map = std::unordered_map<std::string, std::vector<function_info>>;
-
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler
@@ -55,8 +52,7 @@ struct compiler
 
     bool debug = false;
 
-    // namespace (type_name) -> function_name -> signatures -> function_info
-    std::unordered_map<type_name, function_map, type_name_hash> functions;
+    std::unordered_map<std::string, function_info> functions;
 
     type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
 
@@ -98,22 +94,22 @@ auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
 auto are_types_convertible_to(const std::vector<type_name>& args,
                               const std::vector<type_name>& actuals) -> bool;
 
+auto verify_function_call(const function_info& func, const type_names& params, const token& tok) -> void
+{
+    if (!are_types_convertible_to(params, func.sig.params)) {
+        tok.error("tried to call function (TODO - ADD NAME) with wrong signature");
+    }
+}
+
 auto get_function(
     const compiler& com,
-    const type_name& struct_name,
-    const std::string& function_name,
-    const type_names& params
+    const std::string& struct_name,
+    const std::string& function_name
 )
     -> std::optional<function_info>
 {
-    if (const auto it = com.functions.find(struct_name); it != com.functions.end()) {
-        if (const auto it2 = it->second.find(function_name); it2 != it->second.end()) {
-            for (const auto& function_info : it2->second) {
-                if (are_types_convertible_to(params, function_info.sig.params)) {
-                    return function_info;
-                }
-            }
-        }
+    if (auto it = com.functions.find(std::format("{}::{}", struct_name, function_name)); it != com.functions.end()) {
+        return it->second;
     }
     return std::nullopt;
 }
@@ -259,7 +255,8 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
     std::visit(overloaded{
         [&](const type_struct&) {
             const auto params = type_names{ type.add_ptr() };
-            if (const auto func = get_function(com, type, "drop", params); func) {
+            if (const auto func = get_function(com, to_string(type), "drop"); func) {
+                verify_function_call(*func, params, func->tok);
                 // Push the args to the stack
                 push_value(com.program, op::push_call_frame);
                 push_object_ptr(func->tok);
@@ -411,9 +408,9 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         const auto etype = type.remove_array().remove_const();
         const auto esize = com.types.size_of(etype);
 
-        const auto params = copy_fn_params(etype);
-        const auto copy = get_function(com, etype, "copy", params);
+        const auto copy = get_function(com, to_string(etype), "copy");
         tok.assert(copy.has_value(), "{} cannot be copied", etype);
+        verify_function_call(*copy, copy_fn_params(etype), tok);
 
         for (const auto idx : range(array_length(type))) {
             push_value(com.program, op::push_call_frame);
@@ -424,9 +421,9 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
     }
     
     else {
-        const auto params = copy_fn_params(type);
-        const auto copy = get_function(com, type, "copy", params);
+        const auto copy = get_function(com, to_string(type), "copy");
         tok.assert(copy.has_value(), "{} cannot be copied", type);
+        verify_function_call(*copy, copy_fn_params(type), tok);
 
         push_value(com.program, op::push_call_frame);
         push_expr_ptr(com, expr);
@@ -467,8 +464,7 @@ auto push_assert(compiler& com, std::string_view message) -> void
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
-    auto& global_fns = com.functions[global_namespace];
-    if (auto it = global_fns.find(node.name); it != global_fns.end()) {
+    if (auto func = get_function(com, "", node.name)) {
         node.token.error("cannot take address of a function pointer");
     }
 
@@ -480,14 +476,8 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 // are lvalues, so that may cause trouble; we should find out how.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
-    auto& global_fns = com.functions[global_namespace];
-    if (auto it = global_fns.find(node.name); it != global_fns.end()) {
-        // We are dealing with a function, so return a function pointer provided
-        // this isn't an overloaded function
-        if (it->second.size() > 1) {
-            node.token.error("cannot get function pointer to an overloaded function\n");
-        }
-        const auto& info = *it->second.begin();
+    if (auto func = get_function(com, "", node.name)) {
+        const auto& info = *func;
         push_value(com.program, op::push_u64, info.ptr);
 
         // next, construct the return type.
@@ -827,12 +817,12 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
         // Hack to allow for an easy way to dump types of expressions
         if (inner.struct_name == nullptr & inner.name == "__dump_type") {
-            print("__dump_type(\n");
+            std::print("__dump_type(\n");
             for (const auto& arg : node.args) {
                 const auto dump = type_of_expr(com, *arg);
-                print("    {},\n", dump);
+                std::print("    {},\n", dump);
             }
-            print(")\n");
+            std::print(")\n");
             push_value(com.program, op::push_null);
             return null_type();
         }
@@ -845,7 +835,8 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
         
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
-        if (const auto func = get_function(com, struct_type, inner.name, params); func) {
+        if (const auto func = get_function(com, to_string(struct_type), inner.name); func) {
+            verify_function_call(*func, params, node.token);
             push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
@@ -917,8 +908,9 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         params.push_back(type_of_expr(com, *arg));
     }
 
-    const auto func = get_function(com, stripped_type, node.function_name, params);
+    const auto func = get_function(com, to_string(stripped_type), node.function_name);
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
+    verify_function_call(*func, params, node.token);
 
     push_value(com.program, op::push_call_frame);
     auto t = push_expr_ptr(com, *node.expr); // self
@@ -1255,7 +1247,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     const auto message = std::format("type '{}' already defined", node.name);
     node.token.assert(!com.types.contains(make_type(node.name)), "{}", message);
-    node.token.assert(!com.functions[global_namespace].contains(node.name), "{}", message);
+    node.token.assert(!com.functions.contains(node.name), "{}", message);
 
     auto fields = type_fields{};
     for (const auto& p : node.fields) {
@@ -1329,10 +1321,10 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     if (rhs.is_array()) {
         const auto etype = rhs.remove_array();
         const auto inner_size = com.types.size_of(etype);
-        const auto params = assign_fn_params(etype);
 
-        const auto assign = get_function(com, etype, "assign", params);
+        const auto assign = get_function(com, to_string(etype), "assign");
         node.token.assert(assign.has_value(), "{} cannot be assigned", etype);
+        verify_function_call(*assign, assign_fn_params(etype), node.token);
 
         for (std::size_t i = 0; i != array_length(rhs); ++i) {
             push_value(com.program, op::push_call_frame);
@@ -1350,9 +1342,9 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     }
 
     const auto type = rhs;
-    const auto params = assign_fn_params(type);
-    const auto assign = get_function(com, type, "assign", params);
+    const auto assign = get_function(com, to_string(type), "assign");
     node.token.assert(assign.has_value(), "{} cannot be assigned", type);
+    verify_function_call(*assign, assign_fn_params(type), node.token);
 
     push_value(com.program, op::push_call_frame);
     push_expr_ptr(com, *node.position);
@@ -1371,6 +1363,10 @@ auto compile_function_body(
 )
     -> signature
 {
+    if (get_function(com, to_string(struct_type), name)) {
+        tok.error("multiple definitions of function {}", name);
+    }
+
     auto sig = signature{};
     push_value(com.program, op::jump);
     const auto jump_op = push_value(com.program, std::uint64_t{0});
@@ -1389,12 +1385,8 @@ auto compile_function_body(
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
         com.scopes.get_function_info().return_type = sig.return_type;
-        for (const auto& function : com.functions[struct_type][name]) {
-            if (are_types_convertible_to(sig.params, function.sig.params)) {
-                tok.error("multiple definitions of {}({})", name, format_comma_separated(sig.params));
-            }
-        }
-        com.functions[struct_type][name].emplace_back(sig, begin_pos, tok);
+        const auto full_name = std::format("{}::{}", struct_type, name);
+        com.functions[full_name] = function_info{.sig=sig, .ptr=begin_pos, .tok=tok};
 
         push_stmt(com, *body);
 
@@ -1504,6 +1496,76 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
     }
 }
 
+// Temp: remove this for a more efficient function
+auto string_replace(
+    std::string subject, const std::string& search, const std::string& replace
+)
+    -> std::string
+{
+    std::size_t pos = 0;
+    while ((pos = subject.find(search, pos)) != std::string::npos) {
+         subject.replace(pos, search.length(), replace);
+         pos += replace.length();
+    }
+    return subject;
+}
+
+// Temp: remove this for a more efficient function
+auto string_split(std::string s, std::string delimiter) -> std::vector<std::string>
+{
+    std::size_t pos_start = 0;
+    std::size_t pos_end = 0;
+    std::string token;
+    std::vector<std::string> res;
+
+    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+        token = s.substr(pos_start, pos_end - pos_start);
+        pos_start = pos_end + delimiter.length();
+        res.push_back(token);
+    }
+
+    res.push_back(s.substr(pos_start));
+    return res;
+}
+
+auto push_print_fundamental(compiler& com, const node_expr& node, const token& tok) -> void
+{
+    const auto type = push_expr_val(com, node).remove_const();
+    if (type == null_type()) { push_value(com.program, op::print_null); }
+    else if (type == bool_type()) { push_value(com.program, op::print_bool); }
+    else if (type == char_type()) { push_value(com.program, op::print_char); }
+    else if (type == i32_type()) { push_value(com.program, op::print_i32); }
+    else if (type == i64_type()) { push_value(com.program, op::print_i64); }
+    else if (type == u64_type()) { push_value(com.program, op::print_u64); }
+    else if (type == f64_type()) { push_value(com.program, op::print_f64); }
+    else {
+        tok.error("Cannot print value of type {}", type);
+    }
+}
+
+void push_stmt(compiler& com, const node_print_stmt& node)
+{
+    const auto parts = string_split(string_replace(node.message, "\\n", "\n"), "{}");
+    if (parts.size() != node.args.size() + 1) {
+        node.token.error("Not enough args to fill all placeholders");
+    }
+
+    if (!parts.front().empty()) {
+        push_value(com.program, op::push_string_literal);
+        push_value(com.program, unset_rom_bit(insert_into_rom(com, parts.front())), parts.front().size());
+        push_value(com.program, op::print_string_literal);
+    }
+    for (std::size_t i = 0; i != node.args.size(); ++i) {
+        push_print_fundamental(com, *node.args.at(i), node.token);
+
+        if (!parts[i+1].empty()) {
+            push_value(com.program, op::push_string_literal);
+            push_value(com.program, unset_rom_bit(insert_into_rom(com, parts[i+1])), parts[i+1].size());
+            push_value(com.program, op::print_string_literal);
+        }
+    }
+}
+
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
 {
     return std::visit([&](const auto& node) { return push_expr_val(com, node); }, expr);
@@ -1547,7 +1609,7 @@ auto compile(
             std::erase_if(remaining, [&](const std::filesystem::path& curr) {
                 const auto& mod = modules.at(curr);
                 if (compiled_all_requirements(mod, done)) {
-                    print("    {}\n", curr.lexically_relative(main_dir).string());
+                    std::print("    {}\n", curr.lexically_relative(main_dir).string());
                     push_stmt(com, *mod.root);
                     done.emplace(curr);
                     return true;
@@ -1556,11 +1618,11 @@ auto compile(
             });
             const auto after = remaining.size();
             if (before == after) {
-                print("Cyclic dependency detected among the following files:");
+                std::print("Cyclic dependency detected among the following files:");
                 for (const auto& mod : remaining) {
-                    print(" {}", mod.lexically_relative(main_dir).string());
+                    std::print(" {}", mod.lexically_relative(main_dir).string());
                 }
-                print("\n");
+                std::print("\n");
                 std::exit(1);
             }
         }

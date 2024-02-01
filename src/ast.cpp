@@ -244,6 +244,14 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_assert_stmt& node) {
             print("{}Assert:\n", spaces);
             print_node(*node.expr, indent + 1);
+        },
+        [&](const node_print_stmt& node) {
+            print("{}Print:\n", spaces);
+            print("{}- Message: {}\n", spaces, node.message);
+            print("{}- Args:\n", spaces);
+            for (const auto& arg : node.args) {
+                print_node(*arg, indent + 1);
+            }
         }
     }, root);
 }

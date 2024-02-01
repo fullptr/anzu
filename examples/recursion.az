@@ -11,4 +11,4 @@ fn fibb(n: i64) -> i64
     return fibb(n - 1) + fibb(n - 2);
 }
 
-println(fibb(10));
+print("{}", fibb(10));

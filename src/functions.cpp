@@ -43,79 +43,6 @@ auto builtin_sqrt(bytecode_context& ctx) -> void
     push_value(ctx.stack, std::sqrt(val));
 }
 
-auto builtin_print_char(bytecode_context& ctx) -> void
-{
-    print("{}", static_cast<char>(ctx.stack.back()));
-    ctx.stack.back() = std::byte{0}; // returns null
-}
-
-auto builtin_println_char(bytecode_context& ctx) -> void
-{
-    print("{}\n", static_cast<char>(ctx.stack.back()));
-    ctx.stack.back() = std::byte{0}; // returns null
-}
-
-auto builtin_print_bool(bytecode_context& ctx) -> void
-{
-    print("{}", ctx.stack.back() == std::byte{1});
-    ctx.stack.back() = std::byte{0}; // returns null
-}
-
-auto builtin_println_bool(bytecode_context& ctx) -> void
-{
-    print("{}\n", ctx.stack.back() == std::byte{1});
-    ctx.stack.back() = std::byte{0}; // returns null
-}
-
-auto builtin_print_null(bytecode_context& ctx) -> void
-{
-    print("null");
-    ctx.stack.back() = std::byte{0}; // returns null
-}
-
-auto builtin_println_null(bytecode_context& ctx) -> void
-{
-    print("null\n");
-    ctx.stack.back() = std::byte{0}; // returns null
-}
-
-template <typename T>
-auto builtin_print(bytecode_context& ctx) -> void
-{
-    print("{}", pop_value<T>(ctx.stack));
-    ctx.stack.push_back(std::byte{0}); // returns null
-}
-
-template <typename T>
-auto builtin_println(bytecode_context& ctx) -> void
-{
-    print("{}\n", pop_value<T>(ctx.stack));
-    ctx.stack.push_back(std::byte{0}); // returns null
-}
-
-auto builtin_print_char_span(bytecode_context& ctx) -> void
-{
-    const auto size = pop_value<std::uint64_t>(ctx.stack);
-    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-    const auto real_ptr = resolve_ptr(ctx, ptr);
-    for (std::size_t i = 0; i != size; ++i) {
-        print("{}", static_cast<char>(real_ptr[i]));
-    }
-    ctx.stack.push_back(std::byte{0}); // returns null
-}
-
-auto builtin_println_char_span(bytecode_context& ctx) -> void
-{
-    const auto size = pop_value<std::uint64_t>(ctx.stack);
-    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-    const auto real_ptr = resolve_ptr(ctx, ptr);
-    for (std::size_t i = 0; i != size; ++i) {
-        print("{}", static_cast<char>(real_ptr[i]));
-    }
-    print("\n");
-    ctx.stack.push_back(std::byte{0}); // returns null
-}
-
 static_assert(sizeof(std::FILE*) == sizeof(std::uint64_t));
 
 auto builtin_fopen(bytecode_context& ctx) -> void
@@ -150,24 +77,6 @@ auto construct_builtin_array() -> std::vector<builtin>
     auto b = std::vector<builtin>{};
 
     b.push_back(builtin{"sqrt", builtin_sqrt, {f64_type()}, f64_type()});
-
-    b.push_back(builtin{"print", builtin_print<std::int32_t>,  {i32_type()},  null_type()});
-    b.push_back(builtin{"print", builtin_print<std::int64_t>,  {i64_type()},  null_type()});
-    b.push_back(builtin{"print", builtin_print<std::uint64_t>, {u64_type()},  null_type()});
-    b.push_back(builtin{"print", builtin_print<double>,        {f64_type()},  null_type()});
-    b.push_back(builtin{"print", builtin_print_char,           {char_type()}, null_type()});
-    b.push_back(builtin{"print", builtin_print_bool,           {bool_type()}, null_type()});
-    b.push_back(builtin{"print", builtin_print_null,           {null_type()}, null_type()});
-    b.push_back(builtin{"print", builtin_print_char_span,      {char_span},   null_type()});
-
-    b.push_back(builtin{"println", builtin_println<std::int32_t>,  {i32_type()},  null_type()});
-    b.push_back(builtin{"println", builtin_println<std::int64_t>,  {i64_type()},  null_type()});
-    b.push_back(builtin{"println", builtin_println<std::uint64_t>, {u64_type()},  null_type()});
-    b.push_back(builtin{"println", builtin_println<double>,        {f64_type()},  null_type()});
-    b.push_back(builtin{"println", builtin_println_char,           {char_type()}, null_type()});
-    b.push_back(builtin{"println", builtin_println_bool,           {bool_type()}, null_type()});
-    b.push_back(builtin{"println", builtin_println_null,           {null_type()}, null_type()});
-    b.push_back(builtin{"println", builtin_println_char_span,      {char_span},   null_type()});
 
     b.push_back(builtin{"fopen", builtin_fopen, {char_span, char_span}, u64_type()});
     b.push_back(builtin{"fclose", builtin_fclose, {u64_type()}, null_type()});

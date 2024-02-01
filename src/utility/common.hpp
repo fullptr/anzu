@@ -4,14 +4,9 @@
 #include <source_location>
 #include <chrono>
 #include <iostream>
+#include <print>
 
 namespace anzu {
-
-template <typename... Args>
-void print(std::format_string<Args...> fmt, Args&&... args)
-{
-    std::cout << std::format(fmt, std::forward<Args>(args)...);
-}
 
 template <typename T, typename Transform>
 auto format_comma_separated(const std::vector<T>& values, Transform&& transform) -> std::string
@@ -102,7 +97,7 @@ struct scope_timer
     {
         const auto duration = std::chrono::steady_clock::now() - start;
         const auto time_elapsed = std::chrono::duration_cast<second_type>(duration).count();
-        anzu::print("\n -> Program took {} seconds\n", time_elapsed);
+        std::print("\n -> Program took {} seconds\n", time_elapsed);
     }
 };
 
