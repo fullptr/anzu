@@ -1497,18 +1497,34 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 }
 
 // Temp: remove this for a more efficient function
-std::vector<std::string> split(std::string s, std::string delimiter) {
-    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+auto string_replace(
+    std::string subject, const std::string& search, const std::string& replace
+)
+    -> std::string
+{
+    std::size_t pos = 0;
+    while ((pos = subject.find(search, pos)) != std::string::npos) {
+         subject.replace(pos, search.length(), replace);
+         pos += replace.length();
+    }
+    return subject;
+}
+
+// Temp: remove this for a more efficient function
+auto string_split(std::string s, std::string delimiter) -> std::vector<std::string>
+{
+    std::size_t pos_start = 0;
+    std::size_t pos_end = 0;
     std::string token;
     std::vector<std::string> res;
 
     while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
-        token = s.substr (pos_start, pos_end - pos_start);
-        pos_start = pos_end + delim_len;
-        res.push_back (token);
+        token = s.substr(pos_start, pos_end - pos_start);
+        pos_start = pos_end + delimiter.length();
+        res.push_back(token);
     }
 
-    res.push_back (s.substr (pos_start));
+    res.push_back(s.substr(pos_start));
     return res;
 }
 
@@ -1529,7 +1545,7 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
 
 void push_stmt(compiler& com, const node_print_stmt& node)
 {
-    const auto parts = split(node.message, "{}");
+    const auto parts = string_split(string_replace(node.message, "\\n", "\n"), "{}");
     if (parts.size() != node.args.size() + 1) {
         node.token.error("Not enough args to fill all placeholders");
     }
@@ -1548,7 +1564,6 @@ void push_stmt(compiler& com, const node_print_stmt& node)
             push_value(com.program, op::print_string_literal);
         }
     }
-    push_value(com.program, op::push_char, '\n', op::print_char); // just make it println for now
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name

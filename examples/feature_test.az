@@ -34,17 +34,19 @@
 # while-statements
 {
     var idx := 0;
+    print("count to 10: ");
     while idx < 10 {
-        print("{}, ", idx);
+        print("{} ", idx);
         idx = idx + 1;
     }
+    print("\n");
 }
 
 # if-statements
 # basic if
 {
     if true {
-        print("in true block");
+        print("in true block\n");
     }
 }
 
@@ -53,7 +55,7 @@
     if 2 < 1 {
         # never entered
     } else {
-        print("in else block");
+        print("in else block\n");
     }
 }
 
@@ -62,7 +64,7 @@
     if 1 > 3 {
         # not entered
     } else if 2 == 1 + 1 {  # also testing an expression
-        print("i just evaluated 2 == 1 + 1");
+        print("i just evaluated 2 == 1 + 1\n");
     }
 }
 
@@ -73,17 +75,17 @@
     } else if false {
         # also nah
     } else {
-        print("in else after skipping the if and elif");
+        print("in else after skipping the if and elif\n");
     }
 }
 
 # simple expressions
 {
-    print("{}", 2 + 2);
-    print("{}", 8 * (1 + 6) > 5);
-    print("{}", true && true);
-    print("{}", true && false);
-    print("{}", true || false);
+    print("{}\n", 2 + 2);
+    print("{}\n", 8 * (1 + 6) > 5);
+    print("{}\n", true && true);
+    print("{}\n", true && false);
+    print("{}\n", true || false);
 }
 
 # functions
@@ -95,9 +97,9 @@ fn adder(a: i64, b: i64, c: i64) -> i64
 {
     print("Does adder(1, 2, 3) == 6? ");
     if adder(1, 2, 3) == 6 {
-        print("yes");
+        print("yes\n");
     } else {
-        print("no");
+        print("no\n");
     }
 }
 
@@ -134,17 +136,16 @@ struct vec2
 
 fn print_vec2(v: vec2) -> null
 {
-    print("vec2 = ({}, {})", v.x, v.y);
+    print("vec2 = ({}, {})\n", v.x, v.y);
 }
 
 # Attribute access
 {
     var my_vec := vec2(1, 2);
     print_vec2(my_vec);
-    print("{}", my_vec.x);
-    print("{}", my_vec.y);
+    print("my_vec = ({}, {})\n", my_vec.x, my_vec.y);
     my_vec.x = 5;
-    print("{}", my_vec.x);
+    print("my_vec = ({}, {})\n", my_vec.x, my_vec.y);
 }
 
 # Pointers
@@ -152,18 +153,18 @@ fn print_vec2(v: vec2) -> null
     var p_value := 5;
     let p := p_value&;
     p@ = 6;
-    print("p_value should now equal 6: {}", p_value);
+    print("p_value should now equal 6: {}\n", p_value);
 }
 
 # Arrays
 {
     var xl := [1, 2, 3, 4];
     xl[2u] = 0;
-    print("Size of array is 4: {}", sizeof(xl));
+    print("Size of array is 4: {}\n", sizeof(xl));
 
     let xl2 := [vec2(1, 2), vec2(3, 4)];
     print(
-        "xl2 should have size 32 but length 2: size={} length={}",
+        "xl2 should have size 32 but length 2: size={} length={}\n",
         sizeof(xl2),
         sizeof(xl2) / sizeof(xl2[0u])
     );
@@ -205,7 +206,7 @@ struct vec3
 # Member function testing
 {
     var v := vec3(3.0, 4.0, 5.0);
-    print("length of vec3(3.0, 4.0, 5.0): {}", v.length());
+    print("length of vec3(3.0, 4.0, 5.0): {}\n", v.length());
 }
 
 # Repeat-element syntax for arrays
@@ -215,7 +216,7 @@ struct vec3
 
     var idx := 0u;
     while idx != sizeof(a) / sizeof(a[0u]) {
-        print("{}", a[idx] == b[idx]);
+        print("{}\n", a[idx] == b[idx]);
         idx = idx + 1u;
     }
 } 
@@ -224,12 +225,12 @@ struct vec3
 # rvalue
 {
     for v in [vec2(1, 2), vec2(3, 4), vec2(5, 6)] {
-        print("({}, {})", v.x, v.y);
+        print("({}, {})\n", v.x, v.y);
     }
 
     var arr := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
     for v in arr {
-        print("({}, {})", v.x, v.y);
+        print("({}, {})\n", v.x, v.y);
     }
 }
 
@@ -239,13 +240,13 @@ fn typeof_example(y: typeof(variable)) -> i64
 {
     return y + y;
 }
-print("{}", typeof_example(3)); # no error here!
+print("{}\n", typeof_example(3)); # no error here!
 
 fn typeof_example2(a: u64) -> typeof(a)
 {
     return a * a;
 }
-print("{}", typeof_example2(6u));
+print("{}\n", typeof_example2(6u));
 
 # test destructors
 struct destructible
@@ -254,8 +255,7 @@ struct destructible
 
     fn drop(self: destructible&)
     {
-        print("dropping ");
-        print("{}", self.val);
+        print("dropping {}\n", self.val);
     }
 }
 
@@ -270,7 +270,7 @@ struct destructible
     var v3 := vec3(3.0, 3.0, 3.0);
 
     v1 = v3;
-    print("{}", v1.x);
+    print("{}\n", v1.x);
 }
 
 struct container
@@ -282,5 +282,5 @@ struct container
 {
     let x := container(5);
     let p := x&;
-    print("{}", p.val);
+    print("{}\n", p.val);
 }
