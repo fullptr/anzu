@@ -1496,12 +1496,49 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
     }
 }
 
+// Temp: remove this for a more efficient function
+std::vector<std::string> split(std::string s, std::string delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    std::string token;
+    std::vector<std::string> res;
+
+    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+        token = s.substr (pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back (token);
+    }
+
+    res.push_back (s.substr (pos_start));
+    return res;
+}
+
+auto push_print_fundamental(compiler& com, const node_expr& node, const token& tok) -> void
+{
+    const auto type = push_expr_val(com, node);
+    if (type == i32_type()) {
+        push_value(com.program, op::print_i32);
+    } else {
+        tok.error("Cannot print value of type {}", type);
+    }
+}
+
 void push_stmt(compiler& com, const node_print_stmt& node)
 {
-    node.token.assert(node.args.size() == 0, "arguments to print function not yet supported");
+    const auto parts = split(node.message, "{}");
+    if (parts.size() != node.args.size() + 1) {
+        node.token.error("Not enough args to fill all placeholders");
+    }
+
     push_value(com.program, op::push_string_literal);
-    push_value(com.program, unset_rom_bit(insert_into_rom(com, node.message)), node.message.size());
+    push_value(com.program, unset_rom_bit(insert_into_rom(com, parts.front())), parts.front().size());
     push_value(com.program, op::print_string_literal);
+    for (std::size_t i = 0; i != node.args.size(); ++i) {
+        push_print_fundamental(com, *node.args.at(i), node.token);
+
+        push_value(com.program, op::push_string_literal);
+        push_value(com.program, unset_rom_bit(insert_into_rom(com, parts[i+1])), parts[i+1].size());
+        push_value(com.program, op::print_string_literal);
+    }
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name

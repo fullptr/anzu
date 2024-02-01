@@ -1,2 +1,2 @@
 
-print("this is the message");
+print("this is the {} message", 5i32);

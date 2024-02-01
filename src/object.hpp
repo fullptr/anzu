@@ -85,6 +85,8 @@ struct type_name : public std::variant<
 {
     using variant::variant;
 
+    [[nodiscard]] auto is_fundamental() const -> bool;
+
     [[nodicard]] auto is_ptr() const -> bool;
     [[nodicard]] auto add_ptr() const -> type_name;
     [[nodicard]] auto remove_ptr() const -> type_name;
