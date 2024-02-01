@@ -95,7 +95,13 @@ enum class op : std::uint8_t
     i64_neg,
     f64_neg,
 
+    print_null,
+    print_bool,
+    print_char,
     print_i32,
+    print_i64,
+    print_u64,
+    print_f64,
     print_string_literal,
 };
 

@@ -266,7 +266,22 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::i64_neg: { unary_op<std::int64_t, std::negate>(ctx); } break;
         case op::f64_neg: { unary_op<double, std::negate>(ctx); } break;
 
+        case op::print_null: {
+            pop_value<std::byte>(ctx.stack); // pops the null byte
+            std::print("null");
+        } break;
+        case op::print_bool: {
+            const auto b = pop_value<bool>(ctx.stack);
+            std::print("{}", b ? "true" : "false");
+        } break;
+        case op::print_char: {
+            const auto c = pop_value<char>(ctx.stack);
+            std::print("{}", c);
+        } break;
         case op::print_i32: { print_op<std::int32_t>(ctx); } break;
+        case op::print_i64: { print_op<std::int64_t>(ctx); } break;
+        case op::print_u64: { print_op<std::uint64_t>(ctx); } break;
+        case op::print_f64: { print_op<double>(ctx); } break;
         case op::print_string_literal: {
             const auto size = pop_value<std::uint64_t>(ctx.stack);
             const auto index = pop_value<std::uint64_t>(ctx.stack);
@@ -446,7 +461,13 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::i32_neg: { std::print("I32_NEG\n"); } break;
         case op::i64_neg: { std::print("I64_NEG\n"); } break;
         case op::f64_neg: { std::print("F64_NEG\n"); } break;
+        case op::print_null: { std::print("PRINT_NULL\n"); } break;
+        case op::print_bool: { std::print("PRINT_BOOL\n"); } break;
+        case op::print_char: { std::print("PRINT_CHAR\n"); } break;
         case op::print_i32: { std::print("PRINT_I32\n"); } break;
+        case op::print_i64: { std::print("PRINT_I64\n"); } break;
+        case op::print_u64: { std::print("PRINT_U64\n"); } break;
+        case op::print_f64: { std::print("PRINT_F64\n"); } break;
         case op::print_string_literal: { std::print("PRINT_STRING_LITERAL\n");
         } break;
         default: {

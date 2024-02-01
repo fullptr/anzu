@@ -1514,10 +1514,15 @@ std::vector<std::string> split(std::string s, std::string delimiter) {
 
 auto push_print_fundamental(compiler& com, const node_expr& node, const token& tok) -> void
 {
-    const auto type = push_expr_val(com, node);
-    if (type == i32_type()) {
-        push_value(com.program, op::print_i32);
-    } else {
+    const auto type = push_expr_val(com, node).remove_const();
+    if (type == null_type()) { push_value(com.program, op::print_null); }
+    else if (type == bool_type()) { push_value(com.program, op::print_bool); }
+    else if (type == char_type()) { push_value(com.program, op::print_char); }
+    else if (type == i32_type()) { push_value(com.program, op::print_i32); }
+    else if (type == i64_type()) { push_value(com.program, op::print_i64); }
+    else if (type == u64_type()) { push_value(com.program, op::print_u64); }
+    else if (type == f64_type()) { push_value(com.program, op::print_f64); }
+    else {
         tok.error("Cannot print value of type {}", type);
     }
 }
