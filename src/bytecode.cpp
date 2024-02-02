@@ -282,11 +282,25 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::print_i64: { print_op<std::int64_t>(ctx); } break;
         case op::print_u64: { print_op<std::uint64_t>(ctx); } break;
         case op::print_f64: { print_op<double>(ctx); } break;
-        case op::print_string_literal: {
+        case op::print_char_span: {
             const auto size = pop_value<std::uint64_t>(ctx.stack);
             const auto index = pop_value<std::uint64_t>(ctx.stack);
-            const auto data = std::string_view{reinterpret_cast<const char*>(&prog.rom[index]), size};
-            std::print("{}", data);
+
+            if (is_heap_ptr(index)) {
+                const auto ptr = unset_heap_bit(index);
+                const auto data = std::string_view{reinterpret_cast<const char*>(&ctx.heap[ptr]), size};
+                std::print("{}", data);
+            }
+            else if (is_rom_ptr(index)) {
+                const auto ptr = unset_rom_bit(index);
+                const auto data = std::string_view{reinterpret_cast<const char*>(&ctx.rom[ptr]), size};
+                std::print("{}", data);
+            }
+            else {
+                const auto ptr = index;
+                const auto data = std::string_view{reinterpret_cast<const char*>(&ctx.stack[ptr]), size};
+                std::print("{}", data);
+            }
         } break;
 
         default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
@@ -468,7 +482,7 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::print_i64: { std::print("PRINT_I64\n"); } break;
         case op::print_u64: { std::print("PRINT_U64\n"); } break;
         case op::print_f64: { std::print("PRINT_F64\n"); } break;
-        case op::print_string_literal: { std::print("PRINT_STRING_LITERAL\n");
+        case op::print_char_span: { std::print("PRINT_STRING_LITERAL\n");
         } break;
         default: {
             std::print("UNKNOWN\n");

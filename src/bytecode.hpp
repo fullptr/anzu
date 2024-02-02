@@ -102,7 +102,7 @@ enum class op : std::uint8_t
     print_i64,
     print_u64,
     print_f64,
-    print_string_literal,
+    print_char_span,
 };
 
 using bytecode = std::vector<std::byte>;

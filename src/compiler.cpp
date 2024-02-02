@@ -102,13 +102,12 @@ auto verify_function_call(const function_info& func, const type_names& params, c
 }
 
 auto get_function(
-    const compiler& com,
-    const std::string& struct_name,
-    const std::string& function_name
+    const compiler& com, const std::string& struct_name, const std::string& function_name
 )
     -> std::optional<function_info>
 {
-    if (auto it = com.functions.find(std::format("{}::{}", struct_name, function_name)); it != com.functions.end()) {
+    const auto full_name = std::format("{}::{}", struct_name, function_name);
+    if (const auto it = com.functions.find(full_name); it != com.functions.end()) {
         return it->second;
     }
     return std::nullopt;
@@ -1538,9 +1537,10 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == i64_type()) { push_value(com.program, op::print_i64); }
     else if (type == u64_type()) { push_value(com.program, op::print_u64); }
     else if (type == f64_type()) { push_value(com.program, op::print_f64); }
-    else {
-        tok.error("Cannot print value of type {}", type);
+    else if (type == char_type().add_const().add_span()) {
+        push_value(com.program, op::print_char_span);
     }
+    else { tok.error("Cannot print value of type {}", type); }
 }
 
 void push_stmt(compiler& com, const node_print_stmt& node)
@@ -1552,16 +1552,16 @@ void push_stmt(compiler& com, const node_print_stmt& node)
 
     if (!parts.front().empty()) {
         push_value(com.program, op::push_string_literal);
-        push_value(com.program, unset_rom_bit(insert_into_rom(com, parts.front())), parts.front().size());
-        push_value(com.program, op::print_string_literal);
+        push_value(com.program, insert_into_rom(com, parts.front()), parts.front().size());
+        push_value(com.program, op::print_char_span);
     }
     for (std::size_t i = 0; i != node.args.size(); ++i) {
         push_print_fundamental(com, *node.args.at(i), node.token);
 
         if (!parts[i+1].empty()) {
             push_value(com.program, op::push_string_literal);
-            push_value(com.program, unset_rom_bit(insert_into_rom(com, parts[i+1])), parts[i+1].size());
-            push_value(com.program, op::print_string_literal);
+            push_value(com.program, insert_into_rom(com, parts[i+1]), parts[i+1].size());
+            push_value(com.program, op::print_char_span);
         }
     }
 }
