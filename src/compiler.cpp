@@ -1537,7 +1537,7 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == i64_type()) { push_value(com.program, op::print_i64); }
     else if (type == u64_type()) { push_value(com.program, op::print_u64); }
     else if (type == f64_type()) { push_value(com.program, op::print_f64); }
-    else if (type == char_type().add_const().add_span()) {
+    else if (type == char_type().add_const().add_span() || type == char_type().add_span()) {
         push_value(com.program, op::print_char_span);
     }
     else { tok.error("Cannot print value of type {}", type); }

@@ -286,21 +286,13 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto size = pop_value<std::uint64_t>(ctx.stack);
             const auto index = pop_value<std::uint64_t>(ctx.stack);
 
-            if (is_heap_ptr(index)) {
-                const auto ptr = unset_heap_bit(index);
-                const auto data = std::string_view{reinterpret_cast<const char*>(&ctx.heap[ptr]), size};
-                std::print("{}", data);
-            }
-            else if (is_rom_ptr(index)) {
-                const auto ptr = unset_rom_bit(index);
-                const auto data = std::string_view{reinterpret_cast<const char*>(&ctx.rom[ptr]), size};
-                std::print("{}", data);
-            }
-            else {
-                const auto ptr = index;
-                const auto data = std::string_view{reinterpret_cast<const char*>(&ctx.stack[ptr]), size};
-                std::print("{}", data);
-            }
+            const auto ptr = [&] {
+                if (is_heap_ptr(index)) return reinterpret_cast<const char*>(&ctx.heap[unset_heap_bit(index)]);
+                if (is_rom_ptr(index))  return reinterpret_cast<const char*>(&ctx.rom[unset_rom_bit(index)]);
+                return reinterpret_cast<const char*>(&ctx.stack[index]);
+            }();
+
+            std::print("{}", std::string_view{ptr, size});
         } break;
 
         default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
