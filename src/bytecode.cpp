@@ -60,6 +60,13 @@ auto push_bytes_from_program(bytecode_context& ctx, const bytecode_program& prog
     }
 }
 
+auto resolve_ptr(bytecode_context& ctx, std::size_t ptr) -> std::byte*
+{
+    if (is_heap_ptr(ptr)) return &ctx.heap[unset_heap_bit(ptr)];
+    if (is_rom_ptr(ptr))  return &ctx.rom[unset_rom_bit(ptr)];
+    return &ctx.stack[ptr];
+}
+
 auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
 {
     const auto op_code = static_cast<op>(prog.code[ctx.prog_ptr++]);
@@ -93,24 +100,11 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         } break;
         case op::load: {
             const auto size = read_advance<std::uint64_t>(prog, ctx.prog_ptr);
+            const auto raw_ptr = pop_value<std::uint64_t>(ctx.stack);
+            const auto ptr = resolve_ptr(ctx, raw_ptr);
 
-            const auto ptr = pop_value<std::uint64_t>(ctx.stack);
-            if (is_heap_ptr(ptr)) {
-                const auto heap_ptr = unset_heap_bit(ptr);
-                for (std::size_t i = 0; i != size; ++i) {
-                    ctx.stack.push_back(ctx.heap[heap_ptr + i]);
-                }
-            }
-            else if (is_rom_ptr(ptr)) {
-                const auto rom_ptr = unset_rom_bit(ptr);
-                for (std::size_t i = 0; i != size; ++i) {
-                    ctx.stack.push_back(ctx.rom[rom_ptr + i]);
-                }
-            }
-            else {
-                for (std::size_t i = 0; i != size; ++i) {
-                    ctx.stack.push_back(ctx.stack[ptr + i]);
-                }
+            for (std::size_t i = 0; i != size; ++i) {
+                ctx.stack.push_back(*(ptr + i));
             }
         } break;
         case op::save: {
@@ -284,14 +278,8 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::print_f64: { print_op<double>(ctx); } break;
         case op::print_char_span: {
             const auto size = pop_value<std::uint64_t>(ctx.stack);
-            const auto index = pop_value<std::uint64_t>(ctx.stack);
-
-            const auto ptr = [&] {
-                if (is_heap_ptr(index)) return reinterpret_cast<const char*>(&ctx.heap[unset_heap_bit(index)]);
-                if (is_rom_ptr(index))  return reinterpret_cast<const char*>(&ctx.rom[unset_rom_bit(index)]);
-                return reinterpret_cast<const char*>(&ctx.stack[index]);
-            }();
-
+            const auto raw_ptr = pop_value<std::uint64_t>(ctx.stack);
+            const auto ptr = reinterpret_cast<const char*>(resolve_ptr(ctx, raw_ptr));
             std::print("{}", std::string_view{ptr, size});
         } break;
 
