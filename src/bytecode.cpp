@@ -168,26 +168,18 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         } break;
         case op::ret: {
             const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
-            const auto prev_base_ptr = read_value<std::uint64_t>(ctx.stack, frame.base_ptr);
-            const auto prev_prog_ptr = read_value<std::uint64_t>(ctx.stack, frame.base_ptr + sizeof(std::uint64_t));
-            
             std::memcpy(&ctx.stack[frame.base_ptr], &ctx.stack[ctx.stack.size() - size], size);
+
             ctx.stack.resize(frame.base_ptr + size);
-            frame.base_ptr = prev_base_ptr;
-            frame.prog_ptr = prev_prog_ptr;
+            ctx.frames.pop_back();
         } break;
         case op::call: {
             const auto args_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
-            const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+            ctx.frames.push_back(call_frame{
+                .prog_ptr = pop_value<std::uint64_t>(ctx.stack),
+                .base_ptr = ctx.stack.size() - args_size
+            });
 
-            // Store the old base_ptr and prog_ptr so that they can be restored at the end of
-            // the function.
-            const auto new_base_ptr = ctx.stack.size() - args_size;
-            write_value(ctx.stack, new_base_ptr, frame.base_ptr);
-            write_value(ctx.stack, new_base_ptr + sizeof(std::uint64_t), frame.prog_ptr);
-            
-            frame.base_ptr = new_base_ptr;
-            frame.prog_ptr = ptr; // Jump into the function
         } break;
         case op::builtin_call: {
             const auto id = read_advance<std::uint64_t>(prog, frame.prog_ptr);
