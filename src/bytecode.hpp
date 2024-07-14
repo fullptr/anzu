@@ -129,7 +129,7 @@ struct bytecode_context
 struct bytecode_program
 {
     std::vector<std::byte> code;
-    std::vector<std::byte> rom;
+    std::string            rom;
 };
 
 auto run_program(const bytecode_program& prog) -> void;

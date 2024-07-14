@@ -467,7 +467,9 @@ auto run_program(const bytecode_program& prog) -> void
     const auto timer = scope_timer{};
 
     bytecode_context ctx;
-    ctx.rom = prog.rom;
+    for (char c : prog.rom) {
+        ctx.rom.push_back(static_cast<std::byte>(c));
+    }
     ctx.frames.emplace_back();
     while (ctx.frames.back().prog_ptr < prog.code.size()) {
         apply_op(prog, ctx);
@@ -487,7 +489,9 @@ auto run_program_debug(const bytecode_program& prog) -> void
     const auto timer = scope_timer{};
 
     bytecode_context ctx;
-    ctx.rom = prog.rom;
+    for (char c : prog.rom) {
+        ctx.rom.push_back(static_cast<std::byte>(c));
+    }
     ctx.frames.emplace_back();
     while (ctx.frames.back().prog_ptr < prog.code.size()) {
         print_op(prog, ctx.frames.back().prog_ptr);

@@ -1623,10 +1623,7 @@ auto compile(
         );
     }
 
-    auto read_only = std::vector<std::byte>{};
-    read_only.reserve(com.read_only_data.size());
-    for (char c : com.read_only_data) read_only.push_back(static_cast<std::byte>(c));
-    return { com.program, read_only };
+    return { com.program, com.read_only_data };
 }
 
 }
