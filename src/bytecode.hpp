@@ -107,10 +107,15 @@ enum class op : std::uint8_t
 
 using bytecode = std::vector<std::byte>;
 
-struct bytecode_context
+struct call_frame
 {
     std::size_t prog_ptr = 0;
     std::size_t base_ptr = 0;
+};
+
+struct bytecode_context
+{
+    std::vector<call_frame> frames;
 
     std::vector<std::byte> stack;
     std::vector<std::byte> heap;
