@@ -23,7 +23,7 @@ auto resolve_ptr(bytecode_context& ctx, std::uint64_t ptr) -> std::byte*
         return &ctx.rom[index];
     }
     const auto index = ptr;
-    return &ctx.stack.data[index];
+    return &ctx.stack.at(index);
 }
 
 auto pop_char_span(bytecode_context& ctx) -> std::string
