@@ -117,7 +117,7 @@ struct bytecode_context
 {
     std::vector<call_frame> frames;
 
-    value_stack stack;
+    vm_stack stack;
     std::vector<std::byte> heap;
     std::vector<std::byte> rom;
 
