@@ -64,7 +64,7 @@ auto push_bytes_from_program(bytecode_context& ctx, const bytecode_program& prog
 auto resolve_ptr(bytecode_context& ctx, std::size_t ptr) -> std::byte*
 {
     if (is_heap_ptr(ptr)) return &ctx.heap[unset_heap_bit(ptr)];
-    if (is_rom_ptr(ptr))  return &ctx.rom[unset_rom_bit(ptr)];
+    if (is_rom_ptr(ptr))  return &ctx.rom.at(unset_rom_bit(ptr));
     return &ctx.stack.at(ptr);
 }
 
@@ -466,10 +466,7 @@ auto run_program(const bytecode_program& prog) -> void
 {
     const auto timer = scope_timer{};
 
-    bytecode_context ctx;
-    for (char c : prog.rom) {
-        ctx.rom.push_back(static_cast<std::byte>(c));
-    }
+    bytecode_context ctx{prog.rom};
     ctx.frames.emplace_back();
     while (ctx.frames.back().prog_ptr < prog.code.size()) {
         apply_op(prog, ctx);
@@ -488,10 +485,7 @@ auto run_program_debug(const bytecode_program& prog) -> void
 {
     const auto timer = scope_timer{};
 
-    bytecode_context ctx;
-    for (char c : prog.rom) {
-        ctx.rom.push_back(static_cast<std::byte>(c));
-    }
+    bytecode_context ctx{prog.rom};
     ctx.frames.emplace_back();
     while (ctx.frames.back().prog_ptr < prog.code.size()) {
         print_op(prog, ctx.frames.back().prog_ptr);

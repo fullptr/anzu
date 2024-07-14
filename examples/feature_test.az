@@ -284,3 +284,11 @@ struct container
     let p := x&;
     print("{}\n", p.val);
 }
+
+# dynamic memory check
+unsafe {
+    var x := new i64;
+    x@ = 5;
+    print("{}\n", x@);
+    delete x;
+}

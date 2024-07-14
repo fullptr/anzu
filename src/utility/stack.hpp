@@ -21,6 +21,9 @@ public:
     {
         std::memcpy(d_data.get(), data.data(), data.size());
     }
+
+    inline auto at(std::size_t index) -> std::byte& { return d_data[index]; }
+    inline auto at(std::size_t index) const -> const std::byte& { return d_data[index]; }
 };
 
 class vm_stack

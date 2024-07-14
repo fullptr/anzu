@@ -119,11 +119,11 @@ struct bytecode_context
 
     vm_stack stack;
     std::vector<std::byte> heap;
-    std::vector<std::byte> rom;
+    vm_rom rom;
 
     memory_allocator allocator;
 
-    bytecode_context() : allocator{heap} {}
+    bytecode_context(std::string_view rom) : rom{rom}, allocator{heap} {}
 };
 
 struct bytecode_program

@@ -20,7 +20,7 @@ auto resolve_ptr(bytecode_context& ctx, std::uint64_t ptr) -> std::byte*
     }
     if (is_rom_ptr(ptr)) {
         const auto index = unset_rom_bit(ptr);
-        return &ctx.rom[index];
+        return &ctx.rom.at(index);
     }
     const auto index = ptr;
     return &ctx.stack.at(index);
