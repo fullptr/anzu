@@ -110,6 +110,7 @@
         "syncstream": "cpp",
         "typeindex": "cpp",
         "valarray": "cpp",
-        "semaphore": "cpp"
+        "semaphore": "cpp",
+        "resumable": "cpp"
     }
 }

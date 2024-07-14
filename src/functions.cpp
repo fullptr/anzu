@@ -23,13 +23,13 @@ auto resolve_ptr(bytecode_context& ctx, std::uint64_t ptr) -> std::byte*
         return &ctx.rom[index];
     }
     const auto index = ptr;
-    return &ctx.stack[index];
+    return &ctx.stack.data[index];
 }
 
 auto pop_char_span(bytecode_context& ctx) -> std::string
 {
-    const auto size = pop_value<std::uint64_t>(ctx.stack);
-    const auto ptr = pop_value<std::uint64_t>(ctx.stack);
+    const auto size = ctx.stack.pop<std::uint64_t>();
+    const auto ptr = ctx.stack.pop<std::uint64_t>();
     const auto real_ptr = resolve_ptr(ctx, ptr);
     
     auto ret = std::string(size, ' ');
@@ -39,8 +39,8 @@ auto pop_char_span(bytecode_context& ctx) -> std::string
 
 auto builtin_sqrt(bytecode_context& ctx) -> void
 {
-    auto val = pop_value<double>(ctx.stack);
-    push_value(ctx.stack, std::sqrt(val));
+    auto val = ctx.stack.pop<double>();
+    ctx.stack.push(std::sqrt(val));
 }
 
 static_assert(sizeof(std::FILE*) == sizeof(std::uint64_t));
@@ -50,22 +50,22 @@ auto builtin_fopen(bytecode_context& ctx) -> void
     const auto mode = pop_char_span(ctx);
     const auto file = pop_char_span(ctx);
     const auto handle = std::fopen(file.c_str(), mode.c_str());
-    push_value(ctx.stack, handle);
+    ctx.stack.push(handle);
 }
 
 auto builtin_fclose(bytecode_context& ctx) -> void
 {
-    const auto ptr = pop_value<std::FILE*>(ctx.stack);
+    const auto ptr = ctx.stack.pop<std::FILE*>();
     std::fclose(ptr);
-    ctx.stack.push_back(std::byte{0}); // returns null
+    ctx.stack.push(std::byte{0}); // returns null
 }
 
 auto builtin_fputs(bytecode_context& ctx) -> void
 {
     const auto data = pop_char_span(ctx);
-    const auto ptr = pop_value<std::FILE*>(ctx.stack);
+    const auto ptr = ctx.stack.pop<std::FILE*>();
     std::fputs(data.c_str(), ptr);
-    ctx.stack.push_back(std::byte{0}); // returns null
+    ctx.stack.push(std::byte{0}); // returns null
 }
 
 }

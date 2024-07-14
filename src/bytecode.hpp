@@ -1,5 +1,6 @@
 #pragma once
 #include "allocator.hpp"
+#include "utility/stack.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -116,7 +117,7 @@ struct bytecode_context
 {
     std::vector<call_frame> frames;
 
-    std::vector<std::byte> stack;
+    value_stack stack;
     std::vector<std::byte> heap;
     std::vector<std::byte> rom;
 
