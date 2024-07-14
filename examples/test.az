@@ -1,1 +1,8 @@
-print("Hello {}\n", "world");
+fn add(x: i64, y: i64) -> i64
+{
+    return x + y;
+}
+
+let a := 5;
+let b := 6;
+let res := add(a, b);

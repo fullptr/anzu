@@ -96,10 +96,6 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto offset = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             push_value(ctx.stack, frame.base_ptr + offset);
         } break;
-        case op::push_call_frame: {
-            push_value(ctx.stack, std::uint64_t{0});
-            push_value(ctx.stack, std::uint64_t{0});
-        } break;
         case op::load: {
             const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             const auto raw_ptr = pop_value<std::uint64_t>(ctx.stack);
@@ -169,14 +165,15 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::ret: {
             const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             std::memcpy(&ctx.stack[frame.base_ptr], &ctx.stack[ctx.stack.size() - size], size);
-
             ctx.stack.resize(frame.base_ptr + size);
+
             ctx.frames.pop_back();
         } break;
         case op::call: {
             const auto args_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto prog_ptr = pop_value<std::uint64_t>(ctx.stack);
             ctx.frames.push_back(call_frame{
-                .prog_ptr = pop_value<std::uint64_t>(ctx.stack),
+                .prog_ptr = prog_ptr,
                 .base_ptr = ctx.stack.size() - args_size
             });
 
@@ -336,9 +333,6 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::push_ptr_rel: {
             const auto offset = read_advance<std::uint64_t>(prog, ptr);
             std::print("PUSH_PTR_REL: base_ptr + {}\n", offset);
-        } break;
-        case op::push_call_frame: {
-            std::print("PUSH_CALL_FRAME\n");
         } break;
         case op::load: {
             const auto size = read_advance<std::uint64_t>(prog, ptr);

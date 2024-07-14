@@ -17,7 +17,6 @@ enum class op : std::uint8_t
     push_null,
 
     push_string_literal,
-    push_call_frame,
     push_ptr,
     push_ptr_rel,
     
