@@ -31,7 +31,6 @@ enum class op : std::uint8_t
     jump,
     jump_if_false,
     call,
-    call_fn_ptr,
     builtin_call,
     ret,
     assert,

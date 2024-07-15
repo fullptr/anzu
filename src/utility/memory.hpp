@@ -10,9 +10,10 @@ namespace anzu {
 template <typename T>
 auto push_value_single(std::vector<std::byte>& mem, const T& value) -> void
 {
-    const auto old_size = mem.size();
-    mem.resize(mem.size() + sizeof(T));
-    std::memcpy(&mem[old_size], &value, sizeof(T));
+    const std::byte* ptr = reinterpret_cast<const std::byte*>(&value);
+    for (std::size_t i = 0; i != sizeof(T); ++i) {
+        mem.push_back(*(ptr + i));
+    }
 }
 
 template <typename... Ts>

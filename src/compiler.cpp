@@ -864,7 +864,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
     // push the function pointer and call it
     push_expr_val(com, *node.expr);
-    push_value(com.program, op::call_fn_ptr, args_size);
+    push_value(com.program, op::call, args_size);
     return *sig.return_type;
 }
 

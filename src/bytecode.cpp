@@ -154,7 +154,6 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
 
             ctx.frames.pop_back();
         } break;
-        case op::call_fn_ptr:
         case op::call: {
             const auto args_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             const auto prog_ptr = ctx.stack.pop<std::uint64_t>();
@@ -350,10 +349,6 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::ret: {
             const auto type_size = read_advance<std::uint64_t>(prog, ptr);
             std::print("RETURN: type_size={}\n", type_size);
-        } break;
-        case op::call_fn_ptr: {
-            const auto args_size = read_advance<std::uint64_t>(prog, ptr);
-            std::print("CALL_FN_PTR: args_size={}\n", args_size);
         } break;
         case op::call: {
             const auto args_size = read_advance<std::uint64_t>(prog, ptr);
