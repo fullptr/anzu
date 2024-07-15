@@ -120,22 +120,26 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto type_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             const auto count = ctx.stack.pop<std::uint64_t>();
             const auto ptr = (std::byte*)std::malloc(count * type_size);
+            ctx.heap_size += count * type_size;
             ctx.stack.push(ptr);
         } break;
         case op::dealloc_span: {
             const auto type_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             const auto count = ctx.stack.pop<std::uint64_t>();
             const auto ptr = ctx.stack.pop<std::byte*>();
+            ctx.heap_size -= count * type_size;
             std::free(ptr);
         } break;
         case op::alloc_ptr: {
             const auto type_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             const auto ptr = (std::byte*)std::malloc(type_size);
+            ctx.heap_size += type_size;
             ctx.stack.push(ptr);
         } break;
         case op::dealloc_ptr: {
             const auto type_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             const auto ptr = ctx.stack.pop<std::byte*>();
+            ctx.heap_size -= type_size;
             std::free(ptr);
         } break;
         case op::jump: {
@@ -452,8 +456,8 @@ auto run_program(const bytecode_program& prog) -> void
         std::print("\n -> Stack Size: {}, bug in the compiler!\n", ctx.stack.size());
     }
 
-    if (ctx.allocator.bytes_allocated() > 0) {
-        std::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
+    if (ctx.heap_size != 0) {
+        std::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.heap_size);
     }
 }
 
@@ -469,8 +473,8 @@ auto run_program_debug(const bytecode_program& prog) -> void
         apply_op(prog, ctx);
     }
 
-    if (ctx.allocator.bytes_allocated() > 0) {
-        std::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.allocator.bytes_allocated());
+    if (ctx.heap_size != 0) {
+        std::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.heap_size);
     }
 }
 

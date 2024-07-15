@@ -1,5 +1,4 @@
 #pragma once
-#include "allocator.hpp"
 #include "utility/stack.hpp"
 
 #include <cstdint>
@@ -116,14 +115,11 @@ struct call_frame
 struct bytecode_context
 {
     std::vector<call_frame> frames;
-
     vm_stack stack;
-    std::vector<std::byte> heap;
     vm_rom rom;
+    std::int64_t heap_size = 0;
 
-    memory_allocator allocator;
-
-    bytecode_context(std::string_view rom) : rom{rom}, allocator{heap} {}
+    bytecode_context(std::string_view rom) : rom{rom} {}
 };
 
 struct bytecode_program

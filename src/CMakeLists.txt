@@ -12,7 +12,6 @@ add_executable(
     parser.cpp
     ast.cpp
     compiler.cpp
-    allocator.cpp
     object.cpp
     functions.cpp
     bytecode.cpp
