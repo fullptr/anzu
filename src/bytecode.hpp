@@ -104,8 +104,6 @@ enum class op : std::uint8_t
     print_char_span,
 };
 
-using bytecode = std::vector<std::byte>;
-
 struct call_frame
 {
     std::size_t prog_ptr = 0;

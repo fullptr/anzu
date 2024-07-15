@@ -1,9 +1,10 @@
-fn add(x: i64, y: i64) -> i64
+struct foo
 {
-    return x + y;
+    x: i64;
 }
 
-let a := 5;
-let b := 6;
-let res := add(a, b);
-print("res={}\n", res);
+var f := foo(5);
+var x := 0;
+var y := 1;
+
+x + f.x = 10;
