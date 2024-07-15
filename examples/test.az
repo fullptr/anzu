@@ -6,3 +6,4 @@ fn add(x: i64, y: i64) -> i64
 let a := 5;
 let b := 6;
 let res := add(a, b);
+print("res={}\n", res);

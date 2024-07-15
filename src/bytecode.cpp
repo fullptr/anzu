@@ -52,13 +52,14 @@ auto read_advance(const bytecode_program& prog, std::size_t& ptr) -> T
     return ret;
 }
 
-template <std::size_t N>
-auto push_bytes_from_program(bytecode_context& ctx, const bytecode_program& prog) -> void
+template <typename T>
+auto push_from_program(bytecode_context& ctx, const bytecode_program& prog) -> void
 {
+    T val{};
     auto& frame = ctx.frames.back();
-    for (std::size_t i = 0; i != N; ++i) {
-        ctx.stack.push(prog.code[frame.prog_ptr++]);
-    }
+    std::memcpy(&val, &prog.code[frame.prog_ptr], sizeof(T));
+    ctx.stack.push(val);
+    frame.prog_ptr += sizeof(T);
 }
 
 auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
@@ -68,15 +69,15 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
     switch (op_code) {
         case op::push_char:
         case op::push_bool: {
-            push_bytes_from_program<1>(ctx, prog);
+            push_from_program<std::uint8_t>(ctx, prog);
         } break;
         case op::push_i32: {
-            push_bytes_from_program<4>(ctx, prog);
+            push_from_program<std::uint32_t>(ctx, prog);
         } break;
         case op::push_i64:
         case op::push_u64:
         case op::push_f64: {
-            push_bytes_from_program<8>(ctx, prog);
+            push_from_program<std::uint64_t>(ctx, prog);
         } break;
         case op::push_string_literal: {
             const auto index = read_advance<std::uint64_t>(prog, frame.prog_ptr);
@@ -91,7 +92,7 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto offset = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             std::byte* ptr = &ctx.stack.at(offset);
             ctx.stack.push(ptr);
-        }
+        } break;
         case op::push_ptr_rel: {
             const auto offset = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             std::byte* ptr = &ctx.stack.at(frame.base_ptr + offset);
@@ -157,7 +158,6 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::call: {
             const auto args_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             const auto prog_ptr = ctx.stack.pop<std::uint64_t>();
-            std::print("new prog_ptr = {}\n", prog_ptr);
             ctx.frames.push_back(call_frame{
                 .prog_ptr = prog_ptr,
                 .base_ptr = ctx.stack.size() - args_size
@@ -304,8 +304,8 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             std::print("PUSH_STRING_LITERAL: '{}'\n", m);
         } break;
         case op::push_ptr: {
-            const auto pos = read_advance<std::byte*>(prog, ptr);
-            std::print("PUSH_PTR: {}\n", (void*)pos);
+            const auto offset = read_advance<std::uint64_t>(prog, ptr);
+            std::print("PUSH_PTR: stack + {}\n", offset);
         } break;
         case op::push_ptr_rel: {
             const auto offset = read_advance<std::uint64_t>(prog, ptr);
@@ -468,6 +468,7 @@ auto run_program_debug(const bytecode_program& prog) -> void
 
     bytecode_context ctx{prog.rom};
     ctx.frames.emplace_back();
+    std::print("stack_base = {}\nrom_base = {}\n", (void*)&ctx.stack.at(0), (void*)&ctx.rom.at(0));
     while (ctx.frames.back().prog_ptr < prog.code.size()) {
         print_op(prog, ctx.frames.back().prog_ptr);
         apply_op(prog, ctx);
