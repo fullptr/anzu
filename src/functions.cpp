@@ -12,28 +12,13 @@
 namespace anzu {
 namespace {
 
-auto resolve_ptr(bytecode_context& ctx, std::uint64_t ptr) -> std::byte*
-{
-    if (is_heap_ptr(ptr)) {
-        const auto index = unset_heap_bit(ptr);
-        return &ctx.heap[index];
-    }
-    if (is_rom_ptr(ptr)) {
-        const auto index = unset_rom_bit(ptr);
-        return &ctx.rom.at(index);
-    }
-    const auto index = ptr;
-    return &ctx.stack.at(index);
-}
-
 auto pop_char_span(bytecode_context& ctx) -> std::string
 {
     const auto size = ctx.stack.pop<std::uint64_t>();
-    const auto ptr = ctx.stack.pop<std::uint64_t>();
-    const auto real_ptr = resolve_ptr(ctx, ptr);
+    const auto ptr = ctx.stack.pop<std::byte*>();
     
     auto ret = std::string(size, ' ');
-    std::memcpy(ret.data(), real_ptr, size);
+    std::memcpy(ret.data(), ptr, size);
     return ret;
 }
 

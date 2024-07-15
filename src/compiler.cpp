@@ -444,16 +444,16 @@ auto insert_into_rom(compiler& com, std::string_view data) -> std::size_t
 {
     const auto index = com.read_only_data.find(data);
     if (index != std::string::npos) {
-        return set_rom_bit(index);
+        return index;
     }
     const auto ptr = com.read_only_data.size();
     com.read_only_data.append(data);
-    return set_rom_bit(ptr);
+    return ptr;
 }
 
 auto push_assert(compiler& com, std::string_view message) -> void
 {
-    const auto index = unset_rom_bit(insert_into_rom(com, message));
+    const auto index = insert_into_rom(com, message);
     push_value(com.program, op::assert, index, message.size());
 }
 
@@ -864,7 +864,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
     // push the function pointer and call it
     push_expr_val(com, *node.expr);
-    push_value(com.program, op::call, args_size);
+    push_value(com.program, op::call_fn_ptr, args_size);
     return *sig.return_type;
 }
 

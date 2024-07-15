@@ -56,6 +56,7 @@ public:
             std::exit(27);
         }
         std::memcpy(&d_data[d_current_size], &obj, sizeof(T));
+        std::print("{} {}\n", d_current_size, sizeof(T));
         d_current_size += sizeof(T);
     }
 
