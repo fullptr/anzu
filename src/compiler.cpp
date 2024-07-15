@@ -115,11 +115,10 @@ auto get_function(
 
 auto push_function_call(compiler& com, const function_info& function) -> void
 {
-    auto args_size = 2 * sizeof(std::uint64_t);
+    auto args_size = std::size_t{0};
     for (const auto& param : function.sig.params) {
         args_size += com.types.size_of(param);
     }
-
     push_value(com.program, op::push_u64, function.ptr, op::call, args_size);
 }
 
@@ -135,7 +134,7 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
 {
     const auto var = com.scopes.find(name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
-    const auto op = var->is_location_relative ? op::push_ptr_rel : op::push_ptr;
+    const auto op = var->is_location_relative ? op::push_ptr_local : op::push_ptr_global;
     push_value(com.program, op, var->location);
     return var->type;
 }
@@ -257,7 +256,6 @@ auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb pu
             if (const auto func = get_function(com, to_string(type), "drop"); func) {
                 verify_function_call(*func, params, func->tok);
                 // Push the args to the stack
-                push_value(com.program, op::push_call_frame);
                 push_object_ptr(func->tok);
                 push_function_call(com, *func);
                 push_value(com.program, op::pop, com.types.size_of(func->sig.return_type));
@@ -412,7 +410,6 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         verify_function_call(*copy, copy_fn_params(etype), tok);
 
         for (const auto idx : range(array_length(type))) {
-            push_value(com.program, op::push_call_frame);
             push_expr_ptr(com, expr);
             push_ptr_adjust(com, idx * esize);
             push_function_call(com, *copy);
@@ -424,7 +421,6 @@ auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) ->
         tok.assert(copy.has_value(), "{} cannot be copied", type);
         verify_function_call(*copy, copy_fn_params(type), tok);
 
-        push_value(com.program, op::push_call_frame);
         push_expr_ptr(com, expr);
         push_function_call(com, *copy);
     }
@@ -448,16 +444,16 @@ auto insert_into_rom(compiler& com, std::string_view data) -> std::size_t
 {
     const auto index = com.read_only_data.find(data);
     if (index != std::string::npos) {
-        return set_rom_bit(index);
+        return index;
     }
     const auto ptr = com.read_only_data.size();
     com.read_only_data.append(data);
-    return set_rom_bit(ptr);
+    return ptr;
 }
 
 auto push_assert(compiler& com, std::string_view message) -> void
 {
-    const auto index = unset_rom_bit(insert_into_rom(com, message));
+    const auto index = insert_into_rom(com, message);
     push_value(com.program, op::assert, index, message.size());
 }
 
@@ -836,7 +832,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
         if (const auto func = get_function(com, to_string(struct_type), inner.name); func) {
             verify_function_call(*func, params, node.token);
-            push_value(com.program, op::push_call_frame);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
@@ -861,8 +856,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
     const auto& sig = std::get<type_function_ptr>(type);
 
-    push_value(com.program, op::push_call_frame);
-    auto args_size = 2 * sizeof(std::uint64_t);
+    auto args_size = std::size_t{0};
     for (std::size_t i = 0; i != node.args.size(); ++i) {
         push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
         args_size += com.types.size_of(sig.param_types[i]);
@@ -911,7 +905,6 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
     verify_function_call(*func, params, node.token);
 
-    push_value(com.program, op::push_call_frame);
     auto t = push_expr_ptr(com, *node.expr); // self
     while (t.is_ptr()) { // allow for calling member functions through pointers
         push_value(com.program, op::load, size_of_ptr());
@@ -1326,8 +1319,6 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
         verify_function_call(*assign, assign_fn_params(etype), node.token);
 
         for (std::size_t i = 0; i != array_length(rhs); ++i) {
-            push_value(com.program, op::push_call_frame);
-
             push_expr_ptr(com, *node.position); // i-th element of dst
             push_ptr_adjust(com, i * inner_size);
             push_expr_ptr(com, *node.expr); // i-th element of src
@@ -1345,7 +1336,6 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     node.token.assert(assign.has_value(), "{} cannot be assigned", type);
     verify_function_call(*assign, assign_fn_params(type), node.token);
 
-    push_value(com.program, op::push_call_frame);
     push_expr_ptr(com, *node.position);
     push_expr_ptr(com, *node.expr);
     push_function_call(com, *assign);
@@ -1374,8 +1364,6 @@ auto compile_function_body(
     {
         const auto scope = scope_guard::function(com, null_type());
 
-        declare_var(com, tok, "# old_base_ptr", u64_type()); // Store the old base ptr
-        declare_var(com, tok, "# old_prog_ptr", u64_type()); // Store the old program ptr
         for (const auto& arg : node_sig.params) {
             auto type = resolve_type(com, tok, arg.type);
             sig.params.push_back({type});
@@ -1635,10 +1623,7 @@ auto compile(
         );
     }
 
-    auto read_only = std::vector<std::byte>{};
-    read_only.reserve(com.read_only_data.size());
-    for (char c : com.read_only_data) read_only.push_back(static_cast<std::byte>(c));
-    return { com.program, read_only };
+    return { com.program, com.read_only_data };
 }
 
 }

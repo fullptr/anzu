@@ -1,5 +1,5 @@
 #pragma once
-#include "allocator.hpp"
+#include "utility/stack.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -17,9 +17,8 @@ enum class op : std::uint8_t
     push_null,
 
     push_string_literal,
-    push_call_frame,
-    push_ptr,
-    push_ptr_rel,
+    push_ptr_global,
+    push_ptr_local,
     
     load,
     save,
@@ -105,26 +104,26 @@ enum class op : std::uint8_t
     print_char_span,
 };
 
-using bytecode = std::vector<std::byte>;
-
-struct bytecode_context
+struct call_frame
 {
     std::size_t prog_ptr = 0;
     std::size_t base_ptr = 0;
+};
 
-    std::vector<std::byte> stack;
-    std::vector<std::byte> heap;
-    std::vector<std::byte> rom;
+struct bytecode_context
+{
+    std::vector<call_frame> frames;
+    vm_stack stack;
+    vm_rom rom;
+    std::int64_t heap_size = 0;
 
-    memory_allocator allocator;
-
-    bytecode_context() : allocator{heap} {}
+    bytecode_context(std::string_view rom) : rom{rom} {}
 };
 
 struct bytecode_program
 {
     std::vector<std::byte> code;
-    std::vector<std::byte> rom;
+    std::string            rom;
 };
 
 auto run_program(const bytecode_program& prog) -> void;

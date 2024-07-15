@@ -1,1 +1,10 @@
-print("Hello {}\n", "world");
+struct foo
+{
+    x: i64;
+}
+
+var f := foo(5);
+var x := 0;
+var y := 1;
+
+x + f.x = 10;
