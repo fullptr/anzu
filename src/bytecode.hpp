@@ -17,8 +17,8 @@ enum class op : std::uint8_t
     push_null,
 
     push_string_literal,
-    push_ptr,
-    push_ptr_rel,
+    push_ptr_global,
+    push_ptr_local,
     
     load,
     save,

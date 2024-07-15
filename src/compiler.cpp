@@ -134,7 +134,7 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
 {
     const auto var = com.scopes.find(name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
-    const auto op = var->is_location_relative ? op::push_ptr_rel : op::push_ptr;
+    const auto op = var->is_location_relative ? op::push_ptr_local : op::push_ptr_global;
     push_value(com.program, op, var->location);
     return var->type;
 }

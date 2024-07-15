@@ -88,12 +88,12 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
         case op::push_null: {
             ctx.stack.push(std::byte{0});
         } break;
-        case op::push_ptr: {
+        case op::push_ptr_global: {
             const auto offset = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             std::byte* ptr = &ctx.stack.at(offset);
             ctx.stack.push(ptr);
         } break;
-        case op::push_ptr_rel: {
+        case op::push_ptr_local: {
             const auto offset = read_advance<std::uint64_t>(prog, frame.prog_ptr);
             std::byte* ptr = &ctx.stack.at(frame.base_ptr + offset);
             ctx.stack.push(ptr);
@@ -306,13 +306,13 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             const auto m = std::string_view(data, size);
             std::print("PUSH_STRING_LITERAL: '{}'\n", m);
         } break;
-        case op::push_ptr: {
+        case op::push_ptr_global: {
             const auto offset = read_advance<std::uint64_t>(prog, ptr);
-            std::print("PUSH_PTR: stack + {}\n", offset);
+            std::print("PUSH_PTR_GLOBAL: {}\n", offset);
         } break;
-        case op::push_ptr_rel: {
+        case op::push_ptr_local: {
             const auto offset = read_advance<std::uint64_t>(prog, ptr);
-            std::print("PUSH_PTR_REL: base_ptr + {}\n", offset);
+            std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
         } break;
         case op::load: {
             const auto size = read_advance<std::uint64_t>(prog, ptr);
