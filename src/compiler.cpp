@@ -459,7 +459,7 @@ auto push_assert(compiler& com, std::string_view message) -> void
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
-    if (auto func = get_function(com, "", node.name)) {
+    if (auto func = get_function(com, to_string(global_namespace), node.name)) {
         node.token.error("cannot take address of a function pointer");
     }
 
@@ -471,7 +471,7 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 // are lvalues, so that may cause trouble; we should find out how.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
-    if (auto func = get_function(com, "", node.name)) {
+    if (auto func = get_function(com, to_string(global_namespace), node.name)) {
         const auto& info = *func;
         push_value(com.program, op::push_u64, info.ptr);
 

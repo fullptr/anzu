@@ -285,10 +285,19 @@ struct container
     print("{}\n", p.val);
 }
 
-# dynamic memory check
+# Dynamic memory check
 unsafe {
     var x := new i64;
     x@ = 5;
     print("{}\n", x@);
     delete x;
 }
+
+# Function pointer check
+fn print_success() -> null
+{
+    print("Success!\n");
+}
+
+#var function_ptr := print_success;
+#function_ptr();

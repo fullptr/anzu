@@ -1,8 +1,10 @@
-struct foo
+# Function pointer check
+fn print_success(y: i64) -> null
 {
-    x: i64;
+    print("Success!\n");
 }
 
-var f := foo(5);
-var x := 0;
-var y := 1;
+let x := 5;
+let y := 10;
+var function_ptr := print_success;
+function_ptr(x);
