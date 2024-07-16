@@ -6,4 +6,3 @@ struct foo
 var f := foo(5);
 var x := 0;
 var y := 1;
-ref a := z;

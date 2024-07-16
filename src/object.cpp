@@ -8,11 +8,6 @@
 #include <string_view>
 
 namespace anzu {
-namespace {
-
-static constexpr auto PTR_SIZE = std::size_t{8};
-
-}
 
 auto type_name::is_fundamental() const -> bool
 {
@@ -74,14 +69,14 @@ auto to_string(const type_name& type) -> std::string
 
 auto to_string(type_fundamental t) -> std::string
 {
-    switch (t.type) {
-        case fundamental::null_type: return "null";
-        case fundamental::bool_type: return "bool";
-        case fundamental::char_type: return "char";
-        case fundamental::i32_type:  return "i32";
-        case fundamental::i64_type:  return "i64";
-        case fundamental::u64_type:  return "u64";
-        case fundamental::f64_type:  return "f64";
+    switch (t) {
+        case type_fundamental::null_type: return "null";
+        case type_fundamental::bool_type: return "bool";
+        case type_fundamental::char_type: return "char";
+        case type_fundamental::i32_type:  return "i32";
+        case type_fundamental::i64_type:  return "i64";
+        case type_fundamental::u64_type:  return "u64";
+        case type_fundamental::f64_type:  return "f64";
         default: return "UNKNOWN";
     }
 }
@@ -128,7 +123,7 @@ auto hash(const type_name& type) -> std::size_t
 
 auto hash(type_fundamental type) -> std::size_t
 {
-    return static_cast<std::size_t>(type.type);
+    return static_cast<std::size_t>(type);
 }
 
 auto hash(const type_struct& type) -> std::size_t
@@ -170,37 +165,37 @@ auto hash(const type_const& type) -> std::size_t
 
 auto null_type() -> type_name
 {
-    return {type_fundamental { .type = fundamental::null_type }};
+    return {type_fundamental::null_type};
 }
 
 auto bool_type() -> type_name
 {
-    return {type_fundamental { .type = fundamental::bool_type }};
+    return {type_fundamental::bool_type};
 }
 
 auto char_type() -> type_name
 {
-    return {type_fundamental { .type = fundamental::char_type }};
+    return {type_fundamental::char_type};
 }
 
 auto i32_type() -> type_name
 {
-    return {type_fundamental { .type = fundamental::i32_type }};
+    return {type_fundamental::i32_type};
 }
 
 auto i64_type() -> type_name
 {
-    return {type_fundamental { .type = fundamental::i64_type }};
+    return {type_fundamental::i64_type};
 }
 
 auto u64_type() -> type_name
 {
-    return {type_fundamental { .type = fundamental::u64_type }};
+    return {type_fundamental::u64_type};
 }
 
 auto f64_type() -> type_name
 {
-    return {type_fundamental { .type = fundamental::f64_type }};
+    return {type_fundamental::f64_type};
 }
 
 auto make_type(const std::string& name) -> type_name
@@ -264,11 +259,6 @@ auto array_length(const type_name& t) -> std::size_t
     return std::get<type_array>(mut_type).count;
 }
 
-auto size_of_ptr() -> std::size_t
-{
-    return PTR_SIZE;
-}
-
 auto is_type_trivially_copyable(const type_name& type) -> bool
 {
     // TODO: Allow for trivially copyable struct types
@@ -310,16 +300,16 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
 {
     return std::visit(overloaded{
         [](type_fundamental t) -> std::size_t {
-            switch (t.type) {
-                case fundamental::null_type:
-                case fundamental::bool_type:
-                case fundamental::char_type:
+            switch (t) {
+                case type_fundamental::null_type:
+                case type_fundamental::bool_type:
+                case type_fundamental::char_type:
                     return 1;
-                case fundamental::i32_type:
+                case type_fundamental::i32_type:
                     return 4;
-                case fundamental::i64_type:
-                case fundamental::u64_type:
-                case fundamental::f64_type:
+                case type_fundamental::i64_type:
+                case type_fundamental::u64_type:
+                case type_fundamental::f64_type:
                     return 8;
                 default:
                     panic("unknown fundamental type");
@@ -340,13 +330,13 @@ auto type_store::size_of(const type_name& type) const -> std::size_t
             return size_of(*t.inner_type) * t.count;
         },
         [](const type_ptr&) {
-            return PTR_SIZE;
+            return sizeof(std::byte*);
         },
         [](const type_span&) {
-            return 2 * PTR_SIZE; // actually a pointer + a size, but they are both 8 bytes
+            return sizeof(std::byte*) + sizeof(std::size_t);
         },
         [](const type_function_ptr&) {
-            return PTR_SIZE;
+            return sizeof(std::byte*);
         },
         [&](const type_const& t) {
             return size_of(*t.inner_type);

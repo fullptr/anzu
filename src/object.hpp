@@ -18,7 +18,7 @@ static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 
 struct type_name;
 
-enum class fundamental : std::uint8_t
+enum class type_fundamental : std::uint8_t
 {
     null_type,
     bool_type,
@@ -29,11 +29,11 @@ enum class fundamental : std::uint8_t
     f64_type,
 };
 
-struct type_fundamental
-{
-    fundamental type;
-    auto operator==(const type_fundamental&) const -> bool = default;
-};
+//struct type_fundamental
+//{
+//    fundamental type;
+//    auto operator==(const type_fundamental&) const -> bool = default;
+//};
 
 struct type_struct
 {
@@ -141,8 +141,6 @@ auto u64_type() -> type_name;
 auto f64_type() -> type_name;
 
 auto make_type(const std::string& name) -> type_name;
-
-auto size_of_ptr() -> std::size_t;
 
 // Extracts the single inner type of the given t. Undefined if the given t is not a compound
 // type with a single subtype.
