@@ -9,23 +9,6 @@
 
 namespace anzu {
 
-class vm_rom
-{
-    std::unique_ptr<std::byte[]> d_data;
-    std::size_t d_size;
-
-public:
-    vm_rom(std::string_view data)
-        : d_data{std::make_unique<std::byte[]>(data.size())}
-        , d_size{data.size()}
-    {
-        std::memcpy(d_data.get(), data.data(), data.size());
-    }
-
-    inline auto at(std::size_t index) -> std::byte& { return d_data[index]; }
-    inline auto at(std::size_t index) const -> const std::byte& { return d_data[index]; }
-};
-
 class vm_stack
 {
     std::unique_ptr<std::byte[]> d_data;

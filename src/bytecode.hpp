@@ -127,7 +127,9 @@ struct bytecode_context
     bytecode_context(const bytecode_program& program)
         : code{program.code}
         , rom{program.rom} 
-    {}
+    {
+        frames.emplace_back();
+    }
 };
 
 auto run_program(const bytecode_program& prog) -> void;

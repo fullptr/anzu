@@ -1,10 +1,8 @@
 # Function pointer check
-fn print_success(y: i64) -> null
+fn print_success() -> null
 {
     print("Success!\n");
 }
 
-let x := 5;
-let y := 10;
 var function_ptr := print_success;
-function_ptr(x);
+function_ptr();
