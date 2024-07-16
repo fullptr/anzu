@@ -110,20 +110,24 @@ struct call_frame
     std::size_t base_ptr = 0;
 };
 
-struct bytecode_context
-{
-    std::vector<call_frame> frames;
-    vm_stack stack;
-    vm_rom rom;
-    std::int64_t heap_size = 0;
-
-    bytecode_context(std::string_view rom) : rom{rom} {}
-};
-
 struct bytecode_program
 {
     std::vector<std::byte> code;
     std::string            rom;
+};
+
+struct bytecode_context
+{
+    std::vector<std::byte> code;
+    std::vector<call_frame> frames;
+    vm_stack stack;
+    std::string rom;
+    std::int64_t heap_size = 0;
+
+    bytecode_context(const bytecode_program& program)
+        : code{program.code}
+        , rom{program.rom} 
+    {}
 };
 
 auto run_program(const bytecode_program& prog) -> void;
