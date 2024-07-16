@@ -29,12 +29,6 @@ enum class type_fundamental : std::uint8_t
     f64_type,
 };
 
-//struct type_fundamental
-//{
-//    fundamental type;
-//    auto operator==(const type_fundamental&) const -> bool = default;
-//};
-
 struct type_struct
 {
     std::string name;
