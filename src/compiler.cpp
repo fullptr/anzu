@@ -1277,15 +1277,10 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto type = [&] {
-        switch (node.qual) {
-            using enum node_declaration_stmt::qualifier;
-            case var: return push_object_copy(com, *node.expr, node.token);
-            case let: return push_object_copy(com, *node.expr, node.token).add_const();
-            case ref: return push_expr_ptr(com, *node.expr);
-            default: node.token.error("Logic error: declaration isn't using var, let or ref");
-        }
-    }();
+    auto type = push_object_copy(com, *node.expr, node.token);
+    if (node.add_const) {
+        type = type.add_const();
+    }
     
     declare_var(com, node.token, node.name, type);
 }

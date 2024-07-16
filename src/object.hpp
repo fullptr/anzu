@@ -175,18 +175,6 @@ auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
 auto to_string(const type_const& type) -> std::string;
 
-// Runtime pointer helpers to determine if the pointer is in stack, heap or read-only memory.
-static constexpr auto heap_bit = std::uint64_t{1} << 63;
-static constexpr auto rom_bit  = std::uint64_t{1} << 62;
-
-inline auto set_heap_bit(std::uint64_t x)   -> std::uint64_t { return x | heap_bit; }
-inline auto unset_heap_bit(std::uint64_t x) -> std::uint64_t { return x & ~heap_bit; }
-inline auto is_heap_ptr(std::uint64_t x)    -> bool          { return x & heap_bit; }
- 
-inline auto set_rom_bit(std::uint64_t x)   -> std::uint64_t { return x | rom_bit; }
-inline auto unset_rom_bit(std::uint64_t x) -> std::uint64_t { return x & ~rom_bit; }
-inline auto is_rom_ptr(std::uint64_t x)    -> bool          { return x & rom_bit; }
-
 }
 
 template <>

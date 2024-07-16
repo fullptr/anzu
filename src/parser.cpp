@@ -587,9 +587,8 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume();
 
     switch (stmt.token.type) {
-        using enum node_declaration_stmt::qualifier;
-        case token_type::kw_let: { stmt.qual = let; } break;
-        case token_type::kw_var: { stmt.qual = var; } break;
+        case token_type::kw_let: { stmt.add_const = true; } break;
+        case token_type::kw_var: { stmt.add_const = false; } break;
         default: stmt.token.error("declaration must start with 'let' or 'var', not {}",
                                   stmt.token.text);
     }
