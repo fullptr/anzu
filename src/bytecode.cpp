@@ -36,130 +36,132 @@ auto binary_op(bytecode_context& ctx) -> void
 }
 
 template <typename Type>
-auto print_op(bytecode_context& ctx) -> void
+auto print_value(bytecode_context& ctx) -> void
 {
     const auto obj = ctx.stack.pop<Type>();
     std::print("{}", obj);
 }
 
 template <typename T>
-requires std::integral<T> || std::floating_point<T> || std::is_same_v<T, std::byte*>
-auto read_advance(const bytecode_program& prog, std::size_t& ptr) -> T
+requires std::integral<T> || std::floating_point<T> || std::is_same_v<T, std::byte*> || std::is_same_v<T, op>
+auto read_at(const bytecode_context& ctx, std::size_t& ptr) -> T
 {
-    auto ret = T{0};
-    std::memcpy(&ret, &prog.code[ptr], sizeof(T));
+    auto ret = T{};
+    std::memcpy(&ret, &ctx.code[ptr], sizeof(T));
     ptr += sizeof(T);
     return ret;
 }
 
 template <typename T>
-auto push_from_program(bytecode_context& ctx, const bytecode_program& prog) -> void
+requires std::integral<T> || std::floating_point<T> || std::is_same_v<T, std::byte*> || std::is_same_v<T, op>
+auto read_advance(bytecode_context& ctx) -> T
+{
+    return read_at<T>(ctx, ctx.frames.back().prog_ptr);
+}
+
+template <typename T>
+auto push_from_program(bytecode_context& ctx) -> void
 {
     T val{};
     auto& frame = ctx.frames.back();
-    std::memcpy(&val, &prog.code[frame.prog_ptr], sizeof(T));
+    std::memcpy(&val, &ctx.code[frame.prog_ptr], sizeof(T));
     ctx.stack.push(val);
     frame.prog_ptr += sizeof(T);
 }
 
-auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
+auto apply_op(bytecode_context& ctx) -> void
 {
     auto& frame = ctx.frames.back();
-    const auto op_code = static_cast<op>(prog.code[frame.prog_ptr++]);
+    const auto op_code = static_cast<op>(ctx.code[frame.prog_ptr++]);
     switch (op_code) {
         case op::push_char:
         case op::push_bool: {
-            push_from_program<std::uint8_t>(ctx, prog);
+            push_from_program<std::uint8_t>(ctx);
         } break;
         case op::push_i32: {
-            push_from_program<std::uint32_t>(ctx, prog);
+            push_from_program<std::uint32_t>(ctx);
         } break;
         case op::push_i64:
         case op::push_u64:
         case op::push_f64: {
-            push_from_program<std::uint64_t>(ctx, prog);
+            push_from_program<std::uint64_t>(ctx);
         } break;
         case op::push_string_literal: {
-            const auto index = read_advance<std::uint64_t>(prog, frame.prog_ptr);
-            const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
-            ctx.stack.push(&prog.rom[index]);
+            const auto index = read_advance<std::uint64_t>(ctx);
+            const auto size = read_advance<std::uint64_t>(ctx);
+            ctx.stack.push(&ctx.rom[index]);
             ctx.stack.push(size);
         } break;
         case op::push_null: {
             ctx.stack.push(std::byte{0});
         } break;
         case op::push_ptr_global: {
-            const auto offset = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto offset = read_advance<std::uint64_t>(ctx);
             std::byte* ptr = &ctx.stack.at(offset);
             ctx.stack.push(ptr);
         } break;
         case op::push_ptr_local: {
-            const auto offset = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto offset = read_advance<std::uint64_t>(ctx);
             std::byte* ptr = &ctx.stack.at(frame.base_ptr + offset);
             ctx.stack.push(ptr);
         } break;
         case op::load: {
-            const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto size = read_advance<std::uint64_t>(ctx);
             const auto ptr = ctx.stack.pop<std::byte*>();
-
-            for (std::size_t i = 0; i != size; ++i) {
-                ctx.stack.push(*(ptr + i));
-            }
+            ctx.stack.push(ptr, size);
         } break;
         case op::save: {
-            const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto size = read_advance<std::uint64_t>(ctx);
             const auto ptr = ctx.stack.pop<std::byte*>();
-            std::memcpy(ptr, &ctx.stack.at(ctx.stack.size() - size), size);
-            ctx.stack.pop_n(size);
+            ctx.stack.pop_and_save(ptr, size);
         } break;
         case op::pop: {
-            const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto size = read_advance<std::uint64_t>(ctx);
             ctx.stack.pop_n(size);
         } break;
         case op::alloc_span: {
-            const auto type_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto type_size = read_advance<std::uint64_t>(ctx);
             const auto count = ctx.stack.pop<std::uint64_t>();
             const auto ptr = (std::byte*)std::malloc(count * type_size);
             ctx.heap_size += count * type_size;
             ctx.stack.push(ptr);
         } break;
         case op::dealloc_span: {
-            const auto type_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto type_size = read_advance<std::uint64_t>(ctx);
             const auto count = ctx.stack.pop<std::uint64_t>();
             const auto ptr = ctx.stack.pop<std::byte*>();
             ctx.heap_size -= count * type_size;
             std::free(ptr);
         } break;
         case op::alloc_ptr: {
-            const auto type_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto type_size = read_advance<std::uint64_t>(ctx);
             const auto ptr = (std::byte*)std::malloc(type_size);
             ctx.heap_size += type_size;
             ctx.stack.push(ptr);
         } break;
         case op::dealloc_ptr: {
-            const auto type_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto type_size = read_advance<std::uint64_t>(ctx);
             const auto ptr = ctx.stack.pop<std::byte*>();
             ctx.heap_size -= type_size;
             std::free(ptr);
         } break;
         case op::jump: {
-            frame.prog_ptr = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            frame.prog_ptr = read_advance<std::uint64_t>(ctx);
         } break;
         case op::jump_if_false: {
-            const auto jump = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto jump = read_advance<std::uint64_t>(ctx);
             if (!ctx.stack.pop<bool>()) {
                 frame.prog_ptr = jump;
             }
         } break;
         case op::ret: {
-            const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto size = read_advance<std::uint64_t>(ctx);
             std::memcpy(&ctx.stack.at(frame.base_ptr), &ctx.stack.at(ctx.stack.size() - size), size);
             ctx.stack.resize(frame.base_ptr + size);
-
             ctx.frames.pop_back();
         } break;
         case op::call: {
-            const auto args_size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto args_size = read_advance<std::uint64_t>(ctx);
             const auto prog_ptr = ctx.stack.pop<std::uint64_t>();
             ctx.frames.push_back(call_frame{
                 .prog_ptr = prog_ptr,
@@ -168,14 +170,14 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
 
         } break;
         case op::builtin_call: {
-            const auto id = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto id = read_advance<std::uint64_t>(ctx);
             get_builtin(id).ptr(ctx);
         } break;
         case op::assert: {
-            const auto index = read_advance<std::uint64_t>(prog, frame.prog_ptr);
-            const auto size = read_advance<std::uint64_t>(prog, frame.prog_ptr);
+            const auto index = read_advance<std::uint64_t>(ctx);
+            const auto size = read_advance<std::uint64_t>(ctx);
             if (!ctx.stack.pop<bool>()) {
-                const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
+                const auto data = &ctx.rom[index];
                 runtime_error("{}", std::string_view{data, size});
             }
         } break;
@@ -252,10 +254,10 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
             const auto c = ctx.stack.pop<char>();
             std::print("{}", c);
         } break;
-        case op::print_i32: { print_op<std::int32_t>(ctx); } break;
-        case op::print_i64: { print_op<std::int64_t>(ctx); } break;
-        case op::print_u64: { print_op<std::uint64_t>(ctx); } break;
-        case op::print_f64: { print_op<double>(ctx); } break;
+        case op::print_i32: { print_value<std::int32_t>(ctx); } break;
+        case op::print_i64: { print_value<std::int64_t>(ctx); } break;
+        case op::print_u64: { print_value<std::uint64_t>(ctx); } break;
+        case op::print_f64: { print_value<double>(ctx); } break;
         case op::print_char_span: {
             const auto size = ctx.stack.pop<std::uint64_t>();
             const auto ptr = ctx.stack.pop<const char*>();
@@ -266,108 +268,109 @@ auto apply_op(const bytecode_program& prog, bytecode_context& ctx) -> void
     }
 }
 
-auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
+auto print_op(const bytecode_context& ctx) -> std::size_t
 {
-    std::size_t start = ptr;
-    std::print("[{:>3}] ", ptr);
-    const auto op_code = static_cast<op>(prog.code[ptr++]);
+    std::size_t start = ctx.frames.back().prog_ptr;
+    std::size_t ptr = start;
+    std::print("[{:>3}] ", start);
+    const auto op_code = read_at<op>(ctx, ptr);
     switch (op_code) {
         case op::push_i32: {
-            const auto value = read_advance<std::int32_t>(prog, ptr);
+            const auto value = read_at<std::int32_t>(ctx, ptr);
             std::print("PUSH_I32: {}\n", value);
         } break;
         case op::push_i64: {
-            const auto value = read_advance<std::int64_t>(prog, ptr);
+            const auto value = read_at<std::int64_t>(ctx, ptr);
             std::print("PUSH_I64: {}\n", value);
         } break;
         case op::push_u64: {
-            const auto value = read_advance<std::uint64_t>(prog, ptr);
+            const auto value = read_at<std::uint64_t>(ctx, ptr);
             std::print("PUSH_U64: {}\n", value);
         } break;
         case op::push_f64: {
-            const auto value = read_advance<double>(prog, ptr);
+            const auto value = read_at<double>(ctx, ptr);
             std::print("PUSH_F64: {}\n", value);
         } break;
         case op::push_char: {
-            const auto value = read_advance<char>(prog, ptr);
+            const auto value = read_at<char>(ctx, ptr);
             std::print("PUSH_CHAR: {}\n", value);
         } break;
         case op::push_bool: {
-            const auto value = read_advance<bool>(prog, ptr);
+            const auto value = read_at<bool>(ctx, ptr);
             std::print("PUSH_BOOL: {}\n", value);
         } break;
         case op::push_null: {
             std::print("PUSH_NULL\n");
         } break;
         case op::push_string_literal: {
-            const auto index = read_advance<std::uint64_t>(prog, ptr);
-            const auto size = read_advance<std::uint64_t>(prog, ptr);
-            const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
+            const auto index = read_at<std::uint64_t>(ctx, ptr);
+            const auto size = read_at<std::uint64_t>(ctx, ptr);
+            const auto data = &ctx.rom[index];
             const auto m = std::string_view(data, size);
             std::print("PUSH_STRING_LITERAL: '{}'\n", m);
         } break;
         case op::push_ptr_global: {
-            const auto offset = read_advance<std::uint64_t>(prog, ptr);
+            const auto offset = read_at<std::uint64_t>(ctx, ptr);
             std::print("PUSH_PTR_GLOBAL: {}\n", offset);
         } break;
         case op::push_ptr_local: {
-            const auto offset = read_advance<std::uint64_t>(prog, ptr);
+            const auto offset = read_at<std::uint64_t>(ctx, ptr);
             std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
         } break;
         case op::load: {
-            const auto size = read_advance<std::uint64_t>(prog, ptr);
+            const auto size = read_at<std::uint64_t>(ctx, ptr);
             std::print("LOAD: {}\n", size);
         } break;
         case op::save: {
-            const auto size = read_advance<std::uint64_t>(prog, ptr);
+            const auto size = read_at<std::uint64_t>(ctx, ptr);
             std::print("SAVE: {}\n", size);
         } break;
         case op::pop: {
-            const auto size = read_advance<std::uint64_t>(prog, ptr);
+            const auto size = read_at<std::uint64_t>(ctx, ptr);
             std::print("POP: {}\n", size);
         } break;
         case op::alloc_span: {
-            const auto type_size = read_advance<std::uint64_t>(prog, ptr);
+            const auto type_size = read_at<std::uint64_t>(ctx, ptr);
             std::print("ALLOC_SPAN: type_size={}\n", type_size);
         } break;
         case op::dealloc_span: {
-            const auto type_size = read_advance<std::uint64_t>(prog, ptr);
+            const auto type_size = read_at<std::uint64_t>(ctx, ptr);
             std::print("DEALLOC_SPAN: type_size={}\n", type_size);
         } break;
         case op::alloc_ptr: {
-            const auto type_size = read_advance<std::uint64_t>(prog, ptr);
+            const auto type_size = read_at<std::uint64_t>(ctx, ptr);
             std::print("ALLOC_PTR: type_size={}\n", type_size);
         } break;
         case op::dealloc_ptr: {
-            const auto type_size = read_advance<std::uint64_t>(prog, ptr);
+            const auto type_size = read_at<std::uint64_t>(ctx, ptr);
             std::print("DEALLOC_PTR: type_size={}\n", type_size);
         } break;
         case op::jump: {
-            const auto jump = read_advance<std::uint64_t>(prog, ptr);
+            const auto jump = read_at<std::uint64_t>(ctx, ptr);
             std::print("JUMP: jump={}\n", jump);
         } break;
         case op::jump_if_false: {
-            const auto jump = read_advance<std::uint64_t>(prog, ptr);
+            const auto jump = read_at<std::uint64_t>(ctx, ptr);
             std::print("JUMP_IF_FALSE: jump={}\n", jump);
         } break;
         case op::ret: {
-            const auto type_size = read_advance<std::uint64_t>(prog, ptr);
+            const auto type_size = read_at<std::uint64_t>(ctx, ptr);
             std::print("RETURN: type_size={}\n", type_size);
         } break;
         case op::call: {
-            const auto args_size = read_advance<std::uint64_t>(prog, ptr);
+            const auto args_size = read_at<std::uint64_t>(ctx, ptr);
             std::print("CALL: args_size={}\n", args_size);
         } break;
         case op::builtin_call: {
-            const auto id = read_advance<std::uint64_t>(prog, ptr);
+            const auto id = read_at<std::uint64_t>(ctx, ptr);
             const auto& b = get_builtin(id);
             std::print("BUILTIN_CALL: {}({}) -> {}\n",
                   b.name, format_comma_separated(b.args), b.return_type);
         } break;
         case op::assert: {
-            const auto index = read_advance<std::uint64_t>(prog, ptr);
-            const auto size = read_advance<std::uint64_t>(prog, ptr);
-            const auto data = reinterpret_cast<const char*>(&prog.rom[index]);
+            const auto index = read_at<std::uint64_t>(ctx, ptr);
+            const auto size = read_at<std::uint64_t>(ctx, ptr);
+            const auto data = &ctx.rom[index];
             std::print("ASSERT: msg={}\n", std::string_view{data, size});
         } break;
         case op::char_eq: { std::print("CHAR_EQ\n"); } break;
@@ -446,10 +449,9 @@ auto run_program(const bytecode_program& prog) -> void
 {
     const auto timer = scope_timer{};
 
-    bytecode_context ctx{prog.rom};
-    ctx.frames.emplace_back();
+    bytecode_context ctx{prog};
     while (ctx.frames.back().prog_ptr < prog.code.size()) {
-        apply_op(prog, ctx);
+        apply_op(ctx);
     }
 
     if (ctx.stack.size() > 0) {
@@ -465,12 +467,11 @@ auto run_program_debug(const bytecode_program& prog) -> void
 {
     const auto timer = scope_timer{};
 
-    bytecode_context ctx{prog.rom};
-    ctx.frames.emplace_back();
+    bytecode_context ctx{prog};
     std::print("stack_base = {}\nrom_base = {}\n", (void*)&ctx.stack.at(0), (void*)&ctx.rom.at(0));
     while (ctx.frames.back().prog_ptr < prog.code.size()) {
-        print_op(prog, ctx.frames.back().prog_ptr);
-        apply_op(prog, ctx);
+        print_op(ctx);
+        apply_op(ctx);
     }
 
     if (ctx.heap_size != 0) {
@@ -480,11 +481,10 @@ auto run_program_debug(const bytecode_program& prog) -> void
 
 auto print_program(const bytecode_program& prog) -> void
 {
-    auto ptr = std::size_t{0};
-    while (ptr < prog.code.size()) {
-        const auto offset = print_op(prog, ptr);
-        if (offset == 0) return;
-        ptr += offset;
+    auto ctx = bytecode_context{prog};
+    while (ctx.frames.back().prog_ptr < ctx.code.size()) {
+        const auto op_size = print_op(ctx);
+        ctx.frames.back().prog_ptr += op_size;
     }
 }
 

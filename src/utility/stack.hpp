@@ -9,23 +9,6 @@
 
 namespace anzu {
 
-class vm_rom
-{
-    std::unique_ptr<std::byte[]> d_data;
-    std::size_t d_size;
-
-public:
-    vm_rom(std::string_view data)
-        : d_data{std::make_unique<std::byte[]>(data.size())}
-        , d_size{data.size()}
-    {
-        std::memcpy(d_data.get(), data.data(), data.size());
-    }
-
-    inline auto at(std::size_t index) -> std::byte& { return d_data[index]; }
-    inline auto at(std::size_t index) const -> const std::byte& { return d_data[index]; }
-};
-
 class vm_stack
 {
     std::unique_ptr<std::byte[]> d_data;
@@ -39,6 +22,32 @@ public:
         , d_current_size{0}
     {}
 
+    auto push(const std::byte* src, std::size_t count) -> void
+    {
+        if (d_current_size + count > d_max_size) {
+            std::print("Stack overflow\n");
+            std::exit(27);
+        }
+        std::memcpy(&d_data[d_current_size], src, count);
+        d_current_size += count;
+    }
+
+    template <typename T>
+    auto push(const T& obj) -> void
+    {
+        push(reinterpret_cast<const std::byte*>(&obj), sizeof(T));
+    }
+
+    auto pop_and_save(std::byte* dst, std::size_t count) -> void
+    {
+        if (d_current_size < count) {
+            std::print("Stack underflow\n");
+            std::exit(28);
+        }
+        d_current_size -= count;
+        std::memcpy(dst, &d_data[d_current_size], count);
+    }
+
     template <typename T>
     auto pop() -> T
     {
@@ -46,17 +55,6 @@ public:
         d_current_size -= sizeof(T);
         std::memcpy(&ret, &d_data[d_current_size], sizeof(T));
         return ret;
-    }
-
-    template <typename T>
-    auto push(const T& obj) -> void
-    {
-        if (d_current_size + sizeof(T) > d_max_size) {
-            std::print("Stack overflow");
-            std::exit(27);
-        }
-        std::memcpy(&d_data[d_current_size], &obj, sizeof(T));
-        d_current_size += sizeof(T);
     }
 
     inline auto size() const -> std::size_t { return d_current_size; }

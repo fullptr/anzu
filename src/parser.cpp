@@ -326,13 +326,13 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 auto parse_simple_type(tokenstream& tokens) -> type_name
 {
     const auto tok = tokens.consume();
-    if (tok.text == "null") return { type_fundamental{ .type=fundamental::null_type }};
-    if (tok.text == "bool") return { type_fundamental{ .type=fundamental::bool_type }};
-    if (tok.text == "char") return { type_fundamental{ .type=fundamental::char_type }};
-    if (tok.text == "i32")  return { type_fundamental{ .type=fundamental::i32_type  }};
-    if (tok.text == "i64")  return { type_fundamental{ .type=fundamental::i64_type  }};
-    if (tok.text == "u64")  return { type_fundamental{ .type=fundamental::u64_type  }};
-    if (tok.text == "f64")  return { type_fundamental{ .type=fundamental::f64_type  }};
+    if (tok.text == "null") return type_fundamental::null_type;
+    if (tok.text == "bool") return type_fundamental::bool_type;
+    if (tok.text == "char") return type_fundamental::char_type;
+    if (tok.text == "i32")  return type_fundamental::i32_type;
+    if (tok.text == "i64")  return type_fundamental::i64_type;
+    if (tok.text == "u64")  return type_fundamental::u64_type;
+    if (tok.text == "f64")  return type_fundamental::f64_type;
     return {type_struct{ .name=std::string{tok.text} }};
 }
 
@@ -587,9 +587,8 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume();
 
     switch (stmt.token.type) {
-        using enum node_declaration_stmt::qualifier;
-        case token_type::kw_let: { stmt.qual = let; } break;
-        case token_type::kw_var: { stmt.qual = var; } break;
+        case token_type::kw_let: { stmt.add_const = true; } break;
+        case token_type::kw_var: { stmt.add_const = false; } break;
         default: stmt.token.error("declaration must start with 'let' or 'var', not {}",
                                   stmt.token.text);
     }

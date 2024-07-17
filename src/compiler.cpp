@@ -459,7 +459,7 @@ auto push_assert(compiler& com, std::string_view message) -> void
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
-    if (auto func = get_function(com, "", node.name)) {
+    if (auto func = get_function(com, to_string(global_namespace), node.name)) {
         node.token.error("cannot take address of a function pointer");
     }
 
@@ -471,7 +471,7 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 // are lvalues, so that may cause trouble; we should find out how.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
-    if (auto func = get_function(com, "", node.name)) {
+    if (auto func = get_function(com, to_string(global_namespace), node.name)) {
         const auto& info = *func;
         push_value(com.program, op::push_u64, info.ptr);
 
@@ -495,7 +495,7 @@ auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 
     // Allow for field access on a pointer
     while (type.is_ptr()) {
-        push_value(com.program, op::load, size_of_ptr());
+        push_value(com.program, op::load, sizeof(std::byte*));
         type = type.remove_ptr();
     }
 
@@ -525,7 +525,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
     if (is_span) {
-        push_value(com.program, op::load, size_of_ptr());
+        push_value(com.program, op::load, sizeof(std::byte*));
     }
 
     // Bounds checking on the subscript, it's unsigned so only need to check upper bound
@@ -536,7 +536,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
             push_value(com.program, op::push_u64, array_length(real_type));
         } else {
             push_expr_ptr(com, *node.expr);
-            push_value(com.program, op::push_u64, size_of_ptr());
+            push_value(com.program, op::push_u64, sizeof(std::byte*));
             push_value(com.program, op::u64_add); // offset to the size value
             push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
         }
@@ -883,7 +883,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     if (type.is_span() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
         push_expr_ptr(com, *node.expr); // push pointer to span
-        push_value(com.program, op::push_u64, size_of_ptr());
+        push_value(com.program, op::push_u64, sizeof(std::byte*));
         push_value(com.program, op::u64_add); // offset to the size value
         push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
         return u64_type();
@@ -907,7 +907,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
 
     auto t = push_expr_ptr(com, *node.expr); // self
     while (t.is_ptr()) { // allow for calling member functions through pointers
-        push_value(com.program, op::load, size_of_ptr());
+        push_value(com.program, op::load, sizeof(std::byte*));
         t = t.remove_ptr();
     }
     for (std::size_t i = 0; i != node.other_args.size(); ++i) {
@@ -988,7 +988,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
     if (type.is_span()) {
-        push_value(com.program, op::load, size_of_ptr());
+        push_value(com.program, op::load, sizeof(std::byte*));
     }
 
     if (node.lower_bound) {// move first index of span up
@@ -1007,7 +1007,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     } else if (type.is_span()) {
         // Push the span pointer, offset to the size, and load the size
         push_expr_ptr(com, *node.expr);
-        push_value(com.program, op::push_u64, size_of_ptr(), op::u64_add);
+        push_value(com.program, op::push_u64, sizeof(std::byte*), op::u64_add);
         push_value(com.program, op::load, com.types.size_of(u64_type()));
     } else {
         push_value(com.program, op::push_u64, array_length(type));
@@ -1171,7 +1171,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     } else {
         node.token.assert(is_lvalue_expr(*node.iter), "for-loops only supported for lvalue spans");
         push_expr_ptr(com, *node.iter); // push pointer to span
-        push_value(com.program, op::push_u64, size_of_ptr());
+        push_value(com.program, op::push_u64, sizeof(std::byte*));
         push_value(com.program, op::u64_add); // offset to the size value
         push_value(com.program, op::load, com.types.size_of(u64_type()));       
         declare_var(com, node.token, "#:size", u64_type());
@@ -1195,7 +1195,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         } else {
             push_expr_ptr(com, *node.iter);
             if (iter_type.is_span()) {
-                push_value(com.program, op::load, size_of_ptr());
+                push_value(com.program, op::load, sizeof(std::byte*));
             }
         }
         load_variable(com, node.token, "#:idx");
@@ -1277,15 +1277,10 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto type = [&] {
-        switch (node.qual) {
-            using enum node_declaration_stmt::qualifier;
-            case var: return push_object_copy(com, *node.expr, node.token);
-            case let: return push_object_copy(com, *node.expr, node.token).add_const();
-            case ref: return push_expr_ptr(com, *node.expr);
-            default: node.token.error("Logic error: declaration isn't using var, let or ref");
-        }
-    }();
+    auto type = push_object_copy(com, *node.expr, node.token);
+    if (node.add_const) {
+        type = type.add_const();
+    }
     
     declare_var(com, node.token, node.name, type);
 }
