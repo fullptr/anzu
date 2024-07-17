@@ -36,7 +36,7 @@ auto binary_op(bytecode_context& ctx) -> void
 }
 
 template <typename Type>
-auto print_op(bytecode_context& ctx) -> void
+auto print_value(bytecode_context& ctx) -> void
 {
     const auto obj = ctx.stack.pop<Type>();
     std::print("{}", obj);
@@ -109,16 +109,12 @@ auto apply_op(bytecode_context& ctx) -> void
         case op::load: {
             const auto size = read_advance<std::uint64_t>(ctx);
             const auto ptr = ctx.stack.pop<std::byte*>();
-
-            for (std::size_t i = 0; i != size; ++i) {
-                ctx.stack.push(*(ptr + i));
-            }
+            ctx.stack.push(ptr, size);
         } break;
         case op::save: {
             const auto size = read_advance<std::uint64_t>(ctx);
             const auto ptr = ctx.stack.pop<std::byte*>();
-            std::memcpy(ptr, &ctx.stack.at(ctx.stack.size() - size), size);
-            ctx.stack.pop_n(size);
+            ctx.stack.pop_and_save(ptr, size);
         } break;
         case op::pop: {
             const auto size = read_advance<std::uint64_t>(ctx);
@@ -163,7 +159,6 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto size = read_advance<std::uint64_t>(ctx);
             std::memcpy(&ctx.stack.at(frame.base_ptr), &ctx.stack.at(ctx.stack.size() - size), size);
             ctx.stack.resize(frame.base_ptr + size);
-
             ctx.frames.pop_back();
         } break;
         case op::call: {
@@ -260,10 +255,10 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto c = ctx.stack.pop<char>();
             std::print("{}", c);
         } break;
-        case op::print_i32: { print_op<std::int32_t>(ctx); } break;
-        case op::print_i64: { print_op<std::int64_t>(ctx); } break;
-        case op::print_u64: { print_op<std::uint64_t>(ctx); } break;
-        case op::print_f64: { print_op<double>(ctx); } break;
+        case op::print_i32: { print_value<std::int32_t>(ctx); } break;
+        case op::print_i64: { print_value<std::int64_t>(ctx); } break;
+        case op::print_u64: { print_value<std::uint64_t>(ctx); } break;
+        case op::print_f64: { print_value<double>(ctx); } break;
         case op::print_char_span: {
             const auto size = ctx.stack.pop<std::uint64_t>();
             const auto ptr = ctx.stack.pop<const char*>();
