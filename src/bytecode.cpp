@@ -52,7 +52,6 @@ auto read_at(const bytecode_context& ctx, std::size_t& ptr) -> T
     return ret;
 }
 
-
 template <typename T>
 requires std::integral<T> || std::floating_point<T> || std::is_same_v<T, std::byte*> || std::is_same_v<T, op>
 auto read_advance(bytecode_context& ctx) -> T
