@@ -234,16 +234,6 @@ auto ends_in_return(const node_stmt& node) -> bool
     }, node);
 }
 
-auto assign_fn_params(const type_name& type) -> type_names
-{
-    return { type.add_ptr(), type.add_const().add_ptr() };
-}
-
-auto copy_fn_params(const type_name& type) -> type_names
-{
-    return { type.add_const().add_ptr() };
-}
-
 // Assumes that the given "push_object_ptr" is a function that compiles code to produce
 // a pointer to an object of the given type. This function compiles
 // code to destruct that object.
@@ -389,44 +379,6 @@ public:
         return scope_guard{com};
     }
 };
-
-// Given an expression, evaluate it and push to the top of the stack. If the expression
-// is an lvalue, copy constructors are invoked. If the expression is a reference, it is
-// automatically dereferenced
-auto push_object_copy(compiler& com, const node_expr& expr, const token& tok) -> type_name
-{
-    const auto [type, is_const] = type_of_expr(com, expr).strip_const();
-
-    if (is_rvalue_expr(expr) || is_type_trivially_copyable(type)) {
-        push_expr_val(com, expr);
-    }
-
-    else if (type.is_array()) {
-        const auto etype = type.remove_array().remove_const();
-        const auto esize = com.types.size_of(etype);
-
-        const auto copy = get_function(com, to_string(etype), "copy");
-        tok.assert(copy.has_value(), "{} cannot be copied", etype);
-        verify_function_call(*copy, copy_fn_params(etype), tok);
-
-        for (const auto idx : range(array_length(type))) {
-            push_expr_ptr(com, expr);
-            push_ptr_adjust(com, idx * esize);
-            push_function_call(com, *copy);
-        }
-    }
-    
-    else {
-        const auto copy = get_function(com, to_string(type), "copy");
-        tok.assert(copy.has_value(), "{} cannot be copied", type);
-        verify_function_call(*copy, copy_fn_params(type), tok);
-
-        push_expr_ptr(com, expr);
-        push_function_call(com, *copy);
-    }
-
-    return is_const ? type.add_const() : type;  // Keep constness intact
-}
 
 // Gets the type of the expression by compiling it, then removes the added
 // op codes to leave the program unchanged before returning the type.
@@ -736,7 +688,7 @@ auto get_converter(const type_name& src, const type_name& dst)
     // pointers can convert to pointers-to-const
     if (src.is_ptr() && dst.is_ptr() && src.remove_ptr() == dst.remove_ptr().remove_const()) {
         return [](compiler& com, const node_expr& expr, const token& tok) {
-            push_object_copy(com, expr, tok);
+            push_expr_val(com, expr);
         };
     }
 
@@ -921,9 +873,9 @@ auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
 {
     node.token.assert(!node.elements.empty(), "cannot have empty array literals");
 
-    const auto inner_type = push_object_copy(com, *node.elements.front(), node.token);
+    const auto inner_type = push_expr_val(com, *node.elements.front());
     for (const auto& element : node.elements | std::views::drop(1)) {
-        const auto element_type = push_object_copy(com, *element, node.token);
+        const auto element_type = push_expr_val(com, *element);
         node.token.assert_eq(element_type, inner_type, "array has mismatching element types");
     }
     return inner_type.add_array(node.elements.size());
@@ -935,7 +887,7 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
 
     const auto inner_type = type_of_expr(com, *node.value);
     for (std::size_t i = 0; i != node.size; ++i) {
-        push_object_copy(com, *node.value, node.token);
+        push_expr_val(com, *node.value);
     }
     return inner_type.add_array(node.size);
 }
@@ -1277,7 +1229,7 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    auto type = push_object_copy(com, *node.expr, node.token);
+    auto type = push_expr_val(com, *node.expr);
     if (node.add_const) {
         type = type.add_const();
     }
@@ -1290,7 +1242,6 @@ auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
     return lhs.remove_const() == rhs.remove_const() && !lhs.is_const();
 }
 
-// TODO: Fix assigning from a ref to a ref (currentl)
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = type_of_expr(com, *node.expr);
@@ -1298,43 +1249,10 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     
     node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs, lhs);
 
-    if (is_rvalue_expr(*node.expr) || is_type_trivially_copyable(rhs.remove_const())) {
-        push_expr_val(com, *node.expr);
-        push_expr_ptr(com, *node.position);
-        push_value(com.program, op::save, com.types.size_of(lhs));
-        return;
-    }
-    
-    if (rhs.is_array()) {
-        const auto etype = rhs.remove_array();
-        const auto inner_size = com.types.size_of(etype);
-
-        const auto assign = get_function(com, to_string(etype), "assign");
-        node.token.assert(assign.has_value(), "{} cannot be assigned", etype);
-        verify_function_call(*assign, assign_fn_params(etype), node.token);
-
-        for (std::size_t i = 0; i != array_length(rhs); ++i) {
-            push_expr_ptr(com, *node.position); // i-th element of dst
-            push_ptr_adjust(com, i * inner_size);
-            push_expr_ptr(com, *node.expr); // i-th element of src
-            push_ptr_adjust(com, i * inner_size);
-
-            push_function_call(com, *assign);
-            push_value(com.program, op::pop, std::size_t{1});
-        }
-
-        return;
-    }
-
-    const auto type = rhs;
-    const auto assign = get_function(com, to_string(type), "assign");
-    node.token.assert(assign.has_value(), "{} cannot be assigned", type);
-    verify_function_call(*assign, assign_fn_params(type), node.token);
-
+    push_expr_val(com, *node.expr);
     push_expr_ptr(com, *node.position);
-    push_expr_ptr(com, *node.expr);
-    push_function_call(com, *assign);
-    push_value(com.program, op::pop, std::size_t{1});
+    push_value(com.program, op::save, com.types.size_of(lhs));
+    return;
 }
 
 auto compile_function_body(
@@ -1405,30 +1323,10 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code
-    node.token.assert(sig.params.size() >= 1, "member functions must have at least one arg");
-
-    // Special function extra checks
-    if (node.function_name == "drop") {
-        node.token.assert_eq(sig.return_type, null_type(), "'drop' bad return type");
-        node.token.assert_eq(sig.params.size(), 1, "'drop' bad number of args");
-        node.token.assert_eq(sig.params[0], expected, "'drop' bad 1st arg");
-    }
-    else if (node.function_name == "copy") {
-        node.token.assert_eq(sig.return_type, struct_type, "'copy' bad return type");
-        node.token.assert_eq(sig.params.size(), 1, "'copy' bad number of args");
-        node.token.assert_eq(sig.params[0], const_expected, "'copy' bad 1st arg");
-    }
-    else if (node.function_name == "assign") {
-        node.token.assert_eq(sig.return_type, null_type(), "'assign' bad return type");
-        node.token.assert_eq(sig.params.size(), 2, "'assign' bad number of args");
-        node.token.assert_eq(sig.params[0], expected, "'assign' bad 1st arg");
-        node.token.assert_eq(sig.params[1], const_expected, "'assign' bad 2nd arg");
-    }
-    else {
-        const auto actual = sig.params.front();
-        if (actual != expected && actual != const_expected) {
-            node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
-        }
+    node.token.assert(sig.params.size() > 0, "member functions must have at least one arg");
+    const auto actual = sig.params.front();
+    if (actual != expected && actual != const_expected) {
+        node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
     }
 }
 
