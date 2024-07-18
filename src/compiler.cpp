@@ -223,13 +223,7 @@ public:
 
     static auto block(compiler& com) -> scope_guard
     {
-        com.scopes.new_block_scope(false);
-        return scope_guard{com};
-    }
-
-    static auto unsafe_block(compiler& com) -> scope_guard
-    {
-        com.scopes.new_block_scope(true);
+        com.scopes.new_block_scope();
         return scope_guard{com};
     }
 
@@ -836,8 +830,6 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
 {
-    node.token.assert(com.scopes.in_unsafe(), "'new' requires an unsafe block");
-
     if (node.size) {
         const auto count = push_expr_val(com, *node.size);
         node.token.assert_eq(count, u64_type(), "invalid array size type");
@@ -864,14 +856,6 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
     const auto scope = scope_guard::block(com);
-    for (const auto& seq_node : node.sequence) {
-        push_stmt(com, *seq_node);
-    }
-}
-
-void push_stmt(compiler& com, const node_unsafe_stmt& node)
-{
-    const auto scope = scope_guard::unsafe_block(com);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -1109,10 +1093,6 @@ auto ends_in_return(const node_stmt& node) -> bool
             if (n.sequence.empty()) { return false; }
             return ends_in_return(*n.sequence.back());
         },
-        [&](const node_unsafe_stmt& n) {
-            if (n.sequence.empty()) { return false; }
-            return ends_in_return(*n.sequence.back());
-        },
         [&](const node_if_stmt& n) {
             if (!n.else_body) { return false; } // both branches must exist
             return ends_in_return(*n.body) && ends_in_return(*n.else_body);
@@ -1216,10 +1196,6 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 
 void push_stmt(compiler& com, const node_delete_stmt& node)
 {
-    if (!com.scopes.in_unsafe()) {
-        node.token.error("Cannot have a 'delete' statement outside of an unsafe block");
-    }
-
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_span()) {
         push_expr_val(com, *node.expr);

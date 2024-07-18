@@ -83,7 +83,6 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "true")     return token_type::kw_true;
     if (token == "typeof")   return token_type::kw_typeof;
     if (token == "u64")      return token_type::kw_u64;
-    if (token == "unsafe")   return token_type::kw_unsafe;
     if (token == "var")      return token_type::kw_var;
     if (token == "while")    return token_type::kw_while;
     return token_type::identifier;

@@ -247,7 +247,7 @@ struct container
 }
 
 # Dynamic memory check
-unsafe {
+{
     var x := new i64;
     x@ = 5;
     print("{}\n", x@);
