@@ -1,2 +1,2 @@
 
-print("{}\n", sizeof("hello there 111111111"));
+print("Hello {} world\n", 5);

@@ -199,26 +199,6 @@ auto get_constructor_params(const compiler& com, const type_name& type) -> std::
     return params;
 }
 
-auto ends_in_return(const node_stmt& node) -> bool
-{
-    return std::visit(overloaded{
-        [&](const node_sequence_stmt& n) {
-            if (n.sequence.empty()) { return false; }
-            return ends_in_return(*n.sequence.back());
-        },
-        [&](const node_unsafe_stmt& n) {
-            if (n.sequence.empty()) { return false; }
-            return ends_in_return(*n.sequence.back());
-        },
-        [&](const node_if_stmt& n) {
-            if (!n.else_body) { return false; } // both branches must exist
-            return ends_in_return(*n.body) && ends_in_return(*n.else_body);
-        },
-        [](const node_return_stmt&) { return true; },
-        [](const auto&)             { return false; }
-    }, node);
-}
-
 class scope_guard
 {
     compiler* d_com;
@@ -925,7 +905,13 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
     });
 }
 
-void push_break(compiler& com, const token& tok);
+void push_break(compiler& com, const token& tok)
+{
+    tok.assert(com.scopes.in_loop(), "cannot use 'break' outside of a loop");
+    push_value(com.program, op::jump);
+    const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
+    com.scopes.get_loop_info().breaks.insert(pos);
+}
 
 /*
 while <condition> {
@@ -1083,14 +1069,6 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     }
 }
 
-void push_break(compiler& com, const token& tok)
-{
-    tok.assert(com.scopes.in_loop(), "cannot use 'break' outside of a loop");
-    push_value(com.program, op::jump);
-    const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.scopes.get_loop_info().breaks.insert(pos);
-}
-
 void push_stmt(compiler& com, const node_break_stmt& node)
 {
     push_break(com, node.token);
@@ -1122,6 +1100,26 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs, lhs);
     push_value(com.program, op::save, com.types.size_of(lhs));
     return;
+}
+
+auto ends_in_return(const node_stmt& node) -> bool
+{
+    return std::visit(overloaded{
+        [&](const node_sequence_stmt& n) {
+            if (n.sequence.empty()) { return false; }
+            return ends_in_return(*n.sequence.back());
+        },
+        [&](const node_unsafe_stmt& n) {
+            if (n.sequence.empty()) { return false; }
+            return ends_in_return(*n.sequence.back());
+        },
+        [&](const node_if_stmt& n) {
+            if (!n.else_body) { return false; } // both branches must exist
+            return ends_in_return(*n.body) && ends_in_return(*n.else_body);
+        },
+        [](const node_return_stmt&) { return true; },
+        [](const auto&)             { return false; }
+    }, node);
 }
 
 auto compile_function_body(
@@ -1188,7 +1186,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     const auto struct_type = make_type(node.struct_name);
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
-    // Verification code
+    // First argument must be a pointer to an instance of the class
     node.token.assert(sig.params.size() > 0, "member functions must have at least one arg");
     const auto actual = sig.params.front();
     const auto expected = struct_type.add_const().add_ptr();
@@ -1247,7 +1245,7 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 
 // Temp: remove this for a more efficient function
 auto string_replace(
-    std::string subject, const std::string& search, const std::string& replace
+    std::string subject, std::string_view search, std::string_view replace
 )
     -> std::string
 {
@@ -1260,7 +1258,7 @@ auto string_replace(
 }
 
 // Temp: remove this for a more efficient function
-auto string_split(std::string s, std::string delimiter) -> std::vector<std::string>
+auto string_split(std::string s, std::string_view delimiter) -> std::vector<std::string>
 {
     std::size_t pos_start = 0;
     std::size_t pos_end = 0;
