@@ -1318,15 +1318,19 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
-    const auto expected = struct_type.add_ptr();
-    const auto const_expected = struct_type.add_const().add_ptr();
     const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // Verification code
     node.token.assert(sig.params.size() > 0, "member functions must have at least one arg");
     const auto actual = sig.params.front();
-    if (actual != expected && actual != const_expected) {
-        node.token.error("'{}' bad 1st arg: expected {}, got {}", node.function_name, expected, actual);
+    const auto expected = struct_type.add_const().add_ptr();
+    if (!is_assignable(expected, actual)) {
+        node.token.error(
+            "'{}' bad 1st arg: expected {} or {}, got {}",
+            node.function_name,
+            struct_type.add_ptr(),
+            struct_type.add_const().add_ptr(),
+            actual);
     }
 }
 
