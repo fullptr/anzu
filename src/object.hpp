@@ -143,8 +143,6 @@ auto inner_type(const type_name& t) -> type_name;
 // Extracts the array size of the given type. Undefined if the given t is not an array
 auto array_length(const type_name& t) -> std::size_t;
 
-auto is_type_trivially_copyable(const type_name& type) -> bool;
-
 class type_store
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });

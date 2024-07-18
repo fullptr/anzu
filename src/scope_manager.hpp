@@ -53,19 +53,18 @@ class scope
 {
     scope_info                   d_info;
     std::shared_ptr<std::size_t> d_next;
-    bool                         d_unsafe;
     std::vector<variable>        d_variables;
+    std::size_t                  d_scope_size;
 
 public:
     scope(
         const scope_info& info,
-        const std::shared_ptr<std::size_t>& next_var_location,
-        bool unsafe
+        const std::shared_ptr<std::size_t>& next_var_location
     )
         : d_info{info}
         , d_next(next_var_location)
-        , d_unsafe{unsafe}
         , d_variables{}
+        , d_scope_size{0}
     {}
 
     ~scope()
@@ -87,8 +86,11 @@ public:
         }
         d_variables.emplace_back(name, type, *d_next, size, is_location_relative);
         *d_next += size;
+        d_scope_size += size;
         return true;
     }
+
+    auto scope_size() const -> std::size_t { return d_scope_size; }
 
     auto find(const std::string& name) const -> std::optional<variable>
     {
@@ -108,7 +110,6 @@ public:
     auto as() -> ScopeType& { return std::get<ScopeType>(d_info); }
 
     auto get_location_counter() { return d_next; }
-    auto is_unsafe() const -> bool { return d_unsafe; }
 
     auto variables() const -> std::span<const variable> { return d_variables; }
 };
@@ -130,18 +131,16 @@ public:
         auto next = std::make_shared<std::size_t>(0);
         d_scopes.emplace_back(std::make_shared<scope>(
             global_scope{ .next_var_location = next },
-            next,
-            false
+            next
         ));
     }
 
-    auto new_block_scope(bool unsafe) -> void
+    auto new_block_scope() -> void
     {
         panic_if(d_scopes.empty(), "Cannot add a block scope before a global scope");
         d_scopes.emplace_back(std::make_shared<scope>(
             block_scope{},
-            current()->get_location_counter(),
-            unsafe || current()->is_unsafe()
+            current()->get_location_counter()
         ));
     }
 
@@ -154,8 +153,7 @@ public:
                 .return_type = return_type,
                 .next_var_location = next
             },
-            next,
-            current()->is_unsafe()
+            next
         ));
     }
 
@@ -164,8 +162,7 @@ public:
         panic_if(d_scopes.empty(), "Cannot add a loop scope before a global scope");
         d_scopes.emplace_back(std::make_shared<scope>(
             loop_scope{},
-            current()->get_location_counter(),
-            current()->is_unsafe()
+            current()->get_location_counter()
         ));
     }
 
@@ -213,12 +210,6 @@ public:
             if (scope->is<function_scope>()) return true;
         }
         return false;
-    }
-
-    // We propagate the unsafeness value, so only need to check the top scope
-    auto in_unsafe() const -> bool
-    {
-        return d_scopes.back()->is_unsafe();
     }
 
     auto get_loop_info() -> loop_scope&

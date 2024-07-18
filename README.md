@@ -98,14 +98,6 @@ An interpreted programming language written in C++. This started out as a stack-
         }
     }
     ```
-* `unsafe` blocks:
-    ```cpp
-    unsafe
-    {
-        <body>
-    }
-    ```
-* `new` and `delete` for allocating memory. These are only useful within unsafe code and all usage should be wrapped in a safe container.
 * All the common arithmetic, comparison and logical operators. More will be implemented.
 * Builtin functions.
 
