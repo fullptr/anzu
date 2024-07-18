@@ -1236,13 +1236,9 @@ auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
-    const auto rhs = type_of_expr(com, *node.expr);
-    const auto lhs = type_of_expr(com, *node.position);
-    
+    const auto rhs = push_expr_val(com, *node.expr);
+    const auto lhs = push_expr_ptr(com, *node.position);
     node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs, lhs);
-
-    push_expr_val(com, *node.expr);
-    push_expr_ptr(com, *node.position);
     push_value(com.program, op::save, com.types.size_of(lhs));
     return;
 }

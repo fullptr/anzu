@@ -1,8 +1,3 @@
-# Function pointer check
-fn print_success() -> null
-{
-    print("Success!\n");
-}
-
-var function_ptr := print_success;
-function_ptr();
+var x := 1.0;
+var y := 100.0;
+x = y;
