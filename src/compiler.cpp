@@ -1221,12 +1221,8 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    auto type = push_expr_val(com, *node.expr);
-    if (node.add_const) {
-        type = type.add_const();
-    }
-    
-    declare_var(com, node.token, node.name, type);
+    const auto type = push_expr_val(com, *node.expr);
+    declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
 }
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
