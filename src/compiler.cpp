@@ -142,17 +142,13 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
-    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", type);
-    const auto size = com.types.size_of(type);
-    push_value(com.program, op::load, size);
+    push_value(com.program, op::load, com.types.size_of(type));
 }
 
 auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
-    panic_if(!is_type_trivially_copyable(type), "Type '{}' is not trivially copyable", type);
-    const auto size = com.types.size_of(type);
-    push_value(com.program, op::save, size);
+    push_value(com.program, op::save, com.types.size_of(type));
 }
 
 // Given a type and a field name, push the offset of the fields position relative to its

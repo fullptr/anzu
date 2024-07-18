@@ -259,20 +259,6 @@ auto array_length(const type_name& t) -> std::size_t
     return std::get<type_array>(mut_type).count;
 }
 
-auto is_type_trivially_copyable(const type_name& type) -> bool
-{
-    // TODO: Allow for trivially copyable struct types
-    return std::visit(overloaded{
-        [](type_fundamental)         { return true; },
-        [](const type_struct&)       { return false; },
-        [](const type_array& t)      { return is_type_trivially_copyable(*t.inner_type); },
-        [](const type_span&)         { return true; },
-        [](const type_ptr&)          { return true; },
-        [](const type_function_ptr&) { return true; },
-        [](const type_const& t)      { return is_type_trivially_copyable(*t.inner_type); }
-    }, type);
-}
-
 auto type_store::add(const type_name& name, const type_fields& fields) -> bool
 {
     if (d_classes.contains(name)) {
