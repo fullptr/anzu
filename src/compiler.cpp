@@ -1225,10 +1225,8 @@ void push_stmt(compiler& com, const node_return_stmt& node)
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
-    // Create the temporary in a new scope, and use that to deallocate
-    const auto scope = scope_guard::block(com);
     const auto type = push_expr_val(com, *node.expr);
-    declare_var(com, node.token, "#:temp", type);
+    push_value(com.program, op::pop, com.types.size_of(type));
 }
 
 void push_stmt(compiler& com, const node_delete_stmt& node)
