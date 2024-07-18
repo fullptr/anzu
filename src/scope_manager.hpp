@@ -55,6 +55,7 @@ class scope
     std::shared_ptr<std::size_t> d_next;
     bool                         d_unsafe;
     std::vector<variable>        d_variables;
+    std::size_t                  d_scope_size;
 
 public:
     scope(
@@ -66,6 +67,7 @@ public:
         , d_next(next_var_location)
         , d_unsafe{unsafe}
         , d_variables{}
+        , d_scope_size{0}
     {}
 
     ~scope()
@@ -87,8 +89,11 @@ public:
         }
         d_variables.emplace_back(name, type, *d_next, size, is_location_relative);
         *d_next += size;
+        d_scope_size += size;
         return true;
     }
+
+    auto scope_size() const -> std::size_t { return d_scope_size; }
 
     auto find(const std::string& name) const -> std::optional<variable>
     {

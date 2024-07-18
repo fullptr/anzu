@@ -63,7 +63,6 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
-auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void;
 
 auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) -> type_name
 {
@@ -230,111 +229,6 @@ auto ends_in_return(const node_stmt& node) -> bool
     }, node);
 }
 
-// Assumes that the given "push_object_ptr" is a function that compiles code to produce
-// a pointer to an object of the given type. This function compiles
-// code to destruct that object.
-using compile_obj_ptr_cb = std::function<void(const token&)>;
-auto call_destructor(compiler& com, const type_name& type, compile_obj_ptr_cb push_object_ptr) -> void
-{
-    std::visit(overloaded{
-        [&](const type_struct&) {
-            const auto params = type_names{ type.add_ptr() };
-            if (const auto func = get_function(com, to_string(type), "drop"); func) {
-                verify_function_call(*func, params, func->tok);
-                // Push the args to the stack
-                push_object_ptr(func->tok);
-                push_function_call(com, *func);
-                push_value(com.program, op::pop, com.types.size_of(func->sig.return_type));
-            }
-
-            // Loop through the fields and call their destructors.
-            const auto fields = com.types.fields_of(type);
-            for (const auto& field : fields | std::views::reverse) {
-                call_destructor(com, field.type, [&](const token& tok) {
-                    push_object_ptr(tok);
-                    push_adjust_ptr_to_field(com, tok, type, field.name);
-                });
-            }
-        },
-        [&](const type_array& type) {
-            // Loop backwards through each element in the array and call the destructor
-            for (const auto idx : range(array_length(type)) | std::views::reverse) {
-                call_destructor(com, *type.inner_type, [&] (const token& tok) {
-                    push_object_ptr(tok);
-                    push_ptr_adjust(com, idx * com.types.size_of(*type.inner_type));
-                });
-            }
-        },
-        [&](const type_const& t) { // Strip off the const and call function again
-            call_destructor(com, type.remove_const(), push_object_ptr);
-        },
-        [](type_fundamental) {},
-        [](const type_ptr&) {},
-        [](const type_span&) {},
-        [](const type_function_ptr&) {},
-    }, type);
-}
-
-auto call_destructor_named_var(compiler& com, const std::string& var, const type_name& type) -> void
-{
-    if (var.starts_with('#')) { return; } // Compiler intrinsic vars can be skipped
-    call_destructor(com, type, [&](const token& tok) {
-        push_var_addr(com, tok, var);
-    });
-}
-
-auto destruct_on_break_or_continue(compiler& com) -> void
-{
-    for (const auto& scope : com.scopes.all() | std::views::reverse) {
-        for (const auto& var : scope->variables() | std::views::reverse) {
-            call_destructor_named_var(com, var.name, var.type);
-        }
-        if (scope->is<loop_scope>()) return;
-    }
-}
-
-auto destruct_on_return(compiler& com, const node_return_stmt* node = nullptr) -> void
-{
-    auto return_variable = std::string{"#"};
-    auto skip_return_destructor = true;
-    if (node && std::holds_alternative<node_name_expr>(*node->return_value)) {
-        return_variable = std::get<node_name_expr>(*node->return_value).name;
-    }
-    for (const auto& scope : com.scopes.all() | std::views::reverse) {
-        for (const auto& var : scope->variables() | std::views::reverse) {
-            // If the return expr is just a variable name, do not destruct that object.
-            // Further, if there is a variable in an outer scope with the same name, make
-            // sure to only skip destructing the inner one
-            if (var.name != return_variable || !skip_return_destructor) {
-                call_destructor_named_var(com, var.name, var.type);
-            }
-            else {
-                skip_return_destructor = false;
-            }
-        }
-        if (scope->is<function_scope>()) return;
-    }
-}
-
-auto destruct_on_end_of_scope(compiler& com) -> void
-{
-    auto current = com.scopes.current();
-
-    // destruct all variables in the current scope
-    auto scope_size = std::size_t{0};
-    for (const auto& variable : current->variables() | std::views::reverse) {
-        scope_size += variable.size;
-        call_destructor_named_var(com, variable.name, variable.type);
-    }
-
-    // deallocate all space used by the scope
-    if (scope_size > 0) {
-        push_value(com.program, op::pop, scope_size);
-    }
-
-    com.scopes.pop_scope();
-}
-
 class scope_guard
 {
     compiler* d_com;
@@ -343,7 +237,13 @@ class scope_guard
     scope_guard& operator=(const scope_guard&) = delete;
 
 public:
-    ~scope_guard() { destruct_on_end_of_scope(*d_com); }
+    ~scope_guard() {
+        const auto scope_size = d_com->scopes.current()->scope_size();
+        d_com->scopes.pop_scope();
+        if (scope_size > 0) {
+            push_value(d_com->program, op::pop, scope_size);
+        }    
+    }
 
     static auto global(compiler& com) -> scope_guard
     {
@@ -1199,7 +1099,6 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 void push_break(compiler& com, const token& tok)
 {
     tok.assert(com.scopes.in_loop(), "cannot use 'break' outside of a loop");
-    destruct_on_break_or_continue(com);
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
     com.scopes.get_loop_info().breaks.insert(pos);
@@ -1213,7 +1112,6 @@ void push_stmt(compiler& com, const node_break_stmt& node)
 void push_stmt(compiler& com, const node_continue_stmt& node)
 {
     node.token.assert(com.scopes.in_loop(), "cannot use 'continue' outside of a loop");
-    destruct_on_break_or_continue(com);
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
     com.scopes.get_loop_info().continues.insert(pos);
@@ -1278,7 +1176,6 @@ auto compile_function_body(
             // A function returning null does not need a final return statement, and in this case
             // we manually add a return value of null here.
             if (sig.return_type == null_type()) {
-                destruct_on_return(com);
                 push_value(com.program, op::push_null);
                 push_value(com.program, op::ret, std::uint64_t{1});
             } else {
@@ -1321,7 +1218,6 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
     node.token.assert(com.scopes.in_function(), "can only return within functions");
-    destruct_on_return(com, &node);
     const auto return_type = push_expr_val(com, *node.return_value);
     node.token.assert_eq(return_type, com.scopes.get_function_info().return_type, "wrong return type");
     push_value(com.program, op::ret, com.types.size_of(return_type));
@@ -1329,7 +1225,7 @@ void push_stmt(compiler& com, const node_return_stmt& node)
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
-    // Create the temporary in a new scope, and use that to call it's destructor
+    // Create the temporary in a new scope, and use that to deallocate
     const auto scope = scope_guard::block(com);
     const auto type = push_expr_val(com, *node.expr);
     declare_var(com, node.token, "#:temp", type);
