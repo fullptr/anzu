@@ -51,11 +51,8 @@ struct compiler
     std::string            read_only_data;
 
     bool debug = false;
-
     std::unordered_map<std::string, function_info> functions;
-
-    type_store types; // TODO: store a flag in here to say if a type is default/deleted/implemented copyable/assignable
-
+    type_store types;
     scope_manager scopes;
 };
 
@@ -81,13 +78,6 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 
     tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", resolved_type);
     return resolved_type;
-}
-
-auto push_ptr_adjust(compiler& com, std::size_t offset) -> void
-{
-    if (offset > 0) {
-        push_value(com.program, op::push_u64, offset, op::u64_add); // modify ptr
-    }
 }
 
 auto are_types_convertible_to(const std::vector<type_name>& args,
@@ -574,7 +564,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 auto get_converter(const type_name& src, const type_name& dst)
     -> void(*)(compiler&, const node_expr&, const token&)
 {
-    if (src.is_array() && dst.is_span()) {
+    if (src.is_array() && dst.is_span() && src.remove_array() == dst.remove_span()) {
         return [](compiler& com, const node_expr& expr, const token& tok) {
             const auto type = push_expr_ptr(com, expr);
             push_value(com.program, op::push_u64, array_length(type));
@@ -797,9 +787,6 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-
-    // References act like aliases, so calling sizeof on a reference returns the size
-    // of the inner type. References will not be directly spellable eventually.
     push_value(com.program, op::push_u64, com.types.size_of(type));
     return u64_type();
 }
