@@ -121,17 +121,6 @@ struct vec2
 {
     x: i64;
     y: i64;
-
-    fn copy(self: (const vec2)&) -> vec2
-    {
-        return vec2(self.x, self.y);
-    }
-
-    fn assign(self: vec2&, other: (const vec2)&)
-    {
-        self.x = other.x;
-        self.y = other.y;
-    }
 }
 
 fn print_vec2(v: vec2) -> null
@@ -189,18 +178,6 @@ struct vec3
         let z_squared := square(self.z);
         return sqrt(x_squared + y_squared + z_squared);
     }
-
-    fn copy(self: (const vec3)&) -> vec3
-    {
-        return vec3(self.x, self.y, self.z);
-    }
-
-    fn assign(self: vec3&, other: (const vec3)&)
-    {
-        self.x = other.x;
-        self.y = other.y;
-        self.z = other.z;
-    }
 }
 
 # Member function testing
@@ -247,22 +224,6 @@ fn typeof_example2(a: u64) -> typeof(a)
     return a * a;
 }
 print("{}\n", typeof_example2(6u));
-
-# test destructors
-struct destructible
-{
-    val: i64;
-
-    fn drop(self: destructible&)
-    {
-        print("dropping {}\n", self.val);
-    }
-}
-
-{
-    let a := destructible(1);
-    let b := destructible(2);
-}
 
 {
     var v1 := vec3(1.0, 1.0, 1.0);
