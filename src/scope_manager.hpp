@@ -120,11 +120,6 @@ class scope_manager
 
 public:
 
-    auto current() -> std::shared_ptr<scope>
-    {
-        return d_scopes.back();
-    }
-
     auto new_global_scope() -> void
     {
         panic_if(!d_scopes.empty(), "Can only have a global scope at the top level");
@@ -140,7 +135,7 @@ public:
         panic_if(d_scopes.empty(), "Cannot add a block scope before a global scope");
         d_scopes.emplace_back(std::make_shared<scope>(
             block_scope{},
-            current()->get_location_counter()
+            d_scopes.back()->get_location_counter()
         ));
     }
 
@@ -162,7 +157,7 @@ public:
         panic_if(d_scopes.empty(), "Cannot add a loop scope before a global scope");
         d_scopes.emplace_back(std::make_shared<scope>(
             loop_scope{},
-            current()->get_location_counter()
+            d_scopes.back()->get_location_counter()
         ));
     }
 
