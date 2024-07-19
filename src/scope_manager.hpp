@@ -34,11 +34,7 @@ struct loop_scope
     std::vector<std::size_t> breaks;
 };
 
-using scope_info = std::variant<
-    simple_scope,
-    function_scope,
-    loop_scope
->;
+using scope_info = std::variant<simple_scope, function_scope, loop_scope>;
 
 class scope
 {
