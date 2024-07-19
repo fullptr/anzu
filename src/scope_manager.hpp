@@ -166,10 +166,12 @@ public:
         ));
     }
 
-    auto pop_scope() -> void
+    auto pop_scope() -> std::size_t
     {
         panic_if(d_scopes.empty(), "Tried to pop a scope, but there are none!");
+        const auto size = d_scopes.back()->scope_size();
         d_scopes.pop_back();
+        return size;
     }
 
     auto declare(

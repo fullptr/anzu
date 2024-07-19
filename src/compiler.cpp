@@ -208,8 +208,7 @@ class scope_guard
 
 public:
     ~scope_guard() {
-        const auto scope_size = d_com->scopes.current()->scope_size();
-        d_com->scopes.pop_scope();
+        const auto scope_size = d_com->scopes.pop_scope();
         if (scope_size > 0) {
             push_value(d_com->program, op::pop, scope_size);
         }    
