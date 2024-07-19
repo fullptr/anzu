@@ -123,7 +123,7 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
 {
     const auto var = com.scopes.find(name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
-    const auto op = var->is_location_relative ? op::push_ptr_local : op::push_ptr_global;
+    const auto op = var->is_local ? op::push_ptr_local : op::push_ptr_global;
     push_value(com.program, op, var->location);
     return var->type;
 }
@@ -214,15 +214,9 @@ public:
         }    
     }
 
-    static auto global(compiler& com) -> scope_guard
+    static auto scope(compiler& com) -> scope_guard
     {
-        com.scopes.new_global_scope();
-        return scope_guard{com};
-    }
-
-    static auto block(compiler& com) -> scope_guard
-    {
-        com.scopes.new_block_scope();
+        com.scopes.new_scope();
         return scope_guard{com};
     }
 
@@ -854,7 +848,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = scope_guard::block(com);
+    const auto scope = scope_guard::scope(com);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -866,7 +860,7 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
     
     const auto begin_pos = com.program.size();
     {
-        const auto body_scope = scope_guard::block(com);
+        const auto body_scope = scope_guard::scope(com);
         body();
     }
     push_value(com.program, op::jump, begin_pos);
@@ -946,7 +940,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    const auto scope = scope_guard::block(com);
+    const auto scope = scope_guard::scope(com);
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -1321,7 +1315,7 @@ auto compile(
     auto com = compiler{};
     com.debug = debug;
     {
-        const auto global_scope = scope_guard::global(com);
+        const auto global_scope = scope_guard::scope(com);
         auto done = std::set<std::filesystem::path>{};
         auto remaining = std::set<std::filesystem::path>{}; 
         for (const auto& [file, mod] : modules) {

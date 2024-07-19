@@ -18,22 +18,16 @@ struct variable
     type_name   type;
     std::size_t location;
     std::size_t size;
-    bool        is_location_relative;
+    bool        is_local;
 };
 
-struct global_scope
+struct simple_scope
 {
-    std::shared_ptr<std::size_t> next_var_location;
 };
 
 struct function_scope
 {
-    type_name                    return_type;
-    std::shared_ptr<std::size_t> next_var_location;
-};
-
-struct block_scope
-{
+    type_name return_type;
 };
 
 struct loop_scope
@@ -43,54 +37,42 @@ struct loop_scope
 };
 
 using scope_info = std::variant<
-    global_scope,
+    simple_scope,
     function_scope,
-    block_scope,
     loop_scope
 >;
 
 class scope
 {
-    scope_info                   d_info;
-    std::shared_ptr<std::size_t> d_next;
-    std::vector<variable>        d_variables;
-    std::size_t                  d_scope_size;
+    scope_info            d_info;
+    std::vector<variable> d_variables;
+    std::size_t           d_start;
+    std::size_t           d_next;
 
 public:
-    scope(
-        const scope_info& info,
-        const std::shared_ptr<std::size_t>& next_var_location
-    )
+    scope(const scope_info& info, std::size_t start_location)
         : d_info{info}
-        , d_next(next_var_location)
         , d_variables{}
-        , d_scope_size{0}
+        , d_start(start_location)
+        , d_next(start_location)
     {}
-
-    ~scope()
-    {   
-        for (const auto var : d_variables) {
-            *d_next -= var.size;
-        }
-    }
 
     auto declare(
         const std::string& name,
         const type_name& type,
         std::size_t size,
-        bool is_location_relative
+        bool is_local
     ) -> bool
     {
         for (const auto& var : d_variables) {
             if (var.name == name) return false;
         }
-        d_variables.emplace_back(name, type, *d_next, size, is_location_relative);
-        *d_next += size;
-        d_scope_size += size;
+        d_variables.emplace_back(name, type, d_next, size, is_local);
+        d_next += size;
         return true;
     }
 
-    auto scope_size() const -> std::size_t { return d_scope_size; }
+    auto scope_size() const -> std::size_t { return d_next - d_start; }
 
     auto find(const std::string& name) const -> std::optional<variable>
     {
@@ -109,7 +91,7 @@ public:
     template <typename ScopeType>
     auto as() -> ScopeType& { return std::get<ScopeType>(d_info); }
 
-    auto get_location_counter() { return d_next; }
+    auto next_location() { return d_next; }
 
     auto variables() const -> std::span<const variable> { return d_variables; }
 };
@@ -120,44 +102,27 @@ class scope_manager
 
 public:
 
-    auto new_global_scope() -> void
+    auto new_scope() -> void
     {
-        panic_if(!d_scopes.empty(), "Can only have a global scope at the top level");
-        auto next = std::make_shared<std::size_t>(0);
         d_scopes.emplace_back(std::make_shared<scope>(
-            global_scope{ .next_var_location = next },
-            next
-        ));
-    }
-
-    auto new_block_scope() -> void
-    {
-        panic_if(d_scopes.empty(), "Cannot add a block scope before a global scope");
-        d_scopes.emplace_back(std::make_shared<scope>(
-            block_scope{},
-            d_scopes.back()->get_location_counter()
+            simple_scope{},
+            d_scopes.empty() ? 0 : d_scopes.back()->next_location()
         ));
     }
 
     auto new_function_scope(const type_name& return_type) -> void
     {
-        panic_if(d_scopes.empty(), "Cannot add a function scope before a global scope");
-        auto next = std::make_shared<std::size_t>(0);
         d_scopes.emplace_back(std::make_shared<scope>(
-            function_scope{
-                .return_type = return_type,
-                .next_var_location = next
-            },
-            next
+            function_scope{ .return_type = return_type },
+            0
         ));
     }
 
     auto new_loop_scope() -> void
     {
-        panic_if(d_scopes.empty(), "Cannot add a loop scope before a global scope");
         d_scopes.emplace_back(std::make_shared<scope>(
             loop_scope{},
-            d_scopes.back()->get_location_counter()
+            d_scopes.back()->next_location()
         ));
     }
 
