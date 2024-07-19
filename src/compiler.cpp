@@ -1345,10 +1345,10 @@ auto compile(
         }
     }
 
-    if (!com.scopes.all().empty()) {
+    if (com.scopes.size() > 0) {
         panic(
             "Logic Error: There are {} unhandled scopes at the end of compilation",
-            com.scopes.all().size()
+            com.scopes.size()
         );
     }
 
