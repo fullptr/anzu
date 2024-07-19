@@ -887,7 +887,7 @@ void push_break(compiler& com, const token& tok)
     tok.assert(com.scopes.in_loop(), "cannot use 'break' outside of a loop");
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.scopes.get_loop_info().breaks.insert(pos);
+    com.scopes.get_loop_info().breaks.push_back(pos);
 }
 
 /*
@@ -1056,7 +1056,7 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
     node.token.assert(com.scopes.in_loop(), "cannot use 'continue' outside of a loop");
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.scopes.get_loop_info().continues.insert(pos);
+    com.scopes.get_loop_info().continues.push_back(pos);
 }
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void

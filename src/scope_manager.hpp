@@ -5,8 +5,6 @@
 #include <cstdint>
 #include <optional>
 #include <vector>
-#include <unordered_map>
-#include <unordered_set>
 #include <span>
 #include <variant>
 
@@ -32,8 +30,8 @@ struct function_scope
 
 struct loop_scope
 {
-    std::unordered_set<std::size_t> continues;
-    std::unordered_set<std::size_t> breaks;
+    std::vector<std::size_t> continues;
+    std::vector<std::size_t> breaks;
 };
 
 using scope_info = std::variant<
