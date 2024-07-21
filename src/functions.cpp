@@ -1,6 +1,6 @@
 #include "functions.hpp"
 #include "object.hpp"
-#include "bytecode.hpp"
+#include "runtime.hpp"
 #include "utility/common.hpp"
 #include "utility/memory.hpp"
 

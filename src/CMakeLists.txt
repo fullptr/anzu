@@ -15,6 +15,7 @@ add_executable(
     object.cpp
     functions.cpp
     bytecode.cpp
+    runtime.cpp
 )
 
 target_include_directories(anzu PRIVATE .)

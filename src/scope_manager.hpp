@@ -100,18 +100,12 @@ public:
 
     auto new_function_scope(const type_name& return_type) -> void
     {
-        d_scopes.emplace_back(
-            function_scope{ .return_type = return_type },
-            0
-        );
+        d_scopes.emplace_back(function_scope{return_type}, 0);
     }
 
     auto new_loop_scope() -> void
     {
-        d_scopes.emplace_back(
-            loop_scope{},
-            d_scopes.back().next_location()
-        );
+        d_scopes.emplace_back(loop_scope{}, d_scopes.back().next_location());
     }
 
     auto pop_scope() -> std::size_t
