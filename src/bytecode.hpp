@@ -12,6 +12,9 @@ struct bytecode_program
     std::string            rom;
 };
 
+auto print_program(const bytecode_program& prog) -> void;
+auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t;
+
 enum class op : std::uint8_t
 {
     push_i32,
