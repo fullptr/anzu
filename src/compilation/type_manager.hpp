@@ -5,6 +5,13 @@
 
 namespace anzu {
 
+struct field
+{
+    std::string name;
+    type_name   type;
+    auto operator==(const field&) const -> bool = default;
+};
+
 class type_manager
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });

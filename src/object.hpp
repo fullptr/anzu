@@ -104,13 +104,6 @@ struct type_name : public std::variant<
 
 using type_names = std::vector<type_name>;
 
-struct field
-{
-    std::string name;
-    type_name   type;
-    auto operator==(const field&) const -> bool = default;
-};
-
 auto hash(const type_name& type) -> std::size_t;
 auto hash(type_fundamental type) -> std::size_t;
 auto hash(const type_struct& type) -> std::size_t;
