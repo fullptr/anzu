@@ -1012,6 +1012,7 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
     const auto type = push_expr_val(com, *node.expr);
+    node.token.assert(!type.is_arena(), "cannot create copies of arenas");
     declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
 }
 
@@ -1022,18 +1023,18 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
     declare_var(com, node.token, node.name, type);
 }
 
-auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
+auto assert_assignable(const token& tok, const type_name& lhs, const type_name& rhs) -> void
 {
-    if (lhs.is_const()) return false;
-
-    return lhs == rhs.remove_const();
+    if (lhs.is_const()) tok.error("cannot assign to a const variable");
+    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
+    if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = push_expr_val(com, *node.expr);
     const auto lhs = push_expr_ptr(com, *node.position);
-    node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs, lhs);
+    assert_assignable(node.token, lhs, rhs);
     push_value(com.program, op::save, com.types.size_of(lhs));
     return;
 }
@@ -1122,14 +1123,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     node.token.assert(sig.params.size() > 0, "member functions must have at least one arg");
     const auto actual = sig.params.front();
     const auto expected = struct_type.add_const().add_ptr();
-    if (!is_assignable(expected, actual)) {
-        node.token.error(
-            "'{}' bad 1st arg: expected {} or {}, got {}",
-            node.function_name,
-            struct_type.add_ptr(),
-            struct_type.add_const().add_ptr(),
-            actual);
-    }
+    assert_assignable(node.token, expected, actual);
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)

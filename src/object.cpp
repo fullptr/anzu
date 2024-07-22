@@ -265,6 +265,11 @@ auto type_name::is_function_ptr() const -> bool
     return std::holds_alternative<type_function_ptr>(*this);
 }
 
+auto type_name::is_arena() const -> bool
+{
+    return std::holds_alternative<type_arena>(*this);
+}
+
 auto inner_type(const type_name& t) -> type_name
 {
     if (t.is_array()) {

@@ -88,25 +88,26 @@ struct type_name : public std::variant<
 
     [[nodiscard]] auto is_fundamental() const -> bool;
 
-    [[nodicard]] auto is_ptr() const -> bool;
-    [[nodicard]] auto add_ptr() const -> type_name;
-    [[nodicard]] auto remove_ptr() const -> type_name;
+    [[nodiscard]] auto is_ptr() const -> bool;
+    [[nodiscard]] auto add_ptr() const -> type_name;
+    [[nodiscard]] auto remove_ptr() const -> type_name;
  
-    [[nodicard]] auto is_const() const -> bool;
-    [[nodicard]] auto add_const() const -> type_name;
-    [[nodicard]] auto remove_const() const -> type_name;
+    [[nodiscard]] auto is_const() const -> bool;
+    [[nodiscard]] auto add_const() const -> type_name;
+    [[nodiscard]] auto remove_const() const -> type_name;
 
-    [[nodicard]] auto is_array() const -> bool;
-    [[nodicard]] auto add_array(std::size_t size) const -> type_name;
-    [[nodicard]] auto remove_array() const -> type_name;
+    [[nodiscard]] auto is_array() const -> bool;
+    [[nodiscard]] auto add_array(std::size_t size) const -> type_name;
+    [[nodiscard]] auto remove_array() const -> type_name;
 
-    [[nodicard]] auto is_span() const -> bool;
-    [[nodicard]] auto add_span() const -> type_name;
-    [[nodicard]] auto remove_span() const -> type_name;
+    [[nodiscard]] auto is_span() const -> bool;
+    [[nodiscard]] auto add_span() const -> type_name;
+    [[nodiscard]] auto remove_span() const -> type_name;
 
-    [[nodicard]] auto is_function_ptr() const -> bool;
+    [[nodiscard]] auto is_function_ptr() const -> bool;
+    [[nodiscard]] auto is_arena() const -> bool;
 
-    [[nodicard]] auto strip_const() const -> std::pair<type_name, bool>;
+    [[nodiscard]] auto strip_const() const -> std::pair<type_name, bool>;
 };
 
 auto hash(const type_name& type) -> std::size_t;
