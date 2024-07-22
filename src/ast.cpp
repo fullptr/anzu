@@ -195,6 +195,10 @@ auto print_node(const node_stmt& root, int indent) -> void
             print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
+        [&](const node_arena_declaration_stmt& node) {
+            print("{}ArenaDeclaration:\n", spaces);
+            print("{}- Name: {}\n", spaces, node.name);
+        },
         [&](const node_assignment_stmt& node) {
             print("{}Assignment:\n", spaces);
             print("{}- Name:\n", spaces);

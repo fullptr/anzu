@@ -600,6 +600,15 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_arena_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_shared<node_stmt>();
+    auto& stmt = node->emplace<node_arena_declaration_stmt>();
+    stmt.token = tokens.consume();
+    stmt.name = parse_name(tokens);
+    return node;
+}
+
 auto parse_print_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
@@ -691,6 +700,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::left_brace:  return parse_braced_statement_list(tokens);
         case token_type::kw_let:
         case token_type::kw_var:      return parse_declaration_stmt(tokens);
+        case token_type::kw_arena:    return parse_arena_declaration_stmt(tokens);
         case token_type::kw_print:    return parse_print_stmt(tokens);
     }
 

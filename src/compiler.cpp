@@ -1015,6 +1015,11 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
 }
 
+auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
+{
+    
+}
+
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 {
     if (lhs.is_const()) return false;

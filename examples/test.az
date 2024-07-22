@@ -2,9 +2,7 @@
 
 
 {
-    
-let a = arena();
 
-let x := a.new(i64);
+arena a;
 
 }
