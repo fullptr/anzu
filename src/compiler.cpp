@@ -37,15 +37,6 @@ struct function_info
     token       tok;
 };
 
-auto hash(const std::vector<type_name>& params) -> std::size_t
-{
-    auto hash_value = size_t{0};
-    for (const auto& param : params) {
-        hash_value ^= hash(param);
-    }
-    return hash_value;
-}
-
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler
@@ -162,19 +153,6 @@ auto push_field_offset(
     }
     
     tok.error("could not find field '{}' for type '{}'\n", field_name, type);
-}
-
-// Given a type and field name, and assuming that the top of the stack at runtime is a pointer
-// to an object of the given type, this function adds op codes to modify that pointer to
-// instead point to the given field. Returns the type of the field.
-auto push_adjust_ptr_to_field(
-    compiler& com, const token& tok, const type_name& type, const std::string& field_name
-)
-    -> type_name
-{
-    const auto field_type = push_field_offset(com, tok, type, field_name);
-    push_value(com.program, op::u64_add); // modify ptr
-    return field_type;
 }
 
 void verify_sig(
@@ -309,9 +287,10 @@ auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
         type = type.remove_ptr();
     }
 
-    auto ret = push_adjust_ptr_to_field(com, node.token, type, node.field_name);
-    if (is_const) ret = ret.add_const(); // Propagate const to members
-    return ret;
+    const auto field_type = push_field_offset(com, node.token, type, node.field_name);
+    push_value(com.program, op::u64_add); // modify ptr
+    if (is_const) return field_type.add_const(); // Propagate const to members
+    return field_type;
 }
 
 auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name

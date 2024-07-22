@@ -163,6 +163,15 @@ auto hash(const type_const& type) -> std::size_t
     return hash(*type.inner_type) ^ base;
 }
 
+auto hash(std::span<const type_name> types) -> std::size_t
+{
+    auto hash_value = size_t{0};
+    for (const auto& type : types) {
+        hash_value ^= hash(type);
+    }
+    return hash_value;
+}
+
 auto null_type() -> type_name
 {
     return {type_fundamental::null_type};

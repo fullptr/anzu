@@ -5,6 +5,7 @@
 #include <variant>
 #include <unordered_map>
 #include <vector>
+#include <span>
 #include <utility>
 
 #include "utility/common.hpp"
@@ -110,6 +111,7 @@ auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_const& type) -> std::size_t;
+auto hash(std::span<const type_name> types) -> std::size_t;
 
 auto null_type() -> type_name;
 auto bool_type() -> type_name;
