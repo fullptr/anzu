@@ -1,7 +1,6 @@
 
 
-fn foo(a: arena) {}
+fn foo(a: arena&) {}
 
 arena a;
-
-foo(a);
+foo(a&);
