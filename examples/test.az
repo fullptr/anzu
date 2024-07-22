@@ -2,10 +2,7 @@
 
 fn foo(a: arena&) {}
 
-var idx := 0;
-while (idx < 10) {
+{
     arena a;
-    break;
-    print("HERE\n");
+    var i := a.create<i64>();
 }
-print("THERE\n");

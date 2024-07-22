@@ -148,6 +148,7 @@ auto parse_name(tokenstream& tokens)
     return token.text;
 }
 
+// TODO- the two ways of parsing member functions can be consolidated
 auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 {
     auto new_node = std::make_shared<node_expr>();
@@ -157,11 +158,26 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         expr.expr = node;
         expr.token = tok;
         expr.function_name = parse_name(tokens);
+        expr.template_type = nullptr;
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.other_args.push_back(parse_expression(tokens));
         });
-    } else {
+    }
+    else if (tokens.peek_next(token_type::less)) {
+        auto& expr = new_node->emplace<node_member_call_expr>();
+        expr.expr = node;
+        expr.token = tok;
+        expr.function_name = parse_name(tokens);
+        tokens.consume_only(token_type::less);
+        expr.template_type = parse_type_node(tokens);
+        tokens.consume_only(token_type::greater);
+        tokens.consume_only(token_type::left_paren);
+        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+            expr.other_args.push_back(parse_expression(tokens));
+        });
+    }
+    else {
         auto& expr = new_node->emplace<node_field_expr>();
         expr.token = tok;
         expr.field_name = tokens.consume().text;
