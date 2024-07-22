@@ -1017,7 +1017,9 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
 {
-    return lhs.remove_const() == rhs.remove_const() && !lhs.is_const();
+    if (lhs.is_const()) return false;
+
+    return lhs == rhs.remove_const();
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)

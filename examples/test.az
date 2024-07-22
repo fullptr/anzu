@@ -1,11 +1,10 @@
 
-struct foo
-{
-    x: i64;
-    y: i64;
-}
 
-var f := foo(1, 2);
-f.y = 10;
-print("{}\n", f.x);
-print("{}\n", f.y);
+
+{
+    
+let a = arena();
+
+let x := a.new(i64);
+
+}
