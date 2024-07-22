@@ -95,7 +95,7 @@ auto apply_op(bytecode_context& ctx) -> void
         } break;
         case op::pop: {
             const auto size = read_advance<std::uint64_t>(ctx);
-            ctx.stack.pop_n(size);
+            ctx.stack.resize(ctx.stack.size() - size);
         } break;
         case op::alloc_span: {
             const auto type_size = read_advance<std::uint64_t>(ctx);
@@ -250,7 +250,8 @@ template <bool Debug>
 auto run(const bytecode_program& prog) -> void
 {
     const auto timer = scope_timer{};
-    bytecode_context ctx{prog};
+    bytecode_context ctx{prog.code, prog.rom};
+    ctx.frames.emplace_back();
 
     while (ctx.frames.back().prog_ptr < prog.code.size()) {
         if constexpr (Debug) {
@@ -298,8 +299,6 @@ auto vm_stack::pop_and_save(std::byte* dst, std::size_t count) -> void
 
 auto vm_stack::size() const -> std::size_t { return d_current_size; }
 auto vm_stack::at(std::size_t index) -> std::byte& { return d_data[index]; }
-auto vm_stack::at(std::size_t index) const -> const std::byte& { return d_data[index]; }
-auto vm_stack::pop_n(std::size_t count) -> void { d_current_size -= count; }
 auto vm_stack::resize(std::size_t size) -> void { d_current_size = size; }
 
 auto run_program(const bytecode_program& prog) -> void

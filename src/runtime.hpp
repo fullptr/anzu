@@ -24,9 +24,11 @@ class vm_stack
 
 public:
     vm_stack(std::size_t size = 1024 * 1024 * 20);
-
     auto push(const std::byte* src, std::size_t count) -> void;
     auto pop_and_save(std::byte* dst, std::size_t count) -> void;
+    auto size() const -> std::size_t;
+    auto at(std::size_t index) -> std::byte&;
+    auto resize(std::size_t size) -> void;
 
     template <typename T>
     auto push(const T& obj) -> void
@@ -43,27 +45,16 @@ public:
         return ret;
     }
 
-    auto size() const -> std::size_t;
-    auto at(std::size_t index) -> std::byte&;
-    auto at(std::size_t index) const -> const std::byte&;
-    auto pop_n(std::size_t count) -> void;
-    auto resize(std::size_t size) -> void;
 };
 
 struct bytecode_context
 {
     std::vector<std::byte> code;
-    std::vector<call_frame> frames;
-    vm_stack stack;
     std::string rom;
-    std::int64_t heap_size = 0;
 
-    bytecode_context(const bytecode_program& program)
-        : code{program.code}
-        , rom{program.rom} 
-    {
-        frames.emplace_back();
-    }
+    std::vector<call_frame> frames = {};
+    vm_stack stack                 = {};
+    std::int64_t heap_size         = {};
 };
 
 auto run_program(const bytecode_program& prog) -> void;
