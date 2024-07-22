@@ -1,12 +1,12 @@
 
 
-struct vec2
+fn get(a: arena&) -> i64&
 {
-    x: f64;
-    y: f64;
+    var p := a@.create<i64>(5);
+    return p;
 }
 
 arena a;
-var p := a.create<vec2>(10.0, 20.0);
-p.y = 30.0;
-print("{}, {}\n", p.x, p.y);
+var x := get(a&);
+#var x := a.create<i64>(6);
+print("addr={}, value={}\n", x, x@);

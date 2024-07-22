@@ -175,6 +175,9 @@ void verify_sig(
 
 auto get_constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
 {
+    if (type.is_fundamental()) {
+        return {type};
+    }
     auto params = std::vector<type_name>{};
     for (const auto& field : com.types.fields_of(type)) {
         params.emplace_back(field.type);
@@ -653,28 +656,33 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         return u64_type();
     }
 
-    // Handle .create<Type>(...) on arenas
-    if (type.is_arena() && node.function_name == "create") {
-        if (!node.template_type) node.token.error("calls to arena::create must have a template type");
-        const auto result_type = resolve_type(com, node.token, node.template_type);
-        
-        // Firstly, build the object on the stack
-        const auto expected_params = get_constructor_params(com, result_type);
-        node.token.assert_eq(expected_params.size(), node.other_args.size(),
-                             "incorrect number of arguments to constructor call");
-        for (std::size_t i = 0; i != node.other_args.size(); ++i) {
-            push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
+    // Handle arena functions
+    if (type.is_arena()) {
+        if (node.function_name == "create") {
+            if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
+            const auto result_type = resolve_type(com, node.token, node.template_type);
+            
+            // First, build the object on the stack
+            const auto expected_params = get_constructor_params(com, result_type);
+            node.token.assert_eq(expected_params.size(), node.other_args.size(),
+                                "incorrect number of arguments to constructor call");
+            for (std::size_t i = 0; i != node.other_args.size(); ++i) {
+                push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
+            }
+            if (node.other_args.size() == 0) { // if the class has no data, it needs to be size 1
+                push_value(com.program, op::push_null);
+            }
+            
+            // Allocate space in the arena and move the object there
+            // (the allocate op code will do the move)
+            const auto size = com.types.size_of(result_type);
+            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_value(com.program, op::allocate, size);
+            return result_type.add_ptr();
         }
-        if (node.other_args.size() == 0) { // if the class has no data, it needs to be size 1
-            push_value(com.program, op::push_null);
+        else {
+            node.token.error("Unknown arena function '{}'\n", node.function_name);
         }
-        
-        // Allocate space in the arena and move the object there
-        // (the allocate op code will do the move)
-        const auto size = com.types.size_of(result_type);
-        push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-        push_value(com.program, op::allocate, size);
-        return result_type.add_ptr();
     }
 
     const auto stripped_type = [&] {
@@ -1239,6 +1247,7 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == char_type().add_const().add_span() || type == char_type().add_span()) {
         push_value(com.program, op::print_char_span);
     }
+    else if (type.is_ptr()) { push_value(com.program, op::print_u64); }
     else { tok.error("Cannot print value of type {}", type); }
 }
 
