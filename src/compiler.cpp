@@ -507,11 +507,19 @@ auto get_converter(const type_name& src, const type_name& dst)
     };
 }
 
+auto assert_assignable(const token& tok, const type_name& lhs, const type_name& rhs) -> void
+{
+    if (lhs.is_const()) tok.error("cannot assign to a const variable");
+    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
+    if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
+}
+
 auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> void
 {
     const auto actual = type_of_expr(com, expr);
+    assert_assignable(tok, expected, actual);
     const auto converter = get_converter(actual, expected);
     tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
     (*converter)(com, expr, tok);
@@ -1021,13 +1029,6 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
     const auto type = arena_type();
     push_value(com.program, op::new_arena);
     declare_var(com, node.token, node.name, type);
-}
-
-auto assert_assignable(const token& tok, const type_name& lhs, const type_name& rhs) -> void
-{
-    if (lhs.is_const()) tok.error("cannot assign to a const variable");
-    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
-    if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)

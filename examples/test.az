@@ -1,11 +1,7 @@
 
 
-
- {
+fn foo(a: arena) {}
 
 arena a;
-arena b;
 
-}
-
-print("Done");
+foo(a);

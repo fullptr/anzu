@@ -338,6 +338,11 @@ auto parse_simple_type(tokenstream& tokens) -> type_name
 
 auto parse_type_inner(tokenstream& tokens) -> type_name
 {
+    // Arena
+    if (tokens.consume_maybe(token_type::kw_arena)) {
+        return type_arena{};
+    }
+
     // Const
     if (tokens.consume_maybe(token_type::kw_const)) {
         auto ret = type_const{};
