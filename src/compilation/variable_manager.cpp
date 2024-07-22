@@ -149,8 +149,12 @@ scope_guard::~scope_guard() {
     auto& scope = d_manager->d_scopes.back();
     for (const auto& variable : scope.d_variables | std::views::reverse) {
         if (variable.type == arena_type()) {
+            // Push the arena onto the stack
             const auto op = variable.is_local ? op::push_ptr_local : op::push_ptr_global;
-            push_value(*d_program, op, variable.location, op::delete_arena);
+            push_value(*d_program, op, variable.location, op::load, sizeof(std::byte*));
+
+            // and delete it
+            push_value(*d_program, op::delete_arena);
         }
     }
 
