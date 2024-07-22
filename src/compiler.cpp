@@ -631,6 +631,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     return *sig.return_type;
 }
 
+// TODO- Allow member call through a pointer
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
     const auto [type, is_const] = type_of_expr(com, *node.expr).strip_const();
@@ -650,6 +651,16 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         push_value(com.program, op::u64_add); // offset to the size value
         push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
         return u64_type();
+    }
+
+    // Handle .create<Type>(...) on arenas
+    if (type.is_arena() && node.function_name == "create") {
+        if (!node.template_type) node.token.error("calls to arena::create must have a template type");
+        const auto result_type = resolve_type(com, node.token, node.template_type);
+        const auto size = com.types.size_of(result_type);
+        push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+        push_value(com.program, op::allocate, size);
+        return result_type.add_ptr();
     }
 
     const auto stripped_type = [&] {

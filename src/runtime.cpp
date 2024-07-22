@@ -98,13 +98,22 @@ auto apply_op(bytecode_context& ctx) -> void
             ctx.stack.resize(ctx.stack.size() - size);
         } break;
         case op::new_arena: {
-            const auto arena = new std::byte;
+            const auto arena = new memory_arena;
             std::print("CREATED ARENA AT {}\n", (void*)arena);
             ctx.stack.push(arena);
         } break;
         case op::delete_arena: {
-            const auto ptr = ctx.stack.pop<std::byte*>();
-            std::print("DELETED ARENA AT {}\n", (void*)ptr);
+            const auto arena = ctx.stack.pop<memory_arena*>();
+            arena->next = 0;
+            delete arena;
+            std::print("DELETED ARENA AT {}\n", (void*)arena);
+        } break;
+        case op::allocate: {
+            auto arena = ctx.stack.pop<memory_arena*>();
+            const auto size = read_advance<std::uint64_t>(ctx);
+            const auto data = &arena->data[arena->next];
+            arena->next += size;
+            ctx.stack.push(data);
         } break;
         case op::alloc_span: {
             const auto type_size = read_advance<std::uint64_t>(ctx);

@@ -1,5 +1,14 @@
 
 
-let a := [1, 2, 3, 4];
-var p := a&;
-print("{}\n", p.size());
+struct vec2
+{
+    x: f64;
+    y: f64;
+}
+
+arena a;
+var p := a.create<vec2>();
+p.x = 10.0;
+p.y = 20.0;
+
+print("{}, {}\n", p.x, p.y);
