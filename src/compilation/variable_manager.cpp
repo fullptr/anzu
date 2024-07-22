@@ -1,6 +1,28 @@
 #include "variable_manager.hpp"
 
 namespace anzu {
+namespace {
+
+auto delete_arena(std::vector<std::byte>& program, const variable& arena)
+{
+     // Push the arena onto the stack
+    const auto op = arena.is_local ? op::push_ptr_local : op::push_ptr_global;
+    push_value(program, op, arena.location, op::load, sizeof(std::byte*));
+
+    // and delete it
+    push_value(program, op::delete_arena);
+}
+
+auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope)
+{
+    for (const auto& variable : scope.d_variables | std::views::reverse) {
+        if (variable.type == arena_type()) {
+            delete_arena(program, variable);
+        }
+    }
+}
+
+}
 
 scope::scope(const scope_info& info, std::size_t start_location)
     : d_info{info}
@@ -39,22 +61,22 @@ auto variable_manager::push_scope() -> void
     );
 }
 
-auto variable_manager::new_scope(std::vector<std::byte>& program) -> scope_guard
+auto variable_manager::new_scope() -> scope_guard
 {
     push_scope();
-    return scope_guard{*this, program};
+    return scope_guard{*this};
 }
 
-auto variable_manager::new_function_scope(std::vector<std::byte>& program, const type_name& return_type) -> scope_guard
+auto variable_manager::new_function_scope(const type_name& return_type) -> scope_guard
 {
     push_function_scope(return_type);
-    return scope_guard{*this, program};
+    return scope_guard{*this};
 }
 
-auto variable_manager::new_loop_scope(std::vector<std::byte>& program) -> scope_guard
+auto variable_manager::new_loop_scope() -> scope_guard
 {
     push_loop_scope();
-    return scope_guard{*this,program};
+    return scope_guard{*this};
 }
 
 auto variable_manager::push_function_scope(const type_name& return_type) -> void
@@ -140,28 +162,40 @@ auto variable_manager::size() -> std::size_t
     return d_scopes.size();
 }
 
-scope_guard::scope_guard(variable_manager& manager, std::vector<std::byte>& program)
+auto variable_manager::handle_loop_exit() -> void
+{
+    auto pop_size = std::size_t{0};
+    for (const auto& scope : d_scopes | std::views::reverse) {
+        delete_arenas_in_scope(*d_program, scope);
+        pop_size += scope.d_next - scope.d_start;
+        if (scope.is<loop_scope>()) break;
+    }
+    push_value(*d_program, op::pop, pop_size);
+}
+
+auto variable_manager::handle_function_exit() -> void
+{
+    auto pop_size = std::size_t{0};
+    for (const auto& scope : d_scopes | std::views::reverse) {
+        delete_arenas_in_scope(*d_program, scope);
+        pop_size += scope.d_next - scope.d_start;
+        if (scope.is<function_scope>()) break;
+    }
+    push_value(*d_program, op::pop, pop_size);
+}
+
+scope_guard::scope_guard(variable_manager& manager)
     : d_manager{&manager}
-    , d_program{&program} {}
+{}
 
 scope_guard::~scope_guard() {
     // Delete any arenas in the current scope
-    auto& scope = d_manager->d_scopes.back();
-    for (const auto& variable : scope.d_variables | std::views::reverse) {
-        if (variable.type == arena_type()) {
-            // Push the arena onto the stack
-            const auto op = variable.is_local ? op::push_ptr_local : op::push_ptr_global;
-            push_value(*d_program, op, variable.location, op::load, sizeof(std::byte*));
-
-            // and delete it
-            push_value(*d_program, op::delete_arena);
-        }
-    }
+    delete_arenas_in_scope(*d_manager->d_program, d_manager->d_scopes.back());
 
     // Then pop all local variables
     const auto scope_size = d_manager->pop_scope();
     if (scope_size > 0) {
-        push_value(*d_program, op::pop, scope_size);
+        push_value(*d_manager->d_program, op::pop, scope_size);
     }    
 }
 

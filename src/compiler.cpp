@@ -806,7 +806,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = com.variables.new_scope(com.program);
+    const auto scope = com.variables.new_scope();
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -814,11 +814,11 @@ void push_stmt(compiler& com, const node_sequence_stmt& node)
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    const auto loop_scope = com.variables.new_loop_scope(com.program);
+    const auto loop_scope = com.variables.new_loop_scope();
     
     const auto begin_pos = com.program.size();
     {
-        const auto body_scope = com.variables.new_scope(com.program);
+        const auto body_scope = com.variables.new_scope();
         body();
     }
     push_value(com.program, op::jump, begin_pos);
@@ -843,6 +843,7 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
 void push_break(compiler& com, const token& tok)
 {
     tok.assert(com.variables.in_loop(), "cannot use 'break' outside of a loop");
+    com.variables.handle_loop_exit();
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
     com.variables.get_loop_info().breaks.push_back(pos);
@@ -898,7 +899,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    const auto scope = com.variables.new_scope(com.program);
+    const auto scope = com.variables.new_scope();
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -1012,6 +1013,7 @@ void push_stmt(compiler& com, const node_break_stmt& node)
 void push_stmt(compiler& com, const node_continue_stmt& node)
 {
     node.token.assert(com.variables.in_loop(), "cannot use 'continue' outside of a loop");
+    com.variables.handle_loop_exit();
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
     com.variables.get_loop_info().continues.push_back(pos);
@@ -1076,7 +1078,7 @@ auto compile_function_body(
     const auto begin_pos = com.program.size(); // First op code after the jump
     
     {
-        const auto scope = com.variables.new_function_scope(com.program, null_type());
+        const auto scope = com.variables.new_function_scope(null_type());
 
         for (const auto& arg : node_sig.params) {
             auto type = resolve_type(com, tok, arg.type);
@@ -1132,6 +1134,7 @@ void push_stmt(compiler& com, const node_return_stmt& node)
     node.token.assert(com.variables.in_function(), "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
     node.token.assert_eq(return_type, com.variables.get_function_info().return_type, "wrong return type");
+    com.variables.handle_function_exit();
     push_value(com.program, op::ret, com.types.size_of(return_type));
 }
 
@@ -1268,8 +1271,9 @@ auto compile(
 {
     auto com = compiler{};
     com.debug = debug;
+    com.variables.set_program(&com.program);
     {
-        const auto global_scope = com.variables.new_scope(com.program);
+        const auto global_scope = com.variables.new_scope();
         auto done = std::set<std::filesystem::path>{};
         auto remaining = std::set<std::filesystem::path>{}; 
         for (const auto& [file, mod] : modules) {

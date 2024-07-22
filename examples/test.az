@@ -2,5 +2,10 @@
 
 fn foo(a: arena&) {}
 
-arena a;
-foo(a&);
+var idx := 0;
+while (idx < 10) {
+    arena a;
+    break;
+    print("HERE\n");
+}
+print("THERE\n");

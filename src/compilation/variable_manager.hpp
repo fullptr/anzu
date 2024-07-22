@@ -64,15 +64,20 @@ class scope_guard;
 
 class variable_manager
 {
+    std::vector<std::byte>* d_program;
     std::vector<scope> d_scopes;
+
     auto push_scope() -> void;
     auto push_function_scope(const type_name& return_type) -> void;
     auto push_loop_scope() -> void;
     auto pop_scope() -> std::size_t;
 
 public:
+    auto set_program(std::vector<std::byte>* program) { d_program = program; }
+
     auto declare(const std::string& name, const type_name& type, std::size_t size) -> bool;
     auto find(const std::string& name) const -> std::optional<variable>;
+    auto scopes() const -> std::span<const scope> { return d_scopes; }
 
     auto in_loop() const -> bool;
     auto get_loop_info() -> loop_scope&;
@@ -82,9 +87,14 @@ public:
 
     auto size() -> std::size_t;
 
-    auto new_scope(std::vector<std::byte>& program) -> scope_guard;
-    auto new_function_scope(std::vector<std::byte>& program, const type_name& return_type) -> scope_guard;
-    auto new_loop_scope(std::vector<std::byte>& program) -> scope_guard;
+    auto new_scope() -> scope_guard;
+    auto new_function_scope(const type_name& return_type) -> scope_guard;
+    auto new_loop_scope() -> scope_guard;
+
+    // Functions to handle changes to control flow, ie- break, continue and return.
+    // All of these can result in control flow not reaching the end of a scope
+    auto handle_loop_exit() -> void;
+    auto handle_function_exit() -> void;
 
     friend scope_guard;
 };
@@ -92,12 +102,11 @@ public:
 class scope_guard
 {
     variable_manager* d_manager;
-    std::vector<std::byte>* d_program;
     scope_guard(const scope_guard&) = delete;
     scope_guard& operator=(const scope_guard&) = delete;
 
 public:
-    scope_guard(variable_manager& manager, std::vector<std::byte>& program);
+    scope_guard(variable_manager& manager);
     ~scope_guard();
 };
 
