@@ -182,40 +182,6 @@ auto get_constructor_params(const compiler& com, const type_name& type) -> std::
     return params;
 }
 
-class scope_guard
-{
-    compiler* d_com;
-    scope_guard(compiler& com) : d_com{&com} {}
-    scope_guard(const scope_guard&) = delete;
-    scope_guard& operator=(const scope_guard&) = delete;
-
-public:
-    ~scope_guard() {
-        const auto scope_size = d_com->variables.pop_scope();
-        if (scope_size > 0) {
-            push_value(d_com->program, op::pop, scope_size);
-        }    
-    }
-
-    static auto scope(compiler& com) -> scope_guard
-    {
-        com.variables.new_scope();
-        return scope_guard{com};
-    }
-
-    static auto function(compiler& com, const type_name& return_type) -> scope_guard
-    {
-        com.variables.new_function_scope(return_type);
-        return scope_guard{com};
-    }
-
-    static auto loop(compiler& com) -> scope_guard
-    {
-        com.variables.new_loop_scope();
-        return scope_guard{com};
-    }
-};
-
 // Gets the type of the expression by compiling it, then removes the added
 // op codes to leave the program unchanged before returning the type.
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name
@@ -832,7 +798,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = scope_guard::scope(com);
+    const auto scope = com.variables.new_scope(com.program);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -840,11 +806,11 @@ void push_stmt(compiler& com, const node_sequence_stmt& node)
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    const auto loop_scope = scope_guard::loop(com);
+    const auto loop_scope = com.variables.new_loop_scope(com.program);
     
     const auto begin_pos = com.program.size();
     {
-        const auto body_scope = scope_guard::scope(com);
+        const auto body_scope = com.variables.new_scope(com.program);
         body();
     }
     push_value(com.program, op::jump, begin_pos);
@@ -924,7 +890,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    const auto scope = scope_guard::scope(com);
+    const auto scope = com.variables.new_scope(com.program);
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -1099,7 +1065,7 @@ auto compile_function_body(
     const auto begin_pos = com.program.size(); // First op code after the jump
     
     {
-        const auto scope = scope_guard::function(com, null_type());
+        const auto scope = com.variables.new_function_scope(com.program, null_type());
 
         for (const auto& arg : node_sig.params) {
             auto type = resolve_type(com, tok, arg.type);
@@ -1299,7 +1265,7 @@ auto compile(
     auto com = compiler{};
     com.debug = debug;
     {
-        const auto global_scope = scope_guard::scope(com);
+        const auto global_scope = com.variables.new_scope(com.program);
         auto done = std::set<std::filesystem::path>{};
         auto remaining = std::set<std::filesystem::path>{}; 
         for (const auto& [file, mod] : modules) {

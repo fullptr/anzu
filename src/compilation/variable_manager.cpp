@@ -31,7 +31,7 @@ auto scope::find(const std::string& name) const -> std::optional<variable>
 
 auto scope::next_location() -> std::size_t { return d_next; }
 
-auto variable_manager::new_scope() -> void
+auto variable_manager::push_scope() -> void
 {
     d_scopes.emplace_back(
         simple_scope{},
@@ -39,12 +39,30 @@ auto variable_manager::new_scope() -> void
     );
 }
 
-auto variable_manager::new_function_scope(const type_name& return_type) -> void
+auto variable_manager::new_scope(std::vector<std::byte>& program) -> scope_guard
+{
+    push_scope();
+    return scope_guard{*this, program};
+}
+
+auto variable_manager::new_function_scope(std::vector<std::byte>& program, const type_name& return_type) -> scope_guard
+{
+    push_function_scope(return_type);
+    return scope_guard{*this, program};
+}
+
+auto variable_manager::new_loop_scope(std::vector<std::byte>& program) -> scope_guard
+{
+    push_loop_scope();
+    return scope_guard{*this,program};
+}
+
+auto variable_manager::push_function_scope(const type_name& return_type) -> void
 {
     d_scopes.emplace_back(function_scope{return_type}, 0);
 }
 
-auto variable_manager::new_loop_scope() -> void
+auto variable_manager::push_loop_scope() -> void
 {
     d_scopes.emplace_back(loop_scope{}, d_scopes.back().next_location());
 }
