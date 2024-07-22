@@ -110,12 +110,6 @@ struct field
     type_name   type;
     auto operator==(const field&) const -> bool = default;
 };
-using type_fields = std::vector<field>;
-
-struct type_info
-{
-    type_fields fields;
-};
 
 auto hash(const type_name& type) -> std::size_t;
 auto hash(type_fundamental type) -> std::size_t;

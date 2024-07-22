@@ -53,10 +53,12 @@ struct compiler
     std::vector<std::byte> program;
     std::string            read_only_data;
 
-    bool debug = false;
     std::unordered_map<std::string, function_info> functions;
-    type_manager types;
+    
+    type_manager     types;
     variable_manager variables;
+    
+    bool debug = false;
 };
 
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
@@ -1038,7 +1040,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     node.token.assert(!com.types.contains(make_type(node.name)), "{}", message);
     node.token.assert(!com.functions.contains(node.name), "{}", message);
 
-    auto fields = type_fields{};
+    auto fields = std::vector<field>{};
     for (const auto& p : node.fields) {
         fields.emplace_back(field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
     }

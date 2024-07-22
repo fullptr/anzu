@@ -8,7 +8,8 @@ namespace anzu {
 class type_manager
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
-    std::unordered_map<type_name, type_info, type_hash> d_classes;
+    using type_fields = std::vector<field>;
+    std::unordered_map<type_name, type_fields, type_hash> d_classes;
 
 public:
     auto add(const type_name& name, const type_fields& fields) -> bool;
