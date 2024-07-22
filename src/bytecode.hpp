@@ -1,10 +1,18 @@
 #pragma once
-#include "utility/stack.hpp"
-
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace anzu {
+
+struct bytecode_program
+{
+    std::vector<std::byte> code;
+    std::string            rom;
+};
+
+auto print_program(const bytecode_program& prog) -> void;
+auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t;
 
 enum class op : std::uint8_t
 {
@@ -103,38 +111,5 @@ enum class op : std::uint8_t
     print_f64,
     print_char_span,
 };
-
-struct call_frame
-{
-    std::size_t prog_ptr = 0;
-    std::size_t base_ptr = 0;
-};
-
-struct bytecode_program
-{
-    std::vector<std::byte> code;
-    std::string            rom;
-};
-
-struct bytecode_context
-{
-    std::vector<std::byte> code;
-    std::vector<call_frame> frames;
-    vm_stack stack;
-    std::string rom;
-    std::int64_t heap_size = 0;
-
-    bytecode_context(const bytecode_program& program)
-        : code{program.code}
-        , rom{program.rom} 
-    {
-        frames.emplace_back();
-    }
-};
-
-auto run_program(const bytecode_program& prog) -> void;
-auto run_program_debug(const bytecode_program& prog) -> void;
-
-auto print_program(const bytecode_program& prog) -> void;
 
 }

@@ -5,6 +5,7 @@
 #include <variant>
 #include <unordered_map>
 #include <vector>
+#include <span>
 #include <utility>
 
 #include "utility/common.hpp"
@@ -102,21 +103,6 @@ struct type_name : public std::variant<
     [[nodicard]] auto strip_const() const -> std::pair<type_name, bool>;
 };
 
-using type_names = std::vector<type_name>;
-
-struct field
-{
-    std::string name;
-    type_name   type;
-    auto operator==(const field&) const -> bool = default;
-};
-using type_fields = std::vector<field>;
-
-struct type_info
-{
-    type_fields fields;
-};
-
 auto hash(const type_name& type) -> std::size_t;
 auto hash(type_fundamental type) -> std::size_t;
 auto hash(const type_struct& type) -> std::size_t;
@@ -125,6 +111,7 @@ auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_const& type) -> std::size_t;
+auto hash(std::span<const type_name> types) -> std::size_t;
 
 auto null_type() -> type_name;
 auto bool_type() -> type_name;
@@ -142,19 +129,6 @@ auto inner_type(const type_name& t) -> type_name;
 
 // Extracts the array size of the given type. Undefined if the given t is not an array
 auto array_length(const type_name& t) -> std::size_t;
-
-class type_store
-{
-    using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
-    std::unordered_map<type_name, type_info, type_hash> d_classes;
-
-public:
-    auto add(const type_name& name, const type_fields& fields) -> bool;
-    auto contains(const type_name& t) const -> bool;
-
-    auto size_of(const type_name& t) const -> std::size_t;
-    auto fields_of(const type_name& t) const -> type_fields;
-};
 
 auto to_string(const type_name& type) -> std::string;
 auto to_string(type_fundamental t) -> std::string;

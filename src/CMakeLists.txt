@@ -15,6 +15,10 @@ add_executable(
     object.cpp
     functions.cpp
     bytecode.cpp
+    runtime.cpp
+
+    compilation/type_manager.cpp
+    compilation/variable_manager.cpp
 )
 
 target_include_directories(anzu PRIVATE .)

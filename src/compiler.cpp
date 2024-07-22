@@ -1,9 +1,12 @@
 #include "compiler.hpp"
+
+#include "compilation/type_manager.hpp"
+#include "compilation/variable_manager.hpp"
+
 #include "lexer.hpp"
 #include "object.hpp"
 #include "parser.hpp"
 #include "functions.hpp"
-#include "scope_manager.hpp"
 #include "utility/common.hpp"
 #include "utility/memory.hpp"
 
@@ -34,15 +37,6 @@ struct function_info
     token       tok;
 };
 
-auto hash(const type_names& params) -> std::size_t
-{
-    auto hash_value = size_t{0};
-    for (const auto& param : params) {
-        hash_value ^= hash(param);
-    }
-    return hash_value;
-}
-
 // Struct used to store information while compiling an AST. Contains the output program
 // as well as information such as function definitions.
 struct compiler
@@ -50,10 +44,12 @@ struct compiler
     std::vector<std::byte> program;
     std::string            read_only_data;
 
-    bool debug = false;
     std::unordered_map<std::string, function_info> functions;
-    type_store types;
-    scope_manager scopes;
+    
+    type_manager     types;
+    variable_manager variables;
+    
+    bool debug = false;
 };
 
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
@@ -83,7 +79,7 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 auto are_types_convertible_to(const std::vector<type_name>& args,
                               const std::vector<type_name>& actuals) -> bool;
 
-auto verify_function_call(const function_info& func, const type_names& params, const token& tok) -> void
+auto verify_function_call(const function_info& func, const std::vector<type_name>& params, const token& tok) -> void
 {
     if (!are_types_convertible_to(params, func.sig.params)) {
         tok.error("tried to call function (TODO - ADD NAME) with wrong signature");
@@ -114,16 +110,16 @@ auto push_function_call(compiler& com, const function_info& function) -> void
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
-    if (!com.scopes.declare(name, type, com.types.size_of(type))) {
+    if (!com.variables.declare(name, type, com.types.size_of(type))) {
         tok.error("name already in use: '{}'", name);
     }
 }
 
 auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
 {
-    const auto var = com.scopes.find(name);
+    const auto var = com.variables.find(name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
-    const auto op = var->is_location_relative ? op::push_ptr_local : op::push_ptr_global;
+    const auto op = var->is_local ? op::push_ptr_local : op::push_ptr_global;
     push_value(com.program, op, var->location);
     return var->type;
 }
@@ -159,19 +155,6 @@ auto push_field_offset(
     tok.error("could not find field '{}' for type '{}'\n", field_name, type);
 }
 
-// Given a type and field name, and assuming that the top of the stack at runtime is a pointer
-// to an object of the given type, this function adds op codes to modify that pointer to
-// instead point to the given field. Returns the type of the field.
-auto push_adjust_ptr_to_field(
-    compiler& com, const token& tok, const type_name& type, const std::string& field_name
-)
-    -> type_name
-{
-    const auto field_type = push_field_offset(com, tok, type, field_name);
-    push_value(com.program, op::u64_add); // modify ptr
-    return field_type;
-}
-
 void verify_sig(
     const token& tok,
     const std::vector<type_name>& expected,
@@ -198,47 +181,6 @@ auto get_constructor_params(const compiler& com, const type_name& type) -> std::
     }
     return params;
 }
-
-class scope_guard
-{
-    compiler* d_com;
-    scope_guard(compiler& com) : d_com{&com} {}
-    scope_guard(const scope_guard&) = delete;
-    scope_guard& operator=(const scope_guard&) = delete;
-
-public:
-    ~scope_guard() {
-        const auto scope_size = d_com->scopes.current()->scope_size();
-        d_com->scopes.pop_scope();
-        if (scope_size > 0) {
-            push_value(d_com->program, op::pop, scope_size);
-        }    
-    }
-
-    static auto global(compiler& com) -> scope_guard
-    {
-        com.scopes.new_global_scope();
-        return scope_guard{com};
-    }
-
-    static auto block(compiler& com) -> scope_guard
-    {
-        com.scopes.new_block_scope();
-        return scope_guard{com};
-    }
-
-    static auto function(compiler& com, const type_name& return_type) -> scope_guard
-    {
-        com.scopes.new_function_scope(return_type);
-        return scope_guard{com};
-    }
-
-    static auto loop(compiler& com) -> scope_guard
-    {
-        com.scopes.new_loop_scope();
-        return scope_guard{com};
-    }
-};
 
 // Gets the type of the expression by compiling it, then removes the added
 // op codes to leave the program unchanged before returning the type.
@@ -311,9 +253,10 @@ auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
         type = type.remove_ptr();
     }
 
-    auto ret = push_adjust_ptr_to_field(com, node.token, type, node.field_name);
-    if (is_const) ret = ret.add_const(); // Propagate const to members
-    return ret;
+    const auto field_type = push_field_offset(com, node.token, type, node.field_name);
+    push_value(com.program, op::u64_add); // modify ptr
+    if (is_const) return field_type.add_const(); // Propagate const to members
+    return field_type;
 }
 
 auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
@@ -635,7 +578,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Second, it might be a function call
-        auto params = type_names{};
+        auto params = std::vector<type_name>{};
         params.reserve(node.args.size());
         for (const auto& arg : node.args) {
             params.push_back(type_of_expr(com, *arg));
@@ -855,7 +798,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = scope_guard::block(com);
+    const auto scope = com.variables.new_scope(com.program);
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -863,17 +806,17 @@ void push_stmt(compiler& com, const node_sequence_stmt& node)
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    const auto loop_scope = scope_guard::loop(com);
+    const auto loop_scope = com.variables.new_loop_scope(com.program);
     
     const auto begin_pos = com.program.size();
     {
-        const auto body_scope = scope_guard::block(com);
+        const auto body_scope = com.variables.new_scope(com.program);
         body();
     }
     push_value(com.program, op::jump, begin_pos);
 
     // Fix up the breaks and continues
-    const auto& control_flow = com.scopes.get_loop_info();
+    const auto& control_flow = com.variables.get_loop_info();
     for (const auto idx : control_flow.breaks) {
         write_value(com.program, idx, com.program.size()); // Jump past end
     }
@@ -891,10 +834,10 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
 
 void push_break(compiler& com, const token& tok)
 {
-    tok.assert(com.scopes.in_loop(), "cannot use 'break' outside of a loop");
+    tok.assert(com.variables.in_loop(), "cannot use 'break' outside of a loop");
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.scopes.get_loop_info().breaks.insert(pos);
+    com.variables.get_loop_info().breaks.push_back(pos);
 }
 
 /*
@@ -947,7 +890,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    const auto scope = scope_guard::block(com);
+    const auto scope = com.variables.new_scope(com.program);
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -1042,9 +985,9 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     node.token.assert(!com.types.contains(make_type(node.name)), "{}", message);
     node.token.assert(!com.functions.contains(node.name), "{}", message);
 
-    auto fields = type_fields{};
+    auto fields = std::vector<type_field>{};
     for (const auto& p : node.fields) {
-        fields.emplace_back(field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
+        fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
     }
 
     com.types.add(make_type(node.name), fields);
@@ -1060,10 +1003,10 @@ void push_stmt(compiler& com, const node_break_stmt& node)
 
 void push_stmt(compiler& com, const node_continue_stmt& node)
 {
-    node.token.assert(com.scopes.in_loop(), "cannot use 'continue' outside of a loop");
+    node.token.assert(com.variables.in_loop(), "cannot use 'continue' outside of a loop");
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.scopes.get_loop_info().continues.insert(pos);
+    com.variables.get_loop_info().continues.push_back(pos);
 }
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
@@ -1122,7 +1065,7 @@ auto compile_function_body(
     const auto begin_pos = com.program.size(); // First op code after the jump
     
     {
-        const auto scope = scope_guard::function(com, null_type());
+        const auto scope = com.variables.new_function_scope(com.program, null_type());
 
         for (const auto& arg : node_sig.params) {
             auto type = resolve_type(com, tok, arg.type);
@@ -1131,7 +1074,7 @@ auto compile_function_body(
         }
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
-        com.scopes.get_function_info().return_type = sig.return_type;
+        com.variables.get_function_info().return_type = sig.return_type;
         const auto full_name = std::format("{}::{}", struct_type, name);
         com.functions[full_name] = function_info{.sig=sig, .ptr=begin_pos, .tok=tok};
 
@@ -1182,9 +1125,9 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
-    node.token.assert(com.scopes.in_function(), "can only return within functions");
+    node.token.assert(com.variables.in_function(), "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
-    node.token.assert_eq(return_type, com.scopes.get_function_info().return_type, "wrong return type");
+    node.token.assert_eq(return_type, com.variables.get_function_info().return_type, "wrong return type");
     push_value(com.program, op::ret, com.types.size_of(return_type));
 }
 
@@ -1322,7 +1265,7 @@ auto compile(
     auto com = compiler{};
     com.debug = debug;
     {
-        const auto global_scope = scope_guard::global(com);
+        const auto global_scope = com.variables.new_scope(com.program);
         auto done = std::set<std::filesystem::path>{};
         auto remaining = std::set<std::filesystem::path>{}; 
         for (const auto& [file, mod] : modules) {
@@ -1352,10 +1295,10 @@ auto compile(
         }
     }
 
-    if (!com.scopes.all().empty()) {
+    if (com.variables.size() > 0) {
         panic(
             "Logic Error: There are {} unhandled scopes at the end of compilation",
-            com.scopes.all().size()
+            com.variables.size()
         );
     }
 

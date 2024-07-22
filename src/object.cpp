@@ -163,6 +163,15 @@ auto hash(const type_const& type) -> std::size_t
     return hash(*type.inner_type) ^ base;
 }
 
+auto hash(std::span<const type_name> types) -> std::size_t
+{
+    auto hash_value = size_t{0};
+    for (const auto& type : types) {
+        hash_value ^= hash(type);
+    }
+    return hash_value;
+}
+
 auto null_type() -> type_name
 {
     return {type_fundamental::null_type};
@@ -257,85 +266,6 @@ auto array_length(const type_name& t) -> std::size_t
     const auto mut_type = t.remove_const();
     panic_if(!mut_type.is_array(), "Tried to get length of a non-array type");
     return std::get<type_array>(mut_type).count;
-}
-
-auto type_store::add(const type_name& name, const type_fields& fields) -> bool
-{
-    if (d_classes.contains(name)) {
-        return false;
-    }
-    d_classes.emplace(name, fields);
-    return true;
-}
-
-auto type_store::contains(const type_name& type) const -> bool
-{
-    return std::visit(overloaded{
-        [](type_fundamental)          { return true; },
-        [&](const type_struct&)       { return d_classes.contains(type); },
-        [&](const type_array& t)      { return contains(*t.inner_type); },
-        [&](const type_span& t)       { return contains(*t.inner_type); },
-        [&](const type_ptr& t)        { return contains(*t.inner_type); },
-        [&](const type_function_ptr&) { return true; },
-        [&](const type_const& t)      { return contains(*t.inner_type); }
-    }, type);
-}
-
-// TODO: Refactor this mess
-auto type_store::size_of(const type_name& type) const -> std::size_t
-{
-    return std::visit(overloaded{
-        [](type_fundamental t) -> std::size_t {
-            switch (t) {
-                case type_fundamental::null_type:
-                case type_fundamental::bool_type:
-                case type_fundamental::char_type:
-                    return 1;
-                case type_fundamental::i32_type:
-                    return 4;
-                case type_fundamental::i64_type:
-                case type_fundamental::u64_type:
-                case type_fundamental::f64_type:
-                    return 8;
-                default:
-                    panic("unknown fundamental type");
-                return 0;
-            }
-        },
-        [&](const type_struct& t) -> std::size_t {
-            if (!d_classes.contains(type)) {
-                panic("unknown type '{}'", type);
-            }
-            auto size = std::size_t{0};
-            for (const auto& field : fields_of(type)) {
-                size += size_of(field.type);
-            }
-            return std::max(std::size_t{1}, size); // empty structs take up one byte
-        },
-        [&](const type_array& t) {
-            return size_of(*t.inner_type) * t.count;
-        },
-        [](const type_ptr&) {
-            return sizeof(std::byte*);
-        },
-        [](const type_span&) {
-            return sizeof(std::byte*) + sizeof(std::size_t);
-        },
-        [](const type_function_ptr&) {
-            return sizeof(std::byte*);
-        },
-        [&](const type_const& t) {
-            return size_of(*t.inner_type);
-        }
-    }, type);
-}
-
-auto type_store::fields_of(const type_name& t) const -> type_fields
-{
-    if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
-        return it->second.fields;
-    }
-    return {};
 }
 
 }

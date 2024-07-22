@@ -2,6 +2,7 @@
 #include "parser.hpp"
 #include "compiler.hpp"
 #include "bytecode.hpp"
+#include "runtime.hpp"
 #include "utility/common.hpp"
 #include "utility/memory.hpp"
 
