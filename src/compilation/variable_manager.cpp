@@ -140,4 +140,25 @@ auto variable_manager::size() -> std::size_t
     return d_scopes.size();
 }
 
+scope_guard::scope_guard(variable_manager& manager, std::vector<std::byte>& program)
+    : d_manager{&manager}
+    , d_program{&program} {}
+
+scope_guard::~scope_guard() {
+    // Delete any arenas in the current scope
+    auto& scope = d_manager->d_scopes.back();
+    for (const auto& variable : scope.d_variables | std::views::reverse) {
+        if (variable.type == arena_type()) {
+            const auto op = variable.is_local ? op::push_ptr_local : op::push_ptr_global;
+            push_value(*d_program, op, variable.location, op::delete_arena);
+        }
+    }
+
+    // Then pop all local variables
+    const auto scope_size = d_manager->pop_scope();
+    if (scope_size > 0) {
+        push_value(*d_program, op::pop, scope_size);
+    }    
+}
+
 }

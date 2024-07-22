@@ -66,6 +66,12 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             const auto offset = read_at<std::uint64_t>(prog.code, ptr);
             std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
         } break;
+        case op::new_arena: {
+            std::print("NEW_ARENA\n");
+        } break;
+        case op::delete_arena: {
+            std::print("DELETE_ARENA\n");
+        } break;
         case op::load: {
             const auto size = read_at<std::uint64_t>(prog.code, ptr);
             std::print("LOAD: {}\n", size);

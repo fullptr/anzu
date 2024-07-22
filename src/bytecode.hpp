@@ -27,6 +27,9 @@ enum class op : std::uint8_t
     push_string_literal,
     push_ptr_global,
     push_ptr_local,
+
+    new_arena,
+    delete_arena,
     
     load,
     save,

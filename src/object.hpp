@@ -62,6 +62,11 @@ struct type_function_ptr
     auto operator==(const type_function_ptr&) const -> bool = default;
 };
 
+struct type_arena
+{
+    auto operator==(const type_arena&) const -> bool = default;
+};
+
 struct type_const
 {
     value_ptr<type_name> inner_type;
@@ -76,6 +81,7 @@ struct type_name : public std::variant<
     type_ptr,
     type_span,
     type_function_ptr,
+    type_arena,
     type_const>
 {
     using variant::variant;
@@ -110,6 +116,7 @@ auto hash(const type_array& type) -> std::size_t;
 auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
+auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_const& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
 
@@ -120,6 +127,7 @@ auto i32_type() -> type_name;
 auto i64_type() -> type_name;
 auto u64_type() -> type_name;
 auto f64_type() -> type_name;
+auto arena_type() -> type_name;
 
 auto make_type(const std::string& name) -> type_name;
 
@@ -137,6 +145,7 @@ auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
+auto to_string(const type_arena& type) -> std::string;
 auto to_string(const type_const& type) -> std::string;
 
 }

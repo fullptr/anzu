@@ -97,6 +97,8 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto size = read_advance<std::uint64_t>(ctx);
             ctx.stack.resize(ctx.stack.size() - size);
         } break;
+        case op::new_arena: {} break;
+        case op::delete_arena: {} break;
         case op::alloc_span: {
             const auto type_size = read_advance<std::uint64_t>(ctx);
             const auto count = ctx.stack.pop<std::uint64_t>();

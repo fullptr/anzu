@@ -1017,7 +1017,9 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 {
-    
+    const auto type = arena_type();
+    push_value(com.program, op::new_arena);
+    declare_var(com, node.token, node.name, type);
 }
 
 auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool

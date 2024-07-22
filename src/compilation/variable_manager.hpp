@@ -9,6 +9,7 @@
 #include <vector>
 #include <span>
 #include <variant>
+#include <ranges>
 
 namespace anzu {
 
@@ -38,7 +39,7 @@ struct loop_scope
 
 using scope_info = std::variant<simple_scope, function_scope, loop_scope>;
 
-class scope
+struct scope
 {
     scope_info            d_info;
     std::vector<variable> d_variables;
@@ -96,16 +97,8 @@ class scope_guard
     scope_guard& operator=(const scope_guard&) = delete;
 
 public:
-    scope_guard(variable_manager& manager, std::vector<std::byte>& program)
-        : d_manager{&manager}
-        , d_program{&program} {}
-
-    ~scope_guard() {
-        const auto scope_size = d_manager->pop_scope();
-        if (scope_size > 0) {
-            push_value(*d_program, op::pop, scope_size);
-        }    
-    }
+    scope_guard(variable_manager& manager, std::vector<std::byte>& program);
+    ~scope_guard();
 };
 
 }

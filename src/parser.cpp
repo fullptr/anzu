@@ -407,6 +407,7 @@ auto validate_type_inner(const type_name& type) -> std::optional<std::string_vie
             }
             return Ret{};
         },
+        [](const type_arena&) { return Ret{}; },
         [](const type_const& t) { return validate_type_inner(*t.inner_type); }
     }, type);
 }
