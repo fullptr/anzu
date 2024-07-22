@@ -8,4 +8,5 @@ struct vec2
 
 arena a;
 var p := a.create<vec2>(10.0, 20.0);
+p.y = 30.0;
 print("{}, {}\n", p.x, p.y);
