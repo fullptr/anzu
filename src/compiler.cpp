@@ -633,7 +633,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
-    const auto type = type_of_expr(com, *node.expr);
+    const auto [type, is_const] = type_of_expr(com, *node.expr).strip_const();
 
     // Handle .size() calls on arrays
     if (type.is_array() && node.function_name == "size") {

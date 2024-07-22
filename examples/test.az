@@ -1,8 +1,5 @@
 
 
-fn foo(a: arena&) {}
-
-{
-    arena a;
-    var i := a.create<i64>();
-}
+let a := [1, 2, 3, 4];
+var p := a&;
+print("{}\n", p.size());
