@@ -1,7 +1,6 @@
 #pragma once
-#include "utility/stack.hpp"
-
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace anzu {

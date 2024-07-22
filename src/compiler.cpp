@@ -1,9 +1,12 @@
 #include "compiler.hpp"
+
+#include "compilation/type_manager.hpp"
+#include "compilation/variable_manager.hpp"
+
 #include "lexer.hpp"
 #include "object.hpp"
 #include "parser.hpp"
 #include "functions.hpp"
-#include "scope_manager.hpp"
 #include "utility/common.hpp"
 #include "utility/memory.hpp"
 
@@ -53,7 +56,7 @@ struct compiler
     bool debug = false;
     std::unordered_map<std::string, function_info> functions;
     type_store types;
-    scope_manager scopes;
+    variable_manager scopes;
 };
 
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
