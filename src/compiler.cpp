@@ -55,8 +55,8 @@ struct compiler
 
     bool debug = false;
     std::unordered_map<std::string, function_info> functions;
-    type_store types;
-    variable_manager scopes;
+    type_manager types;
+    variable_manager variables;
 };
 
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
@@ -117,14 +117,14 @@ auto push_function_call(compiler& com, const function_info& function) -> void
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
-    if (!com.scopes.declare(name, type, com.types.size_of(type))) {
+    if (!com.variables.declare(name, type, com.types.size_of(type))) {
         tok.error("name already in use: '{}'", name);
     }
 }
 
 auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
 {
-    const auto var = com.scopes.find(name);
+    const auto var = com.variables.find(name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
     const auto op = var->is_local ? op::push_ptr_local : op::push_ptr_global;
     push_value(com.program, op, var->location);
@@ -211,7 +211,7 @@ class scope_guard
 
 public:
     ~scope_guard() {
-        const auto scope_size = d_com->scopes.pop_scope();
+        const auto scope_size = d_com->variables.pop_scope();
         if (scope_size > 0) {
             push_value(d_com->program, op::pop, scope_size);
         }    
@@ -219,19 +219,19 @@ public:
 
     static auto scope(compiler& com) -> scope_guard
     {
-        com.scopes.new_scope();
+        com.variables.new_scope();
         return scope_guard{com};
     }
 
     static auto function(compiler& com, const type_name& return_type) -> scope_guard
     {
-        com.scopes.new_function_scope(return_type);
+        com.variables.new_function_scope(return_type);
         return scope_guard{com};
     }
 
     static auto loop(compiler& com) -> scope_guard
     {
-        com.scopes.new_loop_scope();
+        com.variables.new_loop_scope();
         return scope_guard{com};
     }
 };
@@ -869,7 +869,7 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
     push_value(com.program, op::jump, begin_pos);
 
     // Fix up the breaks and continues
-    const auto& control_flow = com.scopes.get_loop_info();
+    const auto& control_flow = com.variables.get_loop_info();
     for (const auto idx : control_flow.breaks) {
         write_value(com.program, idx, com.program.size()); // Jump past end
     }
@@ -887,10 +887,10 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
 
 void push_break(compiler& com, const token& tok)
 {
-    tok.assert(com.scopes.in_loop(), "cannot use 'break' outside of a loop");
+    tok.assert(com.variables.in_loop(), "cannot use 'break' outside of a loop");
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.scopes.get_loop_info().breaks.push_back(pos);
+    com.variables.get_loop_info().breaks.push_back(pos);
 }
 
 /*
@@ -1056,10 +1056,10 @@ void push_stmt(compiler& com, const node_break_stmt& node)
 
 void push_stmt(compiler& com, const node_continue_stmt& node)
 {
-    node.token.assert(com.scopes.in_loop(), "cannot use 'continue' outside of a loop");
+    node.token.assert(com.variables.in_loop(), "cannot use 'continue' outside of a loop");
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
-    com.scopes.get_loop_info().continues.push_back(pos);
+    com.variables.get_loop_info().continues.push_back(pos);
 }
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
@@ -1127,7 +1127,7 @@ auto compile_function_body(
         }
 
         sig.return_type = resolve_type(com, tok, node_sig.return_type);
-        com.scopes.get_function_info().return_type = sig.return_type;
+        com.variables.get_function_info().return_type = sig.return_type;
         const auto full_name = std::format("{}::{}", struct_type, name);
         com.functions[full_name] = function_info{.sig=sig, .ptr=begin_pos, .tok=tok};
 
@@ -1178,9 +1178,9 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
-    node.token.assert(com.scopes.in_function(), "can only return within functions");
+    node.token.assert(com.variables.in_function(), "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
-    node.token.assert_eq(return_type, com.scopes.get_function_info().return_type, "wrong return type");
+    node.token.assert_eq(return_type, com.variables.get_function_info().return_type, "wrong return type");
     push_value(com.program, op::ret, com.types.size_of(return_type));
 }
 
@@ -1348,10 +1348,10 @@ auto compile(
         }
     }
 
-    if (com.scopes.size() > 0) {
+    if (com.variables.size() > 0) {
         panic(
             "Logic Error: There are {} unhandled scopes at the end of compilation",
-            com.scopes.size()
+            com.variables.size()
         );
     }
 

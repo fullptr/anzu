@@ -48,7 +48,7 @@ public:
     auto declare(std::string_view name, const type_name& type, std::size_t size, bool is_local) -> bool;
     auto scope_size() const -> std::size_t;
     auto find(const std::string& name) const -> std::optional<variable>;
-    auto next_location();
+    auto next_location() -> std::size_t;
 
     template <typename ScopeType>
     auto is() const -> bool { return std::holds_alternative<ScopeType>(d_info); }

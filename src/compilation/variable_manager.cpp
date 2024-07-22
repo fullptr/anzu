@@ -29,7 +29,7 @@ auto scope::find(const std::string& name) const -> std::optional<variable>
     return std::nullopt;
 }
 
-auto scope::next_location() { return d_next; }
+auto scope::next_location() -> std::size_t { return d_next; }
 
 auto variable_manager::new_scope() -> void
 {
