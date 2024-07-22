@@ -128,9 +128,7 @@ auto apply_op(bytecode_context& ctx) -> void
         } break;
         case op::jump_if_false: {
             const auto jump = read_advance<std::uint64_t>(ctx);
-            if (!ctx.stack.pop<bool>()) {
-                frame.prog_ptr = jump;
-            }
+            if (!ctx.stack.pop<bool>()) frame.prog_ptr = jump;
         } break;
         case op::ret: {
             const auto size = read_advance<std::uint64_t>(ctx);
@@ -145,7 +143,6 @@ auto apply_op(bytecode_context& ctx) -> void
                 .prog_ptr = prog_ptr,
                 .base_ptr = ctx.stack.size() - args_size
             });
-
         } break;
         case op::builtin_call: {
             const auto id = read_advance<std::uint64_t>(ctx);
