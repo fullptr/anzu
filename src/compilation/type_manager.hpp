@@ -5,17 +5,17 @@
 
 namespace anzu {
 
-struct field
+struct type_field
 {
     std::string name;
     type_name   type;
-    auto operator==(const field&) const -> bool = default;
+    auto operator==(const type_field&) const -> bool = default;
 };
 
 class type_manager
 {
     using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
-    using type_fields = std::vector<field>;
+    using type_fields = std::vector<type_field>;
     std::unordered_map<type_name, type_fields, type_hash> d_classes;
 
 public:

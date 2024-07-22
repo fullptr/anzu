@@ -37,7 +37,7 @@ struct function_info
     token       tok;
 };
 
-auto hash(const type_names& params) -> std::size_t
+auto hash(const std::vector<type_name>& params) -> std::size_t
 {
     auto hash_value = size_t{0};
     for (const auto& param : params) {
@@ -88,7 +88,7 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 auto are_types_convertible_to(const std::vector<type_name>& args,
                               const std::vector<type_name>& actuals) -> bool;
 
-auto verify_function_call(const function_info& func, const type_names& params, const token& tok) -> void
+auto verify_function_call(const function_info& func, const std::vector<type_name>& params, const token& tok) -> void
 {
     if (!are_types_convertible_to(params, func.sig.params)) {
         tok.error("tried to call function (TODO - ADD NAME) with wrong signature");
@@ -633,7 +633,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Second, it might be a function call
-        auto params = type_names{};
+        auto params = std::vector<type_name>{};
         params.reserve(node.args.size());
         for (const auto& arg : node.args) {
             params.push_back(type_of_expr(com, *arg));
@@ -1040,9 +1040,9 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     node.token.assert(!com.types.contains(make_type(node.name)), "{}", message);
     node.token.assert(!com.functions.contains(node.name), "{}", message);
 
-    auto fields = std::vector<field>{};
+    auto fields = std::vector<type_field>{};
     for (const auto& p : node.fields) {
-        fields.emplace_back(field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
+        fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
     }
 
     com.types.add(make_type(node.name), fields);
