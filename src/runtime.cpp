@@ -113,6 +113,7 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto size = read_advance<std::uint64_t>(ctx);
             const auto data = &arena->data[arena->next];
             arena->next += size;
+            ctx.stack.pop_and_save(data, size);
             ctx.stack.push(data);
         } break;
         case op::alloc_span: {

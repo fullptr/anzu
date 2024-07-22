@@ -634,7 +634,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 // TODO- Allow member call through a pointer
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
-    const auto [type, is_const] = type_of_expr(com, *node.expr).strip_const();
+    const auto [type, is_const] = type_of_expr(com, *node.expr).strip_const(); 
 
     // Handle .size() calls on arrays
     if (type.is_array() && node.function_name == "size") {
@@ -657,6 +657,20 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     if (type.is_arena() && node.function_name == "create") {
         if (!node.template_type) node.token.error("calls to arena::create must have a template type");
         const auto result_type = resolve_type(com, node.token, node.template_type);
+        
+        // Firstly, build the object on the stack
+        const auto expected_params = get_constructor_params(com, result_type);
+        node.token.assert_eq(expected_params.size(), node.other_args.size(),
+                             "incorrect number of arguments to constructor call");
+        for (std::size_t i = 0; i != node.other_args.size(); ++i) {
+            push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
+        }
+        if (node.other_args.size() == 0) { // if the class has no data, it needs to be size 1
+            push_value(com.program, op::push_null);
+        }
+        
+        // Allocate space in the arena and move the object there
+        // (the allocate op code will do the move)
         const auto size = com.types.size_of(result_type);
         push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
         push_value(com.program, op::allocate, size);
