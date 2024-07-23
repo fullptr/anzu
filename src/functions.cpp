@@ -53,6 +53,25 @@ auto builtin_fputs(bytecode_context& ctx) -> void
     ctx.stack.push(std::byte{0}); // returns null
 }
 
+auto builtin_fread(bytecode_context& ctx) -> void
+{
+    auto& arena = **ctx.stack.pop<memory_arena**>(); // we pushed a pointer to an arena, which is a pointer in C++
+    auto file = ctx.stack.pop<std::FILE*>();
+    std::fseek(file, 0L, SEEK_END);
+    const auto ssize = std::ftell(file);
+    if (ssize == -1) {
+        std::print("Error with ftell\n");
+        std::exit(1);
+    }
+    const auto size = static_cast<std::size_t>(ssize);
+    std::rewind(file);
+    std::byte* ptr = &arena.data[arena.next];
+    std::fread(ptr, sizeof(std::byte), size, file);
+    arena.next += size;
+    ctx.stack.push(ptr); // push the span
+    ctx.stack.push(size);
+}
+
 }
 
 auto construct_builtin_array() -> std::vector<builtin>
@@ -66,6 +85,7 @@ auto construct_builtin_array() -> std::vector<builtin>
     b.push_back(builtin{"fopen", builtin_fopen, {char_span, char_span}, u64_type()});
     b.push_back(builtin{"fclose", builtin_fclose, {u64_type()}, null_type()});
     b.push_back(builtin{"fputs", builtin_fputs, {u64_type(), char_span}, null_type()});
+    b.push_back(builtin{"fread", builtin_fread, {u64_type(), arena_type().add_ptr()}, char_span});
 
     return b;
 }
