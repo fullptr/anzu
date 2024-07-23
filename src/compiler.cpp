@@ -664,7 +664,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
 
     // Handle arena functions
     if (type.is_arena()) {
-        if (node.function_name == "create") {
+        if (node.function_name == "new") {
             if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
             const auto result_type = resolve_type(com, node.token, node.template_type);
             
@@ -686,7 +686,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             push_value(com.program, op::arena_alloc, size);
             return result_type.add_ptr();
         }
-        else if (node.function_name == "create_array") {
+        else if (node.function_name == "new_array") {
             if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
             const auto result_type = resolve_type(com, node.token, node.template_type);
             

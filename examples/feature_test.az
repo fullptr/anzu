@@ -258,7 +258,7 @@ fn print_success() -> null
 # Arena test
 fn get(a: arena&, count: u64) -> u64[]
 {
-    var p := a@.create_array<u64>(count);
+    var p := a@.new_array<u64>(count);
     var idx := 0u;
     while (idx < p.size()) {
         p[idx] = idx;
