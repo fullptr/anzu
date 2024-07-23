@@ -527,7 +527,7 @@ auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> void
 {
-    const auto actual = type_of_expr(com, expr);
+    const auto actual = type_of_expr(com, expr).remove_const();
     assert_assignable_function_arg(tok, expected, actual);
     const auto converter = get_converter(actual, expected);
     tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
@@ -612,6 +612,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Lastly, it might be a builtin function
+        // TODO- fix type checking
         if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
             const auto& builtin = get_builtin(*b);
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
@@ -1185,7 +1186,11 @@ void push_stmt(compiler& com, const node_return_stmt& node)
 {
     node.token.assert(com.variables.in_function(), "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
-    node.token.assert_eq(return_type, com.variables.get_function_info().return_type, "wrong return type");
+    node.token.assert_eq(
+        return_type.remove_const(), // don't impose const on the return value
+        com.variables.get_function_info().return_type,
+        "wrong return type"
+    );
     com.variables.handle_function_exit();
     push_value(com.program, op::ret, com.types.size_of(return_type));
 }

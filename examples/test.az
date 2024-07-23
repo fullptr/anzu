@@ -1,9 +1,30 @@
+fn read_file(filename: (const char)[], a: arena&) -> (const char)[]
 {
-    arena a;
-    var f := fopen("contents.txt", "r");
-    let contents := fread(f, a&);
+    let f := fopen(filename, "rb");
+    let contents := fread(f, a);
     fclose(f);
-
-    print("{}\n", contents);
-    print("\nsize={}\n", contents.size());
+    return contents;
 }
+
+struct tokenizer
+{
+    input: (const char)[];
+    start: (const char)&;
+    curr:  (const char)&;
+}
+
+#{
+#    arena a;
+#    let contents := read_file("examples/test_contents.txt", a&);
+#
+#    print("'{}'\n", contents);
+#    print("\nsize={}\n", contents.size());
+#}
+
+let x := "hello world";
+let start := x[3u]&;
+let end := x[7u]&;
+__dump_type(start);
+
+let substr := span_from_chars(start, end);
+print("{}\n", substr);
