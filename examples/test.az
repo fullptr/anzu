@@ -2,11 +2,9 @@
 
 fn get(a: arena&) -> i64&
 {
-    #var p := a@.create<i64>(5);
-    var p := new i64;
+    var p := a@.create<i64>(5);
     p@ = 5;
     print("addr={} value={}, value_at={}\n", p&, p, p@);
-    let temp := 10;
     return p;
 }
 

@@ -1173,7 +1173,7 @@ void push_stmt(compiler& com, const node_return_stmt& node)
     node.token.assert(com.variables.in_function(), "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
     node.token.assert_eq(return_type, com.variables.get_function_info().return_type, "wrong return type");
-    //com.variables.handle_function_exit();
+    com.variables.handle_function_exit();
     push_value(com.program, op::ret, com.types.size_of(return_type));
 }
 

@@ -175,13 +175,10 @@ auto variable_manager::handle_loop_exit() -> void
 
 auto variable_manager::handle_function_exit() -> void
 {
-    auto pop_size = std::size_t{0};
     for (const auto& scope : d_scopes | std::views::reverse) {
         delete_arenas_in_scope(*d_program, scope);
-        pop_size += scope.d_next - scope.d_start;
         if (scope.is<function_scope>()) break;
     }
-    push_value(*d_program, op::pop, pop_size);
 }
 
 scope_guard::scope_guard(variable_manager& manager)
