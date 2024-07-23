@@ -66,20 +66,26 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             const auto offset = read_at<std::uint64_t>(prog.code, ptr);
             std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
         } break;
-        case op::new_arena: {
+        case op::arena_new: {
             std::print("NEW_ARENA\n");
         } break;
-        case op::delete_arena: {
+        case op::arena_delete: {
             std::print("DELETE_ARENA\n");
         } break;
-        case op::allocate: {
+        case op::arena_alloc: {
             const auto size = read_at<std::uint64_t>(prog.code, ptr);
             std::print("ALLOCATE: size={}\n", size);
         } break;
-        case op::allocate_array: {
+        case op::arena_alloc_array: {
             const auto size = read_at<std::uint64_t>(prog.code, ptr);
             const auto count = read_at<std::uint64_t>(prog.code, ptr);
             std::print("ALLOCATE: size={} count={}\n", size, count);
+        } break;
+        case op::arena_size: {
+            std::print("ARENA_SIZE\n");
+        } break;
+        case op::arena_capacity: {
+            std::print("ARENA_CAPACITY\n");
         } break;
         case op::load: {
             const auto size = read_at<std::uint64_t>(prog.code, ptr);

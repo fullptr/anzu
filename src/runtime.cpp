@@ -97,17 +97,17 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto size = read_advance<std::uint64_t>(ctx);
             ctx.stack.resize(ctx.stack.size() - size);
         } break;
-        case op::new_arena: {
+        case op::arena_new: {
             const auto arena = new memory_arena;
             arena->next = 0;
             ctx.stack.push(arena);
             //std::print("CREATED ARENA {}\n", (void*)arena);
         } break;
-        case op::delete_arena: {
+        case op::arena_delete: {
             const auto arena = ctx.stack.pop<memory_arena*>();
             delete arena;
         } break;
-        case op::allocate: {
+        case op::arena_alloc: {
             auto arena = ctx.stack.pop<memory_arena*>();
             const auto size = read_advance<std::uint64_t>(ctx);
             if (arena->next + size > arena->data.size()) {
@@ -119,7 +119,7 @@ auto apply_op(bytecode_context& ctx) -> void
             ctx.stack.pop_and_save(data, size);
             ctx.stack.push(data);
         } break;
-        case op::allocate_array: {
+        case op::arena_alloc_array: {
             const auto type_size = read_advance<std::uint64_t>(ctx);
             auto arena = ctx.stack.pop<memory_arena*>();
             const auto count = ctx.stack.pop<std::uint64_t>();
@@ -133,6 +133,14 @@ auto apply_op(bytecode_context& ctx) -> void
             arena->next += size;
             ctx.stack.push(data); // push the span (ptr + count)
             ctx.stack.push(count);
+        } break;
+        case op::arena_size: {
+            auto arena = ctx.stack.pop<memory_arena*>();
+            ctx.stack.push(arena->next);
+        } break;
+        case op::arena_capacity: {
+            auto arena = ctx.stack.pop<memory_arena*>();
+            ctx.stack.push(arena->data.size());
         } break;
         case op::alloc_span: {
             const auto type_size = read_advance<std::uint64_t>(ctx);

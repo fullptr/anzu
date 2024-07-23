@@ -4,7 +4,7 @@ fn get(a: arena&, count: u64) -> u64[]
 {
     var p := a@.create_array<u64>(count);
     var idx := 0u;
-    while (idx < count) {
+    while (idx < p.size()) {
         p[idx] = idx;
         idx = idx + 1u;
     }
@@ -13,6 +13,7 @@ fn get(a: arena&, count: u64) -> u64[]
 
 arena a;
 var z := get(a&, 20u);
+print("size={} capacity={}\n", a.size(), a.capacity());
 
 var idx := 0u;
 while (idx < z.size()) {

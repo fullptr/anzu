@@ -28,10 +28,12 @@ enum class op : std::uint8_t
     push_ptr_global,
     push_ptr_local,
 
-    new_arena,
-    delete_arena,
-    allocate,
-    allocate_array,
+    arena_new,
+    arena_delete,
+    arena_alloc,
+    arena_alloc_array,
+    arena_size,
+    arena_capacity,
     
     load,
     save,

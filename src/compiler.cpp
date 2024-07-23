@@ -683,7 +683,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            push_value(com.program, op::allocate, size);
+            push_value(com.program, op::arena_alloc, size);
             return result_type.add_ptr();
         }
         else if (node.function_name == "create_array") {
@@ -702,8 +702,18 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            push_value(com.program, op::allocate_array, size);
+            push_value(com.program, op::arena_alloc_array, size);
             return result_type.add_span();
+        }
+        else if (node.function_name == "size") {
+            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_value(com.program, op::arena_size);
+            return u64_type();
+        }
+        else if (node.function_name == "capacity") {
+            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_value(com.program, op::arena_capacity);
+            return u64_type();
         }
         else {
             node.token.error("Unknown arena function '{}'\n", node.function_name);
@@ -1085,7 +1095,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 {
     const auto type = arena_type();
-    push_value(com.program, op::new_arena);
+    push_value(com.program, op::arena_new);
     declare_var(com, node.token, node.name, type);
 }
 

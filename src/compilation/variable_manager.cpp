@@ -10,7 +10,7 @@ auto delete_arena(std::vector<std::byte>& program, const variable& arena)
     push_value(program, op, arena.location, op::load, sizeof(std::byte*));
 
     // and delete it
-    push_value(program, op::delete_arena);
+    push_value(program, op::arena_delete);
 }
 
 auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope)
