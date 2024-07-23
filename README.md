@@ -100,6 +100,13 @@ An interpreted programming language written in C++. This started out as a stack-
     ```
 * All the common arithmetic, comparison and logical operators. More will be implemented.
 * Builtin functions.
+* Memory arenas for allocating dynamic memory:
+    ```py
+    arena a;
+    let ptr := a.new<bool>(false); # returns a pointer to a bool allocated in the arena
+    let arr := a.new_array<f64>(100); # returns a span to a f64[100] array allocated in the arena
+    ```
+    Arenas are lexically scoped and deallocate all created objects when it goes out of scope. If a function needs to allocate objects that will outlive the function call, then a pointer to an arena should be passed into the function which it can use for allocations. Therefore pointers obtained from an arena must not outlive the arena itself. (Future challenge: static analysis to ensure this is the case).
 
 ## The Pipeline
 The way this langauage is processed and ran is similar to other langages. The lexer, parser, compiler and runtime modules are completely separate, and act as a pipeline by each one outputting a representation that the next one can understand. Below is a diagram showing how everything fits together.
@@ -120,23 +127,11 @@ Parser   -- parser.hpp    : Converts a vector of tokens into an AST
    |
 Compiler -- compiler.hpp  : Converts an AST into a program
    |
+   |     -- bytecode.hpp  : Definitions of op codes and utility
    |
-   |
-Runtime  -- bytecode.hpp  : Definitions of op codes and functionality to run a program
+Runtime  -- runtime.hpp   : Functionality to run a program
    |
   Output
-
-Common Modules
--- functions.hpp   : Definitions of builtin functions
--- object.hpp      : Definition of an object in anzu
--- type.hpp        : Definition of a type in anzu
-
-Utility Modules (in src/utility)
--- overloaded.hpp  : A helper class to make std::visit simpler
--- print.hpp       : Wrapper for std::format, similar to {fmt}
--- scope_timer.hpp : An RAII class for timing a block of code
--- value_ptr.hpp   : A value-semantic smart pointer
--- views.hpp       : A collection of some helper views not in C++20
 ```
 
 # Next Features
@@ -148,7 +143,6 @@ Utility Modules (in src/utility)
 * Templates/Generics
 * Filesystem Support
     - reading/readlines
-* Const
 * Variants
 
 # Known Issues
