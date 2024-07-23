@@ -686,6 +686,25 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             push_value(com.program, op::allocate, size);
             return result_type.add_ptr();
         }
+        else if (node.function_name == "create_array") {
+            if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
+            const auto result_type = resolve_type(com, node.token, node.template_type);
+            
+            // First, push the count onto the stack
+            const auto expected_params = std::vector<type_name>{u64_type()};
+            node.token.assert_eq(expected_params.size(), node.other_args.size(),
+                                "incorrect number of arguments to array constructor call");
+            for (std::size_t i = 0; i != node.other_args.size(); ++i) {
+                push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
+            }
+            
+            // Allocate space in the arena and move the object there
+            // (the allocate op code will do the move)
+            const auto size = com.types.size_of(result_type);
+            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_value(com.program, op::allocate_array, size);
+            return result_type.add_span();
+        }
         else {
             node.token.error("Unknown arena function '{}'\n", node.function_name);
         }

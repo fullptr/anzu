@@ -76,6 +76,11 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             const auto size = read_at<std::uint64_t>(prog.code, ptr);
             std::print("ALLOCATE: size={}\n", size);
         } break;
+        case op::allocate_array: {
+            const auto size = read_at<std::uint64_t>(prog.code, ptr);
+            const auto count = read_at<std::uint64_t>(prog.code, ptr);
+            std::print("ALLOCATE: size={} count={}\n", size, count);
+        } break;
         case op::load: {
             const auto size = read_at<std::uint64_t>(prog.code, ptr);
             std::print("LOAD: {}\n", size);

@@ -31,6 +31,7 @@ enum class op : std::uint8_t
     new_arena,
     delete_arena,
     allocate,
+    allocate_array,
     
     load,
     save,

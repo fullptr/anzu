@@ -106,7 +106,6 @@ auto apply_op(bytecode_context& ctx) -> void
         case op::delete_arena: {
             const auto arena = ctx.stack.pop<memory_arena*>();
             delete arena;
-            //std::print("DELETED ARENA {}\n", (void*)arena);
         } break;
         case op::allocate: {
             auto arena = ctx.stack.pop<memory_arena*>();
@@ -119,7 +118,21 @@ auto apply_op(bytecode_context& ctx) -> void
             arena->next += size;
             ctx.stack.pop_and_save(data, size);
             ctx.stack.push(data);
-            //std::print("ALLOCATED WITH ARENA {}\n", (void*)arena);
+        } break;
+        case op::allocate_array: {
+            const auto type_size = read_advance<std::uint64_t>(ctx);
+            auto arena = ctx.stack.pop<memory_arena*>();
+            const auto count = ctx.stack.pop<std::uint64_t>();
+            const auto size = type_size * count;
+            if (arena->next + size > arena->data.size()) {
+                runtime_error("arena overflow");
+                std::exit(1);
+            }
+            const auto data = &arena->data[arena->next];
+            std::memset(data, 0, size); // TODO- Allow for passing a value to init with on stack
+            arena->next += size;
+            ctx.stack.push(data); // push the span (ptr + count)
+            ctx.stack.push(count);
         } break;
         case op::alloc_span: {
             const auto type_size = read_advance<std::uint64_t>(ctx);
