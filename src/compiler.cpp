@@ -517,12 +517,18 @@ auto assert_assignable(const token& tok, const type_name& lhs, const type_name& 
     if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
 }
 
-// TODO- Create a version of assert_assignable for this
+auto assert_assignable_function_arg(const token& tok, const type_name& lhs, const type_name& rhs) -> void
+{
+    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
+    if (rhs.remove_const() != lhs.remove_const()) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
+}
+
 auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> void
 {
     const auto actual = type_of_expr(com, expr);
+    assert_assignable_function_arg(tok, expected, actual);
     const auto converter = get_converter(actual, expected);
     tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
     (*converter)(com, expr, tok);
