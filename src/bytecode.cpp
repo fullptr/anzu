@@ -96,14 +96,6 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             const auto type_size = read_at<std::uint64_t>(prog.code, ptr);
             std::print("DEALLOC_SPAN: type_size={}\n", type_size);
         } break;
-        case op::alloc_ptr: {
-            const auto type_size = read_at<std::uint64_t>(prog.code, ptr);
-            std::print("ALLOC_PTR: type_size={}\n", type_size);
-        } break;
-        case op::dealloc_ptr: {
-            const auto type_size = read_at<std::uint64_t>(prog.code, ptr);
-            std::print("DEALLOC_PTR: type_size={}\n", type_size);
-        } break;
         case op::jump: {
             const auto jump = read_at<std::uint64_t>(prog.code, ptr);
             std::print("JUMP: jump={}\n", jump);

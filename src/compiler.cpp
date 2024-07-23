@@ -829,9 +829,7 @@ auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
         return type.add_span();
     }
 
-    const auto type = resolve_type(com, node.token, node.type);
-    push_value(com.program, op::alloc_ptr, com.types.size_of(type));
-    return type.add_ptr();
+    node.token.error("'new' no longer supports single allocations");
 }
 
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
@@ -1189,11 +1187,8 @@ void push_stmt(compiler& com, const node_delete_stmt& node)
     if (type.is_span()) {
         push_expr_val(com, *node.expr);
         push_value(com.program, op::dealloc_span, com.types.size_of(type.remove_span()));
-    } else if (type.is_ptr()) {
-        push_expr_val(com, *node.expr);
-        push_value(com.program, op::dealloc_ptr, com.types.size_of(type.remove_ptr()));
     } else {
-        node.token.error("can only call delete spans and pointers, not {}", type);
+        node.token.error("can only call 'delete' on spans, not {}", type);
     }
 }
 

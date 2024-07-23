@@ -135,18 +135,6 @@ auto apply_op(bytecode_context& ctx) -> void
             ctx.heap_size -= count * type_size;
             std::free(ptr);
         } break;
-        case op::alloc_ptr: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto ptr = (std::byte*)std::malloc(type_size);
-            ctx.heap_size += type_size;
-            ctx.stack.push(ptr);
-        } break;
-        case op::dealloc_ptr: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto ptr = ctx.stack.pop<std::byte*>();
-            ctx.heap_size -= type_size;
-            std::free(ptr);
-        } break;
         case op::jump: {
             frame.prog_ptr = read_advance<std::uint64_t>(ctx);
         } break;

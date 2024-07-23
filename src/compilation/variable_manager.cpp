@@ -173,6 +173,8 @@ auto variable_manager::handle_loop_exit() -> void
     push_value(*d_program, op::pop, pop_size);
 }
 
+// This should NOT pop data from the stack like handle_loop_exit since the
+// op::ret op code does this for us.
 auto variable_manager::handle_function_exit() -> void
 {
     for (const auto& scope : d_scopes | std::views::reverse) {

@@ -37,8 +37,6 @@ enum class op : std::uint8_t
     pop,
     alloc_span,
     dealloc_span,
-    alloc_ptr,
-    dealloc_ptr,
     jump,
     jump_if_false,
     call,
