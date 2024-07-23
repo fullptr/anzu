@@ -101,7 +101,6 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto arena = new memory_arena;
             arena->next = 0;
             ctx.stack.push(arena);
-            //std::print("CREATED ARENA {}\n", (void*)arena);
         } break;
         case op::arena_delete: {
             const auto arena = ctx.stack.pop<memory_arena*>();
@@ -112,7 +111,6 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto size = read_advance<std::uint64_t>(ctx);
             if (arena->next + size > arena->data.size()) {
                 runtime_error("arena overflow");
-                std::exit(1);
             }
             const auto data = &arena->data[arena->next];
             arena->next += size;
@@ -126,7 +124,6 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto size = type_size * count;
             if (arena->next + size > arena->data.size()) {
                 runtime_error("arena overflow");
-                std::exit(1);
             }
             const auto data = &arena->data[arena->next];
             std::memset(data, 0, size); // TODO- Allow for passing a value to init with on stack
