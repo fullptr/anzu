@@ -42,14 +42,13 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::identifier:          return "identifier";
         case token_type::int32:               return "int32";
         case token_type::int64:               return "int64";
+        case token_type::kw_arena:            return "arena";
         case token_type::kw_assert:           return "assert";
         case token_type::kw_bool:             return "bool";
         case token_type::kw_break:            return "break";
         case token_type::kw_char:             return "char";
         case token_type::kw_const:            return "const";
         case token_type::kw_continue:         return "continue";
-        case token_type::kw_default:          return "default";
-        case token_type::kw_delete:           return "delete";
         case token_type::kw_else:             return "else";
         case token_type::kw_f64:              return "f64";
         case token_type::kw_false:            return "false";
@@ -62,7 +61,6 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::kw_in:               return "in";
         case token_type::kw_let:              return "let";
         case token_type::kw_loop:             return "loop";
-        case token_type::kw_new:              return "new";
         case token_type::kw_null:             return "null";
         case token_type::kw_print:            return "print";
         case token_type::kw_return:           return "return";

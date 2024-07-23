@@ -148,6 +148,7 @@ auto parse_name(tokenstream& tokens)
     return token.text;
 }
 
+// TODO- the two ways of parsing member functions can be consolidated
 auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
 {
     auto new_node = std::make_shared<node_expr>();
@@ -157,11 +158,26 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         expr.expr = node;
         expr.token = tok;
         expr.function_name = parse_name(tokens);
+        expr.template_type = nullptr;
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.other_args.push_back(parse_expression(tokens));
         });
-    } else {
+    }
+    else if (tokens.peek_next(token_type::less)) {
+        auto& expr = new_node->emplace<node_member_call_expr>();
+        expr.expr = node;
+        expr.token = tok;
+        expr.function_name = parse_name(tokens);
+        tokens.consume_only(token_type::less);
+        expr.template_type = parse_type_node(tokens);
+        tokens.consume_only(token_type::greater);
+        tokens.consume_only(token_type::left_paren);
+        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+            expr.other_args.push_back(parse_expression(tokens));
+        });
+    }
+    else {
         auto& expr = new_node->emplace<node_field_expr>();
         expr.token = tok;
         expr.field_name = tokens.consume().text;
@@ -219,16 +235,6 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             auto& expr = node->emplace<node_name_expr>();
             expr.token = tokens.consume();
             expr.name = expr.token.text;
-        } break;
-        case token_type::kw_new: {
-            auto& expr = node->emplace<node_new_expr>();
-            expr.token = tokens.consume();
-            expr.type = parse_type_node(tokens);
-            if (tokens.consume_maybe(token_type::colon)) {
-                expr.size = parse_expression(tokens);
-            } else {
-                expr.size = nullptr;
-            }
         } break;
         default: {
             node = parse_literal(tokens);
@@ -326,13 +332,14 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 auto parse_simple_type(tokenstream& tokens) -> type_name
 {
     const auto tok = tokens.consume();
-    if (tok.text == "null") return type_fundamental::null_type;
-    if (tok.text == "bool") return type_fundamental::bool_type;
-    if (tok.text == "char") return type_fundamental::char_type;
-    if (tok.text == "i32")  return type_fundamental::i32_type;
-    if (tok.text == "i64")  return type_fundamental::i64_type;
-    if (tok.text == "u64")  return type_fundamental::u64_type;
-    if (tok.text == "f64")  return type_fundamental::f64_type;
+    if (tok.text == "null")  return type_fundamental::null_type;
+    if (tok.text == "bool")  return type_fundamental::bool_type;
+    if (tok.text == "char")  return type_fundamental::char_type;
+    if (tok.text == "i32")   return type_fundamental::i32_type;
+    if (tok.text == "i64")   return type_fundamental::i64_type;
+    if (tok.text == "u64")   return type_fundamental::u64_type;
+    if (tok.text == "f64")   return type_fundamental::f64_type;
+    if (tok.text == "arena") return type_arena{};
     return {type_struct{ .name=std::string{tok.text} }};
 }
 
@@ -407,6 +414,7 @@ auto validate_type_inner(const type_name& type) -> std::optional<std::string_vie
             }
             return Ret{};
         },
+        [](const type_arena&) { return Ret{}; },
         [](const type_const& t) { return validate_type_inner(*t.inner_type); }
     }, type);
 }
@@ -600,6 +608,15 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_arena_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_shared<node_stmt>();
+    auto& stmt = node->emplace<node_arena_declaration_stmt>();
+    stmt.token = tokens.consume();
+    stmt.name = parse_name(tokens);
+    return node;
+}
+
 auto parse_print_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
@@ -628,18 +645,6 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
     while (!tokens.consume_maybe(token_type::right_brace)) {
         stmt.sequence.push_back(parse_statement(tokens));
     }
-
-    return node;
-}
-
-auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
-{
-    auto node = std::make_shared<node_stmt>();
-    auto& stmt = node->emplace<node_delete_stmt>();
-
-    stmt.token = tokens.consume_only(token_type::kw_delete);
-    stmt.expr = parse_expression(tokens);
-    tokens.consume_only(token_type::semicolon);
 
     return node;
 }
@@ -684,13 +689,13 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::kw_while:    return parse_while_stmt(tokens);
         case token_type::kw_for:      return parse_for_stmt(tokens);
         case token_type::kw_if:       return parse_if_stmt(tokens);
-        case token_type::kw_delete:   return parse_delete_stmt(tokens);
         case token_type::kw_assert:   return parse_assert_stmt(tokens);
         case token_type::kw_break:    return parse_break_stmt(tokens);
         case token_type::kw_continue: return parse_continue_stmt(tokens);
         case token_type::left_brace:  return parse_braced_statement_list(tokens);
         case token_type::kw_let:
         case token_type::kw_var:      return parse_declaration_stmt(tokens);
+        case token_type::kw_arena:    return parse_arena_declaration_stmt(tokens);
         case token_type::kw_print:    return parse_print_stmt(tokens);
     }
 

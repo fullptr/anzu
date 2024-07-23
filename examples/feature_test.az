@@ -246,14 +246,6 @@ struct container
     print("{}\n", p.val);
 }
 
-# Dynamic memory check
-{
-    var x := new i64;
-    x@ = 5;
-    print("{}\n", x@);
-    delete x;
-}
-
 # Function pointer check
 fn print_success() -> null
 {
@@ -262,3 +254,25 @@ fn print_success() -> null
 
 #var function_ptr := print_success;
 #function_ptr();
+
+# Arena test
+fn get(a: arena&, count: u64) -> u64[]
+{
+    var p := a@.new_array<u64>(count);
+    var idx := 0u;
+    while (idx < p.size()) {
+        p[idx] = idx;
+        idx = idx + 1u;
+    }
+    return p;
+}
+
+arena a;
+var z := get(a&, 5u);
+print("size={} capacity={}\n", a.size(), a.capacity());
+
+var idx := 0u;
+while (idx < z.size()) {
+    print("{}\n", z[idx])
+    idx = idx + 1u;
+}

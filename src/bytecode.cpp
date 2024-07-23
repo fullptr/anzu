@@ -66,6 +66,27 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             const auto offset = read_at<std::uint64_t>(prog.code, ptr);
             std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
         } break;
+        case op::arena_new: {
+            std::print("NEW_ARENA\n");
+        } break;
+        case op::arena_delete: {
+            std::print("DELETE_ARENA\n");
+        } break;
+        case op::arena_alloc: {
+            const auto size = read_at<std::uint64_t>(prog.code, ptr);
+            std::print("ALLOCATE: size={}\n", size);
+        } break;
+        case op::arena_alloc_array: {
+            const auto size = read_at<std::uint64_t>(prog.code, ptr);
+            const auto count = read_at<std::uint64_t>(prog.code, ptr);
+            std::print("ALLOCATE: size={} count={}\n", size, count);
+        } break;
+        case op::arena_size: {
+            std::print("ARENA_SIZE\n");
+        } break;
+        case op::arena_capacity: {
+            std::print("ARENA_CAPACITY\n");
+        } break;
         case op::load: {
             const auto size = read_at<std::uint64_t>(prog.code, ptr);
             std::print("LOAD: {}\n", size);
@@ -77,22 +98,6 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::pop: {
             const auto size = read_at<std::uint64_t>(prog.code, ptr);
             std::print("POP: {}\n", size);
-        } break;
-        case op::alloc_span: {
-            const auto type_size = read_at<std::uint64_t>(prog.code, ptr);
-            std::print("ALLOC_SPAN: type_size={}\n", type_size);
-        } break;
-        case op::dealloc_span: {
-            const auto type_size = read_at<std::uint64_t>(prog.code, ptr);
-            std::print("DEALLOC_SPAN: type_size={}\n", type_size);
-        } break;
-        case op::alloc_ptr: {
-            const auto type_size = read_at<std::uint64_t>(prog.code, ptr);
-            std::print("ALLOC_PTR: type_size={}\n", type_size);
-        } break;
-        case op::dealloc_ptr: {
-            const auto type_size = read_at<std::uint64_t>(prog.code, ptr);
-            std::print("DEALLOC_PTR: type_size={}\n", type_size);
         } break;
         case op::jump: {
             const auto jump = read_at<std::uint64_t>(prog.code, ptr);
@@ -182,7 +187,8 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::print_i64: { std::print("PRINT_I64\n"); } break;
         case op::print_u64: { std::print("PRINT_U64\n"); } break;
         case op::print_f64: { std::print("PRINT_F64\n"); } break;
-        case op::print_char_span: { std::print("PRINT_STRING_LITERAL\n");
+        case op::print_char_span: { std::print("PRINT_STRING_LITERAL\n"); break;
+        case op::print_ptr: { std::print("PRINT_PTR\n"); } break;
         } break;
         default: {
             std::print("UNKNOWN\n");

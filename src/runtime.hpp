@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstddef>
 #include <vector>
 #include <string>
@@ -45,6 +46,12 @@ public:
         return ret;
     }
 
+};
+
+struct memory_arena
+{
+    std::array<std::byte, 1024 * 1024 * 64> data; // 64MB;
+    std::size_t next = 0;
 };
 
 struct bytecode_context

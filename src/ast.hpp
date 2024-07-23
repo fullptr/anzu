@@ -140,6 +140,7 @@ struct node_member_call_expr
 {
     node_expr_ptr              expr;
     std::string                function_name;
+    node_type_ptr              template_type; // used only for arena.create<type>() calls for now
     std::vector<node_expr_ptr> other_args;
 
     anzu::token token;
@@ -189,14 +190,6 @@ struct node_subscript_expr
     anzu::token token;
 };
 
-struct node_new_expr
-{
-    node_type_ptr type;
-    node_expr_ptr size;
-    
-    anzu::token token;
-};
-
 struct node_span_expr
 {
     node_expr_ptr expr;
@@ -224,7 +217,6 @@ struct node_expr : std::variant<
     node_repeat_array_expr,
     node_addrof_expr,
     node_sizeof_expr,
-    node_new_expr,
 
     // Lvalue expressions
     node_name_expr,
@@ -303,6 +295,12 @@ struct node_declaration_stmt
     anzu::token token;
 };
 
+struct node_arena_declaration_stmt
+{
+    std::string name;
+    anzu::token token;
+};
+
 struct node_assignment_stmt
 {
     node_expr_ptr position;
@@ -377,12 +375,12 @@ struct node_stmt : std::variant<
     node_break_stmt,
     node_continue_stmt,
     node_declaration_stmt,
+    node_arena_declaration_stmt,
     node_assignment_stmt,
     node_member_function_def_stmt,
     node_function_def_stmt,
     node_expression_stmt,
     node_return_stmt,
-    node_delete_stmt,
     node_assert_stmt,
     node_print_stmt>
 {

@@ -111,6 +111,11 @@ auto to_string(const type_function_ptr& type) -> std::string
     );
 }
 
+auto to_string(const type_arena& type) -> std::string
+{
+    return std::string{"arena"};
+}
+
 auto to_string(const type_const& type) -> std::string
 {
     return std::format("const {}", to_string(*type.inner_type));
@@ -155,6 +160,12 @@ auto hash(const type_function_ptr& type) -> std::size_t
         val ^= hash(param);
     }
     return val;
+}
+
+auto hash(const type_arena& type) -> std::size_t
+{
+    static const auto base = std::hash<std::string_view>{}("type_arena");
+    return base;
 }
 
 auto hash(const type_const& type) -> std::size_t
@@ -207,6 +218,11 @@ auto f64_type() -> type_name
     return {type_fundamental::f64_type};
 }
 
+auto arena_type() -> type_name
+{
+    return {type_arena{}};
+}
+
 auto make_type(const std::string& name) -> type_name
 {
     return { type_struct{ .name=name } };
@@ -247,6 +263,11 @@ auto type_name::remove_span() const -> type_name
 auto type_name::is_function_ptr() const -> bool
 {
     return std::holds_alternative<type_function_ptr>(*this);
+}
+
+auto type_name::is_arena() const -> bool
+{
+    return std::holds_alternative<type_arena>(*this);
 }
 
 auto inner_type(const type_name& t) -> type_name

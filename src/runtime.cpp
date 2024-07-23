@@ -97,31 +97,47 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto size = read_advance<std::uint64_t>(ctx);
             ctx.stack.resize(ctx.stack.size() - size);
         } break;
-        case op::alloc_span: {
+        case op::arena_new: {
+            const auto arena = new memory_arena;
+            arena->next = 0;
+            ctx.stack.push(arena);
+        } break;
+        case op::arena_delete: {
+            const auto arena = ctx.stack.pop<memory_arena*>();
+            delete arena;
+        } break;
+        case op::arena_alloc: {
+            auto arena = ctx.stack.pop<memory_arena*>();
+            const auto size = read_advance<std::uint64_t>(ctx);
+            if (arena->next + size > arena->data.size()) {
+                runtime_error("arena overflow");
+            }
+            const auto data = &arena->data[arena->next];
+            arena->next += size;
+            ctx.stack.pop_and_save(data, size);
+            ctx.stack.push(data);
+        } break;
+        case op::arena_alloc_array: {
             const auto type_size = read_advance<std::uint64_t>(ctx);
+            auto arena = ctx.stack.pop<memory_arena*>();
             const auto count = ctx.stack.pop<std::uint64_t>();
-            const auto ptr = (std::byte*)std::malloc(count * type_size);
-            ctx.heap_size += count * type_size;
-            ctx.stack.push(ptr);
+            const auto size = type_size * count;
+            if (arena->next + size > arena->data.size()) {
+                runtime_error("arena overflow");
+            }
+            const auto data = &arena->data[arena->next];
+            std::memset(data, 0, size); // TODO- Allow for passing a value to init with on stack
+            arena->next += size;
+            ctx.stack.push(data); // push the span (ptr + count)
+            ctx.stack.push(count);
         } break;
-        case op::dealloc_span: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto count = ctx.stack.pop<std::uint64_t>();
-            const auto ptr = ctx.stack.pop<std::byte*>();
-            ctx.heap_size -= count * type_size;
-            std::free(ptr);
+        case op::arena_size: {
+            auto arena = ctx.stack.pop<memory_arena*>();
+            ctx.stack.push(arena->next);
         } break;
-        case op::alloc_ptr: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto ptr = (std::byte*)std::malloc(type_size);
-            ctx.heap_size += type_size;
-            ctx.stack.push(ptr);
-        } break;
-        case op::dealloc_ptr: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto ptr = ctx.stack.pop<std::byte*>();
-            ctx.heap_size -= type_size;
-            std::free(ptr);
+        case op::arena_capacity: {
+            auto arena = ctx.stack.pop<memory_arena*>();
+            ctx.stack.push(arena->data.size());
         } break;
         case op::jump: {
             frame.prog_ptr = read_advance<std::uint64_t>(ctx);
@@ -238,6 +254,10 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto ptr = ctx.stack.pop<const char*>();
             std::print("{}", std::string_view{ptr, size});
         } break;
+        case op::print_ptr: {
+            const auto ptr = ctx.stack.pop<void*>();
+            std::print("{}", ptr);
+        } break; 
 
         default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
     }

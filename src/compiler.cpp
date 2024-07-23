@@ -175,6 +175,9 @@ void verify_sig(
 
 auto get_constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
 {
+    if (type.is_fundamental()) {
+        return {type};
+    }
     auto params = std::vector<type_name>{};
     for (const auto& field : com.types.fields_of(type)) {
         params.emplace_back(field.type);
@@ -507,11 +510,25 @@ auto get_converter(const type_name& src, const type_name& dst)
     };
 }
 
+auto assert_assignable(const token& tok, const type_name& lhs, const type_name& rhs) -> void
+{
+    if (lhs.is_const()) tok.error("cannot assign to a const variable");
+    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
+    if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
+}
+
+auto assert_assignable_function_arg(const token& tok, const type_name& lhs, const type_name& rhs) -> void
+{
+    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
+    if (rhs.remove_const() != lhs.remove_const()) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
+}
+
 auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> void
 {
     const auto actual = type_of_expr(com, expr);
+    assert_assignable_function_arg(tok, expected, actual);
     const auto converter = get_converter(actual, expected);
     tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
     (*converter)(com, expr, tok);
@@ -623,9 +640,10 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     return *sig.return_type;
 }
 
+// TODO- Allow member call through a pointer
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
-    const auto type = type_of_expr(com, *node.expr);
+    const auto [type, is_const] = type_of_expr(com, *node.expr).strip_const(); 
 
     // Handle .size() calls on arrays
     if (type.is_array() && node.function_name == "size") {
@@ -642,6 +660,64 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         push_value(com.program, op::u64_add); // offset to the size value
         push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
         return u64_type();
+    }
+
+    // Handle arena functions
+    if (type.is_arena()) {
+        if (node.function_name == "new") {
+            if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
+            const auto result_type = resolve_type(com, node.token, node.template_type);
+            
+            // First, build the object on the stack
+            const auto expected_params = get_constructor_params(com, result_type);
+            node.token.assert_eq(expected_params.size(), node.other_args.size(),
+                                "incorrect number of arguments to constructor call");
+            for (std::size_t i = 0; i != node.other_args.size(); ++i) {
+                push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
+            }
+            if (node.other_args.size() == 0) { // if the class has no data, it needs to be size 1
+                push_value(com.program, op::push_null);
+            }
+            
+            // Allocate space in the arena and move the object there
+            // (the allocate op code will do the move)
+            const auto size = com.types.size_of(result_type);
+            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_value(com.program, op::arena_alloc, size);
+            return result_type.add_ptr();
+        }
+        else if (node.function_name == "new_array") {
+            if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
+            const auto result_type = resolve_type(com, node.token, node.template_type);
+            
+            // First, push the count onto the stack
+            const auto expected_params = std::vector<type_name>{u64_type()};
+            node.token.assert_eq(expected_params.size(), node.other_args.size(),
+                                "incorrect number of arguments to array constructor call");
+            for (std::size_t i = 0; i != node.other_args.size(); ++i) {
+                push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
+            }
+            
+            // Allocate space in the arena and move the object there
+            // (the allocate op code will do the move)
+            const auto size = com.types.size_of(result_type);
+            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_value(com.program, op::arena_alloc_array, size);
+            return result_type.add_span();
+        }
+        else if (node.function_name == "size") {
+            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_value(com.program, op::arena_size);
+            return u64_type();
+        }
+        else if (node.function_name == "capacity") {
+            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_value(com.program, op::arena_capacity);
+            return u64_type();
+        }
+        else {
+            node.token.error("Unknown arena function '{}'\n", node.function_name);
+        }
     }
 
     const auto stripped_type = [&] {
@@ -771,22 +847,6 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     return type.remove_array().add_span();
 }
 
-auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
-{
-    if (node.size) {
-        const auto count = push_expr_val(com, *node.size);
-        node.token.assert_eq(count, u64_type(), "invalid array size type");
-        const auto type = resolve_type(com, node.token, node.type);
-        push_value(com.program, op::alloc_span, com.types.size_of(type));
-        push_expr_val(com, *node.size); // push the size again to make the second half of the span
-        return type.add_span();
-    }
-
-    const auto type = resolve_type(com, node.token, node.type);
-    push_value(com.program, op::alloc_ptr, com.types.size_of(type));
-    return type.add_ptr();
-}
-
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
 // we can load it by pushing the address to the stack and loading.
 auto push_expr_val(compiler& com, const auto& node) -> type_name
@@ -798,7 +858,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = com.variables.new_scope(com.program);
+    const auto scope = com.variables.new_scope();
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
@@ -806,11 +866,11 @@ void push_stmt(compiler& com, const node_sequence_stmt& node)
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    const auto loop_scope = com.variables.new_loop_scope(com.program);
+    const auto loop_scope = com.variables.new_loop_scope();
     
     const auto begin_pos = com.program.size();
     {
-        const auto body_scope = com.variables.new_scope(com.program);
+        const auto body_scope = com.variables.new_scope();
         body();
     }
     push_value(com.program, op::jump, begin_pos);
@@ -835,6 +895,7 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
 void push_break(compiler& com, const token& tok)
 {
     tok.assert(com.variables.in_loop(), "cannot use 'break' outside of a loop");
+    com.variables.handle_loop_exit();
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
     com.variables.get_loop_info().breaks.push_back(pos);
@@ -890,7 +951,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    const auto scope = com.variables.new_scope(com.program);
+    const auto scope = com.variables.new_scope();
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -1004,6 +1065,7 @@ void push_stmt(compiler& com, const node_break_stmt& node)
 void push_stmt(compiler& com, const node_continue_stmt& node)
 {
     node.token.assert(com.variables.in_loop(), "cannot use 'continue' outside of a loop");
+    com.variables.handle_loop_exit();
     push_value(com.program, op::jump);
     const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
     com.variables.get_loop_info().continues.push_back(pos);
@@ -1012,19 +1074,22 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
     const auto type = push_expr_val(com, *node.expr);
+    node.token.assert(!type.is_arena(), "cannot create copies of arenas");
     declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
 }
 
-auto is_assignable(const type_name& lhs, const type_name& rhs) -> bool
+auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 {
-    return lhs.remove_const() == rhs.remove_const() && !lhs.is_const();
+    const auto type = arena_type();
+    push_value(com.program, op::arena_new);
+    declare_var(com, node.token, node.name, type);
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto rhs = push_expr_val(com, *node.expr);
     const auto lhs = push_expr_ptr(com, *node.position);
-    node.token.assert(is_assignable(lhs, rhs), "cannot assign a '{}' to a '{}'", rhs, lhs);
+    assert_assignable(node.token, lhs, rhs);
     push_value(com.program, op::save, com.types.size_of(lhs));
     return;
 }
@@ -1065,7 +1130,7 @@ auto compile_function_body(
     const auto begin_pos = com.program.size(); // First op code after the jump
     
     {
-        const auto scope = com.variables.new_function_scope(com.program, null_type());
+        const auto scope = com.variables.new_function_scope(null_type());
 
         for (const auto& arg : node_sig.params) {
             auto type = resolve_type(com, tok, arg.type);
@@ -1113,14 +1178,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     node.token.assert(sig.params.size() > 0, "member functions must have at least one arg");
     const auto actual = sig.params.front();
     const auto expected = struct_type.add_const().add_ptr();
-    if (!is_assignable(expected, actual)) {
-        node.token.error(
-            "'{}' bad 1st arg: expected {} or {}, got {}",
-            node.function_name,
-            struct_type.add_ptr(),
-            struct_type.add_const().add_ptr(),
-            actual);
-    }
+    assert_assignable(node.token, expected, actual);
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
@@ -1128,6 +1186,7 @@ void push_stmt(compiler& com, const node_return_stmt& node)
     node.token.assert(com.variables.in_function(), "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
     node.token.assert_eq(return_type, com.variables.get_function_info().return_type, "wrong return type");
+    com.variables.handle_function_exit();
     push_value(com.program, op::ret, com.types.size_of(return_type));
 }
 
@@ -1135,20 +1194,6 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = push_expr_val(com, *node.expr);
     push_value(com.program, op::pop, com.types.size_of(type));
-}
-
-void push_stmt(compiler& com, const node_delete_stmt& node)
-{
-    const auto type = type_of_expr(com, *node.expr);
-    if (type.is_span()) {
-        push_expr_val(com, *node.expr);
-        push_value(com.program, op::dealloc_span, com.types.size_of(type.remove_span()));
-    } else if (type.is_ptr()) {
-        push_expr_val(com, *node.expr);
-        push_value(com.program, op::dealloc_ptr, com.types.size_of(type.remove_ptr()));
-    } else {
-        node.token.error("can only call delete spans and pointers, not {}", type);
-    }
 }
 
 void push_stmt(compiler& com, const node_assert_stmt& node)
@@ -1207,6 +1252,7 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == char_type().add_const().add_span() || type == char_type().add_span()) {
         push_value(com.program, op::print_char_span);
     }
+    else if (type.is_ptr()) { push_value(com.program, op::print_ptr); }
     else { tok.error("Cannot print value of type {}", type); }
 }
 
@@ -1264,8 +1310,9 @@ auto compile(
 {
     auto com = compiler{};
     com.debug = debug;
+    com.variables.set_program(&com.program);
     {
-        const auto global_scope = com.variables.new_scope(com.program);
+        const auto global_scope = com.variables.new_scope();
         auto done = std::set<std::filesystem::path>{};
         auto remaining = std::set<std::filesystem::path>{}; 
         for (const auto& [file, mod] : modules) {

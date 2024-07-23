@@ -27,14 +27,17 @@ enum class op : std::uint8_t
     push_string_literal,
     push_ptr_global,
     push_ptr_local,
+
+    arena_new,
+    arena_delete,
+    arena_alloc,
+    arena_alloc_array,
+    arena_size,
+    arena_capacity,
     
     load,
     save,
     pop,
-    alloc_span,
-    dealloc_span,
-    alloc_ptr,
-    dealloc_ptr,
     jump,
     jump_if_false,
     call,
@@ -110,6 +113,7 @@ enum class op : std::uint8_t
     print_u64,
     print_f64,
     print_char_span,
+    print_ptr,
 };
 
 }

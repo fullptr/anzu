@@ -71,6 +71,9 @@ auto print_node(const node_expr& root, int indent) -> void
             print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
             print("{}- FunctionName: {}\n", spaces, node.function_name);
+            if (node.template_type) {
+                print("{}- TemplateType: {}\n", spaces, *node.template_type);
+            }
             print("{}- OtherArgs:\n", spaces);
             for (const auto& arg : node.other_args) {
                 print_node(*arg, indent + 1);
@@ -107,13 +110,6 @@ auto print_node(const node_expr& root, int indent) -> void
             print_node(*node.expr, indent + 1);
             print("{}- Index:\n", spaces);
             print_node(*node.index, indent + 1);
-        },
-        [&](const node_new_expr& node) {
-            print("{}New {}:\n", spaces, *node.type);
-            if (node.size) {
-                print("{}- Size:\n", spaces);
-                print_node(*node.size, indent + 1);
-            }
         },
         [&](const node_span_expr& node) {
             print("{}Span:\n", spaces);
@@ -195,6 +191,10 @@ auto print_node(const node_stmt& root, int indent) -> void
             print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
+        [&](const node_arena_declaration_stmt& node) {
+            print("{}ArenaDeclaration:\n", spaces);
+            print("{}- Name: {}\n", spaces, node.name);
+        },
         [&](const node_assignment_stmt& node) {
             print("{}Assignment:\n", spaces);
             print("{}- Name:\n", spaces);
@@ -225,10 +225,6 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_return_stmt& node) {
             print("{}Return:\n", spaces);
             print_node(*node.return_value, indent + 1);
-        },
-        [&](const node_delete_stmt& node) {
-            print("{}Delete:\n", spaces);
-            print_node(*node.expr, indent + 1);
         },
         [&](const node_assert_stmt& node) {
             print("{}Assert:\n", spaces);
