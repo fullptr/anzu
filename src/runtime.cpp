@@ -99,14 +99,14 @@ auto apply_op(bytecode_context& ctx) -> void
         } break;
         case op::new_arena: {
             const auto arena = new memory_arena;
+            arena->next = 0;
             ctx.stack.push(arena);
-            std::print("CREATED ARENA {}\n", (void*)arena);
+            //std::print("CREATED ARENA {}\n", (void*)arena);
         } break;
         case op::delete_arena: {
             const auto arena = ctx.stack.pop<memory_arena*>();
-            arena->next = 0;
             delete arena;
-            std::print("DELETED ARENA {}\n", (void*)arena);
+            //std::print("DELETED ARENA {}\n", (void*)arena);
         } break;
         case op::allocate: {
             auto arena = ctx.stack.pop<memory_arena*>();
@@ -119,7 +119,7 @@ auto apply_op(bytecode_context& ctx) -> void
             arena->next += size;
             ctx.stack.pop_and_save(data, size);
             ctx.stack.push(data);
-            std::print("ALLOCATED WITH ARENA {}\n", (void*)arena);
+            //std::print("ALLOCATED WITH ARENA {}\n", (void*)arena);
         } break;
         case op::alloc_span: {
             const auto type_size = read_advance<std::uint64_t>(ctx);
@@ -262,6 +262,10 @@ auto apply_op(bytecode_context& ctx) -> void
             const auto ptr = ctx.stack.pop<const char*>();
             std::print("{}", std::string_view{ptr, size});
         } break;
+        case op::print_ptr: {
+            const auto ptr = ctx.stack.pop<void*>();
+            std::print("{}", ptr);
+        } break; 
 
         default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
     }

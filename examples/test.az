@@ -2,11 +2,21 @@
 
 fn get(a: arena&) -> i64&
 {
+    print("arena {}\n", a);
     var p := a@.create<i64>(5);
+    __dump_type(p);
+    print("addr={} value={}, value_at={}\n", p&, p, p@);
     return p;
 }
 
 arena a;
-var x := get(a&);
-#var x := a.create<i64>(6);
-print("addr={}, value={}\n", x, x@);
+print("arena {}\n", a&);
+var z := get(a&);
+var y := a.create<i64>(10);
+var x := a.create<i64>(6);
+
+__dump_type(z, y, x);
+
+print("addr={} value={}, value_at={}\n", z&, z, z@);
+print("addr={} value={}, value_at={}\n", y&, y, y@);
+print("addr={} value={}, value_at={}\n", x&, x, x@);

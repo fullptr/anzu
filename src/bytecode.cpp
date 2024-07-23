@@ -192,7 +192,8 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::print_i64: { std::print("PRINT_I64\n"); } break;
         case op::print_u64: { std::print("PRINT_U64\n"); } break;
         case op::print_f64: { std::print("PRINT_F64\n"); } break;
-        case op::print_char_span: { std::print("PRINT_STRING_LITERAL\n");
+        case op::print_char_span: { std::print("PRINT_STRING_LITERAL\n"); break;
+        case op::print_ptr: { std::print("PRINT_PTR\n"); } break;
         } break;
         default: {
             std::print("UNKNOWN\n");

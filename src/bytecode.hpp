@@ -114,6 +114,7 @@ enum class op : std::uint8_t
     print_u64,
     print_f64,
     print_char_span,
+    print_ptr,
 };
 
 }

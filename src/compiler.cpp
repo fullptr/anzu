@@ -517,12 +517,12 @@ auto assert_assignable(const token& tok, const type_name& lhs, const type_name& 
     if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
 }
 
+// TODO- Create a version of assert_assignable for this
 auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected, const token& tok
 ) -> void
 {
     const auto actual = type_of_expr(com, expr);
-    assert_assignable(tok, expected, actual);
     const auto converter = get_converter(actual, expected);
     tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
     (*converter)(com, expr, tok);
@@ -1247,7 +1247,7 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == char_type().add_const().add_span() || type == char_type().add_span()) {
         push_value(com.program, op::print_char_span);
     }
-    else if (type.is_ptr()) { push_value(com.program, op::print_u64); }
+    else if (type.is_ptr()) { push_value(com.program, op::print_ptr); }
     else { tok.error("Cannot print value of type {}", type); }
 }
 
