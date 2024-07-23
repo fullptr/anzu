@@ -142,20 +142,6 @@ auto apply_op(bytecode_context& ctx) -> void
             auto arena = ctx.stack.pop<memory_arena*>();
             ctx.stack.push(arena->data.size());
         } break;
-        case op::alloc_span: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto count = ctx.stack.pop<std::uint64_t>();
-            const auto ptr = (std::byte*)std::malloc(count * type_size);
-            ctx.heap_size += count * type_size;
-            ctx.stack.push(ptr);
-        } break;
-        case op::dealloc_span: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto count = ctx.stack.pop<std::uint64_t>();
-            const auto ptr = ctx.stack.pop<std::byte*>();
-            ctx.heap_size -= count * type_size;
-            std::free(ptr);
-        } break;
         case op::jump: {
             frame.prog_ptr = read_advance<std::uint64_t>(ctx);
         } break;

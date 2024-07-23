@@ -236,16 +236,6 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
             expr.token = tokens.consume();
             expr.name = expr.token.text;
         } break;
-        case token_type::kw_new: {
-            auto& expr = node->emplace<node_new_expr>();
-            expr.token = tokens.consume();
-            expr.type = parse_type_node(tokens);
-            if (tokens.consume_maybe(token_type::colon)) {
-                expr.size = parse_expression(tokens);
-            } else {
-                expr.size = nullptr;
-            }
-        } break;
         default: {
             node = parse_literal(tokens);
         } break;
@@ -659,18 +649,6 @@ auto parse_braced_statement_list(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
-auto parse_delete_stmt(tokenstream& tokens) -> node_stmt_ptr
-{
-    auto node = std::make_shared<node_stmt>();
-    auto& stmt = node->emplace<node_delete_stmt>();
-
-    stmt.token = tokens.consume_only(token_type::kw_delete);
-    stmt.expr = parse_expression(tokens);
-    tokens.consume_only(token_type::semicolon);
-
-    return node;
-}
-
 auto parse_assert_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
@@ -711,7 +689,6 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::kw_while:    return parse_while_stmt(tokens);
         case token_type::kw_for:      return parse_for_stmt(tokens);
         case token_type::kw_if:       return parse_if_stmt(tokens);
-        case token_type::kw_delete:   return parse_delete_stmt(tokens);
         case token_type::kw_assert:   return parse_assert_stmt(tokens);
         case token_type::kw_break:    return parse_break_stmt(tokens);
         case token_type::kw_continue: return parse_continue_stmt(tokens);

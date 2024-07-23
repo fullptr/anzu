@@ -38,8 +38,6 @@ enum class op : std::uint8_t
     load,
     save,
     pop,
-    alloc_span,
-    dealloc_span,
     jump,
     jump_if_false,
     call,

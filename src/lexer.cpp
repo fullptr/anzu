@@ -61,8 +61,6 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "char")     return token_type::kw_char;
     if (token == "const")    return token_type::kw_const;
     if (token == "continue") return token_type::kw_continue;
-    if (token == "default")  return token_type::kw_default;
-    if (token == "delete")   return token_type::kw_delete;
     if (token == "else")     return token_type::kw_else;
     if (token == "f64")      return token_type::kw_f64;
     if (token == "false")    return token_type::kw_false;
@@ -75,7 +73,6 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "in")       return token_type::kw_in;
     if (token == "let")      return token_type::kw_let;
     if (token == "loop")     return token_type::kw_loop;
-    if (token == "new")      return token_type::kw_new;
     if (token == "null")     return token_type::kw_null;
     if (token == "print")    return token_type::kw_print;
     if (token == "return")   return token_type::kw_return;

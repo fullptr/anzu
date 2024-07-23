@@ -847,20 +847,6 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     return type.remove_array().add_span();
 }
 
-auto push_expr_val(compiler& com, const node_new_expr& node) -> type_name
-{
-    if (node.size) {
-        const auto count = push_expr_val(com, *node.size);
-        node.token.assert_eq(count, u64_type(), "invalid array size type");
-        const auto type = resolve_type(com, node.token, node.type);
-        push_value(com.program, op::alloc_span, com.types.size_of(type));
-        push_expr_val(com, *node.size); // push the size again to make the second half of the span
-        return type.add_span();
-    }
-
-    node.token.error("'new' no longer supports single allocations");
-}
-
 // If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
 // we can load it by pushing the address to the stack and loading.
 auto push_expr_val(compiler& com, const auto& node) -> type_name
@@ -1208,17 +1194,6 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = push_expr_val(com, *node.expr);
     push_value(com.program, op::pop, com.types.size_of(type));
-}
-
-void push_stmt(compiler& com, const node_delete_stmt& node)
-{
-    const auto type = type_of_expr(com, *node.expr);
-    if (type.is_span()) {
-        push_expr_val(com, *node.expr);
-        push_value(com.program, op::dealloc_span, com.types.size_of(type.remove_span()));
-    } else {
-        node.token.error("can only call 'delete' on spans, not {}", type);
-    }
 }
 
 void push_stmt(compiler& com, const node_assert_stmt& node)
