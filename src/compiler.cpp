@@ -76,16 +76,6 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
     return resolved_type;
 }
 
-auto are_types_convertible_to(const std::vector<type_name>& args,
-                              const std::vector<type_name>& actuals) -> bool;
-
-auto verify_function_call(const function_info& func, const std::vector<type_name>& params, const token& tok) -> void
-{
-    if (!are_types_convertible_to(params, func.sig.params)) {
-        tok.error("tried to call function (TODO - ADD NAME) with wrong signature");
-    }
-}
-
 auto get_function(
     const compiler& com, const std::string& struct_name, const std::string& function_name
 )
@@ -534,26 +524,12 @@ auto push_function_arg(
     (*converter)(com, expr, tok);
 }
 
-auto are_types_convertible_to(
-    const std::vector<type_name>& args, const std::vector<type_name>& expecteds
-)
-    -> bool
-{
-    if (args.size() != expecteds.size()) return false;
-    for (const auto& [arg, expected] : zip(args, expecteds)) {
-        if (get_converter(arg, expected)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
+auto get_builtin_id(const std::string& name)
     -> std::optional<std::size_t>
 {
     auto index = std::size_t{0};
     for (const auto& b : get_builtins()) {
-        if (name == b.name && are_types_convertible_to(args, b.args)) {
+        if (name == b.name) {
             return index;
         }
         ++index;
@@ -603,7 +579,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
         if (const auto func = get_function(com, to_string(struct_type), inner.name); func) {
-            verify_function_call(*func, params, node.token);
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
@@ -613,7 +588,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
         // Lastly, it might be a builtin function
         // TODO- fix type checking
-        if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
+        if (const auto b = get_builtin_id(inner.name); b.has_value()) {
             const auto& builtin = get_builtin(*b);
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
@@ -735,8 +710,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
 
     const auto func = get_function(com, to_string(stripped_type), node.function_name);
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
-    verify_function_call(*func, params, node.token);
-
+    
     auto t = push_expr_ptr(com, *node.expr); // self
     while (t.is_ptr()) { // allow for calling member functions through pointers
         push_value(com.program, op::load, sizeof(std::byte*));
