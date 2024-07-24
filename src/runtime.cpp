@@ -258,8 +258,8 @@ auto apply_op(bytecode_context& ctx) -> void
             std::print("{}", std::string_view{ptr, size});
         } break;
         case op::print_ptr: {
-            const auto ptr = ctx.stack.pop<void*>();
-            std::print("{}", ptr);
+            const auto ptr = ctx.stack.pop<std::uint64_t>();
+            std::print("{:#018x}", ptr);
         } break; 
 
         default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;

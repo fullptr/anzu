@@ -377,10 +377,25 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     auto lhs_real = lhs.remove_const();
     auto rhs_real = rhs.remove_const();
 
+    // Pointers can compare to nullptr
+    if ((lhs_real.is_ptr() && rhs_real == nullptr_type()) || (rhs_real.is_ptr() && lhs_real == nullptr_type())) {
+        switch (node.token.type) {
+            case tt::equal_equal: { push_value(com.program, op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(com.program, op::u64_ne); return bool_type(); }
+        }
+        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    }
+
     if (lhs_real != rhs_real) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     const auto& type = lhs_real;
 
-    if (type == char_type()) {
+    if (type.is_ptr()) {
+        switch (node.token.type) {
+            case tt::equal_equal: { push_value(com.program, op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(com.program, op::u64_ne); return bool_type(); }
+        }
+    }
+    else if (type == char_type()) {
         switch (node.token.type) {
             case tt::equal_equal: { push_value(com.program, op::char_eq); return bool_type(); }
             case tt::bang_equal:  { push_value(com.program, op::char_ne); return bool_type(); }
