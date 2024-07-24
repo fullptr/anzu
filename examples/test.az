@@ -13,18 +13,11 @@ struct tokenizer
     curr:  (const char)&;
 }
 
-#{
-#    arena a;
-#    let contents := read_file("examples/test_contents.txt", a&);
-#
-#    print("'{}'\n", contents);
-#    print("\nsize={}\n", contents.size());
-#}
+{
+    arena a;
+    let contents := read_file("examples/test_contents.txt", a&);
 
-let x := "hello world";
-let start := x[3u]&;
-let end := x[7u]&;
-__dump_type(start);
+    print("'{}'\n", contents);
+    print("\nsize={}\n", contents.size());
+}
 
-let substr := span_from_chars(start, end);
-print("{}\n", substr);

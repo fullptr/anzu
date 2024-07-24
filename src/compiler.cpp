@@ -471,13 +471,6 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
-auto assert_assignable(const token& tok, const type_name& lhs, const type_name& rhs) -> void
-{
-    if (lhs.is_const()) tok.error("cannot assign to a const variable");
-    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
-    if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
-}
-
 auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
 ) -> void
@@ -487,7 +480,7 @@ auto push_function_arg(
     const auto expected = expected_raw.remove_const();
 
     if (actual.is_arena() || expected.is_arena()) {
-        tok.error("Cannot pass an arena by value to a function, use a pointer instead.");
+        tok.error("arenas can not be copied or assigned");
     }
 
     // If a perfect match, we're good.
@@ -1053,9 +1046,10 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
-    const auto rhs = push_expr_val(com, *node.expr);
+    const auto lhs_type = type_of_expr(com, *node.position);
+    node.token.assert(!lhs_type.is_const(), "cannot assign to a const variable");
+    push_function_arg(com, *node.expr, lhs_type, node.token);
     const auto lhs = push_expr_ptr(com, *node.position);
-    assert_assignable(node.token, lhs, rhs);
     push_value(com.program, op::save, com.types.size_of(lhs));
     return;
 }
@@ -1143,8 +1137,10 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     // First argument must be a pointer to an instance of the class
     node.token.assert(sig.params.size() > 0, "member functions must have at least one arg");
     const auto actual = sig.params.front();
-    const auto expected = struct_type.add_const().add_ptr();
-    assert_assignable(node.token, expected, actual);
+    node.token.assert(
+        actual == struct_type.add_ptr() || actual == struct_type.add_const().add_ptr(),
+        "first parameter to a struct member function must be a pointer to that type"
+    );
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
