@@ -126,18 +126,11 @@ scope_guard::scope_guard(variable_manager& manager)
 {}
 
 scope_guard::~scope_guard() {
-    // Delete any arenas in the current scope
     delete_arenas_in_scope(*d_manager->d_program, d_manager->d_scopes.back());
-
-    // Then pop all local variables
-    panic_if(d_manager->d_scopes.empty(), "Tried to pop a scope, but there are none!");
     const auto& scope = d_manager->d_scopes.back();
     const auto size = scope.next - scope.start;
     d_manager->d_scopes.pop_back();
-
-    if (size > 0) {
-        push_value(*d_manager->d_program, op::pop, size);
-    }    
+    if (size > 0) push_value(*d_manager->d_program, op::pop, size); 
 }
 
 }
