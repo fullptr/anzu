@@ -471,35 +471,6 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
-auto get_converter(const type_name& src, const type_name& dst)
-    -> void(*)(compiler&, const node_expr&, const token&)
-{
-    if (src.is_array() && dst.is_span() && src.remove_array() == dst.remove_span()) {
-        return [](compiler& com, const node_expr& expr, const token& tok) {
-            const auto type = push_expr_ptr(com, expr);
-            push_value(com.program, op::push_u64, array_length(type));
-        };
-    }
-
-    // pointers can convert to pointers-to-const
-    if (src.is_ptr() && dst.is_ptr() && src.remove_ptr() == dst.remove_ptr().remove_const()) {
-        return [](compiler& com, const node_expr& expr, const token& tok) {
-            push_expr_val(com, expr);
-        };
-    }
-
-    const auto src_raw = src.remove_const();
-    const auto dst_raw = dst.remove_const();
-
-    if (src_raw != dst_raw) {
-        return nullptr;
-    }
-
-    return [](compiler& com, const node_expr& expr, const token& tok) {
-        push_expr_val(com, expr);
-    };
-}
-
 auto assert_assignable(const token& tok, const type_name& lhs, const type_name& rhs) -> void
 {
     if (lhs.is_const()) tok.error("cannot assign to a const variable");
@@ -507,21 +478,41 @@ auto assert_assignable(const token& tok, const type_name& lhs, const type_name& 
     if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
 }
 
-auto assert_assignable_function_arg(const token& tok, const type_name& lhs, const type_name& rhs) -> void
-{
-    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
-    if (rhs.remove_const() != lhs.remove_const()) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
-}
-
 auto push_function_arg(
-    compiler& com, const node_expr& expr, const type_name& expected, const token& tok
+    compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
 ) -> void
 {
+    // Can disregard constness since the argument is getting copied anyway.
     const auto actual = type_of_expr(com, expr).remove_const();
-    assert_assignable_function_arg(tok, expected, actual);
-    const auto converter = get_converter(actual, expected);
-    tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
-    (*converter)(com, expr, tok);
+    const auto expected = expected_raw.remove_const();
+
+    if (actual.is_arena() || expected.is_arena()) {
+        tok.error("Cannot pass an arena by value to a function, use a pointer instead.");
+    }
+
+    // If a perfect match, we're good.
+    if (actual == expected) {
+        push_expr_val(com, expr);
+        return;
+    }
+
+    // T& can convert to (const T)&
+    if (actual.is_ptr() && expected.is_ptr()) {
+        if (actual.remove_ptr().add_const() == expected.remove_ptr()) {
+            push_expr_val(com, expr);
+            return;
+        }
+    }
+
+    // T[] can convery to (const T)[]
+    if (actual.is_span() && expected.is_span()) {
+        if (actual.remove_span().add_const() == expected.remove_span()) {
+            push_expr_val(com, expr);
+            return;
+        }
+    }
+
+    tok.error("Cannot convert '{}' to '{}'", actual, expected);
 }
 
 auto get_builtin_id(const std::string& name)

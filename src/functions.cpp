@@ -92,7 +92,7 @@ auto builtin_span_from_chars(bytecode_context& ctx) -> void
 auto construct_builtin_array() -> std::vector<builtin>
 {
     const auto char_span = char_type().add_const().add_span();
-    const auto char_ptr = char_type().add_ptr();
+    const auto char_ptr = char_type().add_const().add_ptr();
 
     auto b = std::vector<builtin>{};
 
