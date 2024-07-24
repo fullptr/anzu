@@ -1332,6 +1332,7 @@ auto compile(
         );
     }
 
+    push_value(com.program, op::end_program);
     return { com.program, com.read_only_data };
 }
 

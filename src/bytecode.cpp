@@ -9,43 +9,46 @@ namespace {
 
 template <typename T>
 requires std::integral<T> || std::floating_point<T> || std::is_same_v<T, std::byte*> || std::is_same_v<T, op>
-auto read_at(const std::vector<std::byte>& code, std::size_t& ptr) -> T
+auto read_at(const std::byte** ptr) -> T
 {
     auto ret = T{};
-    std::memcpy(&ret, &code[ptr], sizeof(T));
-    ptr += sizeof(T);
+    std::memcpy(&ret, *ptr, sizeof(T));
+    *ptr += sizeof(T);
     return ret;
 }
 
 }
 
-auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
+auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr) -> const std::byte*
 {
-    std::print("[{:>3}] ", ptr);
-    const auto op_code = read_at<op>(prog.code, ptr);
+    std::print("[{:>3}] ", static_cast<std::size_t>(ptr - start));
+    const auto op_code = read_at<op>(&ptr);
     switch (op_code) {
+        case op::end_program: {
+            std::print("END_PROGRAM\n");
+        } break;
         case op::push_i32: {
-            const auto value = read_at<std::int32_t>(prog.code, ptr);
+            const auto value = read_at<std::int32_t>(&ptr);
             std::print("PUSH_I32: {}\n", value);
         } break;
         case op::push_i64: {
-            const auto value = read_at<std::int64_t>(prog.code, ptr);
+            const auto value = read_at<std::int64_t>(&ptr);
             std::print("PUSH_I64: {}\n", value);
         } break;
         case op::push_u64: {
-            const auto value = read_at<std::uint64_t>(prog.code, ptr);
+            const auto value = read_at<std::uint64_t>(&ptr);
             std::print("PUSH_U64: {}\n", value);
         } break;
         case op::push_f64: {
-            const auto value = read_at<double>(prog.code, ptr);
+            const auto value = read_at<double>(&ptr);
             std::print("PUSH_F64: {}\n", value);
         } break;
         case op::push_char: {
-            const auto value = read_at<char>(prog.code, ptr);
+            const auto value = read_at<char>(&ptr);
             std::print("PUSH_CHAR: {}\n", value);
         } break;
         case op::push_bool: {
-            const auto value = read_at<bool>(prog.code, ptr);
+            const auto value = read_at<bool>(&ptr);
             std::print("PUSH_BOOL: {}\n", value);
         } break;
         case op::push_null: {
@@ -55,18 +58,18 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             std::print("PUSH_NULLPTR\n");
         } break;
         case op::push_string_literal: {
-            const auto index = read_at<std::uint64_t>(prog.code, ptr);
-            const auto size = read_at<std::uint64_t>(prog.code, ptr);
-            const auto data = &prog.rom[index];
+            const auto index = read_at<std::uint64_t>(&ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
+            const auto data = &rom[index];
             const auto m = std::string_view(data, size);
             std::print("PUSH_STRING_LITERAL: '{}'\n", m);
         } break;
         case op::push_ptr_global: {
-            const auto offset = read_at<std::uint64_t>(prog.code, ptr);
+            const auto offset = read_at<std::uint64_t>(&ptr);
             std::print("PUSH_PTR_GLOBAL: {}\n", offset);
         } break;
         case op::push_ptr_local: {
-            const auto offset = read_at<std::uint64_t>(prog.code, ptr);
+            const auto offset = read_at<std::uint64_t>(&ptr);
             std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
         } break;
         case op::arena_new: {
@@ -76,12 +79,12 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             std::print("DELETE_ARENA\n");
         } break;
         case op::arena_alloc: {
-            const auto size = read_at<std::uint64_t>(prog.code, ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
             std::print("ALLOCATE: size={}\n", size);
         } break;
         case op::arena_alloc_array: {
-            const auto size = read_at<std::uint64_t>(prog.code, ptr);
-            const auto count = read_at<std::uint64_t>(prog.code, ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
+            const auto count = read_at<std::uint64_t>(&ptr);
             std::print("ALLOCATE: size={} count={}\n", size, count);
         } break;
         case op::arena_size: {
@@ -91,43 +94,43 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
             std::print("ARENA_CAPACITY\n");
         } break;
         case op::load: {
-            const auto size = read_at<std::uint64_t>(prog.code, ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
             std::print("LOAD: {}\n", size);
         } break;
         case op::save: {
-            const auto size = read_at<std::uint64_t>(prog.code, ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
             std::print("SAVE: {}\n", size);
         } break;
         case op::pop: {
-            const auto size = read_at<std::uint64_t>(prog.code, ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
             std::print("POP: {}\n", size);
         } break;
         case op::jump: {
-            const auto jump = read_at<std::uint64_t>(prog.code, ptr);
+            const auto jump = read_at<std::uint64_t>(&ptr);
             std::print("JUMP: jump={}\n", jump);
         } break;
         case op::jump_if_false: {
-            const auto jump = read_at<std::uint64_t>(prog.code, ptr);
+            const auto jump = read_at<std::uint64_t>(&ptr);
             std::print("JUMP_IF_FALSE: jump={}\n", jump);
         } break;
         case op::ret: {
-            const auto type_size = read_at<std::uint64_t>(prog.code, ptr);
+            const auto type_size = read_at<std::uint64_t>(&ptr);
             std::print("RETURN: type_size={}\n", type_size);
         } break;
         case op::call: {
-            const auto args_size = read_at<std::uint64_t>(prog.code, ptr);
+            const auto args_size = read_at<std::uint64_t>(&ptr);
             std::print("CALL: args_size={}\n", args_size);
         } break;
         case op::builtin_call: {
-            const auto id = read_at<std::uint64_t>(prog.code, ptr);
+            const auto id = read_at<std::uint64_t>(&ptr);
             const auto& b = get_builtin(id);
             std::print("BUILTIN_CALL: {}({}) -> {}\n",
                   b.name, format_comma_separated(b.args), b.return_type);
         } break;
         case op::assert: {
-            const auto index = read_at<std::uint64_t>(prog.code, ptr);
-            const auto size = read_at<std::uint64_t>(prog.code, ptr);
-            const auto data = &prog.rom[index];
+            const auto index = read_at<std::uint64_t>(&ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
+            const auto data = &rom[index];
             std::print("ASSERT: msg={}\n", std::string_view{data, size});
         } break;
         case op::char_eq: { std::print("CHAR_EQ\n"); } break;
@@ -203,9 +206,9 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
 
 auto print_program(const bytecode_program& prog) -> void
 {
-    auto ptr = std::size_t{0};
-    while (ptr < prog.code.size()) {
-        ptr = print_op(prog, ptr);
+    auto ptr = prog.code.data();
+    while (ptr < prog.code.data() + prog.code.size()) {
+        ptr = print_op(prog.rom, prog.code.data(), ptr);
     }
 }
 

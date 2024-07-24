@@ -13,7 +13,7 @@ namespace anzu {
 
 struct call_frame
 {
-    std::size_t prog_ptr = 0;
+    std::byte* ip = nullptr; // instruction pointer
     std::size_t base_ptr = 0;
 };
 
