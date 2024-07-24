@@ -40,18 +40,19 @@ template <typename T>
 requires std::integral<T> || std::floating_point<T> || std::same_as<T, std::byte*> || std::same_as<T, op>
 auto read_advance(bytecode_context& ctx) -> T
 {
-    auto& ptr = ctx.frames.back().prog_ptr;
     auto ret = T{};
-    std::memcpy(&ret, &ctx.code[ptr], sizeof(T));
-    ptr += sizeof(T);
+    std::memcpy(&ret, ctx.frames.back().ip, sizeof(T));
+    ctx.frames.back().ip += sizeof(T);
     return ret;
 }
 
-auto apply_op(bytecode_context& ctx) -> void
+auto apply_op(bytecode_context& ctx) -> bool
 {
     auto& frame = ctx.frames.back();
-    const auto op_code = static_cast<op>(ctx.code[frame.prog_ptr++]);
+    const auto op_code = static_cast<op>(*frame.ip);
+    frame.ip++;
     switch (op_code) {
+        case op::end_program: return false;
         case op::push_char:
         case op::push_bool: {
             ctx.stack.push(read_advance<std::uint8_t>(ctx));
@@ -143,11 +144,12 @@ auto apply_op(bytecode_context& ctx) -> void
             ctx.stack.push(arena->data.size());
         } break;
         case op::jump: {
-            frame.prog_ptr = read_advance<std::uint64_t>(ctx);
+            const auto jump = read_advance<std::uint64_t>(ctx);
+            frame.ip = &ctx.code[jump];
         } break;
         case op::jump_if_false: {
             const auto jump = read_advance<std::uint64_t>(ctx);
-            if (!ctx.stack.pop<bool>()) frame.prog_ptr = jump;
+            if (!ctx.stack.pop<bool>()) frame.ip = &ctx.code[jump];
         } break;
         case op::ret: {
             const auto size = read_advance<std::uint64_t>(ctx);
@@ -157,9 +159,9 @@ auto apply_op(bytecode_context& ctx) -> void
         } break;
         case op::call: {
             const auto args_size = read_advance<std::uint64_t>(ctx);
-            const auto prog_ptr = ctx.stack.pop<std::uint64_t>();
+            const auto jump = ctx.stack.pop<std::uint64_t>();
             ctx.frames.push_back(call_frame{
-                .prog_ptr = prog_ptr,
+                .ip = &ctx.code[jump],
                 .base_ptr = ctx.stack.size() - args_size
             });
         } break;
@@ -264,6 +266,7 @@ auto apply_op(bytecode_context& ctx) -> void
 
         default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
     }
+    return true;
 }
 
 template <bool Debug>
@@ -272,12 +275,13 @@ auto run(const bytecode_program& prog) -> void
     const auto timer = scope_timer{};
     bytecode_context ctx{prog.code, prog.rom};
     ctx.frames.emplace_back();
+    ctx.frames.back().ip = ctx.code.data();
 
-    while (ctx.frames.back().prog_ptr < prog.code.size()) {
+    while (true) {
         if constexpr (Debug) {
-            print_op(prog, ctx.frames.back().prog_ptr);
+            print_op(ctx.rom, ctx.code.data(), ctx.frames.back().ip);
         }
-        apply_op(ctx);
+        if (!apply_op(ctx)) break;
     }
 
     if (ctx.stack.size() > 0) {
