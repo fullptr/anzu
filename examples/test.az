@@ -20,4 +20,3 @@ struct tokenizer
     print("'{}'\n", contents);
     print("\nsize={}\n", contents.size());
 }
-

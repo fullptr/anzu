@@ -471,6 +471,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
+// This is also used for declaration and assignment, should probably be renamed.
 auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
 ) -> void
@@ -483,29 +484,23 @@ auto push_function_arg(
         tok.error("arenas can not be copied or assigned");
     }
 
-    // If a perfect match, we're good.
-    if (actual == expected) {
+    const auto exact_match = actual == expected;
+
+    // T& can be assigned to a (const T)&
+    const auto ptr_convertible = actual.is_ptr() &&
+                                 expected.is_ptr() &&
+                                 actual.remove_ptr().add_const() == expected.remove_ptr();
+
+    // T[] can be assigned to a (const T)[]
+    const auto span_convertible = actual.is_span() &&
+                                  expected.is_span() &&
+                                  actual.remove_span().add_const() == expected.remove_span();
+
+    if (exact_match || ptr_convertible || span_convertible) {
         push_expr_val(com, expr);
-        return;
+    } else {
+        tok.error("Cannot convert '{}' to '{}'", actual, expected);
     }
-
-    // T& can convert to (const T)&
-    if (actual.is_ptr() && expected.is_ptr()) {
-        if (actual.remove_ptr().add_const() == expected.remove_ptr()) {
-            push_expr_val(com, expr);
-            return;
-        }
-    }
-
-    // T[] can convery to (const T)[]
-    if (actual.is_span() && expected.is_span()) {
-        if (actual.remove_span().add_const() == expected.remove_span()) {
-            push_expr_val(com, expr);
-            return;
-        }
-    }
-
-    tok.error("Cannot convert '{}' to '{}'", actual, expected);
 }
 
 auto get_builtin_id(const std::string& name)
@@ -532,7 +527,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (inner.struct_name == nullptr && com.types.contains(type)) {
             const auto expected_params = get_constructor_params(com, type);
             node.token.assert_eq(expected_params.size(), node.args.size(),
-                                 "incorrect number of arguments to constructor call");
+                                 "bad number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
             }
@@ -555,14 +550,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Second, it might be a function call
-        auto params = std::vector<type_name>{};
-        params.reserve(node.args.size());
-        for (const auto& arg : node.args) {
-            params.push_back(type_of_expr(com, *arg));
-        }
-        
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
         if (const auto func = get_function(com, to_string(struct_type), inner.name); func) {
+            node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
@@ -574,6 +564,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         // TODO- fix type checking
         if (const auto b = get_builtin_id(inner.name); b.has_value()) {
             const auto& builtin = get_builtin(*b);
+            node.token.assert_eq(node.args.size(), builtin.args.size(), "bad number of arguments to builtin call");
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
             }
