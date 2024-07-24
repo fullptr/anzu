@@ -602,7 +602,12 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     }
 
     stmt.name = parse_name(tokens);
-    tokens.consume_only(token_type::colon_equal);
+    if (tokens.consume_maybe(token_type::colon)) {
+        stmt.explicit_type = parse_type_node(tokens);
+        tokens.consume_only(token_type::equal);
+    } else {
+        tokens.consume_only(token_type::colon_equal);
+    }
     stmt.expr = parse_expression(tokens);
     tokens.consume_only(token_type::semicolon);
     return node;

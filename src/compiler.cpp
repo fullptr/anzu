@@ -214,8 +214,7 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 }
 
 // I think this is a bit of a hack; when pushing the value of a function pointer, we need
-// to do it in a special way. TODO: I think this messes with the idea that variable nodes
-// are lvalues, so that may cause trouble; we should find out how.
+// to do it in a special way.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
     if (auto func = get_function(com, to_string(global_namespace), node.name)) {
@@ -574,7 +573,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     }
 
     // Otherwise, the expression must be a function pointer.
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).remove_const();
     node.token.assert(type.is_function_ptr(), "unable to call non-callable type {}", type);
 
     const auto& sig = std::get<type_function_ptr>(type);
@@ -1023,8 +1022,10 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto type = push_expr_val(com, *node.expr).remove_const(); // new copy, constness doesn't transfer
+    const auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
+                                         : type_of_expr(com, *node.expr).remove_const();
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
+    push_function_arg(com, *node.expr, type, node.token);
     declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
 }
 

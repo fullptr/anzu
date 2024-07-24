@@ -1,13 +1,4 @@
-fn read_file(filename: (const char)[], a: arena&) -> (const char)[]
-{
-    let f := fopen(filename, "rb");
-    let contents := fread(f, a);
-    fclose(f);
-    return contents;
-}
-
-arena a;
-let contents := read_file("examples/test_contents.txt", a&);
-
-print("'{}'\n", contents);
-print("\nsize={}\n", contents.size());
+let x := 10;
+var y : const = x;
+y = 15;
+print("{}\n", y);

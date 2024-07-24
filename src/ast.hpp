@@ -290,6 +290,7 @@ struct node_declaration_stmt
 {
     std::string   name;
     node_expr_ptr expr;
+    node_type_ptr explicit_type;
     bool          add_const;
 
     anzu::token token;
