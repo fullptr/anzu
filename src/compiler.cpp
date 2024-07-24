@@ -76,16 +76,6 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
     return resolved_type;
 }
 
-auto are_types_convertible_to(const std::vector<type_name>& args,
-                              const std::vector<type_name>& actuals) -> bool;
-
-auto verify_function_call(const function_info& func, const std::vector<type_name>& params, const token& tok) -> void
-{
-    if (!are_types_convertible_to(params, func.sig.params)) {
-        tok.error("tried to call function (TODO - ADD NAME) with wrong signature");
-    }
-}
-
 auto get_function(
     const compiler& com, const std::string& struct_name, const std::string& function_name
 )
@@ -481,79 +471,44 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
-auto get_converter(const type_name& src, const type_name& dst)
-    -> void(*)(compiler&, const node_expr&, const token&)
-{
-    if (src.is_array() && dst.is_span() && src.remove_array() == dst.remove_span()) {
-        return [](compiler& com, const node_expr& expr, const token& tok) {
-            const auto type = push_expr_ptr(com, expr);
-            push_value(com.program, op::push_u64, array_length(type));
-        };
-    }
-
-    // pointers can convert to pointers-to-const
-    if (src.is_ptr() && dst.is_ptr() && src.remove_ptr() == dst.remove_ptr().remove_const()) {
-        return [](compiler& com, const node_expr& expr, const token& tok) {
-            push_expr_val(com, expr);
-        };
-    }
-
-    const auto src_raw = src.remove_const();
-    const auto dst_raw = dst.remove_const();
-
-    if (src_raw != dst_raw) {
-        return nullptr;
-    }
-
-    return [](compiler& com, const node_expr& expr, const token& tok) {
-        push_expr_val(com, expr);
-    };
-}
-
-auto assert_assignable(const token& tok, const type_name& lhs, const type_name& rhs) -> void
-{
-    if (lhs.is_const()) tok.error("cannot assign to a const variable");
-    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
-    if (rhs.remove_const() != lhs) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
-}
-
-auto assert_assignable_function_arg(const token& tok, const type_name& lhs, const type_name& rhs) -> void
-{
-    if (lhs.is_arena() || rhs.is_arena()) tok.error("cannot reassign arenas");
-    if (rhs.remove_const() != lhs.remove_const()) tok.error("cannot assign a '{}' to a '{}'", rhs, lhs);
-}
-
+// This is also used for declaration and assignment, should probably be renamed.
 auto push_function_arg(
-    compiler& com, const node_expr& expr, const type_name& expected, const token& tok
+    compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
 ) -> void
 {
-    const auto actual = type_of_expr(com, expr);
-    assert_assignable_function_arg(tok, expected, actual);
-    const auto converter = get_converter(actual, expected);
-    tok.assert(converter != nullptr, "Could not convert arg from '{}' to '{}'", actual, expected);
-    (*converter)(com, expr, tok);
-}
+    // Can disregard constness since the argument is getting copied anyway.
+    const auto actual = type_of_expr(com, expr).remove_const();
+    const auto expected = expected_raw.remove_const();
 
-auto are_types_convertible_to(
-    const std::vector<type_name>& args, const std::vector<type_name>& expecteds
-)
-    -> bool
-{
-    if (args.size() != expecteds.size()) return false;
-    for (const auto& [arg, expected] : zip(args, expecteds)) {
-        if (get_converter(arg, expected)) {
-            return true;
-        }
+    if (actual.is_arena() || expected.is_arena()) {
+        tok.error("arenas can not be copied or assigned");
     }
-    return false;
+
+    const auto exact_match = actual == expected;
+
+    // T& can be assigned to a (const T)&
+    const auto ptr_convertible = actual.is_ptr() &&
+                                 expected.is_ptr() &&
+                                 actual.remove_ptr().add_const() == expected.remove_ptr();
+
+    // T[] can be assigned to a (const T)[]
+    const auto span_convertible = actual.is_span() &&
+                                  expected.is_span() &&
+                                  actual.remove_span().add_const() == expected.remove_span();
+
+    if (exact_match || ptr_convertible || span_convertible) {
+        push_expr_val(com, expr);
+    } else {
+        tok.error("Cannot convert '{}' to '{}'", actual, expected);
+    }
 }
 
-auto get_builtin_id(const std::string& name, const std::vector<type_name>& args)
+auto get_builtin_id(const std::string& name)
     -> std::optional<std::size_t>
 {
     auto index = std::size_t{0};
     for (const auto& b : get_builtins()) {
-        if (name == b.name && are_types_convertible_to(args, b.args)) {
+        if (name == b.name) {
             return index;
         }
         ++index;
@@ -572,7 +527,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (inner.struct_name == nullptr && com.types.contains(type)) {
             const auto expected_params = get_constructor_params(com, type);
             node.token.assert_eq(expected_params.size(), node.args.size(),
-                                 "incorrect number of arguments to constructor call");
+                                 "bad number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
             }
@@ -595,15 +550,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Second, it might be a function call
-        auto params = std::vector<type_name>{};
-        params.reserve(node.args.size());
-        for (const auto& arg : node.args) {
-            params.push_back(type_of_expr(com, *arg));
-        }
-        
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
         if (const auto func = get_function(com, to_string(struct_type), inner.name); func) {
-            verify_function_call(*func, params, node.token);
+            node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
             }
@@ -612,8 +561,10 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Lastly, it might be a builtin function
-        if (const auto b = get_builtin_id(inner.name, params); b.has_value()) {
+        // TODO- fix type checking
+        if (const auto b = get_builtin_id(inner.name); b.has_value()) {
             const auto& builtin = get_builtin(*b);
+            node.token.assert_eq(node.args.size(), builtin.args.size(), "bad number of arguments to builtin call");
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
             }
@@ -734,8 +685,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
 
     const auto func = get_function(com, to_string(stripped_type), node.function_name);
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
-    verify_function_call(*func, params, node.token);
-
+    
     auto t = push_expr_ptr(com, *node.expr); // self
     while (t.is_ptr()) { // allow for calling member functions through pointers
         push_value(com.program, op::load, sizeof(std::byte*));
@@ -1073,7 +1023,7 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto type = push_expr_val(com, *node.expr);
+    const auto type = push_expr_val(com, *node.expr).remove_const(); // new copy, constness doesn't transfer
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
     declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
 }
@@ -1087,9 +1037,10 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
-    const auto rhs = push_expr_val(com, *node.expr);
+    const auto lhs_type = type_of_expr(com, *node.position);
+    node.token.assert(!lhs_type.is_const(), "cannot assign to a const variable");
+    push_function_arg(com, *node.expr, lhs_type, node.token);
     const auto lhs = push_expr_ptr(com, *node.position);
-    assert_assignable(node.token, lhs, rhs);
     push_value(com.program, op::save, com.types.size_of(lhs));
     return;
 }
@@ -1177,15 +1128,21 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     // First argument must be a pointer to an instance of the class
     node.token.assert(sig.params.size() > 0, "member functions must have at least one arg");
     const auto actual = sig.params.front();
-    const auto expected = struct_type.add_const().add_ptr();
-    assert_assignable(node.token, expected, actual);
+    node.token.assert(
+        actual == struct_type.add_ptr() || actual == struct_type.add_const().add_ptr(),
+        "first parameter to a struct member function must be a pointer to that type"
+    );
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
     node.token.assert(com.variables.in_function(), "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
-    node.token.assert_eq(return_type, com.variables.get_function_info().return_type, "wrong return type");
+    node.token.assert_eq(
+        return_type.remove_const(), // don't impose const on the return value
+        com.variables.get_function_info().return_type,
+        "wrong return type"
+    );
     com.variables.handle_function_exit();
     push_value(com.program, op::ret, com.types.size_of(return_type));
 }

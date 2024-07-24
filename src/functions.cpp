@@ -22,6 +22,12 @@ auto pop_char_span(bytecode_context& ctx) -> std::string
     return ret;
 }
 
+auto pop_arena(bytecode_context& ctx) -> memory_arena*
+{
+    // we pushed a pointer to an arena, which is a pointer in C++
+    return *ctx.stack.pop<memory_arena**>();
+}
+
 auto builtin_sqrt(bytecode_context& ctx) -> void
 {
     auto val = ctx.stack.pop<double>();
@@ -53,11 +59,40 @@ auto builtin_fputs(bytecode_context& ctx) -> void
     ctx.stack.push(std::byte{0}); // returns null
 }
 
+auto builtin_fread(bytecode_context& ctx) -> void
+{
+    auto arena = pop_arena(ctx);
+    auto file = ctx.stack.pop<std::FILE*>();
+    std::fseek(file, 0, SEEK_END);
+    const auto ssize = std::ftell(file);
+    if (ssize == -1) {
+        std::print("Error with ftell\n");
+        std::exit(1);
+    }
+    const auto size = static_cast<std::size_t>(ssize);
+    std::rewind(file);
+    std::byte* ptr = &arena->data[arena->next];
+    std::fread(ptr, sizeof(std::byte), ssize, file);
+    arena->next += size;
+    ctx.stack.push(ptr); // push the span
+    ctx.stack.push(size);
+}
+
+auto builtin_span_from_ptrs(bytecode_context& ctx) -> void
+{
+    auto end = ctx.stack.pop<const char*>();
+    auto start = ctx.stack.pop<const char*>();
+    const auto size = static_cast<std::size_t>(end - start);
+    ctx.stack.push(start);
+    ctx.stack.push(size);
+}
+
 }
 
 auto construct_builtin_array() -> std::vector<builtin>
 {
-    const auto char_span = char_type().add_const().add_span().add_const();
+    const auto char_span = char_type().add_const().add_span();
+    const auto char_ptr = char_type().add_const().add_ptr();
 
     auto b = std::vector<builtin>{};
 
@@ -66,6 +101,9 @@ auto construct_builtin_array() -> std::vector<builtin>
     b.push_back(builtin{"fopen", builtin_fopen, {char_span, char_span}, u64_type()});
     b.push_back(builtin{"fclose", builtin_fclose, {u64_type()}, null_type()});
     b.push_back(builtin{"fputs", builtin_fputs, {u64_type(), char_span}, null_type()});
+    b.push_back(builtin{"fread", builtin_fread, {u64_type(), arena_type().add_ptr()}, char_span});
+
+    b.push_back(builtin{"span_from_ptrs", builtin_span_from_ptrs, {char_ptr, char_ptr}, char_span});
 
     return b;
 }
