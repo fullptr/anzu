@@ -1023,7 +1023,7 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto type = push_expr_val(com, *node.expr);
+    const auto type = push_expr_val(com, *node.expr).remove_const(); // new copy, constness doesn't transfer
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
     declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
 }
