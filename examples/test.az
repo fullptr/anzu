@@ -11,7 +11,3 @@ let contents := read_file("examples/test_contents.txt", a&);
 
 print("'{}'\n", contents);
 print("\nsize={}\n", contents.size());
-
-let X := 10;
-var Y := X;
-Y = 15;

@@ -78,7 +78,7 @@ auto builtin_fread(bytecode_context& ctx) -> void
     ctx.stack.push(size);
 }
 
-auto builtin_span_from_chars(bytecode_context& ctx) -> void
+auto builtin_span_from_ptrs(bytecode_context& ctx) -> void
 {
     auto end = ctx.stack.pop<const char*>();
     auto start = ctx.stack.pop<const char*>();
@@ -103,7 +103,7 @@ auto construct_builtin_array() -> std::vector<builtin>
     b.push_back(builtin{"fputs", builtin_fputs, {u64_type(), char_span}, null_type()});
     b.push_back(builtin{"fread", builtin_fread, {u64_type(), arena_type().add_ptr()}, char_span});
 
-    b.push_back(builtin{"span_from_chars", builtin_span_from_chars, {char_ptr, char_ptr}, char_span});
+    b.push_back(builtin{"span_from_ptrs", builtin_span_from_ptrs, {char_ptr, char_ptr}, char_span});
 
     return b;
 }
