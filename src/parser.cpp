@@ -88,6 +88,15 @@ auto parse_null(const token& tok) -> node_expr_ptr
     return node;
 }
 
+auto parse_nullptr(const token& tok) -> node_expr_ptr
+{
+    tok.assert_type(token_type::kw_nullptr, "cannot parse nullptr literal from {}\n", tok.type);
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_literal_nullptr_expr>();
+    inner.token = tok;
+    return node;
+}
+
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 auto parse_type(tokenstream& tokens) -> type_name;
@@ -97,15 +106,16 @@ auto parse_literal(tokenstream& tokens) -> node_expr_ptr
 {
     const auto token = tokens.consume();
     switch (token.type) {
-        case token_type::int32:     return parse_i32(token);
-        case token_type::int64:     return parse_i64(token);
-        case token_type::uint64:    return parse_u64(token);
-        case token_type::float64:   return parse_f64(token);
-        case token_type::character: return parse_char(token);
-        case token_type::kw_true:   return parse_bool(token);
-        case token_type::kw_false:  return parse_bool(token);
-        case token_type::kw_null:   return parse_null(token);
-        case token_type::string:    return parse_string(token);
+        case token_type::int32:      return parse_i32(token);
+        case token_type::int64:      return parse_i64(token);
+        case token_type::uint64:     return parse_u64(token);
+        case token_type::float64:    return parse_f64(token);
+        case token_type::character:  return parse_char(token);
+        case token_type::kw_true:    return parse_bool(token);
+        case token_type::kw_false:   return parse_bool(token);
+        case token_type::kw_null:    return parse_null(token);
+        case token_type::kw_nullptr: return parse_nullptr(token);
+        case token_type::string:     return parse_string(token);
     }
     token.error("failed to parse literal ({})", token.text);
 };
@@ -332,14 +342,15 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 auto parse_simple_type(tokenstream& tokens) -> type_name
 {
     const auto tok = tokens.consume();
-    if (tok.text == "null")  return type_fundamental::null_type;
-    if (tok.text == "bool")  return type_fundamental::bool_type;
-    if (tok.text == "char")  return type_fundamental::char_type;
-    if (tok.text == "i32")   return type_fundamental::i32_type;
-    if (tok.text == "i64")   return type_fundamental::i64_type;
-    if (tok.text == "u64")   return type_fundamental::u64_type;
-    if (tok.text == "f64")   return type_fundamental::f64_type;
-    if (tok.text == "arena") return type_arena{};
+    if (tok.text == "null")    return type_fundamental::null_type;
+    if (tok.text == "bool")    return type_fundamental::bool_type;
+    if (tok.text == "char")    return type_fundamental::char_type;
+    if (tok.text == "i32")     return type_fundamental::i32_type;
+    if (tok.text == "i64")     return type_fundamental::i64_type;
+    if (tok.text == "u64")     return type_fundamental::u64_type;
+    if (tok.text == "f64")     return type_fundamental::f64_type;
+    if (tok.text == "nullptr") return type_fundamental::nullptr_type;
+    if (tok.text == "arena")   return type_arena{};
     return {type_struct{ .name=std::string{tok.text} }};
 }
 
@@ -602,7 +613,12 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     }
 
     stmt.name = parse_name(tokens);
-    tokens.consume_only(token_type::colon_equal);
+    if (tokens.consume_maybe(token_type::colon)) {
+        stmt.explicit_type = parse_type_node(tokens);
+        tokens.consume_only(token_type::equal);
+    } else {
+        tokens.consume_only(token_type::colon_equal);
+    }
     stmt.expr = parse_expression(tokens);
     tokens.consume_only(token_type::semicolon);
     return node;

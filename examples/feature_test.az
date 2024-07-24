@@ -267,12 +267,39 @@ fn get(a: arena&, count: u64) -> u64[]
     return p;
 }
 
-arena a;
-var z := get(a&, 5u);
-print("size={} capacity={}\n", a.size(), a.capacity());
+{
+    arena a;
+    var z := get(a&, 5u);
+    print("size={} capacity={}\n", a.size(), a.capacity());
 
-var idx := 0u;
-while (idx < z.size()) {
-    print("{}\n", z[idx])
-    idx = idx + 1u;
+    var idx := 0u;
+    while (idx < z.size()) {
+        print("{}\n", z[idx])
+        idx = idx + 1u;
+    }
+}
+
+fn read_file(filename: (const char)[], a: arena&) -> (const char)[]
+{
+    let f := fopen(filename, "rb");
+    let contents := fread(f, a);
+    fclose(f);
+    return contents;
+}
+
+arena a;
+let contents := read_file("examples/example_data.txt", a&);
+
+print("'{}'\n", contents);
+print("\nsize={}\n", contents.size());
+
+# nullptr checks
+{
+    var p : i64& = nullptr;
+    var q : i64& = nullptr;
+    print("{}\n", p == q);
+
+    var x := 10;
+    p = x&;
+    print("comparison of a pointer {} to nullptr: {}\n", p, p == nullptr);
 }

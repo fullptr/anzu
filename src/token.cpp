@@ -62,6 +62,7 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::kw_let:              return "let";
         case token_type::kw_loop:             return "loop";
         case token_type::kw_null:             return "null";
+        case token_type::kw_nullptr:          return "nullptr";
         case token_type::kw_print:            return "print";
         case token_type::kw_return:           return "return";
         case token_type::kw_sizeof:           return "sizeof";

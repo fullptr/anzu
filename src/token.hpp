@@ -50,6 +50,7 @@ enum class token_type
     kw_let,
     kw_loop,
     kw_null,
+    kw_nullptr,
     kw_print,
     kw_return,
     kw_sizeof,

@@ -214,8 +214,7 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 }
 
 // I think this is a bit of a hack; when pushing the value of a function pointer, we need
-// to do it in a special way. TODO: I think this messes with the idea that variable nodes
-// are lvalues, so that may cause trouble; we should find out how.
+// to do it in a special way.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
     if (auto func = get_function(com, to_string(global_namespace), node.name)) {
@@ -364,6 +363,12 @@ auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_na
     return null_type();
 }
 
+auto push_expr_val(compiler& com, const node_literal_nullptr_expr& node) -> type_name
+{
+    push_value(com.program, op::push_nullptr);
+    return nullptr_type();
+}
+
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
@@ -372,10 +377,25 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     auto lhs_real = lhs.remove_const();
     auto rhs_real = rhs.remove_const();
 
+    // Pointers can compare to nullptr
+    if ((lhs_real.is_ptr() && rhs_real == nullptr_type()) || (rhs_real.is_ptr() && lhs_real == nullptr_type())) {
+        switch (node.token.type) {
+            case tt::equal_equal: { push_value(com.program, op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(com.program, op::u64_ne); return bool_type(); }
+        }
+        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    }
+
     if (lhs_real != rhs_real) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     const auto& type = lhs_real;
 
-    if (type == char_type()) {
+    if (type.is_ptr()) {
+        switch (node.token.type) {
+            case tt::equal_equal: { push_value(com.program, op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(com.program, op::u64_ne); return bool_type(); }
+        }
+    }
+    else if (type == char_type()) {
         switch (node.token.type) {
             case tt::equal_equal: { push_value(com.program, op::char_eq); return bool_type(); }
             case tt::bang_equal:  { push_value(com.program, op::char_ne); return bool_type(); }
@@ -496,7 +516,10 @@ auto push_function_arg(
                                   expected.is_span() &&
                                   actual.remove_span().add_const() == expected.remove_span();
 
-    if (exact_match || ptr_convertible || span_convertible) {
+    // nullptr can be assigned to any pointer
+    const auto nullptr_to_ptr = expected.is_ptr() && actual == nullptr_type();
+
+    if (exact_match || ptr_convertible || span_convertible || nullptr_to_ptr) {
         push_expr_val(com, expr);
     } else {
         tok.error("Cannot convert '{}' to '{}'", actual, expected);
@@ -574,7 +597,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     }
 
     // Otherwise, the expression must be a function pointer.
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).remove_const();
     node.token.assert(type.is_function_ptr(), "unable to call non-callable type {}", type);
 
     const auto& sig = std::get<type_function_ptr>(type);
@@ -1023,8 +1046,10 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto type = push_expr_val(com, *node.expr).remove_const(); // new copy, constness doesn't transfer
+    const auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
+                                         : type_of_expr(com, *node.expr).remove_const();
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
+    push_function_arg(com, *node.expr, type, node.token);
     declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
 }
 
@@ -1209,8 +1234,9 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == char_type().add_const().add_span() || type == char_type().add_span()) {
         push_value(com.program, op::print_char_span);
     }
+    else if (type == nullptr_type()) { push_value(com.program, op::print_ptr); }
     else if (type.is_ptr()) { push_value(com.program, op::print_ptr); }
-    else { tok.error("Cannot print value of type {}", type); }
+    else { tok.error("cannot print value of type {}", type); }
 }
 
 void push_stmt(compiler& com, const node_print_stmt& node)

@@ -91,6 +91,11 @@ struct node_literal_null_expr
     anzu::token token;
 };
 
+struct node_literal_nullptr_expr
+{
+    anzu::token token;
+};
+
 struct node_literal_string_expr
 {
     std::string value;
@@ -208,6 +213,7 @@ struct node_expr : std::variant<
     node_literal_char_expr,
     node_literal_bool_expr,
     node_literal_null_expr,
+    node_literal_nullptr_expr,
     node_literal_string_expr,
     node_unary_op_expr,
     node_binary_op_expr,
@@ -290,6 +296,7 @@ struct node_declaration_stmt
 {
     std::string   name;
     node_expr_ptr expr;
+    node_type_ptr explicit_type;
     bool          add_const;
 
     anzu::token token;
