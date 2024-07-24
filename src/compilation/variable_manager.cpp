@@ -31,16 +31,6 @@ scope::scope(const scope_info& info, std::size_t start_location)
     , d_next(start_location)
 {}
 
-auto scope::declare(std::string_view name, const type_name& type, std::size_t size, bool is_local) -> bool
-{
-    for (const auto& var : d_variables) {
-        if (var.name == name) return false;
-    }
-    d_variables.emplace_back(std::string{name}, type, d_next, size, is_local);
-    d_next += size;
-    return true;
-}
-
 auto scope::scope_size() const -> std::size_t { return d_next - d_start; }
 
 auto scope::find(const std::string& name) const -> std::optional<variable>
@@ -108,7 +98,13 @@ auto variable_manager::declare(
         return false;
     }();
 
-    return d_scopes.back().declare(name, type, size, in_function);
+    auto& scope = d_scopes.back();
+    for (const auto& var : scope.d_variables) {
+        if (var.name == name) return false;
+    }
+    scope.d_variables.emplace_back(std::string{name}, type, scope.d_next, size, in_function);
+    scope.d_next += size;
+    return true;
 }
 
 auto variable_manager::find(const std::string& name) const -> std::optional<variable>
