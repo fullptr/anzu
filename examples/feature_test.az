@@ -288,7 +288,18 @@ fn read_file(filename: (const char)[], a: arena&) -> (const char)[]
 }
 
 arena a;
-let contents := read_file("examples/test_contents.txt", a&);
+let contents := read_file("examples/example_data.txt", a&);
 
 print("'{}'\n", contents);
 print("\nsize={}\n", contents.size());
+
+# nullptr checks
+{
+    var p : i64& = nullptr;
+    var q : i64& = nullptr;
+    print("{}\n", p == q);
+
+    var x := 10;
+    p = x&;
+    print("comparison of a pointer {} to nullptr: {}\n", p, p == nullptr);
+}

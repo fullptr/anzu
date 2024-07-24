@@ -1,7 +1,6 @@
 
 
 var p : i64& = nullptr;
+var q : i64& = nullptr;
 
-if (p == nullptr) {
-    print("null! {}\n", p);
-}
+print("{}\n", p == q);
