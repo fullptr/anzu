@@ -6,17 +6,8 @@ fn read_file(filename: (const char)[], a: arena&) -> (const char)[]
     return contents;
 }
 
-struct tokenizer
-{
-    input: (const char)[];
-    start: (const char)&;
-    curr:  (const char)&;
-}
+arena a;
+let contents := read_file("examples/test_contents.txt", a&);
 
-{
-    arena a;
-    let contents := read_file("examples/test_contents.txt", a&);
-
-    print("'{}'\n", contents);
-    print("\nsize={}\n", contents.size());
-}
+print("'{}'\n", contents);
+print("\nsize={}\n", contents.size());
