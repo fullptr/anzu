@@ -3,21 +3,12 @@
 namespace anzu {
 namespace {
 
-auto delete_arena(std::vector<std::byte>& program, const variable& arena)
-{
-     // Push the arena onto the stack
-    const auto op = arena.is_local ? op::push_ptr_local : op::push_ptr_global;
-    push_value(program, op, arena.location, op::load, sizeof(std::byte*));
-
-    // and delete it
-    push_value(program, op::arena_delete);
-}
-
 auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope)
 {
-    for (const auto& variable : scope.varibles | std::views::reverse) {
-        if (variable.type == arena_type()) {
-            delete_arena(program, variable);
+    for (const auto& var : scope.varibles | std::views::reverse) {
+        if (var.type.is_arena()) {
+            const auto op = var.is_local ? op::push_ptr_local : op::push_ptr_global;
+            push_value(program, op, var.location, op::load, sizeof(std::byte*), op::arena_delete);
         }
     }
 }
