@@ -2,3 +2,5 @@ let x := 10;
 var y : const = x;
 y = 15;
 print("{}\n", y);
+
+let p := nullptr;
