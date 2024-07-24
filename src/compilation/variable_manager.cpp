@@ -5,7 +5,7 @@ namespace {
 
 auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope)
 {
-    for (const auto& var : scope.varibles | std::views::reverse) {
+    for (const auto& var : scope.variables | std::views::reverse) {
         if (var.type.is_arena()) {
             const auto op = var.is_local ? op::push_ptr_local : op::push_ptr_global;
             push_value(program, op, var.location, op::load, sizeof(std::byte*), op::arena_delete);
@@ -41,10 +41,10 @@ auto variable_manager::declare(
 ) -> bool
 {
     auto& scope = d_scopes.back();
-    for (const auto& var : scope.varibles) {
+    for (const auto& var : scope.variables) {
         if (var.name == name) return false;
     }
-    scope.varibles.emplace_back(name, type, scope.next, size, in_function());
+    scope.variables.emplace_back(name, type, scope.next, size, in_function());
     scope.next += size;
     return true;
 }
@@ -52,7 +52,7 @@ auto variable_manager::declare(
 auto variable_manager::find(const std::string& name) const -> std::optional<variable>
 {
     for (const auto& scope : d_scopes | std::views::reverse) {
-        for (const auto& var : scope.varibles) {
+        for (const auto& var : scope.variables) { // no need to reverse here, var names are unique per scope
             if (var.name == name) return var;
         }
     }

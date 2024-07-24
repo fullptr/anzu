@@ -45,8 +45,8 @@ struct scope
 {
     scope_info            info;
     std::size_t           start;
-    std::size_t           next     = start;
-    std::vector<variable> varibles = {};
+    std::size_t           next      = start;
+    std::vector<variable> variables = {};
 };
 
 class scope_guard
