@@ -363,6 +363,12 @@ auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_na
     return null_type();
 }
 
+auto push_expr_val(compiler& com, const node_literal_nullptr_expr& node) -> type_name
+{
+    push_value(com.program, op::push_nullptr);
+    return nullptr_type();
+}
+
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
@@ -495,7 +501,10 @@ auto push_function_arg(
                                   expected.is_span() &&
                                   actual.remove_span().add_const() == expected.remove_span();
 
-    if (exact_match || ptr_convertible || span_convertible) {
+    // nullptr can be assigned to any pointer
+    const auto nullptr_to_ptr = expected.is_ptr() && actual == nullptr_type();
+
+    if (exact_match || ptr_convertible || span_convertible || nullptr_to_ptr) {
         push_expr_val(com, expr);
     } else {
         tok.error("Cannot convert '{}' to '{}'", actual, expected);
@@ -1210,8 +1219,9 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == char_type().add_const().add_span() || type == char_type().add_span()) {
         push_value(com.program, op::print_char_span);
     }
+    else if (type == nullptr_type()) { push_value(com.program, op::print_ptr); }
     else if (type.is_ptr()) { push_value(com.program, op::print_ptr); }
-    else { tok.error("Cannot print value of type {}", type); }
+    else { tok.error("cannot print value of type {}", type); }
 }
 
 void push_stmt(compiler& com, const node_print_stmt& node)

@@ -51,6 +51,9 @@ auto print_op(const bytecode_program& prog, std::size_t ptr) -> std::size_t
         case op::push_null: {
             std::print("PUSH_NULL\n");
         } break;
+        case op::push_nullptr: {
+            std::print("PUSH_NULLPTR\n");
+        } break;
         case op::push_string_literal: {
             const auto index = read_at<std::uint64_t>(prog.code, ptr);
             const auto size = read_at<std::uint64_t>(prog.code, ptr);

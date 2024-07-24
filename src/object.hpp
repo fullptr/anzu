@@ -28,6 +28,7 @@ enum class type_fundamental : std::uint8_t
     i64_type,
     u64_type,
     f64_type,
+    nullptr_type,
 };
 
 struct type_struct
@@ -122,6 +123,7 @@ auto hash(const type_const& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
 
 auto null_type() -> type_name;
+auto nullptr_type() -> type_name;
 auto bool_type() -> type_name;
 auto char_type() -> type_name;
 auto i32_type() -> type_name;

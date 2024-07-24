@@ -31,6 +31,9 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_literal_null_expr&) {
             print("{}Literal (null): null\n", spaces);
         },
+        [&](const node_literal_nullptr_expr&) {
+            print("{}Literal (nullptr): nullptr\n", spaces);
+        },
         [&](const node_literal_string_expr& node) {
             print("{}Literal (string-literal): {}\n", spaces, node.value);
         },

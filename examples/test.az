@@ -1,6 +1,7 @@
-let x := 10;
-var y : const = x;
-y = 15;
-print("{}\n", y);
 
-let p := nullptr;
+var p : i64& = nullptr;
+var x := 30;
+
+__dump_type(p);
+
+print("{}\n", p);

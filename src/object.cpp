@@ -70,13 +70,14 @@ auto to_string(const type_name& type) -> std::string
 auto to_string(type_fundamental t) -> std::string
 {
     switch (t) {
-        case type_fundamental::null_type: return "null";
-        case type_fundamental::bool_type: return "bool";
-        case type_fundamental::char_type: return "char";
-        case type_fundamental::i32_type:  return "i32";
-        case type_fundamental::i64_type:  return "i64";
-        case type_fundamental::u64_type:  return "u64";
-        case type_fundamental::f64_type:  return "f64";
+        case type_fundamental::null_type:    return "null";
+        case type_fundamental::bool_type:    return "bool";
+        case type_fundamental::char_type:    return "char";
+        case type_fundamental::i32_type:     return "i32";
+        case type_fundamental::i64_type:     return "i64";
+        case type_fundamental::u64_type:     return "u64";
+        case type_fundamental::f64_type:     return "f64";
+        case type_fundamental::nullptr_type: return "nullptr";
         default: return "UNKNOWN";
     }
 }
@@ -186,6 +187,11 @@ auto hash(std::span<const type_name> types) -> std::size_t
 auto null_type() -> type_name
 {
     return {type_fundamental::null_type};
+}
+
+auto nullptr_type() -> type_name
+{
+    return {type_fundamental::nullptr_type};
 }
 
 auto bool_type() -> type_name
