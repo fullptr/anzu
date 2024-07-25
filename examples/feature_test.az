@@ -171,7 +171,7 @@ struct vec3
     y: f64;
     z: f64;
 
-    fn length(self: (const vec3)&) -> f64
+    fn length(self: vec3 const&) -> f64
     {
         let x_squared := square(self.x);
         let y_squared := square(self.y);
@@ -279,7 +279,7 @@ fn get(a: arena&, count: u64) -> u64[]
     }
 }
 
-fn read_file(filename: (const char)[], a: arena&) -> (const char)[]
+fn read_file(filename: char const[], a: arena&) -> char const[]
 {
     let f := fopen(filename, "rb");
     let contents := fread(f, a);
