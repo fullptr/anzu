@@ -5,10 +5,17 @@
 
 namespace anzu {
 
+struct bytecode_function
+{
+    std::string            name;
+    std::size_t            id;
+    std::vector<std::byte> code;
+};
+
 struct bytecode_program
 {
-    std::vector<std::byte> code;
-    std::string            rom;
+    std::vector<bytecode_function> functions;
+    std::string                    rom;
 };
 
 auto print_program(const bytecode_program& prog) -> void;
@@ -30,6 +37,7 @@ enum class op : std::uint8_t
     push_string_literal,
     push_ptr_global,
     push_ptr_local,
+    push_function_ptr,
 
     arena_new,
     arena_delete,

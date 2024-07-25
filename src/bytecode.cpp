@@ -21,7 +21,7 @@ auto read_at(const std::byte** ptr) -> T
 
 auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr) -> const std::byte*
 {
-    std::print("[{:>3}] ", static_cast<std::size_t>(ptr - start));
+    std::print("    [{:>3}] ", static_cast<std::size_t>(ptr - start));
     const auto op_code = read_at<op>(&ptr);
     switch (op_code) {
         case op::end_program: {
@@ -71,6 +71,10 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
         case op::push_ptr_local: {
             const auto offset = read_at<std::uint64_t>(&ptr);
             std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
+        } break;
+        case op::push_function_ptr: {
+            const auto id = read_at<std::uint64_t>(&ptr);
+            std::print("PUSH_FUNCTION_PTR: id={}\n", id);
         } break;
         case op::arena_new: {
             std::print("NEW_ARENA\n");
@@ -204,12 +208,26 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
     return ptr;
 }
 
+auto linebreak() { std::print("==================================\n"); }
+
 auto print_program(const bytecode_program& prog) -> void
 {
-    auto ptr = prog.code.data();
-    while (ptr < prog.code.data() + prog.code.size()) {
-        ptr = print_op(prog.rom, prog.code.data(), ptr);
+    std::print("PROGRAM (num functions = {})\n", prog.functions.size());
+    linebreak();
+    for (const auto& func : prog.functions) {
+        std::print("{} - id: {}\n", func.name, func.id);
+        linebreak();
+        auto ptr = func.code.data();
+        while (ptr < func.code.data() + func.code.size()) {
+            ptr = print_op(prog.rom, func.code.data(), ptr);
+        }
+        std::print("\n");
+        linebreak();
     }
+    std::print("ROM\n");
+    linebreak();
+    std::print("{}\n", prog.rom);
+    linebreak();
 }
 
 }

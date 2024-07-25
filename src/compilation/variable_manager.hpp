@@ -1,6 +1,5 @@
 #pragma once
 #include "object.hpp"
-#include "bytecode.hpp"
 #include "utility/memory.hpp"
 #include "utility/common.hpp"
 
@@ -14,6 +13,7 @@
 namespace anzu {
 
 class variable_manager;
+class compiler;
 
 struct variable
 {
@@ -62,12 +62,12 @@ public:
 
 class variable_manager
 {
-    std::vector<std::byte>* d_program;
+    compiler* d_compiler;
     std::vector<scope> d_scopes;
     friend scope_guard;
 
 public:
-    auto set_program(std::vector<std::byte>* program) { d_program = program; }
+    auto set_compiler(compiler& c) { d_compiler = &c; }
 
     auto declare(const std::string& name, const type_name& type, std::size_t size) -> bool;
     auto find(const std::string& name) const -> std::optional<variable>;

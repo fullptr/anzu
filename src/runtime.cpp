@@ -49,8 +49,7 @@ auto read_advance(bytecode_context& ctx) -> T
 auto apply_op(bytecode_context& ctx) -> bool
 {
     auto& frame = ctx.frames.back();
-    const auto op_code = static_cast<op>(*frame.ip);
-    frame.ip++;
+    const auto op_code = read_advance<op>(ctx);
     switch (op_code) {
         case op::end_program: return false;
         case op::push_char:
@@ -62,7 +61,8 @@ auto apply_op(bytecode_context& ctx) -> bool
         } break;
         case op::push_i64:
         case op::push_u64:
-        case op::push_f64: {
+        case op::push_f64:
+        case op::push_function_ptr: {
             ctx.stack.push(read_advance<std::uint64_t>(ctx));
         } break;
         case op::push_string_literal: {
@@ -145,11 +145,11 @@ auto apply_op(bytecode_context& ctx) -> bool
         } break;
         case op::jump: {
             const auto jump = read_advance<std::uint64_t>(ctx);
-            frame.ip = &ctx.code[jump];
+            frame.ip = &frame.code[jump];
         } break;
         case op::jump_if_false: {
             const auto jump = read_advance<std::uint64_t>(ctx);
-            if (!ctx.stack.pop<bool>()) frame.ip = &ctx.code[jump];
+            if (!ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];
         } break;
         case op::ret: {
             const auto size = read_advance<std::uint64_t>(ctx);
@@ -159,9 +159,13 @@ auto apply_op(bytecode_context& ctx) -> bool
         } break;
         case op::call: {
             const auto args_size = read_advance<std::uint64_t>(ctx);
-            const auto jump = ctx.stack.pop<std::uint64_t>();
+            const auto function_id = ctx.stack.pop<std::uint64_t>();
+            if (function_id >= ctx.functions.size()) {
+                runtime_error("invalid function id: {}", function_id);
+            }
             ctx.frames.push_back(call_frame{
-                .ip = &ctx.code[jump],
+                .code = ctx.functions[function_id].code.data(),
+                .ip = ctx.functions[function_id].code.data(),
                 .base_ptr = ctx.stack.size() - args_size
             });
         } break;
@@ -273,13 +277,16 @@ template <bool Debug>
 auto run(const bytecode_program& prog) -> void
 {
     const auto timer = scope_timer{};
-    bytecode_context ctx{prog.code, prog.rom};
-    ctx.frames.emplace_back();
-    ctx.frames.back().ip = ctx.code.data();
+    bytecode_context ctx{prog.functions, prog.rom};
+    ctx.frames.emplace_back(call_frame{
+        .code = ctx.functions.front().code.data(),
+        .ip = ctx.functions.front().code.data(),
+        .base_ptr = 0
+    });
 
     while (true) {
         if constexpr (Debug) {
-            print_op(ctx.rom, ctx.code.data(), ctx.frames.back().ip);
+            print_op(ctx.rom, ctx.frames.back().code, ctx.frames.back().ip);
         }
         if (!apply_op(ctx)) break;
     }
