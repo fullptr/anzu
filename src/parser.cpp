@@ -390,7 +390,7 @@ auto parse_type_inner(tokenstream& tokens) -> type_name
             type = type_name{type_ptr{ .inner_type=type }};
         }
         else if (tokens.consume_maybe(token_type::kw_const)) {
-            type = type_name{type_const{ .inner_type=type }};
+            type.is_const = true;
         }
         else {
             break;
@@ -421,8 +421,7 @@ auto validate_type_inner(const type_name& type) -> std::optional<std::string_vie
             }
             return Ret{};
         },
-        [](const type_arena&) { return Ret{}; },
-        [](const type_const& t) { return validate_type_inner(*t.inner_type); }
+        [](const type_arena&) { return Ret{}; }
     }, type);
 }
 

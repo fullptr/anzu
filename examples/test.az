@@ -2,7 +2,7 @@
 
 fn hello(x: i64 const&) -> null
 {
+    x@ = 10;
     print("hello\n");
 }
 
-let arr := [hello, hello, hello];

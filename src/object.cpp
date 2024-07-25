@@ -31,26 +31,23 @@ auto type_name::remove_ptr() const -> type_name
     return *std::get<type_ptr>(*this).inner_type;
 }
 
-auto type_name::is_const() const -> bool
-{
-    return std::holds_alternative<type_const>(*this);
-}
-
 auto type_name::add_const() const -> type_name
 {
-    if (is_const()) return *this;
-    return { type_const{ .inner_type{*this} } };
+    auto copy = *this;
+    copy.is_const = true;
+    return copy;
 }
 
 auto type_name::remove_const() const -> type_name
 {
-    if (!is_const()) return *this;
-    return *std::get<type_const>(*this).inner_type;
+    auto copy = *this;
+    copy.is_const = false;
+    return copy;
 }
 
 auto type_name::strip_const() const -> std::pair<type_name, bool>
 {
-    return {remove_const(), is_const()};
+    return {remove_const(), is_const};
 }
 
 auto to_string_paren(const type_name& type) -> std::string
@@ -100,11 +97,6 @@ auto to_string(const type_ptr& type) -> std::string
 auto to_string(const type_span& type) -> std::string
 {
     return std::format("{}[]", to_string_paren(*type.inner_type));
-}
-
-auto to_string(const type_const& type) -> std::string
-{
-    return std::format("{} const", to_string_paren(*type.inner_type));
 }
 
 auto to_string(const type_function_ptr& type) -> std::string
@@ -168,12 +160,6 @@ auto hash(const type_arena& type) -> std::size_t
 {
     static const auto base = std::hash<std::string_view>{}("type_arena");
     return base;
-}
-
-auto hash(const type_const& type) -> std::size_t
-{
-    static const auto base = std::hash<std::string_view>{}("type_const");
-    return hash(*type.inner_type) ^ base;
 }
 
 auto hash(std::span<const type_name> types) -> std::size_t

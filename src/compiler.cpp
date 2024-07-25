@@ -232,14 +232,14 @@ auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
     // step since wrapping a type in const will stop this from stripping away
     // further pointers.
     while (type.is_ptr()) {
-        while (type.is_const()) type = type.remove_const();
+        while (type.is_const) type = type.remove_const();
         push_value(com.code(), op::load, sizeof(std::byte*));
         type = type.remove_ptr();
     }
 
     const auto field_type = push_field_offset(com, node.token, type, node.field_name);
     push_value(com.code(), op::u64_add); // modify ptr
-    if (type.is_const()) return field_type.add_const(); // propagate const to fields
+    if (type.is_const) return field_type.add_const(); // propagate const to fields
     return field_type;
 }
 
@@ -1032,7 +1032,7 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto lhs_type = type_of_expr(com, *node.position);
-    node.token.assert(!lhs_type.is_const(), "cannot assign to a const variable");
+    node.token.assert(!lhs_type.is_const, "cannot assign to a const variable");
     push_function_arg(com, *node.expr, lhs_type, node.token);
     const auto lhs = push_expr_ptr(com, *node.position);
     push_value(com.code(), op::save, com.types.size_of(lhs));
