@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/src/Debug/anzu.exe",
             "args": [
-                "${workspaceFolder}/examples/feature_test.az",
+                "${workspaceFolder}/examples/euler.az",
                 "run"
             ],
             "stopAtEntry": false,

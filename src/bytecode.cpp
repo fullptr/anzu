@@ -72,6 +72,10 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto offset = read_at<std::uint64_t>(&ptr);
             std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
         } break;
+        case op::push_function_ptr: {
+            const auto id = read_at<std::uint64_t>(&ptr);
+            std::print("PUSH_FUNCTION_PTR: id={}\n", id);
+        } break;
         case op::arena_new: {
             std::print("NEW_ARENA\n");
         } break;
@@ -206,10 +210,16 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
 
 auto print_program(const bytecode_program& prog) -> void
 {
-    auto ptr = prog.code.data();
-    while (ptr < prog.code.data() + prog.code.size()) {
-        ptr = print_op(prog.rom, prog.code.data(), ptr);
+    std::print("PROGRAM (num functions = {})\n\n", prog.functions.size());
+    for (const auto& func : prog.functions) {
+        std::print("FUNCTION {} (ID {})\n", func.name, func.id);
+        auto ptr = func.code.data();
+        while (ptr < func.code.data() + func.code.size()) {
+            ptr = print_op(prog.rom, func.code.data(), ptr);
+        }
+        std::print("==================================\n");
     }
+    std::print("\nROM\n\n{}\n", prog.rom);
 }
 
 }

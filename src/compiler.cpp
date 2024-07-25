@@ -1,8 +1,5 @@
 #include "compiler.hpp"
 
-#include "compilation/type_manager.hpp"
-#include "compilation/variable_manager.hpp"
-
 #include "lexer.hpp"
 #include "object.hpp"
 #include "parser.hpp"
@@ -24,38 +21,31 @@ namespace {
 
 static const auto global_namespace = make_type("<global>");
 
-struct signature
-{
-    std::vector<type_name> params;
-    type_name              return_type;
-};
-
-struct function_info
-{
-    signature   sig;
-    std::size_t ptr;
-    token       tok;
-};
-
-// Struct used to store information while compiling an AST. Contains the output program
-// as well as information such as function definitions.
-struct compiler
-{
-    std::vector<std::byte> program;
-    std::string            read_only_data;
-
-    std::unordered_map<std::string, function_info> functions;
-    
-    type_manager     types;
-    variable_manager variables;
-    
-    bool debug = false;
-};
-
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
+
+auto new_function(compiler& com, const std::string& name, const token& tok)
+{
+    std::print("compiling function {}\n", name);
+    if (com.in_function) tok.error("cannot create a new function while one is already being compiled");
+    const auto id = com.compiled_functions.size();
+
+    // The function signature can only be filled in after declaring the function parameters
+    // since the types of some may depend on earlier parameters via typeof
+    com.compiled_functions.emplace_back(name, signature{}, tok, id);
+
+    if (com.functions_by_name.contains(name)) tok.error("a function with the name '{}' already exists", name);
+    com.functions_by_name.emplace(name, id);
+    com.in_function = true;
+}
+
+auto finish_function(compiler& com)
+{
+    com.in_function = false;
+}
+
 
 auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) -> type_name
 {
@@ -82,8 +72,8 @@ auto get_function(
     -> std::optional<function_info>
 {
     const auto full_name = std::format("{}::{}", struct_name, function_name);
-    if (const auto it = com.functions.find(full_name); it != com.functions.end()) {
-        return it->second;
+    if (const auto it = com.functions_by_name.find(full_name); it != com.functions_by_name.end()) {
+        return com.compiled_functions[it->second];
     }
     return std::nullopt;
 }
@@ -94,7 +84,7 @@ auto push_function_call(compiler& com, const function_info& function) -> void
     for (const auto& param : function.sig.params) {
         args_size += com.types.size_of(param);
     }
-    push_value(com.program, op::push_u64, function.ptr, op::call, args_size);
+    push_value(com.code(), op::push_u64, function.id, op::call, args_size);
 }
 
 // Registers the given name in the current scope
@@ -110,20 +100,20 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
     const auto var = com.variables.find(name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
     const auto op = var->is_local ? op::push_ptr_local : op::push_ptr_global;
-    push_value(com.program, op, var->location);
+    push_value(com.code(), op, var->location);
     return var->type;
 }
 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
-    push_value(com.program, op::load, com.types.size_of(type));
+    push_value(com.code(), op::load, com.types.size_of(type));
 }
 
 auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, name);
-    push_value(com.program, op::save, com.types.size_of(type));
+    push_value(com.code(), op::save, com.types.size_of(type));
 }
 
 // Given a type and a field name, push the offset of the fields position relative to its
@@ -136,7 +126,7 @@ auto push_field_offset(
     auto offset = std::size_t{0};
     for (const auto& field : com.types.fields_of(type)) {
         if (field.name == field_name) {
-            push_value(com.program, op::push_u64, offset);
+            push_value(com.code(), op::push_u64, offset);
             return field.type;
         }
         offset += com.types.size_of(field.type);
@@ -179,9 +169,9 @@ auto get_constructor_params(const compiler& com, const type_name& type) -> std::
 // op codes to leave the program unchanged before returning the type.
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name
 {
-    const auto program_size = com.program.size();
+    const auto program_size = com.code().size();
     const auto type = push_expr_val(com, node);
-    com.program.resize(program_size);
+    com.code().resize(program_size);
     return type;
 }
 
@@ -189,19 +179,19 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name
 // returns the pointer.
 auto insert_into_rom(compiler& com, std::string_view data) -> std::size_t
 {
-    const auto index = com.read_only_data.find(data);
+    const auto index = com.rom.find(data);
     if (index != std::string::npos) {
         return index;
     }
-    const auto ptr = com.read_only_data.size();
-    com.read_only_data.append(data);
+    const auto ptr = com.rom.size();
+    com.rom.append(data);
     return ptr;
 }
 
 auto push_assert(compiler& com, std::string_view message) -> void
 {
     const auto index = insert_into_rom(com, message);
-    push_value(com.program, op::assert, index, message.size());
+    push_value(com.code(), op::assert, index, message.size());
 }
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
@@ -219,7 +209,7 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
     if (auto func = get_function(com, to_string(global_namespace), node.name)) {
         const auto& info = *func;
-        push_value(com.program, op::push_u64, info.ptr);
+        push_value(com.code(), op::push_u64, info.id);
 
         // next, construct the return type.
         const auto ptr_type = type_function_ptr{
@@ -231,7 +221,7 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
     // This is the default logic for pushing an lvalue.
     const auto type = push_expr_ptr(com, node);
-    push_value(com.program, op::load, com.types.size_of(type));
+    push_value(com.code(), op::load, com.types.size_of(type));
     return type;
 }
 
@@ -241,12 +231,12 @@ auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 
     // Allow for field access on a pointer
     while (type.is_ptr()) {
-        push_value(com.program, op::load, sizeof(std::byte*));
+        push_value(com.code(), op::load, sizeof(std::byte*));
         type = type.remove_ptr();
     }
 
     const auto field_type = push_field_offset(com, node.token, type, node.field_name);
-    push_value(com.program, op::u64_add); // modify ptr
+    push_value(com.code(), op::u64_add); // modify ptr
     if (is_const) return field_type.add_const(); // Propagate const to members
     return field_type;
 }
@@ -272,7 +262,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
     if (is_span) {
-        push_value(com.program, op::load, sizeof(std::byte*));
+        push_value(com.code(), op::load, sizeof(std::byte*));
     }
 
     // Bounds checking on the subscript, it's unsigned so only need to check upper bound
@@ -280,14 +270,14 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
         const auto index = push_expr_val(com, *node.index);
         node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
         if (is_array) {
-            push_value(com.program, op::push_u64, array_length(real_type));
+            push_value(com.code(), op::push_u64, array_length(real_type));
         } else {
             push_expr_ptr(com, *node.expr);
-            push_value(com.program, op::push_u64, sizeof(std::byte*));
-            push_value(com.program, op::u64_add); // offset to the size value
-            push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
+            push_value(com.code(), op::push_u64, sizeof(std::byte*));
+            push_value(com.code(), op::u64_add); // offset to the size value
+            push_value(com.code(), op::load, com.types.size_of(u64_type())); // load the size
         }
-        push_value(com.program, op::u64_lt);
+        push_value(com.code(), op::u64_lt);
         push_assert(com, "index out of range");
     }
 
@@ -295,9 +285,9 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     const auto inner = inner_type(real_type);
     const auto index = push_expr_val(com, *node.index);
     node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-    push_value(com.program, op::push_u64, com.types.size_of(inner));
-    push_value(com.program, op::u64_mul);
-    push_value(com.program, op::u64_add); // modify ptr
+    push_value(com.code(), op::push_u64, com.types.size_of(inner));
+    push_value(com.code(), op::u64_mul);
+    push_value(com.code(), op::u64_add); // modify ptr
     if (is_array && is_const) {
         return inner.add_const();
     }
@@ -316,56 +306,56 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_literal_i32_expr& node) -> type_name
 {
-    push_value(com.program, op::push_i32, node.value);
+    push_value(com.code(), op::push_i32, node.value);
     return i32_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_i64_expr& node) -> type_name
 {
-    push_value(com.program, op::push_i64, node.value);
+    push_value(com.code(), op::push_i64, node.value);
     return i64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_u64_expr& node) -> type_name
 {
-    push_value(com.program, op::push_u64, node.value);
+    push_value(com.code(), op::push_u64, node.value);
     return u64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_f64_expr& node) -> type_name
 {
-    push_value(com.program, op::push_f64, node.value);
+    push_value(com.code(), op::push_f64, node.value);
     return f64_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_name
 {
-    push_value(com.program, op::push_char, node.value);
+    push_value(com.code(), op::push_char, node.value);
     return char_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
 {
-    push_value(com.program, op::push_string_literal);
-    push_value(com.program, insert_into_rom(com, node.value), node.value.size());
+    push_value(com.code(), op::push_string_literal);
+    push_value(com.code(), insert_into_rom(com, node.value), node.value.size());
     return char_type().add_const().add_span();
 }
 
 auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
 {
-    push_value(com.program, op::push_bool, node.value);
+    push_value(com.code(), op::push_bool, node.value);
     return bool_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_name
 {
-    push_value(com.program, op::push_null);
+    push_value(com.code(), op::push_null);
     return null_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_nullptr_expr& node) -> type_name
 {
-    push_value(com.program, op::push_nullptr);
+    push_value(com.code(), op::push_nullptr);
     return nullptr_type();
 }
 
@@ -380,8 +370,8 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     // Pointers can compare to nullptr
     if ((lhs_real.is_ptr() && rhs_real == nullptr_type()) || (rhs_real.is_ptr() && lhs_real == nullptr_type())) {
         switch (node.token.type) {
-            case tt::equal_equal: { push_value(com.program, op::u64_eq); return bool_type(); }
-            case tt::bang_equal:  { push_value(com.program, op::u64_ne); return bool_type(); }
+            case tt::equal_equal: { push_value(com.code(), op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(com.code(), op::u64_ne); return bool_type(); }
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
@@ -391,81 +381,81 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 
     if (type.is_ptr()) {
         switch (node.token.type) {
-            case tt::equal_equal: { push_value(com.program, op::u64_eq); return bool_type(); }
-            case tt::bang_equal:  { push_value(com.program, op::u64_ne); return bool_type(); }
+            case tt::equal_equal: { push_value(com.code(), op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(com.code(), op::u64_ne); return bool_type(); }
         }
     }
     else if (type == char_type()) {
         switch (node.token.type) {
-            case tt::equal_equal: { push_value(com.program, op::char_eq); return bool_type(); }
-            case tt::bang_equal:  { push_value(com.program, op::char_ne); return bool_type(); }
+            case tt::equal_equal: { push_value(com.code(), op::char_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(com.code(), op::char_ne); return bool_type(); }
         }
     }
     else if (type == i32_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push_value(com.program, op::i32_add); return type;       }
-            case tt::minus:         { push_value(com.program, op::i32_sub); return type;       }
-            case tt::star:          { push_value(com.program, op::i32_mul); return type;       }
-            case tt::slash:         { push_value(com.program, op::i32_div); return type;       }
-            case tt::percent:       { push_value(com.program, op::i32_mod); return type;       }
-            case tt::equal_equal:   { push_value(com.program, op::i32_eq); return bool_type(); }
-            case tt::bang_equal:    { push_value(com.program, op::i32_ne); return bool_type(); }
-            case tt::less:          { push_value(com.program, op::i32_lt); return bool_type(); }
-            case tt::less_equal:    { push_value(com.program, op::i32_le); return bool_type(); }
-            case tt::greater:       { push_value(com.program, op::i32_gt); return bool_type(); }
-            case tt::greater_equal: { push_value(com.program, op::i32_ge); return bool_type(); }
+            case tt::plus:          { push_value(com.code(), op::i32_add); return type;       }
+            case tt::minus:         { push_value(com.code(), op::i32_sub); return type;       }
+            case tt::star:          { push_value(com.code(), op::i32_mul); return type;       }
+            case tt::slash:         { push_value(com.code(), op::i32_div); return type;       }
+            case tt::percent:       { push_value(com.code(), op::i32_mod); return type;       }
+            case tt::equal_equal:   { push_value(com.code(), op::i32_eq); return bool_type(); }
+            case tt::bang_equal:    { push_value(com.code(), op::i32_ne); return bool_type(); }
+            case tt::less:          { push_value(com.code(), op::i32_lt); return bool_type(); }
+            case tt::less_equal:    { push_value(com.code(), op::i32_le); return bool_type(); }
+            case tt::greater:       { push_value(com.code(), op::i32_gt); return bool_type(); }
+            case tt::greater_equal: { push_value(com.code(), op::i32_ge); return bool_type(); }
         }
     }
     else if (type == i64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push_value(com.program, op::i64_add); return type;       }
-            case tt::minus:         { push_value(com.program, op::i64_sub); return type;       }
-            case tt::star:          { push_value(com.program, op::i64_mul); return type;       }
-            case tt::slash:         { push_value(com.program, op::i64_div); return type;       }
-            case tt::percent:       { push_value(com.program, op::i64_mod); return type;       }
-            case tt::equal_equal:   { push_value(com.program, op::i64_eq); return bool_type(); }
-            case tt::bang_equal:    { push_value(com.program, op::i64_ne); return bool_type(); }
-            case tt::less:          { push_value(com.program, op::i64_lt); return bool_type(); }
-            case tt::less_equal:    { push_value(com.program, op::i64_le); return bool_type(); }
-            case tt::greater:       { push_value(com.program, op::i64_gt); return bool_type(); }
-            case tt::greater_equal: { push_value(com.program, op::i64_ge); return bool_type(); }
+            case tt::plus:          { push_value(com.code(), op::i64_add); return type;       }
+            case tt::minus:         { push_value(com.code(), op::i64_sub); return type;       }
+            case tt::star:          { push_value(com.code(), op::i64_mul); return type;       }
+            case tt::slash:         { push_value(com.code(), op::i64_div); return type;       }
+            case tt::percent:       { push_value(com.code(), op::i64_mod); return type;       }
+            case tt::equal_equal:   { push_value(com.code(), op::i64_eq); return bool_type(); }
+            case tt::bang_equal:    { push_value(com.code(), op::i64_ne); return bool_type(); }
+            case tt::less:          { push_value(com.code(), op::i64_lt); return bool_type(); }
+            case tt::less_equal:    { push_value(com.code(), op::i64_le); return bool_type(); }
+            case tt::greater:       { push_value(com.code(), op::i64_gt); return bool_type(); }
+            case tt::greater_equal: { push_value(com.code(), op::i64_ge); return bool_type(); }
         }
     }
     else if (type == u64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push_value(com.program, op::u64_add); return type;       }
-            case tt::minus:         { push_value(com.program, op::u64_sub); return type;       }
-            case tt::star:          { push_value(com.program, op::u64_mul); return type;       }
-            case tt::slash:         { push_value(com.program, op::u64_div); return type;       }
-            case tt::percent:       { push_value(com.program, op::u64_mod); return type;       }
-            case tt::equal_equal:   { push_value(com.program, op::u64_eq); return bool_type(); }
-            case tt::bang_equal:    { push_value(com.program, op::u64_ne); return bool_type(); }
-            case tt::less:          { push_value(com.program, op::u64_lt); return bool_type(); }
-            case tt::less_equal:    { push_value(com.program, op::u64_le); return bool_type(); }
-            case tt::greater:       { push_value(com.program, op::u64_gt); return bool_type(); }
-            case tt::greater_equal: { push_value(com.program, op::u64_ge); return bool_type(); }
+            case tt::plus:          { push_value(com.code(), op::u64_add); return type;       }
+            case tt::minus:         { push_value(com.code(), op::u64_sub); return type;       }
+            case tt::star:          { push_value(com.code(), op::u64_mul); return type;       }
+            case tt::slash:         { push_value(com.code(), op::u64_div); return type;       }
+            case tt::percent:       { push_value(com.code(), op::u64_mod); return type;       }
+            case tt::equal_equal:   { push_value(com.code(), op::u64_eq); return bool_type(); }
+            case tt::bang_equal:    { push_value(com.code(), op::u64_ne); return bool_type(); }
+            case tt::less:          { push_value(com.code(), op::u64_lt); return bool_type(); }
+            case tt::less_equal:    { push_value(com.code(), op::u64_le); return bool_type(); }
+            case tt::greater:       { push_value(com.code(), op::u64_gt); return bool_type(); }
+            case tt::greater_equal: { push_value(com.code(), op::u64_ge); return bool_type(); }
         }
     }
     else if (type == f64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push_value(com.program, op::f64_add); return type;       }
-            case tt::minus:         { push_value(com.program, op::f64_sub); return type;       }
-            case tt::star:          { push_value(com.program, op::f64_mul); return type;       }
-            case tt::slash:         { push_value(com.program, op::f64_div); return type;       }
-            case tt::equal_equal:   { push_value(com.program, op::f64_eq); return bool_type(); }
-            case tt::bang_equal:    { push_value(com.program, op::f64_ne); return bool_type(); }
-            case tt::less:          { push_value(com.program, op::f64_lt); return bool_type(); }
-            case tt::less_equal:    { push_value(com.program, op::f64_le); return bool_type(); }
-            case tt::greater:       { push_value(com.program, op::f64_gt); return bool_type(); }
-            case tt::greater_equal: { push_value(com.program, op::f64_ge); return bool_type(); }
+            case tt::plus:          { push_value(com.code(), op::f64_add); return type;       }
+            case tt::minus:         { push_value(com.code(), op::f64_sub); return type;       }
+            case tt::star:          { push_value(com.code(), op::f64_mul); return type;       }
+            case tt::slash:         { push_value(com.code(), op::f64_div); return type;       }
+            case tt::equal_equal:   { push_value(com.code(), op::f64_eq); return bool_type(); }
+            case tt::bang_equal:    { push_value(com.code(), op::f64_ne); return bool_type(); }
+            case tt::less:          { push_value(com.code(), op::f64_lt); return bool_type(); }
+            case tt::less_equal:    { push_value(com.code(), op::f64_le); return bool_type(); }
+            case tt::greater:       { push_value(com.code(), op::f64_gt); return bool_type(); }
+            case tt::greater_equal: { push_value(com.code(), op::f64_ge); return bool_type(); }
         }
     }
     else if (type == bool_type()) {
         switch (node.token.type) {
-            case tt::ampersand_ampersand: { push_value(com.program, op::bool_and); return type; }
-            case tt::bar_bar:             { push_value(com.program, op::bool_or);  return type; }
-            case tt::equal_equal:         { push_value(com.program, op::bool_eq);  return type; }
-            case tt::bang_equal:          { push_value(com.program, op::bool_ne);  return type; }
+            case tt::ampersand_ampersand: { push_value(com.code(), op::bool_and); return type; }
+            case tt::bar_bar:             { push_value(com.code(), op::bool_or);  return type; }
+            case tt::equal_equal:         { push_value(com.code(), op::bool_eq);  return type; }
+            case tt::bang_equal:          { push_value(com.code(), op::bool_ne);  return type; }
         }
     }
 
@@ -480,12 +470,12 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 
     switch (node.token.type) {
         case tt::minus: {
-            if (type == i32_type()) { push_value(com.program, op::i32_neg); return type; }
-            if (type == i64_type()) { push_value(com.program, op::i64_neg); return type; }
-            if (type == f64_type()) { push_value(com.program, op::f64_neg); return type; }
+            if (type == i32_type()) { push_value(com.code(), op::i32_neg); return type; }
+            if (type == i64_type()) { push_value(com.code(), op::i64_neg); return type; }
+            if (type == f64_type()) { push_value(com.code(), op::f64_neg); return type; }
         } break;
         case tt::bang: {
-            if (type == bool_type()) { push_value(com.program, op::bool_not); return type; }
+            if (type == bool_type()) { push_value(com.code(), op::bool_not); return type; }
         } break;
     }
     node.token.error("could not find op '{}{}'", node.token.type, type);
@@ -555,7 +545,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                 push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
             }
             if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
-                push_value(com.program, op::push_null);
+                push_value(com.code(), op::push_null);
             }
             return type;
         }
@@ -568,7 +558,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                 std::print("    {},\n", dump);
             }
             std::print(")\n");
-            push_value(com.program, op::push_null);
+            push_value(com.code(), op::push_null);
             return null_type();
         }
 
@@ -591,7 +581,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
             }
-            push_value(com.program, op::builtin_call, *b);
+            push_value(com.code(), op::builtin_call, *b);
             return get_builtin(*b).return_type;
         }
     }
@@ -610,7 +600,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
     // push the function pointer and call it
     push_expr_val(com, *node.expr);
-    push_value(com.program, op::call, args_size);
+    push_value(com.code(), op::call, args_size);
     return *sig.return_type;
 }
 
@@ -622,7 +612,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     // Handle .size() calls on arrays
     if (type.is_array() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
-        push_value(com.program, op::push_u64, array_length(type));
+        push_value(com.code(), op::push_u64, array_length(type));
         return u64_type();
     }
 
@@ -630,9 +620,9 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     if (type.is_span() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
         push_expr_ptr(com, *node.expr); // push pointer to span
-        push_value(com.program, op::push_u64, sizeof(std::byte*));
-        push_value(com.program, op::u64_add); // offset to the size value
-        push_value(com.program, op::load, com.types.size_of(u64_type())); // load the size
+        push_value(com.code(), op::push_u64, sizeof(std::byte*));
+        push_value(com.code(), op::u64_add); // offset to the size value
+        push_value(com.code(), op::load, com.types.size_of(u64_type())); // load the size
         return u64_type();
     }
 
@@ -650,14 +640,14 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
                 push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
             }
             if (node.other_args.size() == 0) { // if the class has no data, it needs to be size 1
-                push_value(com.program, op::push_null);
+                push_value(com.code(), op::push_null);
             }
             
             // Allocate space in the arena and move the object there
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            push_value(com.program, op::arena_alloc, size);
+            push_value(com.code(), op::arena_alloc, size);
             return result_type.add_ptr();
         }
         else if (node.function_name == "new_array") {
@@ -676,17 +666,17 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            push_value(com.program, op::arena_alloc_array, size);
+            push_value(com.code(), op::arena_alloc_array, size);
             return result_type.add_span();
         }
         else if (node.function_name == "size") {
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            push_value(com.program, op::arena_size);
+            push_value(com.code(), op::arena_size);
             return u64_type();
         }
         else if (node.function_name == "capacity") {
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            push_value(com.program, op::arena_capacity);
+            push_value(com.code(), op::arena_capacity);
             return u64_type();
         }
         else {
@@ -711,7 +701,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     
     auto t = push_expr_ptr(com, *node.expr); // self
     while (t.is_ptr()) { // allow for calling member functions through pointers
-        push_value(com.program, op::load, sizeof(std::byte*));
+        push_value(com.code(), op::load, sizeof(std::byte*));
         t = t.remove_ptr();
     }
     for (std::size_t i = 0; i != node.other_args.size(); ++i) {
@@ -753,7 +743,7 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    push_value(com.program, op::push_u64, com.types.size_of(type));
+    push_value(com.code(), op::push_u64, com.types.size_of(type));
     return u64_type();
 }
 
@@ -775,12 +765,12 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
         node.token.assert_eq(upper_bound_type, u64_type(), "subspan indices must be u64");
-        push_value(com.program, op::u64_lt);
+        push_value(com.code(), op::u64_lt);
         push_assert(com, "lower bound must be stricly less than the upper bound");
 
         push_expr_val(com, *node.upper_bound);
-        push_value(com.program, op::push_u64, array_length(type));
-        push_value(com.program, op::u64_lt);
+        push_value(com.code(), op::push_u64, array_length(type));
+        push_value(com.code(), op::u64_lt);
         push_assert(com, "upper bound must be strictly less than the array size");
     }
 
@@ -789,29 +779,29 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
     if (type.is_span()) {
-        push_value(com.program, op::load, sizeof(std::byte*));
+        push_value(com.code(), op::load, sizeof(std::byte*));
     }
 
     if (node.lower_bound) {// move first index of span up
-        push_value(com.program, op::push_u64, com.types.size_of(inner_type(type)));
+        push_value(com.code(), op::push_u64, com.types.size_of(inner_type(type)));
         const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
-        push_value(com.program, op::u64_mul);
-        push_value(com.program, op::u64_add);
+        push_value(com.code(), op::u64_mul);
+        push_value(com.code(), op::u64_add);
     }
 
     // next push the size to make up the second half of the span
     if (node.lower_bound && node.upper_bound) {
         push_expr_val(com, *node.upper_bound);
         push_expr_val(com, *node.lower_bound);
-        push_value(com.program, op::u64_sub);
+        push_value(com.code(), op::u64_sub);
     } else if (type.is_span()) {
         // Push the span pointer, offset to the size, and load the size
         push_expr_ptr(com, *node.expr);
-        push_value(com.program, op::push_u64, sizeof(std::byte*), op::u64_add);
-        push_value(com.program, op::load, com.types.size_of(u64_type()));
+        push_value(com.code(), op::push_u64, sizeof(std::byte*), op::u64_add);
+        push_value(com.code(), op::load, com.types.size_of(u64_type()));
     } else {
-        push_value(com.program, op::push_u64, array_length(type));
+        push_value(com.code(), op::push_u64, array_length(type));
     }
 
     if (is_const && type.is_array()) {
@@ -825,7 +815,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 auto push_expr_val(compiler& com, const auto& node) -> type_name
 {
     const auto type = push_expr_ptr(com, node);
-    push_value(com.program, op::load, com.types.size_of(type));
+    push_value(com.code(), op::load, com.types.size_of(type));
     return type;
 }
 
@@ -841,20 +831,20 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
 {
     const auto loop_scope = com.variables.new_loop_scope();
     
-    const auto begin_pos = com.program.size();
+    const auto begin_pos = com.code().size();
     {
         const auto body_scope = com.variables.new_scope();
         body();
     }
-    push_value(com.program, op::jump, begin_pos);
+    push_value(com.code(), op::jump, begin_pos);
 
     // Fix up the breaks and continues
     const auto& control_flow = com.variables.get_loop_info();
     for (const auto idx : control_flow.breaks) {
-        write_value(com.program, idx, com.program.size()); // Jump past end
+        write_value(com.code(), idx, com.code().size()); // Jump past end
     }
     for (const auto idx : control_flow.continues) {
-        write_value(com.program, idx, begin_pos); // Jump to start
+        write_value(com.code(), idx, begin_pos); // Jump to start
     }
 }
 
@@ -869,8 +859,8 @@ void push_break(compiler& com, const token& tok)
 {
     tok.assert(com.variables.in_loop(), "cannot use 'break' outside of a loop");
     com.variables.handle_loop_exit();
-    push_value(com.program, op::jump);
-    const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
+    push_value(com.code(), op::jump);
+    const auto pos = push_value(com.code(), std::uint64_t{0}); // filled in later
     com.variables.get_loop_info().breaks.push_back(pos);
 }
 
@@ -892,11 +882,11 @@ void push_stmt(compiler& com, const node_while_stmt& node)
         // if !<condition> break;
         const auto cond_type = push_expr_val(com, *node.condition);
         node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
-        push_value(com.program, op::bool_not);
-        push_value(com.program, op::jump_if_false);
-        const auto jump_pos = push_value(com.program, std::uint64_t{0});
+        push_value(com.code(), op::bool_not);
+        push_value(com.code(), op::jump_if_false);
+        const auto jump_pos = push_value(com.code(), std::uint64_t{0});
         push_break(com, node.token);
-        write_value(com.program, jump_pos, com.program.size()); // Jump past the end if false      
+        write_value(com.code(), jump_pos, com.code().size()); // Jump past the end if false      
         
         // <body>
         push_stmt(com, *node.body);
@@ -939,19 +929,19 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     }
 
     // idx := 0u;
-    push_value(com.program, op::push_u64, std::uint64_t{0});
+    push_value(com.code(), op::push_u64, std::uint64_t{0});
     declare_var(com, node.token, "#:idx", u64_type());
 
     // size := length of iter;
     if (iter_type.is_array()) {
-        push_value(com.program, op::push_u64, array_length(iter_type));
+        push_value(com.code(), op::push_u64, array_length(iter_type));
         declare_var(com, node.token, "#:size", u64_type());
     } else {
         node.token.assert(is_lvalue_expr(*node.iter), "for-loops only supported for lvalue spans");
         push_expr_ptr(com, *node.iter); // push pointer to span
-        push_value(com.program, op::push_u64, sizeof(std::byte*));
-        push_value(com.program, op::u64_add); // offset to the size value
-        push_value(com.program, op::load, com.types.size_of(u64_type()));       
+        push_value(com.code(), op::push_u64, sizeof(std::byte*));
+        push_value(com.code(), op::u64_add); // offset to the size value
+        push_value(com.code(), op::load, com.types.size_of(u64_type()));       
         declare_var(com, node.token, "#:size", u64_type());
     }
 
@@ -959,11 +949,11 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         // if idx == size break;
         load_variable(com, node.token, "#:idx");
         load_variable(com, node.token, "#:size");
-        push_value(com.program, op::u64_eq);
-        push_value(com.program, op::jump_if_false);
-        const auto jump_pos = push_value(com.program, std::uint64_t{0});
+        push_value(com.code(), op::u64_eq);
+        push_value(com.code(), op::jump_if_false);
+        const auto jump_pos = push_value(com.code(), std::uint64_t{0});
         push_break(com, node.token);
-        write_value(com.program, jump_pos, com.program.size());
+        write_value(com.code(), jump_pos, com.code().size());
 
         // name := iter[idx]~;
         const auto iter_type = type_of_expr(com, *node.iter);
@@ -973,18 +963,18 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         } else {
             push_expr_ptr(com, *node.iter);
             if (iter_type.is_span()) {
-                push_value(com.program, op::load, sizeof(std::byte*));
+                push_value(com.code(), op::load, sizeof(std::byte*));
             }
         }
         load_variable(com, node.token, "#:idx");
-        push_value(com.program, op::push_u64, com.types.size_of(inner));
-        push_value(com.program, op::u64_mul);
-        push_value(com.program, op::u64_add);
+        push_value(com.code(), op::push_u64, com.types.size_of(inner));
+        push_value(com.code(), op::u64_mul);
+        push_value(com.code(), op::u64_add);
         declare_var(com, node.token, node.name, inner.add_ptr());
 
         // idx = idx + 1;
         load_variable(com, node.token, "#:idx");
-        push_value(com.program, op::push_u64, std::uint64_t{1}, op::u64_add);
+        push_value(com.code(), op::push_u64, std::uint64_t{1}, op::u64_add);
         save_variable(com, node.token, "#:idx");
 
         // main body
@@ -997,19 +987,19 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     const auto cond_type = push_expr_val(com, *node.condition);
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
 
-    push_value(com.program, op::jump_if_false);
-    const auto jump_pos = push_value(com.program, std::uint64_t{0});
+    push_value(com.code(), op::jump_if_false);
+    const auto jump_pos = push_value(com.code(), std::uint64_t{0});
     push_stmt(com, *node.body);
 
     if (node.else_body) {
-        push_value(com.program, op::jump);
-        const auto else_pos = push_value(com.program, std::uint64_t{0});
-        const auto in_else_pos = com.program.size();
+        push_value(com.code(), op::jump);
+        const auto else_pos = push_value(com.code(), std::uint64_t{0});
+        const auto in_else_pos = com.code().size();
         push_stmt(com, *node.else_body);
-        write_value(com.program, jump_pos, in_else_pos); // Jump into the else block if false
-        write_value(com.program, else_pos, com.program.size()); // Jump past the end if false
+        write_value(com.code(), jump_pos, in_else_pos); // Jump into the else block if false
+        write_value(com.code(), else_pos, com.code().size()); // Jump past the end if false
     } else {
-        write_value(com.program, jump_pos, com.program.size()); // Jump past the end if false
+        write_value(com.code(), jump_pos, com.code().size()); // Jump past the end if false
     }
 }
 
@@ -1017,7 +1007,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     const auto message = std::format("type '{}' already defined", node.name);
     node.token.assert(!com.types.contains(make_type(node.name)), "{}", message);
-    node.token.assert(!com.functions.contains(node.name), "{}", message);
+    node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);
 
     auto fields = std::vector<type_field>{};
     for (const auto& p : node.fields) {
@@ -1039,8 +1029,8 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 {
     node.token.assert(com.variables.in_loop(), "cannot use 'continue' outside of a loop");
     com.variables.handle_loop_exit();
-    push_value(com.program, op::jump);
-    const auto pos = push_value(com.program, std::uint64_t{0}); // filled in later
+    push_value(com.code(), op::jump);
+    const auto pos = push_value(com.code(), std::uint64_t{0}); // filled in later
     com.variables.get_loop_info().continues.push_back(pos);
 }
 
@@ -1056,7 +1046,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 {
     const auto type = arena_type();
-    push_value(com.program, op::arena_new);
+    push_value(com.code(), op::arena_new);
     declare_var(com, node.token, node.name, type);
 }
 
@@ -1066,7 +1056,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     node.token.assert(!lhs_type.is_const(), "cannot assign to a const variable");
     push_function_arg(com, *node.expr, lhs_type, node.token);
     const auto lhs = push_expr_ptr(com, *node.position);
-    push_value(com.program, op::save, com.types.size_of(lhs));
+    push_value(com.code(), op::save, com.types.size_of(lhs));
     return;
 }
 
@@ -1096,49 +1086,39 @@ auto compile_function_body(
 )
     -> signature
 {
-    if (get_function(com, to_string(struct_type), name)) {
-        tok.error("multiple definitions of function {}", name);
-    }
 
-    auto sig = signature{};
-    push_value(com.program, op::jump);
-    const auto jump_op = push_value(com.program, std::uint64_t{0});
-    const auto begin_pos = com.program.size(); // First op code after the jump
-    
+    new_function(com, std::format("{}::{}", struct_type, name), tok);
     {
         const auto scope = com.variables.new_function_scope(null_type());
 
         for (const auto& arg : node_sig.params) {
-            auto type = resolve_type(com, tok, arg.type);
-            sig.params.push_back({type});
+            const auto type = resolve_type(com, tok, arg.type);
             declare_var(com, tok, arg.name, type);
+            com.current().sig.params.push_back(type);
         }
-
-        sig.return_type = resolve_type(com, tok, node_sig.return_type);
-        com.variables.get_function_info().return_type = sig.return_type;
-        const auto full_name = std::format("{}::{}", struct_type, name);
-        com.functions[full_name] = function_info{.sig=sig, .ptr=begin_pos, .tok=tok};
+        com.current().sig.return_type = resolve_type(com, tok, node_sig.return_type);
 
         push_stmt(com, *body);
 
         if (!ends_in_return(*body)) {
             // A function returning null does not need a final return statement, and in this case
             // we manually add a return value of null here.
-            if (sig.return_type == null_type()) {
-                push_value(com.program, op::push_null);
-                push_value(com.program, op::ret, std::uint64_t{1});
+            if (com.current().sig.return_type == null_type()) {
+                push_value(com.code(), op::push_null);
+                push_value(com.code(), op::ret, std::uint64_t{1});
             } else {
                 tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
             }
         }
     }
-
-    write_value(com.program, jump_op, com.program.size());
-    return sig;
+    
+    finish_function(com);
+    return com.compiled_functions.back().sig;
 }
 
 void push_stmt(compiler& com, const node_function_def_stmt& node)
 {
+    std::print("HERE\n");
     if (com.types.contains(make_type(node.name))) {
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
@@ -1161,21 +1141,21 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
-    node.token.assert(com.variables.in_function(), "can only return within functions");
+    node.token.assert(com.in_function, "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
     node.token.assert_eq(
         return_type.remove_const(), // don't impose const on the return value
-        com.variables.get_function_info().return_type,
+        com.current().sig.return_type,
         "wrong return type"
     );
     com.variables.handle_function_exit();
-    push_value(com.program, op::ret, com.types.size_of(return_type));
+    push_value(com.code(), op::ret, com.types.size_of(return_type));
 }
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = push_expr_val(com, *node.expr);
-    push_value(com.program, op::pop, com.types.size_of(type));
+    push_value(com.code(), op::pop, com.types.size_of(type));
 }
 
 void push_stmt(compiler& com, const node_assert_stmt& node)
@@ -1224,18 +1204,18 @@ auto string_split(std::string s, std::string_view delimiter) -> std::vector<std:
 auto push_print_fundamental(compiler& com, const node_expr& node, const token& tok) -> void
 {
     const auto type = push_expr_val(com, node).remove_const();
-    if (type == null_type()) { push_value(com.program, op::print_null); }
-    else if (type == bool_type()) { push_value(com.program, op::print_bool); }
-    else if (type == char_type()) { push_value(com.program, op::print_char); }
-    else if (type == i32_type()) { push_value(com.program, op::print_i32); }
-    else if (type == i64_type()) { push_value(com.program, op::print_i64); }
-    else if (type == u64_type()) { push_value(com.program, op::print_u64); }
-    else if (type == f64_type()) { push_value(com.program, op::print_f64); }
+    if (type == null_type()) { push_value(com.code(), op::print_null); }
+    else if (type == bool_type()) { push_value(com.code(), op::print_bool); }
+    else if (type == char_type()) { push_value(com.code(), op::print_char); }
+    else if (type == i32_type()) { push_value(com.code(), op::print_i32); }
+    else if (type == i64_type()) { push_value(com.code(), op::print_i64); }
+    else if (type == u64_type()) { push_value(com.code(), op::print_u64); }
+    else if (type == f64_type()) { push_value(com.code(), op::print_f64); }
     else if (type == char_type().add_const().add_span() || type == char_type().add_span()) {
-        push_value(com.program, op::print_char_span);
+        push_value(com.code(), op::print_char_span);
     }
-    else if (type == nullptr_type()) { push_value(com.program, op::print_ptr); }
-    else if (type.is_ptr()) { push_value(com.program, op::print_ptr); }
+    else if (type == nullptr_type()) { push_value(com.code(), op::print_ptr); }
+    else if (type.is_ptr()) { push_value(com.code(), op::print_ptr); }
     else { tok.error("cannot print value of type {}", type); }
 }
 
@@ -1247,17 +1227,17 @@ void push_stmt(compiler& com, const node_print_stmt& node)
     }
 
     if (!parts.front().empty()) {
-        push_value(com.program, op::push_string_literal);
-        push_value(com.program, insert_into_rom(com, parts.front()), parts.front().size());
-        push_value(com.program, op::print_char_span);
+        push_value(com.code(), op::push_string_literal);
+        push_value(com.code(), insert_into_rom(com, parts.front()), parts.front().size());
+        push_value(com.code(), op::print_char_span);
     }
     for (std::size_t i = 0; i != node.args.size(); ++i) {
         push_print_fundamental(com, *node.args.at(i), node.token);
 
         if (!parts[i+1].empty()) {
-            push_value(com.program, op::push_string_literal);
-            push_value(com.program, insert_into_rom(com, parts[i+1]), parts[i+1].size());
-            push_value(com.program, op::print_char_span);
+            push_value(com.code(), op::push_string_literal);
+            push_value(com.code(), insert_into_rom(com, parts[i+1]), parts[i+1].size());
+            push_value(com.code(), op::print_char_span);
         }
     }
 }
@@ -1293,7 +1273,9 @@ auto compile(
 {
     auto com = compiler{};
     com.debug = debug;
-    com.variables.set_program(&com.program);
+    com.variables.set_compiler(com);
+    new_function(com, "$main", token{});
+    com.in_function = false; // the outer function is not a real function
     {
         const auto global_scope = com.variables.new_scope();
         auto done = std::set<std::filesystem::path>{};
@@ -1332,8 +1314,15 @@ auto compile(
         );
     }
 
-    push_value(com.program, op::end_program);
-    return { com.program, com.read_only_data };
+    push_value(com.code(), op::end_program);
+
+    auto program = bytecode_program{};
+    program.rom = com.rom;
+    std::print("functions compiled: {}\n", com.compiled_functions.size());
+    for (const auto& function : com.compiled_functions) {
+        program.functions.push_back(bytecode_function{function.name, function.id, function.code});
+    }
+    return program;
 }
 
 }

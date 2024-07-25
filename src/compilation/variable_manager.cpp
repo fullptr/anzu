@@ -1,4 +1,5 @@
 #include "variable_manager.hpp"
+#include "compiler.hpp"
 
 namespace anzu {
 namespace {
@@ -104,11 +105,11 @@ auto variable_manager::handle_loop_exit() -> void
 {
     auto pop_size = std::size_t{0};
     for (const auto& scope : d_scopes | std::views::reverse) {
-        delete_arenas_in_scope(*d_program, scope);
+        delete_arenas_in_scope(d_compiler->code(), scope);
         pop_size += scope.next - scope.start;
         if (std::holds_alternative<loop_scope>(scope.info)) break;
     }
-    push_value(*d_program, op::pop, pop_size);
+    push_value(d_compiler->code(), op::pop, pop_size);
 }
 
 // This should NOT pop data from the stack like handle_loop_exit since the
@@ -116,7 +117,7 @@ auto variable_manager::handle_loop_exit() -> void
 auto variable_manager::handle_function_exit() -> void
 {
     for (const auto& scope : d_scopes | std::views::reverse) {
-        delete_arenas_in_scope(*d_program, scope);
+        delete_arenas_in_scope(d_compiler->code(), scope);
         if (std::holds_alternative<function_scope>(scope.info)) break;
     }
 }
@@ -126,11 +127,11 @@ scope_guard::scope_guard(variable_manager& manager)
 {}
 
 scope_guard::~scope_guard() {
-    delete_arenas_in_scope(*d_manager->d_program, d_manager->d_scopes.back());
+    delete_arenas_in_scope(d_manager->d_compiler->code(), d_manager->d_scopes.back());
     const auto& scope = d_manager->d_scopes.back();
     const auto size = scope.next - scope.start;
     d_manager->d_scopes.pop_back();
-    if (size > 0) push_value(*d_manager->d_program, op::pop, size); 
+    if (size > 0) push_value(d_manager->d_compiler->code(), op::pop, size); 
 }
 
 }
