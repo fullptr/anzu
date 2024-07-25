@@ -758,18 +758,7 @@ auto parse(const std::filesystem::path& file) -> anzu_module
     auto stream = tokenstream{*new_module.source_code};
     while (stream.valid()) {
         while (stream.consume_maybe(token_type::semicolon));
-        if (stream.consume_maybe(token_type::kw_import)) {
-            auto module_name = std::string{};
-            while (!stream.peek(token_type::semicolon)) {
-                module_name += stream.consume().text;
-            }
-            new_module.required_modules.emplace(
-                std::filesystem::absolute(file.parent_path() / module_name)
-            );
-            stream.consume_only(token_type::semicolon);
-        } else {
-            seq.sequence.push_back(parse_top_level_statement(stream));
-        }
+        seq.sequence.push_back(parse_top_level_statement(stream));
     }
     return new_module;
 }

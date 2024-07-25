@@ -10,6 +10,6 @@ struct foo
     }
 }
 
-let f := foo(1);
+var f := foo(1);
 f.hello();
 print("{}\n", f.i);
