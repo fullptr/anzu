@@ -56,7 +56,7 @@ auto type_name::strip_const() const -> std::pair<type_name, bool>
 auto to_string_paren(const type_name& type) -> std::string
 {
     const auto str = to_string(type);
-    if (str.contains(' ')) {
+    if (type.is_function_ptr()) {
         return std::format("({})", str);
     }
     return str;
@@ -102,13 +102,18 @@ auto to_string(const type_span& type) -> std::string
     return std::format("{}[]", to_string_paren(*type.inner_type));
 }
 
+auto to_string(const type_const& type) -> std::string
+{
+    return std::format("{} const", to_string_paren(*type.inner_type));
+}
+
 auto to_string(const type_function_ptr& type) -> std::string
 {
     return std::format(
         "{}({}) -> {}",
         to_string(token_type::kw_function),
-        format_comma_separated(type.param_types, to_string_paren),
-        *type.return_type
+        format_comma_separated(type.param_types),
+        to_string_paren(*type.return_type)
     );
 }
 
@@ -117,10 +122,6 @@ auto to_string(const type_arena& type) -> std::string
     return std::string{"arena"};
 }
 
-auto to_string(const type_const& type) -> std::string
-{
-    return std::format("const {}", to_string(*type.inner_type));
-}
 
 auto hash(const type_name& type) -> std::size_t
 {

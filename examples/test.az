@@ -1,15 +1,8 @@
 
-struct foo
-{
-    i: i64;
 
-    fn hello(self: (const foo)&) -> null
-    {
-        self.i = 10;
-        print("hello\n");
-    }
+fn hello(x: i64 const&) -> null
+{
+    print("hello\n");
 }
 
-var f := foo(1);
-f.hello();
-print("{}\n", f.i);
+let arr := [hello, hello, hello];

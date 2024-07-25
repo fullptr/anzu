@@ -356,13 +356,6 @@ auto parse_simple_type(tokenstream& tokens) -> type_name
 
 auto parse_type_inner(tokenstream& tokens) -> type_name
 {
-    // Const
-    if (tokens.consume_maybe(token_type::kw_const)) {
-        auto ret = type_const{};
-        ret.inner_type = make_value<type_name>(parse_type_inner(tokens));
-        return ret;
-    }
-
     // Function pointers
     if (tokens.consume_maybe(token_type::kw_function)) {
         tokens.consume_only(token_type::left_paren);
@@ -395,6 +388,9 @@ auto parse_type_inner(tokenstream& tokens) -> type_name
         }
         else if (tokens.consume_maybe(token_type::ampersand)) {
             type = type_name{type_ptr{ .inner_type=type }};
+        }
+        else if (tokens.consume_maybe(token_type::kw_const)) {
+            type = type_name{type_const{ .inner_type=type }};
         }
         else {
             break;
