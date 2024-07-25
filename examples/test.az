@@ -10,14 +10,6 @@ struct foo
     }
 }
 
-fn test(x: (const i64)&) {
-    x@ = 10;
-}
-
 let f := foo(1);
 f.hello();
 print("{}\n", f.i);
-
-let y := 10;
-test(y&);
-print("{}\n", y);

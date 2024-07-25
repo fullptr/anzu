@@ -226,17 +226,20 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    auto [type, is_const] = push_expr_ptr(com, *node.expr).strip_const();
+    auto type = push_expr_ptr(com, *node.expr);
 
-    // Allow for field access on a pointer
+    // Allow for field access on a pointer. ALso strip away constness at each
+    // step since wrapping a type in const will stop this from stripping away
+    // further pointers. The innermost const will not be stripped away
     while (type.is_ptr()) {
+        while (type.is_const()) type = type.remove_const();
         push_value(com.code(), op::load, sizeof(std::byte*));
         type = type.remove_ptr();
     }
 
     const auto field_type = push_field_offset(com, node.token, type, node.field_name);
     push_value(com.code(), op::u64_add); // modify ptr
-    if (is_const) return field_type.add_const(); // Propagate const to members
+    if (type.is_const()) return field_type.add_const(); // propagate const to fields
     return field_type;
 }
 
@@ -698,7 +701,15 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     const auto func = get_function(com, to_string(stripped_type), node.function_name);
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
     
-    auto t = push_expr_ptr(com, *node.expr); // self
+    // We wrap the LHS in a addrof so that we can use push_function_arg to push it
+    // like a regular function arg.
+    auto synthetic_node = std::make_shared<node_expr>();
+    auto& inner = synthetic_node->emplace<node_addrof_expr>();
+    inner.expr = node.expr;
+    inner.token = node.token;
+
+    push_function_arg(com, *synthetic_node, func->sig.params[0], node.token);
+    auto t = type;
     while (t.is_ptr()) { // allow for calling member functions through pointers
         push_value(com.code(), op::load, sizeof(std::byte*));
         t = t.remove_ptr();
@@ -1083,9 +1094,8 @@ auto compile_function_body(
     const node_signature& node_sig,
     const node_stmt_ptr& body
 )
-    -> signature
+    -> void
 {
-
     new_function(com, std::format("{}::{}", struct_type, name), tok);
     {
         const auto scope = com.variables.new_function_scope(null_type());
@@ -1110,9 +1120,7 @@ auto compile_function_body(
             }
         }
     }
-    
     finish_function(com);
-    return com.compiled_functions.back().sig;
 }
 
 void push_stmt(compiler& com, const node_function_def_stmt& node)
@@ -1126,15 +1134,21 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(node.struct_name);
-    const auto sig = compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 
     // First argument must be a pointer to an instance of the class
-    node.token.assert(sig.params.size() > 0, "member functions must have at least one arg");
-    const auto actual = sig.params.front();
+    node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
+    const auto actual = resolve_type(com, node.token, node.sig.params[0].type);
+    const auto expected = struct_type.add_ptr();
+    const auto const_expected = struct_type.add_const().add_ptr();
+    
     node.token.assert(
-        actual == struct_type.add_ptr() || actual == struct_type.add_const().add_ptr(),
-        "first parameter to a struct member function must be a pointer to that type"
+        actual == expected || actual == const_expected,
+        "first parameter to a struct member function must be a pointer to that type, "
+        "expected '{}' or '{}', got '{}'",
+        expected, const_expected, actual
     );
+
+    compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
