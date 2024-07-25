@@ -82,7 +82,7 @@ auto main(const int argc, const char* argv[]) -> int
     }
 
     std::print("-> Compiling\n");
-    const auto program = anzu::compile(root, parsed_program, true); // TODO: Make debug a switch
+    const auto program = anzu::compile(root, parsed_program);
     if (mode == "com") {
         print_program(program);
         return 0;

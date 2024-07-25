@@ -226,11 +226,11 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    auto type = push_expr_ptr(com, *node.expr);
+    auto type = push_expr_ptr(com, *node.expr).remove_const();
 
     // Allow for field access on a pointer. ALso strip away constness at each
     // step since wrapping a type in const will stop this from stripping away
-    // further pointers. The innermost const will not be stripped away
+    // further pointers.
     while (type.is_ptr()) {
         while (type.is_const()) type = type.remove_const();
         push_value(com.code(), op::load, sizeof(std::byte*));
@@ -265,22 +265,6 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     // so switch the pointer by loading what it's pointing at.
     if (is_span) {
         push_value(com.code(), op::load, sizeof(std::byte*));
-    }
-
-    // Bounds checking on the subscript, it's unsigned so only need to check upper bound
-    if (com.debug) {
-        const auto index = push_expr_val(com, *node.index);
-        node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-        if (is_array) {
-            push_value(com.code(), op::push_u64, array_length(real_type));
-        } else {
-            push_expr_ptr(com, *node.expr);
-            push_value(com.code(), op::push_u64, sizeof(std::byte*));
-            push_value(com.code(), op::u64_add); // offset to the size value
-            push_value(com.code(), op::load, com.types.size_of(u64_type())); // load the size
-        }
-        push_value(com.code(), op::u64_lt);
-        push_assert(com, "index out of range");
     }
 
     // Offset pointer by (index * size)
@@ -769,21 +753,6 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         "can only span arrays and other spans, not {}", type
     );
 
-    // Bounds checking (TODO: BOUNDS CHECKING ON SPANS TOO)
-    if (type.is_array() && com.debug && node.lower_bound && node.upper_bound) {
-        const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
-        const auto upper_bound_type = push_expr_val(com, *node.upper_bound);
-        node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
-        node.token.assert_eq(upper_bound_type, u64_type(), "subspan indices must be u64");
-        push_value(com.code(), op::u64_lt);
-        push_assert(com, "lower bound must be stricly less than the upper bound");
-
-        push_expr_val(com, *node.upper_bound);
-        push_value(com.code(), op::push_u64, array_length(type));
-        push_value(com.code(), op::u64_lt);
-        push_assert(com, "upper bound must be strictly less than the array size");
-    }
-
     push_expr_ptr(com, *node.expr);
 
     // If we are a span, we want the address that it holds rather than its own address,
@@ -1174,11 +1143,8 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 {
     const auto expr = type_of_expr(com, *node.expr);
     node.token.assert_eq(expr, bool_type(), "bad assertion expression");
-
-    if (com.debug) {
-        push_expr_val(com, *node.expr);
-        push_assert(com, std::format("line {}", node.token.line));
-    }
+    push_expr_val(com, *node.expr);
+    push_assert(com, std::format("line {}", node.token.line));
 }
 
 // Temp: remove this for a more efficient function
@@ -1278,13 +1244,11 @@ auto compiled_all_requirements(const anzu_module& module, const std::set<std::fi
 
 auto compile(
     const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, anzu_module>& modules,
-    const bool debug
+    const std::map<std::filesystem::path, anzu_module>& modules
 )
     -> bytecode_program
 {
     auto com = compiler{};
-    com.debug = debug;
     com.variables.set_compiler(com);
     new_function(com, "$main", token{});
     com.in_function = false; // the outer function is not a real function

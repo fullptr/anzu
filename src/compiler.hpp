@@ -52,14 +52,11 @@ struct compiler
     
     type_manager     types;
     variable_manager variables;
-    
-    bool debug = false;
 };
 
 auto compile(
     const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, anzu_module>& modules,
-    bool debug = true
+    const std::map<std::filesystem::path, anzu_module>& modules
 ) -> bytecode_program;
 
 }
