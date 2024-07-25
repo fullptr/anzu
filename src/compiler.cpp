@@ -28,7 +28,6 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 
 auto new_function(compiler& com, const std::string& name, const token& tok)
 {
-    std::print("compiling function {}\n", name);
     if (com.in_function) tok.error("cannot create a new function while one is already being compiled");
     const auto id = com.compiled_functions.size();
 
@@ -1118,7 +1117,6 @@ auto compile_function_body(
 
 void push_stmt(compiler& com, const node_function_def_stmt& node)
 {
-    std::print("HERE\n");
     if (com.types.contains(make_type(node.name))) {
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
@@ -1318,7 +1316,6 @@ auto compile(
 
     auto program = bytecode_program{};
     program.rom = com.rom;
-    std::print("functions compiled: {}\n", com.compiled_functions.size());
     for (const auto& function : com.compiled_functions) {
         program.functions.push_back(bytecode_function{function.name, function.id, function.code});
     }

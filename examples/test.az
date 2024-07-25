@@ -1,2 +1,23 @@
 
-let x := 10;
+struct foo
+{
+    i: i64;
+
+    fn hello(self: (const foo)&) -> null
+    {
+        self.i = 10;
+        print("hello\n");
+    }
+}
+
+fn test(x: (const i64)&) {
+    x@ = 10;
+}
+
+let f := foo(1);
+f.hello();
+print("{}\n", f.i);
+
+let y := 10;
+test(y&);
+print("{}\n", y);

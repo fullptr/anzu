@@ -164,9 +164,9 @@ auto apply_op(bytecode_context& ctx) -> bool
                 runtime_error("invalid function id: {}", function_id);
             }
             ctx.frames.push_back(call_frame{
+                .code = ctx.functions[function_id].code.data(),
                 .ip = ctx.functions[function_id].code.data(),
-                .base_ptr = ctx.stack.size() - args_size,
-                .code = ctx.functions[function_id].code.data()
+                .base_ptr = ctx.stack.size() - args_size
             });
         } break;
         case op::builtin_call: {
@@ -278,10 +278,12 @@ auto run(const bytecode_program& prog) -> void
 {
     const auto timer = scope_timer{};
     bytecode_context ctx{prog.functions, prog.rom};
-    ctx.frames.emplace_back();
-    ctx.frames.back().ip = ctx.functions.front().code.data();
-    ctx.frames.back().base_ptr = 0;
-    ctx.frames.back().code = ctx.functions.front().code.data();
+    ctx.frames.emplace_back(call_frame{
+        .code = ctx.functions.front().code.data(),
+        .ip = ctx.functions.front().code.data(),
+        .base_ptr = 0
+    });
+
     while (true) {
         if constexpr (Debug) {
             print_op(ctx.rom, ctx.frames.back().code, ctx.frames.back().ip);

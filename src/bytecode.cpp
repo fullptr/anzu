@@ -21,7 +21,7 @@ auto read_at(const std::byte** ptr) -> T
 
 auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr) -> const std::byte*
 {
-    std::print("[{:>3}] ", static_cast<std::size_t>(ptr - start));
+    std::print("    [{:>3}] ", static_cast<std::size_t>(ptr - start));
     const auto op_code = read_at<op>(&ptr);
     switch (op_code) {
         case op::end_program: {
@@ -208,18 +208,26 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
     return ptr;
 }
 
+auto linebreak() { std::print("==================================\n"); }
+
 auto print_program(const bytecode_program& prog) -> void
 {
-    std::print("PROGRAM (num functions = {})\n\n", prog.functions.size());
+    std::print("PROGRAM (num functions = {})\n", prog.functions.size());
+    linebreak();
     for (const auto& func : prog.functions) {
-        std::print("FUNCTION {} (ID {})\n", func.name, func.id);
+        std::print("{} - id: {}\n", func.name, func.id);
+        linebreak();
         auto ptr = func.code.data();
         while (ptr < func.code.data() + func.code.size()) {
             ptr = print_op(prog.rom, func.code.data(), ptr);
         }
-        std::print("==================================\n");
+        std::print("\n");
+        linebreak();
     }
-    std::print("\nROM\n\n{}\n", prog.rom);
+    std::print("ROM\n");
+    linebreak();
+    std::print("{}\n", prog.rom);
+    linebreak();
 }
 
 }

@@ -13,9 +13,9 @@ namespace anzu {
 
 struct call_frame
 {
+    std::byte* code = nullptr; // start of the current chunk of bytecode
     std::byte* ip = nullptr; // instruction pointer
     std::size_t base_ptr = 0;
-    std::byte* code = nullptr; // start of the current chunk of bytecode
 };
 
 class vm_stack
