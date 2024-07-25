@@ -19,7 +19,6 @@ void print_usage()
     std::print("options:\n");
     std::print("    lex      - runs the lexer and prints the tokens for a single file\n");
     std::print("    parse    - runs the parser and prints the AST for a single file\n");
-    std::print("    discover - runs the parser and prints all modules\n");
     std::print("    com      - runs the compiler and prints the bytecode\n");
     std::print("    debug    - runs the program and prints each op code executed\n");
     std::print("    run      - runs the program\n");
@@ -46,43 +45,15 @@ auto main(const int argc, const char* argv[]) -> int
         return 0;
     }
 
+    std::print("-> Parsing\n");
+    auto ast = anzu::parse(file);
     if (mode == "parse") {
-        std::print("Parsing file '{}'\n", file.string());
-        const auto mod = anzu::parse(file);
-        print_node(*mod.root);
-        return 0;
-    }
-
-    // Start with the specified file, lex and parse it, then check to see if it has any other
-    // required modules. Pick one and compile, continue until all modules have been parsed
-    auto parsed_program = std::map<std::filesystem::path, anzu::anzu_module>{};
-
-    auto modules = std::set<std::filesystem::path>{file};
-    while (!modules.empty()) {
-        const auto curr = modules.extract(modules.begin()).value();
-        std::print("-> Processing '{}'\n", curr.lexically_relative(root).string());
-        auto current_module = anzu::parse(curr);
-        for (const auto& m : current_module.required_modules) {
-            if (!parsed_program.contains(m)) {
-                modules.emplace(m);
-            }
-        }
-        parsed_program.emplace(curr, std::move(current_module));
-    }
-
-    if (mode == "discover") {
-        std::print("\nFound modules:\n");
-        for (const auto& [file, mod] : parsed_program) {
-            std::print("- {}\n", file.string());
-            for (const auto& dep : mod.required_modules) {
-                std::print("  | - {}\n", dep.string());
-            }
-        }
+        print_node(*ast.root);
         return 0;
     }
 
     std::print("-> Compiling\n");
-    const auto program = anzu::compile(root, parsed_program);
+    const auto program = anzu::compile(ast);
     if (mode == "com") {
         print_program(program);
         return 0;

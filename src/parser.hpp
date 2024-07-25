@@ -12,7 +12,6 @@ namespace anzu {
 struct anzu_module
 {
     std::unique_ptr<std::string> source_code; // TODO: make this a std::unique_ptr<char[]>
-    std::set<std::filesystem::path> required_modules;
     node_stmt_ptr root;
 };
 

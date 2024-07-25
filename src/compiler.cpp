@@ -1232,62 +1232,16 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 
 }
 
-auto compiled_all_requirements(const anzu_module& module, const std::set<std::filesystem::path>& compiled) -> bool
-{
-    for (const auto& requirement : module.required_modules) {
-        if (!compiled.contains(requirement)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-auto compile(
-    const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, anzu_module>& modules
-)
-    -> bytecode_program
+auto compile(const anzu_module& ast) -> bytecode_program
 {
     auto com = compiler{};
     com.variables.set_compiler(com);
     new_function(com, "$main", token{});
     com.in_function = false; // the outer function is not a real function
+
     {
         const auto global_scope = com.variables.new_scope();
-        auto done = std::set<std::filesystem::path>{};
-        auto remaining = std::set<std::filesystem::path>{}; 
-        for (const auto& [file, mod] : modules) {
-            remaining.emplace(file);
-        }
-        while (!remaining.empty()) {
-            const auto before = remaining.size();
-            std::erase_if(remaining, [&](const std::filesystem::path& curr) {
-                const auto& mod = modules.at(curr);
-                if (compiled_all_requirements(mod, done)) {
-                    std::print("    {}\n", curr.lexically_relative(main_dir).string());
-                    push_stmt(com, *mod.root);
-                    done.emplace(curr);
-                    return true;
-                }
-                return false;
-            });
-            const auto after = remaining.size();
-            if (before == after) {
-                std::print("Cyclic dependency detected among the following files:");
-                for (const auto& mod : remaining) {
-                    std::print(" {}", mod.lexically_relative(main_dir).string());
-                }
-                std::print("\n");
-                std::exit(1);
-            }
-        }
-    }
-
-    if (com.variables.size() > 0) {
-        panic(
-            "Logic Error: There are {} unhandled scopes at the end of compilation",
-            com.variables.size()
-        );
+        push_stmt(com, *ast.root);
     }
 
     push_value(com.code(), op::end_program);

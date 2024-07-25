@@ -54,9 +54,6 @@ struct compiler
     variable_manager variables;
 };
 
-auto compile(
-    const std::filesystem::path& main_dir,
-    const std::map<std::filesystem::path, anzu_module>& modules
-) -> bytecode_program;
+auto compile(const anzu_module& ast) -> bytecode_program;
 
 }
