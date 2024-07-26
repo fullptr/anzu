@@ -60,7 +60,6 @@ auto compile_function(
 auto new_function(
     compiler& com, const std::string& name, const token& tok, const template_map& map)
 {
-    if (in_function(com)) tok.error("cannot create a new function while one is already being compiled");
     const auto id = com.functions.size();
 
     // The function signature can only be filled in after declaring the function parameters
@@ -89,7 +88,6 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
         [&](const node_named_type& node) {
             const auto& map = current(com).map;
             if (auto it = map.find(node.type); it != map.end()) {
-                std::print("resolving {} to {}\n", node.type, it->second);
                 return it->second;
             }
             return node.type;
