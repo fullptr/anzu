@@ -271,7 +271,7 @@ auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
     push_value(com.code(), op::u64_mul);
     push_value(com.code(), op::u64_add); // modify ptr
     if (is_array && type.is_const) {
-        return inner.add_const();
+        return inner.add_const(); // propagate const to elements
     }
     return inner;
 }
@@ -320,7 +320,7 @@ auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_
 {
     push_value(com.code(), op::push_string_literal);
     push_value(com.code(), insert_into_rom(com, node.value), node.value.size());
-    return char_type().add_const().add_span();
+    return string_literal_type();
 }
 
 auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
@@ -796,7 +796,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     }
 
     if (type.is_const && type.is_array()) {
-        return type.remove_array().add_const().add_span();
+        return type.remove_array().add_const().add_span(); // propagate const into the span
     }
     return type.remove_array().add_span();
 }
@@ -1200,7 +1200,7 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == i64_type()) { push_value(com.code(), op::print_i64); }
     else if (type == u64_type()) { push_value(com.code(), op::print_u64); }
     else if (type == f64_type()) { push_value(com.code(), op::print_f64); }
-    else if (type == char_type().add_const().add_span() || type == char_type().add_span()) {
+    else if (type == char_type().add_span()) {
         push_value(com.code(), op::print_char_span);
     }
     else if (type == nullptr_type()) { push_value(com.code(), op::print_ptr); }

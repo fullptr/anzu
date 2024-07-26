@@ -122,6 +122,7 @@ auto i64_type() -> type_name;
 auto u64_type() -> type_name;
 auto f64_type() -> type_name;
 auto arena_type() -> type_name;
+auto string_literal_type() -> type_name;
 
 auto make_type(const std::string& name) -> type_name;
 
