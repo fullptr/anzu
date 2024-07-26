@@ -206,7 +206,15 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.expr, indent + 1);
         },
         [&](const node_function_def_stmt& node) {
-            print("{}Function: {} (", spaces, node.name);
+            print("{}Function: {}", spaces, node.name);
+            if (!node.template_types.empty()) {
+                std::print("<");
+                print_comma_separated(node.template_types, [](const auto& arg) {
+                    return arg;
+                });
+                std::print(">");
+            }
+            std::print("(");
             print_comma_separated(node.sig.params, [](const auto& arg) {
                 return std::format("{}: {}", arg.name, *arg.type);
             });

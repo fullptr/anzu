@@ -1,6 +1,8 @@
 
 
-let x := 10;
-var y := x&;
-y@ = 15;
-__dump_type(x, y);
+
+
+fn make_pair<T>(x: T, y: T) -> T
+{
+    return x + y;
+}

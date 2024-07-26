@@ -318,9 +318,10 @@ struct node_assignment_stmt
 
 struct node_function_def_stmt
 {
-    std::string    name;
-    node_signature sig;
-    node_stmt_ptr  body;
+    std::string              name;
+    std::vector<std::string> template_types;
+    node_signature           sig;
+    node_stmt_ptr            body;
 
     anzu::token token;
 };

@@ -457,9 +457,15 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_function_def_stmt>();
-
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.name = parse_name(tokens);
+
+    if (tokens.consume_maybe(token_type::less)) {
+        tokens.consume_comma_separated_list(token_type::greater, [&]{
+            stmt.template_types.push_back(std::string{parse_name(tokens)});
+        });
+    }
+
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};
