@@ -1111,7 +1111,16 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
     if (com.types.contains(make_type(node.name))) {
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
-    compile_function_body(com, node.token, global_namespace, node.name, node.sig, node.body);
+
+    // Template functions only get compiled at the call site, so we just stash the ast
+    if (!node.template_types.empty()) {
+        const auto [it, success] = com.function_templates.emplace(node.name, node);
+        if (!success) {
+            node.token.error("function template named '{}' already defined", node.name);
+        }
+    } else {
+        compile_function_body(com, node.token, global_namespace, node.name, node.sig, node.body);
+    }
 }
 
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)

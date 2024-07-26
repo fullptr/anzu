@@ -49,6 +49,7 @@ struct compiler
     }
 
     std::stack<std::size_t> current_compiling;
+    std::unordered_map<std::string, node_function_def_stmt> function_templates;
 
     std::string rom;
 
