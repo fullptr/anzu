@@ -48,6 +48,13 @@ auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
+auto compile_function(
+    compiler& com,
+    const token& tok,
+    const std::string& full_name,
+    const node_signature& node_sig,
+    const node_stmt_ptr& body
+) -> void;
 
 auto new_function(compiler& com, const std::string& name, const token& tok)
 {
@@ -633,8 +640,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         // Third, this might be a template function with this being the first time we're calling it with specific
         // types, so we need to compile that instantiation and call it here
         if (!node.template_args.empty() and com.function_templates.contains(inner.name)) {
+            const auto function_ast = com.function_templates.at(inner.name);
             const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
-            std::print("compiling {}\n", full_name);
+            compile_function(com, node.token, full_name, function_ast.sig, function_ast.body);
         }
 
         // Lastly, it might be a builtin function
