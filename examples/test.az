@@ -1,8 +1,4 @@
 
 
-fn hello(x: i64 const&) -> null
-{
-    x@ = 10;
-    print("hello\n");
-}
-
+var p : i64& = nullptr;
+p = nullptr;

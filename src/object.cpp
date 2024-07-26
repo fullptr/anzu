@@ -61,7 +61,10 @@ auto to_string_paren(const type_name& type) -> std::string
 
 auto to_string(const type_name& type) -> std::string
 {
-    return std::visit([](const auto& t) { return ::anzu::to_string(t); }, type);
+    const auto string_inner = std::visit([](const auto& t) {
+        return ::anzu::to_string(t);
+    }, type);
+    return type.is_const ? std::format("{} const", string_inner) : string_inner;
 }
 
 auto to_string(type_fundamental t) -> std::string

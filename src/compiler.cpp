@@ -66,11 +66,11 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 }
 
 auto get_function(
-    const compiler& com, const std::string& struct_name, const std::string& function_name
+    const compiler& com, const type_name& struct_name, const std::string& function_name
 )
     -> std::optional<function_info>
 {
-    const auto full_name = std::format("{}::{}", struct_name, function_name);
+    const auto full_name = std::format("{}::{}", struct_name.remove_const(), function_name);
     if (const auto it = com.functions_by_name.find(full_name); it != com.functions_by_name.end()) {
         return com.compiled_functions[it->second];
     }
@@ -195,7 +195,7 @@ auto push_assert(compiler& com, std::string_view message) -> void
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
-    if (auto func = get_function(com, to_string(global_namespace), node.name)) {
+    if (auto func = get_function(com, global_namespace, node.name)) {
         node.token.error("cannot take address of a function pointer");
     }
 
@@ -206,7 +206,7 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 // to do it in a special way.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
-    if (auto func = get_function(com, to_string(global_namespace), node.name)) {
+    if (auto func = get_function(com, global_namespace, node.name)) {
         const auto& info = *func;
         push_value(com.code(), op::push_u64, info.id);
 
@@ -226,13 +226,10 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
-    auto type = push_expr_ptr(com, *node.expr).remove_const();
+    auto type = push_expr_ptr(com, *node.expr);
 
-    // Allow for field access on a pointer. ALso strip away constness at each
-    // step since wrapping a type in const will stop this from stripping away
-    // further pointers.
+    // Allow for field access on a pointer.
     while (type.is_ptr()) {
-        while (type.is_const) type = type.remove_const();
         push_value(com.code(), op::load, sizeof(std::byte*));
         type = type.remove_ptr();
     }
@@ -245,7 +242,7 @@ auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 
 auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
 {
-    const auto [type, is_const] = push_expr_val(com, *node.expr).strip_const(); // Push the address
+    const auto type = push_expr_val(com, *node.expr); // Push the address
     node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
     return type.remove_ptr();
 }
@@ -348,13 +345,11 @@ auto push_expr_val(compiler& com, const node_literal_nullptr_expr& node) -> type
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    auto lhs = push_expr_val(com, *node.lhs);
-    auto rhs = push_expr_val(com, *node.rhs);
-    auto lhs_real = lhs.remove_const();
-    auto rhs_real = rhs.remove_const();
+    auto lhs = push_expr_val(com, *node.lhs).remove_const();
+    auto rhs = push_expr_val(com, *node.rhs).remove_const();
 
     // Pointers can compare to nullptr
-    if ((lhs_real.is_ptr() && rhs_real == nullptr_type()) || (rhs_real.is_ptr() && lhs_real == nullptr_type())) {
+    if ((lhs.is_ptr() && rhs == nullptr_type()) || (rhs.is_ptr() && lhs == nullptr_type())) {
         switch (node.token.type) {
             case tt::equal_equal: { push_value(com.code(), op::u64_eq); return bool_type(); }
             case tt::bang_equal:  { push_value(com.code(), op::u64_ne); return bool_type(); }
@@ -362,8 +357,8 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
-    if (lhs_real != rhs_real) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
-    const auto& type = lhs_real;
+    if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    const auto& type = lhs;
 
     if (type.is_ptr()) {
         switch (node.token.type) {
@@ -451,8 +446,8 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    const auto raw_type = push_expr_val(com, *node.expr);
-    const auto type = raw_type.remove_const();
+    const auto type = push_expr_val(com, *node.expr).remove_const();
+    print_node(*node.expr);
 
     switch (node.token.type) {
         case tt::minus: {
@@ -467,12 +462,39 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
+auto const_convertable_to(const token& tok, const type_name& src, const type_name& dst) {
+    if (src.is_const && !dst.is_const) {
+        return false;
+    }
+
+    return std::visit(overloaded{
+        [&](type_fundamental l, type_fundamental r) { return l == r; },
+        [&](const type_struct& l, const type_struct& r) { return l == r; },
+        [&](const type_array& l, const type_array& r) {
+            return l.count == r.count && const_convertable_to(tok, *l.inner_type, *r.inner_type);
+        },
+        [&](const type_ptr& l, const type_ptr& r) {
+            return const_convertable_to(tok, *l.inner_type, *r.inner_type);
+        },
+        [&](const type_span& l, const type_span& r) {
+            return const_convertable_to(tok, *l.inner_type, *r.inner_type);
+        },
+        [&](const type_function_ptr& l, const type_function_ptr& r) { return l == r; },
+        [&](const type_arena& l, const type_arena& r) { return true; },
+        [&](const auto& l, const auto& r) {
+            return false;
+        }
+    }, src, dst);
+}
+
 // This is also used for declaration and assignment, should probably be renamed.
 auto push_function_arg(
     compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
 ) -> void
 {
-    // Can disregard constness since the argument is getting copied anyway.
+    // Remove top-level const since we are making a copy, ie- you should be able to pass a
+    // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
+    // for a 'u64 const&' is fine)
     const auto actual = type_of_expr(com, expr).remove_const();
     const auto expected = expected_raw.remove_const();
 
@@ -480,22 +502,12 @@ auto push_function_arg(
         tok.error("arenas can not be copied or assigned");
     }
 
-    const auto exact_match = actual == expected;
+    if (actual == nullptr_type() && expected.is_ptr()) {
+        push_expr_val(com, expr);
+        return;
+    }
 
-    // T& can be assigned to a (const T)&
-    const auto ptr_convertible = actual.is_ptr() &&
-                                 expected.is_ptr() &&
-                                 actual.remove_ptr().add_const() == expected.remove_ptr();
-
-    // T[] can be assigned to a (const T)[]
-    const auto span_convertible = actual.is_span() &&
-                                  expected.is_span() &&
-                                  actual.remove_span().add_const() == expected.remove_span();
-
-    // nullptr can be assigned to any pointer
-    const auto nullptr_to_ptr = expected.is_ptr() && actual == nullptr_type();
-
-    if (exact_match || ptr_convertible || span_convertible || nullptr_to_ptr) {
+    if (const_convertable_to(tok, actual, expected.remove_const())) {
         push_expr_val(com, expr);
     } else {
         tok.error("Cannot convert '{}' to '{}'", actual, expected);
@@ -550,7 +562,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
         // Second, it might be a function call
         const auto struct_type = resolve_type(com, node.token, inner.struct_name);
-        if (const auto func = get_function(com, to_string(struct_type), inner.name); func) {
+        if (const auto func = get_function(com, struct_type, inner.name); func) {
             node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
@@ -573,7 +585,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     }
 
     // Otherwise, the expression must be a function pointer.
-    const auto type = type_of_expr(com, *node.expr).remove_const();
+    const auto type = type_of_expr(com, *node.expr);
     node.token.assert(type.is_function_ptr(), "unable to call non-callable type {}", type);
 
     const auto& sig = std::get<type_function_ptr>(type);
@@ -593,7 +605,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 // TODO- Allow member call through a pointer
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
-    const auto [type, is_const] = type_of_expr(com, *node.expr).strip_const(); 
+    const auto type = type_of_expr(com, *node.expr); 
 
     // Handle .size() calls on arrays
     if (type.is_array() && node.function_name == "size") {
@@ -682,7 +694,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         params.push_back(type_of_expr(com, *arg));
     }
 
-    const auto func = get_function(com, to_string(stripped_type), node.function_name);
+    const auto func = get_function(com, stripped_type, node.function_name);
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
     
     // We wrap the LHS in a addrof so that we can use push_function_arg to push it
@@ -795,7 +807,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 {
     const auto type = push_expr_ptr(com, node);
     push_value(com.code(), op::load, com.types.size_of(type));
-    return type;
+    return type.remove_const();
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
@@ -1015,11 +1027,13 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    const auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
-                                         : type_of_expr(com, *node.expr).remove_const();
+    auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
+                                   : type_of_expr(com, *node.expr);
+    type.is_const = node.add_const;
+
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
     push_function_arg(com, *node.expr, type, node.token);
-    declare_var(com, node.token, node.name, node.add_const ? type.add_const() : type);
+    declare_var(com, node.token, node.name, type);
 }
 
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
@@ -1107,14 +1121,13 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     // First argument must be a pointer to an instance of the class
     node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
     const auto actual = resolve_type(com, node.token, node.sig.params[0].type);
-    const auto expected = struct_type.add_ptr();
-    const auto const_expected = struct_type.add_const().add_ptr();
+    const auto expected = struct_type.add_const().add_ptr().add_const();
     
     node.token.assert(
-        actual == expected || actual == const_expected,
-        "first parameter to a struct member function must be a pointer to that type, "
-        "expected '{}' or '{}', got '{}'",
-        expected, const_expected, actual
+        const_convertable_to(node.token, actual, expected),
+        "first parameter to a struct member function must be a pointer to '{}', got '{}'",
+        struct_type,
+        actual
     );
 
     compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
@@ -1125,9 +1138,7 @@ void push_stmt(compiler& com, const node_return_stmt& node)
     node.token.assert(com.in_function, "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
     node.token.assert_eq(
-        return_type.remove_const(), // don't impose const on the return value
-        com.current().sig.return_type,
-        "wrong return type"
+        return_type, com.current().sig.return_type, "wrong return type"
     );
     com.variables.handle_function_exit();
     push_value(com.code(), op::ret, com.types.size_of(return_type));
@@ -1181,7 +1192,7 @@ auto string_split(std::string s, std::string_view delimiter) -> std::vector<std:
 
 auto push_print_fundamental(compiler& com, const node_expr& node, const token& tok) -> void
 {
-    const auto type = push_expr_val(com, node).remove_const();
+    const auto type = push_expr_val(com, node);
     if (type == null_type()) { push_value(com.code(), op::print_null); }
     else if (type == bool_type()) { push_value(com.code(), op::print_bool); }
     else if (type == char_type()) { push_value(com.code(), op::print_char); }
