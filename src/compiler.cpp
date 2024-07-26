@@ -54,11 +54,11 @@ auto compile_function(
     const std::string& full_name,
     const node_signature& node_sig,
     const node_stmt_ptr& body,
-    const std::unordered_map<std::string, type_name>& template_map = {}
+    const template_map& map = {}
 ) -> void;
 
 auto new_function(
-    compiler& com, const std::string& name, const token& tok, const std::unordered_map<std::string, type_name>& template_map)
+    compiler& com, const std::string& name, const token& tok, const template_map& map)
 {
     if (in_function(com)) tok.error("cannot create a new function while one is already being compiled");
     const auto id = com.functions.size();
@@ -66,7 +66,7 @@ auto new_function(
     // The function signature can only be filled in after declaring the function parameters
     // since the types of some may depend on earlier parameters via typeof
     com.functions.emplace_back(name, signature{}, tok, variable_manager{true}, id);
-    com.functions.back().template_map = template_map;
+    com.functions.back().map = map;
 
     if (com.functions_by_name.contains(name)) tok.error("a function with the name '{}' already exists", name);
     com.functions_by_name.emplace(name, id);
@@ -87,6 +87,11 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 
     const auto resolved_type = std::visit(overloaded {
         [&](const node_named_type& node) {
+            const auto& map = current(com).map;
+            if (auto it = map.find(node.type); it != map.end()) {
+                std::print("resolving {} to {}\n", node.type, it->second);
+                return it->second;
+            }
             return node.type;
         },
         [&](const node_expr_type& node) {
@@ -652,12 +657,14 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                                  node.template_args.size());
             }
 
-            auto template_map = std::unordered_map<std::string, type_name>{};
-            for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
-                const auto [it, success] = template_map.emplace(expected, resolve_type(com, node.token, actual));
+            auto map = template_map{};
+            for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
+                const auto expected = make_type(expected_str);
+                if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
+                const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
                 if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
             }
-            compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, template_map);
+            compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
         }
 
         // Lastly, it might be a builtin function
@@ -1171,11 +1178,11 @@ auto compile_function(
     const std::string& full_name,
     const node_signature& node_sig,
     const node_stmt_ptr& body,
-    const std::unordered_map<std::string, type_name>& template_map
+    const template_map& map
 )
     -> void
 {
-    new_function(com, full_name, tok, template_map);
+    new_function(com, full_name, tok, map);
     {
         variables(com).new_function_scope();
 

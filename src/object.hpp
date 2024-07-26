@@ -112,6 +112,7 @@ auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
+using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
 
 auto null_type() -> type_name;
 auto nullptr_type() -> type_name;

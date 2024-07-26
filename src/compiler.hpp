@@ -20,6 +20,8 @@ struct signature
     type_name              return_type;
 };
 
+using template_map = std::unordered_map<type_name, type_name, type_hash>;
+
 struct function_info
 {
     std::string      name;
@@ -30,7 +32,7 @@ struct function_info
     std::size_t            id;
     std::vector<std::byte> code;
 
-    std::unordered_map<std::string, type_name> template_map = {};
+    template_map map = {};
 };
 
 // Struct used to store information while compiling an AST. Contains the output program
