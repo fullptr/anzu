@@ -22,13 +22,15 @@ struct signature
 
 struct function_info
 {
-    std::string            name;
-    signature              sig;
-    token                  tok;
-    variable_manager       variables;
+    std::string      name;
+    signature        sig;
+    token            tok;
+    variable_manager variables;
     
     std::size_t            id;
     std::vector<std::byte> code;
+
+    std::unordered_map<std::string, type_name> template_map = {};
 };
 
 // Struct used to store information while compiling an AST. Contains the output program

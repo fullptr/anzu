@@ -53,10 +53,12 @@ auto compile_function(
     const token& tok,
     const std::string& full_name,
     const node_signature& node_sig,
-    const node_stmt_ptr& body
+    const node_stmt_ptr& body,
+    const std::unordered_map<std::string, type_name>& template_map = {}
 ) -> void;
 
-auto new_function(compiler& com, const std::string& name, const token& tok)
+auto new_function(
+    compiler& com, const std::string& name, const token& tok, const std::unordered_map<std::string, type_name>& template_map)
 {
     if (in_function(com)) tok.error("cannot create a new function while one is already being compiled");
     const auto id = com.functions.size();
@@ -64,6 +66,7 @@ auto new_function(compiler& com, const std::string& name, const token& tok)
     // The function signature can only be filled in after declaring the function parameters
     // since the types of some may depend on earlier parameters via typeof
     com.functions.emplace_back(name, signature{}, tok, variable_manager{true}, id);
+    com.functions.back().template_map = template_map;
 
     if (com.functions_by_name.contains(name)) tok.error("a function with the name '{}' already exists", name);
     com.functions_by_name.emplace(name, id);
@@ -642,7 +645,19 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (!node.template_args.empty() and com.function_templates.contains(inner.name)) {
             const auto function_ast = com.function_templates.at(inner.name);
             const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
-            compile_function(com, node.token, full_name, function_ast.sig, function_ast.body);
+
+            if (node.template_args.size() != function_ast.template_types.size()) {
+                node.token.error("mismatching number of template args, expected {}, got {}",
+                                 function_ast.template_types.size(),
+                                 node.template_args.size());
+            }
+
+            auto template_map = std::unordered_map<std::string, type_name>{};
+            for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
+                const auto [it, success] = template_map.emplace(expected, resolve_type(com, node.token, actual));
+                if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
+            }
+            compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, template_map);
         }
 
         // Lastly, it might be a builtin function
@@ -1155,11 +1170,12 @@ auto compile_function(
     const token& tok,
     const std::string& full_name,
     const node_signature& node_sig,
-    const node_stmt_ptr& body
+    const node_stmt_ptr& body,
+    const std::unordered_map<std::string, type_name>& template_map
 )
     -> void
 {
-    new_function(com, full_name, tok);
+    new_function(com, full_name, tok, template_map);
     {
         variables(com).new_function_scope();
 
