@@ -104,7 +104,6 @@ struct node_literal_string_expr
 
 struct node_name_expr
 {
-    node_type_ptr struct_name = nullptr;
     std::string name;
 
     anzu::token token;

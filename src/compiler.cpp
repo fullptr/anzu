@@ -89,11 +89,32 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 }
 
 auto get_function(
-    const compiler& com, const type_name& struct_name, const std::string& function_name
+    compiler& com,
+    const type_name& struct_name,
+    const std::string& function_name,
+    const std::vector<node_type_ptr>& template_args = {}
 )
     -> std::optional<function_info>
 {
-    const auto full_name = std::format("{}::{}", struct_name.remove_const(), function_name);
+    const auto type_token = [](const node_type& t) {
+        return std::visit([](const auto& inner) { return inner.token; }, t);
+    };
+    
+    // Yikes, TODO- simplify this nonsense
+    const auto full_name = template_args.empty()
+                         ? std::format("{}::{}", struct_name.remove_const(), function_name)
+                         : std::format("{}::{}|{}|",
+                                       struct_name.remove_const(),
+                                       function_name,
+                                       format_comma_separated(
+                                           template_args,
+                                           [&](const node_type_ptr& typenode) {
+                                                return resolve_type(com, type_token(*typenode), typenode);
+                                           }
+                                        )
+                           );
+
+    std::print("get_function: {}\n", full_name);
     if (const auto it = com.functions_by_name.find(full_name); it != com.functions_by_name.end()) {
         return com.functions[it->second];
     }
@@ -127,10 +148,10 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
     }
 
     const auto var = globals(com).find(name);
+    tok.assert(var.has_value(), "could not find variable '{}'\n", name);
     push_value(code(com), op::push_ptr_global, var->location);
     return var->type;
 
-    tok.assert(var.has_value(), "could not find variable '{}'\n", name);
 }
 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
@@ -565,8 +586,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
         // First, it might be a constructor call
         const auto type = make_type(inner.name);
-        if (inner.struct_name == nullptr && com.types.contains(type)) {
+        if (com.types.contains(type)) {
             const auto expected_params = get_constructor_params(com, type);
+            node.token.assert(node.template_args.empty(), "no support for template structs yet");
             node.token.assert_eq(expected_params.size(), node.args.size(),
                                  "bad number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
@@ -579,7 +601,8 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Hack to allow for an easy way to dump types of expressions
-        if (inner.struct_name == nullptr & inner.name == "__dump_type") {
+        if (inner.name == "__dump_type") {
+            node.token.assert(node.template_args.empty(), "__dump_type takes no template args");
             std::print("__dump_type(\n");
             for (const auto& arg : node.args) {
                 const auto dump = type_of_expr(com, *arg);
@@ -591,8 +614,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Second, it might be a function call
-        const auto struct_type = resolve_type(com, node.token, inner.struct_name);
-        if (const auto func = get_function(com, struct_type, inner.name); func) {
+        if (const auto func = get_function(com, global_namespace, inner.name, node.template_args); func) {
             node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_copy_typechecked(com, *node.args.at(i), func->sig.params[i], node.token);
@@ -605,6 +627,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         // TODO- fix type checking
         if (const auto b = get_builtin_id(inner.name); b.has_value()) {
             const auto& builtin = get_builtin(*b);
+            node.token.assert(node.template_args.empty(), "no support for template builtins yet");
             node.token.assert_eq(node.args.size(), builtin.args.size(), "bad number of arguments to builtin call");
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
                 push_copy_typechecked(com, *node.args.at(i), builtin.args[i], node.token);
