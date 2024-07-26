@@ -30,7 +30,6 @@ struct simple_scope
 
 struct function_scope
 {
-    type_name return_type;
 };
 
 struct loop_scope
@@ -49,22 +48,10 @@ struct scope
     std::vector<variable> variables = {};
 };
 
-class scope_guard
-{
-    variable_manager* d_manager;
-    scope_guard(const scope_guard&) = delete;
-    scope_guard& operator=(const scope_guard&) = delete;
-
-public:
-    scope_guard(variable_manager& manager);
-    ~scope_guard();
-};
-
 class variable_manager
 {
     compiler* d_compiler;
     std::vector<scope> d_scopes;
-    friend scope_guard;
 
 public:
     auto set_compiler(compiler& c) { d_compiler = &c; }
@@ -81,9 +68,10 @@ public:
 
     auto size() -> std::size_t;
 
-    auto new_scope() -> scope_guard;
-    auto new_function_scope(const type_name& return_type) -> scope_guard;
-    auto new_loop_scope() -> scope_guard;
+    void new_scope();
+    void new_function_scope();
+    void new_loop_scope();
+    void pop_scope();
 
     // Functions to handle changes to control flow, ie- break, continue and return.
     // All of these can result in control flow not reaching the end of a scope

@@ -16,25 +16,22 @@ auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope)
 
 }
 
-auto variable_manager::new_scope() -> scope_guard
+void variable_manager::new_scope()
 {
     d_scopes.emplace_back(
         simple_scope{},
         d_scopes.empty() ? 0 : d_scopes.back().next
     );
-    return scope_guard{*this};
 }
 
-auto variable_manager::new_function_scope(const type_name& return_type) -> scope_guard
+void variable_manager::new_function_scope()
 {
-    d_scopes.emplace_back(function_scope{return_type}, 0);
-    return scope_guard{*this};
+    d_scopes.emplace_back(function_scope{}, 0);
 }
 
-auto variable_manager::new_loop_scope() -> scope_guard
+void variable_manager::new_loop_scope()
 {
     d_scopes.emplace_back(loop_scope{}, d_scopes.back().next);
-    return scope_guard{*this};
 }
 
 auto variable_manager::declare(
@@ -122,16 +119,12 @@ auto variable_manager::handle_function_exit() -> void
     }
 }
 
-scope_guard::scope_guard(variable_manager& manager)
-    : d_manager{&manager}
-{}
-
-scope_guard::~scope_guard() {
-    delete_arenas_in_scope(d_manager->d_compiler->code(), d_manager->d_scopes.back());
-    const auto& scope = d_manager->d_scopes.back();
+void variable_manager::pop_scope() {
+    delete_arenas_in_scope(d_compiler->code(), d_scopes.back());
+    const auto& scope = d_scopes.back();
     const auto size = scope.next - scope.start;
-    d_manager->d_scopes.pop_back();
-    if (size > 0) push_value(d_manager->d_compiler->code(), op::pop, size); 
+    d_scopes.pop_back();
+    if (size > 0) push_value(d_compiler->code(), op::pop, size); 
 }
 
 }

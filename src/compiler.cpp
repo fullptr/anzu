@@ -812,20 +812,22 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    const auto scope = com.variables.new_scope();
+    com.variables.new_scope();
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
+    com.variables.pop_scope();
 }
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    const auto loop_scope = com.variables.new_loop_scope();
+    com.variables.new_loop_scope();
     
     const auto begin_pos = com.code().size();
     {
-        const auto body_scope = com.variables.new_scope();
+        com.variables.new_scope();
         body();
+        com.variables.pop_scope();
     }
     push_value(com.code(), op::jump, begin_pos);
 
@@ -837,6 +839,8 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
     for (const auto idx : control_flow.continues) {
         write_value(com.code(), idx, begin_pos); // Jump to start
     }
+
+    com.variables.pop_scope();
 }
 
 void push_stmt(compiler& com, const node_loop_stmt& node)
@@ -905,7 +909,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    const auto scope = com.variables.new_scope();
+    com.variables.new_scope();
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -971,6 +975,8 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         // main body
         push_stmt(com, *node.body);
     });
+
+    com.variables.pop_scope();
 }
 
 void push_stmt(compiler& com, const node_if_stmt& node)
@@ -1081,7 +1087,7 @@ auto compile_function_body(
 {
     new_function(com, std::format("{}::{}", struct_type, name), tok);
     {
-        const auto scope = com.variables.new_function_scope(null_type());
+        com.variables.new_function_scope();
 
         for (const auto& arg : node_sig.params) {
             const auto type = resolve_type(com, tok, arg.type);
@@ -1102,6 +1108,8 @@ auto compile_function_body(
                 tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
             }
         }
+
+        com.variables.pop_scope();
     }
     finish_function(com);
 }
@@ -1258,8 +1266,9 @@ auto compile(const anzu_module& ast) -> bytecode_program
     com.variables.set_compiler(com);
     new_function(com, "$main", token{});
     {
-        const auto global_scope = com.variables.new_scope();
+        com.variables.new_scope();
         push_stmt(com, *ast.root);
+        com.variables.pop_scope();
     }
     push_value(com.code(), op::end_program);
     finish_function(com);
