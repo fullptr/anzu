@@ -45,11 +45,6 @@ auto type_name::remove_const() const -> type_name
     return copy;
 }
 
-auto type_name::strip_const() const -> std::pair<type_name, bool>
-{
-    return {remove_const(), is_const};
-}
-
 auto to_string_paren(const type_name& type) -> std::string
 {
     const auto str = to_string(type);
