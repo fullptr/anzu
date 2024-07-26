@@ -35,24 +35,6 @@ struct function_info
 // as well as information such as function definitions.
 struct compiler
 {
-    // Returns the current function
-    auto current() -> function_info& {
-        return functions[current_compiling.back()];
-    }
-
-    // Returns the bytecode that we are currently writing to
-    auto code() -> std::vector<std::byte>& {
-        return current().code;
-    }
-
-    auto variables() -> variable_manager& {
-        return current().variables;
-    }
-
-    auto in_function() const -> bool {
-        return current_compiling.size() > 1;
-    }
-
     std::vector<std::size_t> current_compiling;
     std::unordered_map<std::string, node_function_def_stmt> function_templates;
 
