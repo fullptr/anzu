@@ -125,16 +125,8 @@ auto full_function_name(
     return std::format("{}::{}|{}|", struct_name.remove_const(), function_name, template_args_string);
 }
 
-auto get_function(
-    compiler& com,
-    const type_name& struct_name,
-    const std::string& function_name,
-    const std::vector<node_type_ptr>& template_args = {}
-)
-    -> std::optional<function_info>
+auto get_function(compiler& com, const std::string& full_name) -> std::optional<function_info>
 {
-    const auto full_name = full_function_name(com, struct_name, function_name, template_args);
-
     if (const auto it = com.functions_by_name.find(full_name); it != com.functions_by_name.end()) {
         return com.functions[it->second];
     }
@@ -266,7 +258,8 @@ auto push_assert(compiler& com, std::string_view message) -> void
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
-    if (auto func = get_function(com, global_namespace, node.name)) {
+    const auto full_name = full_function_name(com, global_namespace, node.name);
+    if (auto func = get_function(com, full_name)) {
         node.token.error("cannot take address of a function pointer");
     }
 
@@ -277,7 +270,8 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 // to do it in a special way.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
-    if (auto func = get_function(com, global_namespace, node.name)) {
+    const auto full_name = full_function_name(com, global_namespace, node.name);
+    if (auto func = get_function(com, full_name)) {
         const auto& info = *func;
         push_value(code(com), op::push_u64, info.id);
 
@@ -633,8 +627,10 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return null_type();
         }
 
+        const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
+
         // Second, it might be a function call
-        if (const auto func = get_function(com, global_namespace, inner.name, node.template_args); func) {
+        if (const auto func = get_function(com, full_name); func) {
             node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_copy_typechecked(com, *node.args.at(i), func->sig.params[i], node.token);
@@ -647,7 +643,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         // types, so we need to compile that instantiation and call it here
         if (!node.template_args.empty() && com.function_templates.contains(inner.name)) {
             const auto function_ast = com.function_templates.at(inner.name);
-            const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
 
             if (node.template_args.size() != function_ast.template_types.size()) {
                 node.token.error("mismatching number of template args, expected {}, got {}",
@@ -666,7 +661,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         }
 
         // Now with the new template function compiled, we can call it, this is just a copy of step 2
-        if (const auto func = get_function(com, global_namespace, inner.name, node.template_args); func) {
+        if (const auto func = get_function(com, full_name); func) {
             node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
                 push_copy_typechecked(com, *node.args.at(i), func->sig.params[i], node.token);
@@ -799,8 +794,9 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         params.push_back(type_of_expr(com, *arg));
     }
 
-    const auto func = get_function(com, stripped_type, node.function_name);
-    node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
+    const auto full_name = full_function_name(com, stripped_type, node.function_name);
+    const auto func = get_function(com, full_name);
+    node.token.assert(func.has_value(), "could not find member function {}", full_name);
     
     // We wrap the LHS in a addrof so that we can use push_copy_typechecked to push it
     // like a regular function arg.

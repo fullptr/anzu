@@ -1,2 +1,15 @@
 
 
+fn do|T|(x: T&)
+{
+    x.x = x.x + 1;
+}
+
+struct foo
+{
+    x: i64;
+    y: i64;
+}
+
+let f := foo(1, 2);
+do|foo|(f);
