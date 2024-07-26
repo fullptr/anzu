@@ -136,6 +136,7 @@ struct node_binary_op_expr
 struct node_call_expr
 {
     node_expr_ptr expr;
+    std::vector<node_type_ptr> template_args;
     std::vector<node_expr_ptr> args;
 
     anzu::token token;

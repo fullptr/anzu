@@ -1,8 +1,2 @@
 
 
-
-
-fn make_pair<T>(x: T, y: T) -> T
-{
-    return x + y;
-}
