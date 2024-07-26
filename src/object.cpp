@@ -216,7 +216,7 @@ auto arena_type() -> type_name
 
 auto string_literal_type() -> type_name
 {
-    return char_type().add_const().add_span()
+    return char_type().add_const().add_span();
 }
 
 auto make_type(const std::string& name) -> type_name
