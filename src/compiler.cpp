@@ -647,7 +647,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
         // Third, this might be a template function with this being the first time we're calling it with specific
         // types, so we need to compile that instantiation and call it here
-        if (!node.template_args.empty() and com.function_templates.contains(inner.name)) {
+        if (!node.template_args.empty() && com.function_templates.contains(inner.name)) {
             const auto function_ast = com.function_templates.at(inner.name);
             const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
 
@@ -665,6 +665,16 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
                 if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
             }
             compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
+        }
+
+        // Now with the new template function compiled, we can call it, this is just a copy of step 2
+        if (const auto func = get_function(com, global_namespace, inner.name, node.template_args); func) {
+            node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
+            for (std::size_t i = 0; i != node.args.size(); ++i) {
+                push_copy_typechecked(com, *node.args.at(i), func->sig.params[i], node.token);
+            }
+            push_function_call(com, *func);
+            return func->sig.return_type;
         }
 
         // Lastly, it might be a builtin function
