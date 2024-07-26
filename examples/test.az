@@ -1,15 +1,6 @@
 
-struct foo
-{
-    i: i64;
 
-    fn hello(self: (const foo)&) -> null
-    {
-        self.i = 10;
-        print("hello\n");
-    }
-}
-
-var f := foo(1);
-f.hello();
-print("{}\n", f.i);
+let x := 10;
+var y := x&;
+y@ = 15;
+__dump_type(x, y);

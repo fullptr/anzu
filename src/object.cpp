@@ -31,32 +31,24 @@ auto type_name::remove_ptr() const -> type_name
     return *std::get<type_ptr>(*this).inner_type;
 }
 
-auto type_name::is_const() const -> bool
-{
-    return std::holds_alternative<type_const>(*this);
-}
-
 auto type_name::add_const() const -> type_name
 {
-    if (is_const()) return *this;
-    return { type_const{ .inner_type{*this} } };
+    auto copy = *this;
+    copy.is_const = true;
+    return copy;
 }
 
 auto type_name::remove_const() const -> type_name
 {
-    if (!is_const()) return *this;
-    return *std::get<type_const>(*this).inner_type;
-}
-
-auto type_name::strip_const() const -> std::pair<type_name, bool>
-{
-    return {remove_const(), is_const()};
+    auto copy = *this;
+    copy.is_const = false;
+    return copy;
 }
 
 auto to_string_paren(const type_name& type) -> std::string
 {
     const auto str = to_string(type);
-    if (str.contains(' ')) {
+    if (type.is_function_ptr()) {
         return std::format("({})", str);
     }
     return str;
@@ -64,7 +56,10 @@ auto to_string_paren(const type_name& type) -> std::string
 
 auto to_string(const type_name& type) -> std::string
 {
-    return std::visit([](const auto& t) { return ::anzu::to_string(t); }, type);
+    const auto string_inner = std::visit([](const auto& t) {
+        return ::anzu::to_string(t);
+    }, type);
+    return type.is_const ? std::format("{} const", string_inner) : string_inner;
 }
 
 auto to_string(type_fundamental t) -> std::string
@@ -107,8 +102,8 @@ auto to_string(const type_function_ptr& type) -> std::string
     return std::format(
         "{}({}) -> {}",
         to_string(token_type::kw_function),
-        format_comma_separated(type.param_types, to_string_paren),
-        *type.return_type
+        format_comma_separated(type.param_types),
+        to_string_paren(*type.return_type)
     );
 }
 
@@ -117,10 +112,6 @@ auto to_string(const type_arena& type) -> std::string
     return std::string{"arena"};
 }
 
-auto to_string(const type_const& type) -> std::string
-{
-    return std::format("const {}", to_string(*type.inner_type));
-}
 
 auto hash(const type_name& type) -> std::size_t
 {
@@ -167,12 +158,6 @@ auto hash(const type_arena& type) -> std::size_t
 {
     static const auto base = std::hash<std::string_view>{}("type_arena");
     return base;
-}
-
-auto hash(const type_const& type) -> std::size_t
-{
-    static const auto base = std::hash<std::string_view>{}("type_const");
-    return hash(*type.inner_type) ^ base;
 }
 
 auto hash(std::span<const type_name> types) -> std::size_t
@@ -227,6 +212,11 @@ auto f64_type() -> type_name
 auto arena_type() -> type_name
 {
     return {type_arena{}};
+}
+
+auto string_literal_type() -> type_name
+{
+    return char_type().add_const().add_span()
 }
 
 auto make_type(const std::string& name) -> type_name
