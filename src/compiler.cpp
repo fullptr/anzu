@@ -42,7 +42,7 @@ auto globals(compiler& com) -> variable_manager& {
     return com.functions.front().variables;
 }
 
-static const auto global_namespace = make_type("<global>");
+static const auto global_namespace = make_type("");
 
 auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
@@ -88,6 +88,30 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
     return resolved_type;
 }
 
+auto full_function_name(
+    compiler& com,
+    const type_name& struct_name,
+    const std::string& function_name,
+    const std::vector<node_type_ptr>& template_args = {}
+)
+    -> std::string
+{
+    if (template_args.empty()) {
+        return std::format("{}::{}", struct_name.remove_const(), function_name);
+    }
+
+    const auto type_token = [](const node_type& t) {
+        return std::visit([](const auto& inner) { return inner.token; }, t);
+    };
+
+    const auto template_args_string = format_comma_separated(
+        template_args,
+        [&](const node_type_ptr& typenode) { return resolve_type(com, type_token(*typenode), typenode); }
+    );
+    
+    return std::format("{}::{}|{}|", struct_name.remove_const(), function_name, template_args_string);
+}
+
 auto get_function(
     compiler& com,
     const type_name& struct_name,
@@ -96,25 +120,8 @@ auto get_function(
 )
     -> std::optional<function_info>
 {
-    const auto type_token = [](const node_type& t) {
-        return std::visit([](const auto& inner) { return inner.token; }, t);
-    };
-    
-    // Yikes, TODO- simplify this nonsense
-    const auto full_name = template_args.empty()
-                         ? std::format("{}::{}", struct_name.remove_const(), function_name)
-                         : std::format("{}::{}|{}|",
-                                       struct_name.remove_const(),
-                                       function_name,
-                                       format_comma_separated(
-                                           template_args,
-                                           [&](const node_type_ptr& typenode) {
-                                                return resolve_type(com, type_token(*typenode), typenode);
-                                           }
-                                        )
-                           );
+    const auto full_name = full_function_name(com, struct_name, function_name, template_args);
 
-    std::print("get_function: {}\n", full_name);
     if (const auto it = com.functions_by_name.find(full_name); it != com.functions_by_name.end()) {
         return com.functions[it->second];
     }
@@ -623,6 +630,13 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return func->sig.return_type;
         }
 
+        // Third, this might be a template function with this being the first time we're calling it with specific
+        // types, so we need to compile that instantiation and call it here
+        if (!node.template_args.empty() and com.function_templates.contains(inner.name)) {
+            const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
+            std::print("compiling {}\n", full_name);
+        }
+
         // Lastly, it might be a builtin function
         // TODO- fix type checking
         if (const auto b = get_builtin_id(inner.name); b.has_value()) {
@@ -1128,17 +1142,16 @@ auto ends_in_return(const node_stmt& node) -> bool
     }, node);
 }
 
-auto compile_function_body(
+auto compile_function(
     compiler& com,
     const token& tok,
-    const type_name& struct_type,
-    const std::string& name,
+    const std::string& full_name,
     const node_signature& node_sig,
     const node_stmt_ptr& body
 )
     -> void
 {
-    new_function(com, std::format("{}::{}", struct_type, name), tok);
+    new_function(com, full_name, tok);
     {
         variables(com).new_function_scope();
 
@@ -1158,7 +1171,7 @@ auto compile_function_body(
                 push_value(code(com), op::push_null);
                 push_value(code(com), op::ret, std::uint64_t{1});
             } else {
-                tok.error("function '{}::{}' does not end in a return statement", struct_type, name);
+                tok.error("function '{}' does not end in a return statement", full_name);
             }
         }
 
@@ -1180,7 +1193,8 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
             node.token.error("function template named '{}' already defined", node.name);
         }
     } else {
-        compile_function_body(com, node.token, global_namespace, node.name, node.sig, node.body);
+        const auto full_name = full_function_name(com, global_namespace, node.name);
+        compile_function(com, node.token, full_name, node.sig, node.body);
     }
 }
 
@@ -1200,7 +1214,8 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
         actual
     );
 
-    compile_function_body(com, node.token, struct_type, node.function_name, node.sig, node.body);
+    const auto full_name = full_function_name(com, struct_type, node.function_name);
+    compile_function(com, node.token, full_name, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
