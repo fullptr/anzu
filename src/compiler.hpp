@@ -25,6 +25,7 @@ struct function_info
     std::string            name;
     signature              sig;
     token                  tok;
+    variable_manager       variables;
     
     std::size_t            id;
     std::vector<std::byte> code;
@@ -44,6 +45,10 @@ struct compiler
         return current().code;
     }
 
+    auto variables() -> variable_manager& {
+        return current().variables;
+    }
+
     auto in_function() const -> bool {
         return current_compiling.size() > 1;
     }
@@ -57,7 +62,6 @@ struct compiler
     std::vector<function_info>                   functions;
     
     type_manager     types;
-    variable_manager variables;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

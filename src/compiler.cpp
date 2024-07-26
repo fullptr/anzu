@@ -33,7 +33,7 @@ auto new_function(compiler& com, const std::string& name, const token& tok)
 
     // The function signature can only be filled in after declaring the function parameters
     // since the types of some may depend on earlier parameters via typeof
-    com.functions.emplace_back(name, signature{}, tok, id);
+    com.functions.emplace_back(name, signature{}, tok, variable_manager{}, id);
 
     if (com.functions_by_name.contains(name)) tok.error("a function with the name '{}' already exists", name);
     com.functions_by_name.emplace(name, id);
@@ -89,18 +89,24 @@ auto push_function_call(compiler& com, const function_info& function) -> void
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
-    if (!com.variables.declare(name, type, com.types.size_of(type))) {
+    if (!com.current().variables.declare(name, type, com.types.size_of(type))) {
         tok.error("name already in use: '{}'", name);
     }
 }
 
 auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
 {
-    const auto var = com.variables.find(name);
-    tok.assert(var.has_value(), "could not find variable '{}'\n", name);
-    const auto op = var->is_local ? op::push_ptr_local : op::push_ptr_global;
-    push_value(com.code(), op, var->location);
+    if (const auto var = com.current().variables.find(name); var.has_value()) {
+        const auto op = var->is_local ? op::push_ptr_local : op::push_ptr_global;
+        push_value(com.code(), op, var->location);
+        return var->type;
+    }
+
+    const auto var = com.functions.front().variables.find(name);
+    push_value(com.code(), op::push_ptr_global, var->location);
     return var->type;
+
+    tok.assert(var.has_value(), "could not find variable '{}'\n", name);
 }
 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
@@ -812,27 +818,27 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
-    com.variables.new_scope();
+    com.variables().new_scope();
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
-    com.variables.pop_scope(com.code());
+    com.variables().pop_scope(com.code());
 }
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    com.variables.new_loop_scope();
+    com.variables().new_loop_scope();
     
     const auto begin_pos = com.code().size();
     {
-        com.variables.new_scope();
+        com.variables().new_scope();
         body();
-        com.variables.pop_scope(com.code());
+        com.variables().pop_scope(com.code());
     }
     push_value(com.code(), op::jump, begin_pos);
 
     // Fix up the breaks and continues
-    const auto& control_flow = com.variables.get_loop_info();
+    const auto& control_flow = com.variables().get_loop_info();
     for (const auto idx : control_flow.breaks) {
         write_value(com.code(), idx, com.code().size()); // Jump past end
     }
@@ -840,7 +846,7 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
         write_value(com.code(), idx, begin_pos); // Jump to start
     }
 
-    com.variables.pop_scope(com.code());
+    com.variables().pop_scope(com.code());
 }
 
 void push_stmt(compiler& com, const node_loop_stmt& node)
@@ -852,11 +858,11 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
 
 void push_break(compiler& com, const token& tok)
 {
-    tok.assert(com.variables.in_loop(), "cannot use 'break' outside of a loop");
-    com.variables.handle_loop_exit(com.code());
+    tok.assert(com.variables().in_loop(), "cannot use 'break' outside of a loop");
+    com.variables().handle_loop_exit(com.code());
     push_value(com.code(), op::jump);
     const auto pos = push_value(com.code(), std::uint64_t{0}); // filled in later
-    com.variables.get_loop_info().breaks.push_back(pos);
+    com.variables().get_loop_info().breaks.push_back(pos);
 }
 
 /*
@@ -909,7 +915,7 @@ becomes
 */
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
-    com.variables.new_scope();
+    com.variables().new_scope();
 
     const auto iter_type = type_of_expr(com, *node.iter);
 
@@ -976,7 +982,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_stmt(com, *node.body);
     });
 
-    com.variables.pop_scope(com.code());
+    com.variables().pop_scope(com.code());
 }
 
 void push_stmt(compiler& com, const node_if_stmt& node)
@@ -1024,11 +1030,11 @@ void push_stmt(compiler& com, const node_break_stmt& node)
 
 void push_stmt(compiler& com, const node_continue_stmt& node)
 {
-    node.token.assert(com.variables.in_loop(), "cannot use 'continue' outside of a loop");
-    com.variables.handle_loop_exit(com.code());
+    node.token.assert(com.variables().in_loop(), "cannot use 'continue' outside of a loop");
+    com.variables().handle_loop_exit(com.code());
     push_value(com.code(), op::jump);
     const auto pos = push_value(com.code(), std::uint64_t{0}); // filled in later
-    com.variables.get_loop_info().continues.push_back(pos);
+    com.variables().get_loop_info().continues.push_back(pos);
 }
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
@@ -1087,7 +1093,7 @@ auto compile_function_body(
 {
     new_function(com, std::format("{}::{}", struct_type, name), tok);
     {
-        com.variables.new_function_scope();
+        com.variables().new_function_scope();
 
         for (const auto& arg : node_sig.params) {
             const auto type = resolve_type(com, tok, arg.type);
@@ -1109,7 +1115,7 @@ auto compile_function_body(
             }
         }
 
-        com.variables.pop_scope(com.code());
+        com.variables().pop_scope(com.code());
     }
     finish_function(com);
 }
@@ -1157,7 +1163,7 @@ void push_stmt(compiler& com, const node_return_stmt& node)
     node.token.assert_eq(
         return_type, com.current().sig.return_type, "wrong return type"
     );
-    com.variables.handle_function_exit(com.code());
+    com.variables().handle_function_exit(com.code());
     push_value(com.code(), op::ret, com.types.size_of(return_type));
 }
 
@@ -1265,9 +1271,9 @@ auto compile(const anzu_module& ast) -> bytecode_program
     auto com = compiler{};
     new_function(com, "$main", token{});
     {
-        com.variables.new_scope();
+        com.variables().new_scope();
         push_stmt(com, *ast.root);
-        com.variables.pop_scope(com.code());
+        com.variables().pop_scope(com.code());
     }
     push_value(com.code(), op::end_program);
     finish_function(com);
