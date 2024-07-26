@@ -37,12 +37,12 @@ auto new_function(compiler& com, const std::string& name, const token& tok)
 
     if (com.functions_by_name.contains(name)) tok.error("a function with the name '{}' already exists", name);
     com.functions_by_name.emplace(name, id);
-    com.current_compiling.push(id);
+    com.current_compiling.push_back(id);
 }
 
 auto finish_function(compiler& com)
 {
-    com.current_compiling.pop();
+    com.current_compiling.pop_back();
 }
 
 
