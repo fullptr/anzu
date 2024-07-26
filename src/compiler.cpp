@@ -816,7 +816,7 @@ void push_stmt(compiler& com, const node_sequence_stmt& node)
     for (const auto& seq_node : node.sequence) {
         push_stmt(com, *seq_node);
     }
-    com.variables.pop_scope();
+    com.variables.pop_scope(com.code());
 }
 
 auto push_loop(compiler& com, std::function<void()> body) -> void
@@ -827,7 +827,7 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
     {
         com.variables.new_scope();
         body();
-        com.variables.pop_scope();
+        com.variables.pop_scope(com.code());
     }
     push_value(com.code(), op::jump, begin_pos);
 
@@ -840,7 +840,7 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
         write_value(com.code(), idx, begin_pos); // Jump to start
     }
 
-    com.variables.pop_scope();
+    com.variables.pop_scope(com.code());
 }
 
 void push_stmt(compiler& com, const node_loop_stmt& node)
@@ -853,7 +853,7 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
 void push_break(compiler& com, const token& tok)
 {
     tok.assert(com.variables.in_loop(), "cannot use 'break' outside of a loop");
-    com.variables.handle_loop_exit();
+    com.variables.handle_loop_exit(com.code());
     push_value(com.code(), op::jump);
     const auto pos = push_value(com.code(), std::uint64_t{0}); // filled in later
     com.variables.get_loop_info().breaks.push_back(pos);
@@ -976,7 +976,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_stmt(com, *node.body);
     });
 
-    com.variables.pop_scope();
+    com.variables.pop_scope(com.code());
 }
 
 void push_stmt(compiler& com, const node_if_stmt& node)
@@ -1025,7 +1025,7 @@ void push_stmt(compiler& com, const node_break_stmt& node)
 void push_stmt(compiler& com, const node_continue_stmt& node)
 {
     node.token.assert(com.variables.in_loop(), "cannot use 'continue' outside of a loop");
-    com.variables.handle_loop_exit();
+    com.variables.handle_loop_exit(com.code());
     push_value(com.code(), op::jump);
     const auto pos = push_value(com.code(), std::uint64_t{0}); // filled in later
     com.variables.get_loop_info().continues.push_back(pos);
@@ -1109,7 +1109,7 @@ auto compile_function_body(
             }
         }
 
-        com.variables.pop_scope();
+        com.variables.pop_scope(com.code());
     }
     finish_function(com);
 }
@@ -1157,7 +1157,7 @@ void push_stmt(compiler& com, const node_return_stmt& node)
     node.token.assert_eq(
         return_type, com.current().sig.return_type, "wrong return type"
     );
-    com.variables.handle_function_exit();
+    com.variables.handle_function_exit(com.code());
     push_value(com.code(), op::ret, com.types.size_of(return_type));
 }
 
@@ -1263,12 +1263,11 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 auto compile(const anzu_module& ast) -> bytecode_program
 {
     auto com = compiler{};
-    com.variables.set_compiler(com);
     new_function(com, "$main", token{});
     {
         com.variables.new_scope();
         push_stmt(com, *ast.root);
-        com.variables.pop_scope();
+        com.variables.pop_scope(com.code());
     }
     push_value(com.code(), op::end_program);
     finish_function(com);

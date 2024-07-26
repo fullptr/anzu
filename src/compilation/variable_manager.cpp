@@ -98,33 +98,33 @@ auto variable_manager::size() -> std::size_t
     return d_scopes.size();
 }
 
-auto variable_manager::handle_loop_exit() -> void
+auto variable_manager::handle_loop_exit(std::vector<std::byte>& code) -> void
 {
     auto pop_size = std::size_t{0};
     for (const auto& scope : d_scopes | std::views::reverse) {
-        delete_arenas_in_scope(d_compiler->code(), scope);
+        delete_arenas_in_scope(code, scope);
         pop_size += scope.next - scope.start;
         if (std::holds_alternative<loop_scope>(scope.info)) break;
     }
-    push_value(d_compiler->code(), op::pop, pop_size);
+    push_value(code, op::pop, pop_size);
 }
 
 // This should NOT pop data from the stack like handle_loop_exit since the
 // op::ret op code does this for us.
-auto variable_manager::handle_function_exit() -> void
+auto variable_manager::handle_function_exit(std::vector<std::byte>& code) -> void
 {
     for (const auto& scope : d_scopes | std::views::reverse) {
-        delete_arenas_in_scope(d_compiler->code(), scope);
+        delete_arenas_in_scope(code, scope);
         if (std::holds_alternative<function_scope>(scope.info)) break;
     }
 }
 
-void variable_manager::pop_scope() {
-    delete_arenas_in_scope(d_compiler->code(), d_scopes.back());
+void variable_manager::pop_scope(std::vector<std::byte>& code) {
+    delete_arenas_in_scope(code, d_scopes.back());
     const auto& scope = d_scopes.back();
     const auto size = scope.next - scope.start;
     d_scopes.pop_back();
-    if (size > 0) push_value(d_compiler->code(), op::pop, size); 
+    if (size > 0) push_value(code, op::pop, size); 
 }
 
 }

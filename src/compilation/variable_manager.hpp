@@ -50,12 +50,9 @@ struct scope
 
 class variable_manager
 {
-    compiler* d_compiler;
     std::vector<scope> d_scopes;
 
 public:
-    auto set_compiler(compiler& c) { d_compiler = &c; }
-
     auto declare(const std::string& name, const type_name& type, std::size_t size) -> bool;
     auto find(const std::string& name) const -> std::optional<variable>;
     auto scopes() const -> std::span<const scope> { return d_scopes; }
@@ -71,12 +68,12 @@ public:
     void new_scope();
     void new_function_scope();
     void new_loop_scope();
-    void pop_scope();
+    void pop_scope(std::vector<std::byte>& code);
 
     // Functions to handle changes to control flow, ie- break, continue and return.
     // All of these can result in control flow not reaching the end of a scope
-    auto handle_loop_exit() -> void;
-    auto handle_function_exit() -> void;
+    auto handle_loop_exit(std::vector<std::byte>& code) -> void;
+    auto handle_function_exit(std::vector<std::byte>& code) -> void;
 };
 
 }
