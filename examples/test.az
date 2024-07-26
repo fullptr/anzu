@@ -1,6 +1,6 @@
 
 
-var x := [1, 2, 3, 4];
-var s := x[];
-
-__dump_type(x, s);
+let x := 10;
+var y := x&;
+y@ = 15;
+__dump_type(x, y);

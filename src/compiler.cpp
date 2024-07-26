@@ -344,8 +344,8 @@ auto push_expr_val(compiler& com, const node_literal_nullptr_expr& node) -> type
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    auto lhs = push_expr_val(com, *node.lhs).remove_const();
-    auto rhs = push_expr_val(com, *node.rhs).remove_const();
+    auto lhs = push_expr_val(com, *node.lhs);
+    auto rhs = push_expr_val(com, *node.rhs);
 
     // Pointers can compare to nullptr
     if ((lhs.is_ptr() && rhs == nullptr_type()) || (rhs.is_ptr() && lhs == nullptr_type())) {
@@ -445,7 +445,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     using tt = token_type;
-    const auto type = push_expr_val(com, *node.expr).remove_const();
+    const auto type = push_expr_val(com, *node.expr);
     print_node(*node.expr);
 
     switch (node.token.type) {
@@ -507,7 +507,7 @@ auto push_copy_typechecked(
         return;
     }
 
-    if (const_convertable_to(tok, actual, expected.remove_const())) {
+    if (const_convertable_to(tok, actual, expected)) {
         push_expr_val(com, expr);
     } else {
         tok.error("Cannot convert '{}' to '{}'", actual, expected);
@@ -807,7 +807,7 @@ auto push_expr_val(compiler& com, const auto& node) -> type_name
 {
     const auto type = push_expr_ptr(com, node);
     push_value(com.code(), op::load, com.types.size_of(type));
-    return type.remove_const();
+    return type;
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
