@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <map>
 #include <string>
+#include <stack>
 #include <unordered_map>
 
 namespace anzu {
@@ -35,8 +36,7 @@ struct compiler
 {
     // Returns the current function
     auto current() -> function_info& {
-        return in_function ? compiled_functions.back()   // current function
-                           : compiled_functions.front(); // $main function
+        return functions[current_compiling.top()];
     }
 
     // Returns the bytecode that we are currently writing to
@@ -44,11 +44,16 @@ struct compiler
         return current().code;
     }
 
+    auto in_function() const -> bool {
+        return current_compiling.size() > 1;
+    }
+
+    std::stack<std::size_t> current_compiling;
+
     std::string rom;
 
-    bool in_function = false;
     std::unordered_map<std::string, std::size_t> functions_by_name;
-    std::vector<function_info>                   compiled_functions;
+    std::vector<function_info>                   functions;
     
     type_manager     types;
     variable_manager variables;

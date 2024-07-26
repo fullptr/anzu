@@ -28,21 +28,21 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 
 auto new_function(compiler& com, const std::string& name, const token& tok)
 {
-    if (com.in_function) tok.error("cannot create a new function while one is already being compiled");
-    const auto id = com.compiled_functions.size();
+    if (com.in_function()) tok.error("cannot create a new function while one is already being compiled");
+    const auto id = com.functions.size();
 
     // The function signature can only be filled in after declaring the function parameters
     // since the types of some may depend on earlier parameters via typeof
-    com.compiled_functions.emplace_back(name, signature{}, tok, id);
+    com.functions.emplace_back(name, signature{}, tok, id);
 
     if (com.functions_by_name.contains(name)) tok.error("a function with the name '{}' already exists", name);
     com.functions_by_name.emplace(name, id);
-    com.in_function = true;
+    com.current_compiling.push(id);
 }
 
 auto finish_function(compiler& com)
 {
-    com.in_function = false;
+    com.current_compiling.pop();
 }
 
 
@@ -72,7 +72,7 @@ auto get_function(
 {
     const auto full_name = std::format("{}::{}", struct_name.remove_const(), function_name);
     if (const auto it = com.functions_by_name.find(full_name); it != com.functions_by_name.end()) {
-        return com.compiled_functions[it->second];
+        return com.functions[it->second];
     }
     return std::nullopt;
 }
@@ -1135,7 +1135,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
-    node.token.assert(com.in_function, "can only return within functions");
+    node.token.assert(com.in_function(), "can only return within functions");
     const auto return_type = push_expr_val(com, *node.return_value);
     node.token.assert_eq(
         return_type, com.current().sig.return_type, "wrong return type"
@@ -1248,18 +1248,16 @@ auto compile(const anzu_module& ast) -> bytecode_program
     auto com = compiler{};
     com.variables.set_compiler(com);
     new_function(com, "$main", token{});
-    com.in_function = false; // the outer function is not a real function
-
     {
         const auto global_scope = com.variables.new_scope();
         push_stmt(com, *ast.root);
     }
-
     push_value(com.code(), op::end_program);
+    finish_function(com);
 
     auto program = bytecode_program{};
     program.rom = com.rom;
-    for (const auto& function : com.compiled_functions) {
+    for (const auto& function : com.functions) {
         program.functions.push_back(bytecode_function{function.name, function.id, function.code});
     }
     return program;
