@@ -487,8 +487,9 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
     }, src, dst);
 }
 
-// This is also used for declaration and assignment, should probably be renamed.
-auto push_function_arg(
+// Used for passing copies of variables to functions, as well as for assignments and declarations.
+// Verifies that the type of the expression can be converted to the type 
+auto push_copy_typechecked(
     compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
 ) -> void
 {
@@ -540,7 +541,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             node.token.assert_eq(expected_params.size(), node.args.size(),
                                  "bad number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), expected_params[i], node.token);
+                push_copy_typechecked(com, *node.args.at(i), expected_params[i], node.token);
             }
             if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
                 push_value(com.code(), op::push_null);
@@ -565,7 +566,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         if (const auto func = get_function(com, struct_type, inner.name); func) {
             node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), func->sig.params[i], node.token);
+                push_copy_typechecked(com, *node.args.at(i), func->sig.params[i], node.token);
             }
             push_function_call(com, *func);
             return func->sig.return_type;
@@ -577,7 +578,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             const auto& builtin = get_builtin(*b);
             node.token.assert_eq(node.args.size(), builtin.args.size(), "bad number of arguments to builtin call");
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
-                push_function_arg(com, *node.args.at(i), builtin.args[i], node.token);
+                push_copy_typechecked(com, *node.args.at(i), builtin.args[i], node.token);
             }
             push_value(com.code(), op::builtin_call, *b);
             return get_builtin(*b).return_type;
@@ -592,7 +593,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
     auto args_size = std::size_t{0};
     for (std::size_t i = 0; i != node.args.size(); ++i) {
-        push_function_arg(com, *node.args.at(i), sig.param_types[i], node.token);
+        push_copy_typechecked(com, *node.args.at(i), sig.param_types[i], node.token);
         args_size += com.types.size_of(sig.param_types[i]);
     }
 
@@ -635,7 +636,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             node.token.assert_eq(expected_params.size(), node.other_args.size(),
                                 "incorrect number of arguments to constructor call");
             for (std::size_t i = 0; i != node.other_args.size(); ++i) {
-                push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
+                push_copy_typechecked(com, *node.other_args.at(i), expected_params[i], node.token);
             }
             if (node.other_args.size() == 0) { // if the class has no data, it needs to be size 1
                 push_value(com.code(), op::push_null);
@@ -657,7 +658,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             node.token.assert_eq(expected_params.size(), node.other_args.size(),
                                 "incorrect number of arguments to array constructor call");
             for (std::size_t i = 0; i != node.other_args.size(); ++i) {
-                push_function_arg(com, *node.other_args.at(i), expected_params[i], node.token);
+                push_copy_typechecked(com, *node.other_args.at(i), expected_params[i], node.token);
             }
             
             // Allocate space in the arena and move the object there
@@ -697,21 +698,21 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     const auto func = get_function(com, stripped_type, node.function_name);
     node.token.assert(func.has_value(), "could not find member function {}::{}", stripped_type, node.function_name);
     
-    // We wrap the LHS in a addrof so that we can use push_function_arg to push it
+    // We wrap the LHS in a addrof so that we can use push_copy_typechecked to push it
     // like a regular function arg.
     auto synthetic_node = std::make_shared<node_expr>();
     auto& inner = synthetic_node->emplace<node_addrof_expr>();
     inner.expr = node.expr;
     inner.token = node.token;
 
-    push_function_arg(com, *synthetic_node, func->sig.params[0], node.token);
+    push_copy_typechecked(com, *synthetic_node, func->sig.params[0], node.token);
     auto t = type;
     while (t.is_ptr()) { // allow for calling member functions through pointers
         push_value(com.code(), op::load, sizeof(std::byte*));
         t = t.remove_ptr();
     }
     for (std::size_t i = 0; i != node.other_args.size(); ++i) {
-        push_function_arg(com, *node.other_args.at(i), func->sig.params[i + 1], node.token);
+        push_copy_typechecked(com, *node.other_args.at(i), func->sig.params[i + 1], node.token);
     }
     push_function_call(com, *func);
     return func->sig.return_type;
@@ -759,7 +760,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         node.token.error("a span must either have both bounds set, or neither");
     }
 
-    const auto [type, is_const] = type_of_expr(com, *node.expr).strip_const();
+    const auto type = type_of_expr(com, *node.expr);
     node.token.assert(
         type.is_array() || type.is_span(),
         "can only span arrays and other spans, not {}", type
@@ -795,7 +796,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         push_value(com.code(), op::push_u64, array_length(type));
     }
 
-    if (is_const && type.is_array()) {
+    if (type.is_const && type.is_array()) {
         return type.remove_array().add_const().add_span();
     }
     return type.remove_array().add_span();
@@ -1032,7 +1033,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     type.is_const = node.add_const;
 
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
-    push_function_arg(com, *node.expr, type, node.token);
+    push_copy_typechecked(com, *node.expr, type, node.token);
     declare_var(com, node.token, node.name, type);
 }
 
@@ -1047,7 +1048,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto lhs_type = type_of_expr(com, *node.position);
     node.token.assert(!lhs_type.is_const, "cannot assign to a const variable");
-    push_function_arg(com, *node.expr, lhs_type, node.token);
+    push_copy_typechecked(com, *node.expr, lhs_type, node.token);
     const auto lhs = push_expr_ptr(com, *node.position);
     push_value(com.code(), op::save, com.types.size_of(lhs));
     return;
