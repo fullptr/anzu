@@ -4,11 +4,11 @@
 namespace anzu {
 namespace {
 
-auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope)
+auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope, bool is_local)
 {
     for (const auto& var : scope.variables | std::views::reverse) {
         if (var.type.is_arena()) {
-            const auto op = var.is_local ? op::push_ptr_local : op::push_ptr_global;
+            const auto op = is_local ? op::push_ptr_local : op::push_ptr_global;
             push_value(program, op, var.location, op::load, sizeof(std::byte*), op::arena_delete);
         }
     }
@@ -42,7 +42,7 @@ auto variable_manager::declare(
     for (const auto& var : scope.variables) {
         if (var.name == name) return false;
     }
-    scope.variables.emplace_back(name, type, scope.next, size, in_function());
+    scope.variables.emplace_back(name, type, scope.next, size);
     scope.next += size;
     return true;
 }
@@ -102,7 +102,7 @@ auto variable_manager::handle_loop_exit(std::vector<std::byte>& code) -> void
 {
     auto pop_size = std::size_t{0};
     for (const auto& scope : d_scopes | std::views::reverse) {
-        delete_arenas_in_scope(code, scope);
+        delete_arenas_in_scope(code, scope, d_local);
         pop_size += scope.next - scope.start;
         if (std::holds_alternative<loop_scope>(scope.info)) break;
     }
@@ -114,13 +114,13 @@ auto variable_manager::handle_loop_exit(std::vector<std::byte>& code) -> void
 auto variable_manager::handle_function_exit(std::vector<std::byte>& code) -> void
 {
     for (const auto& scope : d_scopes | std::views::reverse) {
-        delete_arenas_in_scope(code, scope);
+        delete_arenas_in_scope(code, scope, d_local);
         if (std::holds_alternative<function_scope>(scope.info)) break;
     }
 }
 
 void variable_manager::pop_scope(std::vector<std::byte>& code) {
-    delete_arenas_in_scope(code, d_scopes.back());
+    delete_arenas_in_scope(code, d_scopes.back(), d_local);
     const auto& scope = d_scopes.back();
     const auto size = scope.next - scope.start;
     d_scopes.pop_back();

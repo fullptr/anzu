@@ -33,7 +33,7 @@ auto new_function(compiler& com, const std::string& name, const token& tok)
 
     // The function signature can only be filled in after declaring the function parameters
     // since the types of some may depend on earlier parameters via typeof
-    com.functions.emplace_back(name, signature{}, tok, variable_manager{}, id);
+    com.functions.emplace_back(name, signature{}, tok, variable_manager{true}, id);
 
     if (com.functions_by_name.contains(name)) tok.error("a function with the name '{}' already exists", name);
     com.functions_by_name.emplace(name, id);
@@ -97,8 +97,7 @@ void declare_var(compiler& com, const token& tok, const std::string& name, const
 auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
 {
     if (const auto var = com.current().variables.find(name); var.has_value()) {
-        const auto op = var->is_local ? op::push_ptr_local : op::push_ptr_global;
-        push_value(com.code(), op, var->location);
+        push_value(com.code(), op::push_ptr_local, var->location);
         return var->type;
     }
 
@@ -1269,14 +1268,15 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 auto compile(const anzu_module& ast) -> bytecode_program
 {
     auto com = compiler{};
-    new_function(com, "$main", token{});
+    com.functions.emplace_back("$main", signature{}, token{}, variable_manager{false}, 0);
+    com.current_compiling.push_back(0);
     {
         com.variables().new_scope();
         push_stmt(com, *ast.root);
         com.variables().pop_scope(com.code());
     }
     push_value(com.code(), op::end_program);
-    finish_function(com);
+    com.current_compiling.pop_back();
 
     auto program = bytecode_program{};
     program.rom = com.rom;
