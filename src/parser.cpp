@@ -308,6 +308,20 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
                 });
                 node = new_node;
             } break;
+            case token_type::bar: { // callable expressions
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_call_expr>();
+                inner.token = tokens.consume();
+                inner.expr = node;
+                tokens.consume_comma_separated_list(token_type::bar, [&] {
+                    inner.template_args.push_back(parse_type_node(tokens));
+                });
+                tokens.consume_only(token_type::left_paren);
+                tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+                    inner.args.push_back(parse_expression(tokens));
+                });
+                node = new_node;
+            } break;
             default: {
                 return node;
             } break;
@@ -460,8 +474,8 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.name = parse_name(tokens);
 
-    if (tokens.consume_maybe(token_type::less)) {
-        tokens.consume_comma_separated_list(token_type::greater, [&]{
+    if (tokens.consume_maybe(token_type::bar)) {
+        tokens.consume_comma_separated_list(token_type::bar, [&]{
             stmt.template_types.push_back(std::string{parse_name(tokens)});
         });
     }

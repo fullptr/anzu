@@ -1,2 +1,8 @@
 
 
+fn foo|T|(x: T, y: T) -> T
+{
+    return x + y;
+}
+
+let x := foo|i64|(4, 5);

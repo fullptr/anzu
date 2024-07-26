@@ -214,11 +214,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_function_def_stmt& node) {
             print("{}Function: {}", spaces, node.name);
             if (!node.template_types.empty()) {
-                std::print("<");
+                std::print("|");
                 print_comma_separated(node.template_types, [](const auto& arg) {
                     return arg;
                 });
-                std::print(">");
+                std::print("|");
             }
             std::print("(");
             print_comma_separated(node.sig.params, [](const auto& arg) {
@@ -263,7 +263,7 @@ auto print_node(const anzu::node_type& root, int indent) -> void
     const auto spaces = std::string(4 * indent, ' ');
     std::visit(overloaded {
         [&](const node_named_type& node) {
-            print("{}NamedType:\n {}", spaces, node.type);
+            print("{}NamedType: {}\n", spaces, node.type);
         },
         [&](const node_expr_type& node) {
             print("{}ExprType:\n", spaces);
