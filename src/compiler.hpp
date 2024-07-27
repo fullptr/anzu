@@ -27,23 +27,20 @@ struct function_info
     variable_manager variables;
     
     std::vector<std::byte> code = {};
-    signature              sig = {};
-    template_map           map = {};
+    signature              sig  = {};
+    template_map           map  = {};
 };
 
-// Struct used to store information while compiling an AST. Contains the output program
-// as well as information such as function definitions.
 struct compiler
 {
-    std::vector<std::size_t> current_compiling;
+    std::vector<function_info> functions;
+    std::string                rom;
+
+    type_manager types;
+
+    std::unordered_map<std::string, std::size_t>            functions_by_name;
     std::unordered_map<std::string, node_function_def_stmt> function_templates;
-
-    std::string rom;
-
-    std::unordered_map<std::string, std::size_t> functions_by_name;
-    std::vector<function_info>                   functions;
-    
-    type_manager     types;
+    std::vector<std::size_t>                                current_compiling;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;
