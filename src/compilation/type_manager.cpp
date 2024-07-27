@@ -1,4 +1,5 @@
 #include "type_manager.hpp"
+#include "object.hpp"
 
 namespace anzu {
 
@@ -13,6 +14,10 @@ auto type_manager::add(const type_name& name, const type_fields& fields) -> bool
 
 auto type_manager::contains(const type_name& type) const -> bool
 {
+    if (!d_template_args.empty() && d_template_args.top().contains(type)) {
+        return contains(d_template_args.top().at(type));
+    }
+
     return std::visit(overloaded{
         [](type_fundamental)          { return true; },
         [&](const type_struct&)       { return d_classes.contains(type); },
@@ -26,7 +31,11 @@ auto type_manager::contains(const type_name& type) const -> bool
 
 auto type_manager::size_of(const type_name& type) const -> std::size_t
 {
-    return std::visit(overloaded{
+    if (!d_template_args.empty() && d_template_args.top().contains(type)) {
+        return size_of(d_template_args.top().at(type));
+    }
+    
+    const auto size = std::visit(overloaded{
         [](type_fundamental t) -> std::size_t {
             switch (t) {
                 case type_fundamental::null_type:
@@ -71,15 +80,20 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
             return sizeof(std::byte*); // the runtime will store the arena separately
         }
     }, type);
+    std::print("size_of {} is {}\n", type, size);
+    return size;
 }
 
 auto type_manager::fields_of(const type_name& t) const -> type_fields
 {
+    if (!d_template_args.empty() && d_template_args.top().contains(t)) {
+        return fields_of(d_template_args.top().at(t));
+    }
+
     if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
         return it->second;
     }
     return {};
 }
-
 
 }

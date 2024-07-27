@@ -86,6 +86,8 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 
     const auto resolved_type = std::visit(overloaded {
         [&](const node_named_type& node) {
+            // This possibly could be deleted, feels like there's a better place to do this
+            // since we need to be able to resolve compound types like T& where T is a template
             const auto& map = current(com).map;
             if (auto it = map.find(node.type); it != map.end()) {
                 return it->second;
@@ -579,8 +581,7 @@ auto push_copy_typechecked(
     }
 }
 
-auto get_builtin_id(const std::string& name)
-    -> std::optional<std::size_t>
+auto get_builtin_id(const std::string& name) -> std::optional<std::size_t>
 {
     auto index = std::size_t{0};
     for (const auto& b : get_builtins()) {
@@ -1187,6 +1188,7 @@ auto compile_function(
     -> void
 {
     new_function(com, full_name, tok, map);
+    com.types.push_template_types(map);
     {
         variables(com).new_function_scope();
 
@@ -1212,6 +1214,7 @@ auto compile_function(
 
         variables(com).pop_scope(code(com));
     }
+    com.types.pop_template_types();
     finish_function(com);
 }
 

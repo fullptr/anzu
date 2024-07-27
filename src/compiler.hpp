@@ -20,8 +20,6 @@ struct signature
     type_name              return_type;
 };
 
-using template_map = std::unordered_map<type_name, type_name, type_hash>;
-
 struct function_info
 {
     std::string      name;
