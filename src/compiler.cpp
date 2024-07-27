@@ -231,7 +231,7 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name
     const auto program_size = code(com).size();
     const auto type = push_expr_val(com, node);
     code(com).resize(program_size);
-    return com.types.resolve_template(type);
+    return type;
 }
 
 // Fetches the given literal from read only memory, or adds it if it is not there, and
@@ -558,7 +558,7 @@ auto push_copy_typechecked(
     // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
     // for a 'u64 const&' is fine)
     const auto actual = type_of_expr(com, expr).remove_const();
-    const auto expected = com.types.resolve_template(expected_raw.remove_const());
+    const auto expected = expected_raw.remove_const();
 
     if (actual.is_arena() || expected.is_arena()) {
         tok.error("arenas can not be copied or assigned");
@@ -1351,9 +1351,7 @@ void push_stmt(compiler& com, const node_print_stmt& node)
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
 {
-    return std::visit([&](const auto& node) {
-        return com.types.resolve_template(push_expr_val(com, node));
-    }, expr);
+    return std::visit([&](const auto& node) { return push_expr_val(com, node); }, expr);
 }
 
 auto push_stmt(compiler& com, const node_stmt& root) -> void

@@ -14,10 +14,6 @@ auto type_manager::add(const type_name& name, const type_fields& fields) -> bool
 
 auto type_manager::contains(const type_name& type) const -> bool
 {
-    if (!d_template_args.empty() && d_template_args.top().contains(type)) {
-        return contains(d_template_args.top().at(type));
-    }
-
     return std::visit(overloaded{
         [](type_fundamental)          { return true; },
         [&](const type_struct&)       { return d_classes.contains(type); },
@@ -31,19 +27,11 @@ auto type_manager::contains(const type_name& type) const -> bool
 
 auto type_manager::make_type(const std::string& name) -> type_name
 {
-    const auto simple = type_name{ type_struct{ .name=name } };
-    if (!d_template_args.empty() && d_template_args.top().contains(simple)) {
-        return d_template_args.top().at(simple);
-    }
-    return simple;
+    return type_name{ type_struct{ .name=name } };
 }
 
 auto type_manager::size_of(const type_name& type) const -> std::size_t
 {
-    if (!d_template_args.empty() && d_template_args.top().contains(type)) {
-        return size_of(d_template_args.top().at(type));
-    }
-    
     const auto size = std::visit(overloaded{
         [](type_fundamental t) -> std::size_t {
             switch (t) {
@@ -63,7 +51,7 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
                 return 0;
             }
         },
-        [&](const type_struct& t) -> std::size_t {
+        [&](const type_struct&) -> std::size_t {
             if (!d_classes.contains(type)) {
                 panic("unknown type '{}'", type);
             }
@@ -104,7 +92,7 @@ auto type_manager::fields_of(const type_name& t) const -> type_fields
     return {};
 }
 
-auto type_manager::resolve_template(const type_name& type) -> type_name
+auto type_manager::resolve_template(const type_name& type) const -> type_name
 {
     const auto resolved = std::visit(overloaded{
         [&](type_fundamental) { return

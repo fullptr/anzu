@@ -45,7 +45,7 @@ public:
         d_template_args.pop();
     }
 
-    auto resolve_template(const type_name& type) -> type_name;
+    auto resolve_template(const type_name& type) const -> type_name;
 };
 
 }
