@@ -595,7 +595,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         auto& inner = std::get<node_name_expr>(*node.expr);
 
         // First, it might be a constructor call
-        const auto type = com.types.make_type(inner.name);
+        const auto type = com.types.get(inner.name);
         if (com.types.contains(type)) {
             const auto expected_params = get_constructor_params(com, type);
             node.token.assert(node.template_args.empty(), "no support for template structs yet");
@@ -648,7 +648,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
             auto map = template_map{};
             for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
-                const auto expected = com.types.make_type(expected_str);
+                const auto expected = com.types.get(expected_str);
                 if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
                 const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
                 if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
@@ -1100,7 +1100,7 @@ void push_stmt(compiler& com, const node_if_stmt& node)
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     const auto message = std::format("type '{}' already defined", node.name);
-    node.token.assert(!com.types.contains(com.types.make_type(node.name)), "{}", message);
+    node.token.assert(!com.types.contains(com.types.get(node.name)), "{}", message);
     node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);
 
     auto fields = std::vector<type_field>{};
@@ -1108,7 +1108,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
         fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
     }
 
-    com.types.add(com.types.make_type(node.name), fields);
+    com.types.add(com.types.get(node.name), fields);
     for (const auto& function : node.functions) {
         push_stmt(com, *function);
     }
@@ -1215,7 +1215,7 @@ auto compile_function(
 
 void push_stmt(compiler& com, const node_function_def_stmt& node)
 {
-    if (com.types.contains(com.types.make_type(node.name))) {
+    if (com.types.contains(com.types.get(node.name))) {
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
 
@@ -1233,7 +1233,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
-    const auto struct_type = com.types.make_type(node.struct_name);
+    const auto struct_type = com.types.get(node.struct_name);
 
     // First argument must be a pointer to an instance of the class
     node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");

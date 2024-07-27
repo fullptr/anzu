@@ -1,9 +1,17 @@
 
 
-fn do|T|(x: T&)
+fn do|T|(x: T) -> T
 {
-    print("{}\n", x@);
+    print("{} {}\n", x.x, x.y);
+    return T(10, 20);
 }
 
-var x := 6;
-do|i64|(x&);
+struct foo
+{
+    x: i64;
+    y: i64;
+}
+
+let f := foo(1, 2);
+let g := do|foo|(f);
+print("{} {}\n", g.x, g.y);

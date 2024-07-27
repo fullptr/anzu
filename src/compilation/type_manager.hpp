@@ -30,7 +30,7 @@ public:
     // If the string doesn't match an existing type, a new type_struct is returned,
     // but not added to the store (since you'll add it with fields). Otherwise, it will
     // return the existing type or resolve it to a templated type.
-    auto make_type(const std::string& name) -> type_name;
+    auto get(const std::string& name) -> type_name;
 
     auto size_of(const type_name& t) const -> std::size_t;
     auto fields_of(const type_name& t) const -> type_fields;

@@ -25,9 +25,10 @@ auto type_manager::contains(const type_name& type) const -> bool
     }, type);
 }
 
-auto type_manager::make_type(const std::string& name) -> type_name
+auto type_manager::get(const std::string& name) -> type_name
 {
-    return type_name{ type_struct{ .name=name } };
+    const auto simple = type_name{ type_struct{ .name=name } };
+    return resolve_template(simple);
 }
 
 auto type_manager::size_of(const type_name& type) const -> std::size_t
@@ -82,10 +83,6 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
 
 auto type_manager::fields_of(const type_name& t) const -> type_fields
 {
-    if (!d_template_args.empty() && d_template_args.top().contains(t)) {
-        return fields_of(d_template_args.top().at(t));
-    }
-
     if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
         return it->second;
     }
