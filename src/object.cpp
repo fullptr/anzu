@@ -219,11 +219,6 @@ auto string_literal_type() -> type_name
     return char_type().add_const().add_span();
 }
 
-auto make_type(const std::string& name) -> type_name
-{
-    return { type_struct{ .name=name } };
-}
-
 auto type_name::is_array() const -> bool
 {
     return std::holds_alternative<type_array>(*this);

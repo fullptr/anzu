@@ -128,8 +128,6 @@ auto f64_type() -> type_name;
 auto arena_type() -> type_name;
 auto string_literal_type() -> type_name;
 
-auto make_type(const std::string& name) -> type_name;
-
 // Extracts the single inner type of the given t. Undefined if the given t is not a compound
 // type with a single subtype.
 auto inner_type(const type_name& t) -> type_name;
