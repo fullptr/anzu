@@ -39,6 +39,12 @@ public:
     {
         d_template_args.pop();
     }
+
+    auto resolve_template(const type_name& type) -> type_name
+    {
+        if (!d_template_args.empty() && d_template_args.top().contains(type)) return d_template_args.top().at(type);
+        return type;
+    }
 };
 
 }

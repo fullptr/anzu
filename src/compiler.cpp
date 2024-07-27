@@ -86,12 +86,6 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
 
     const auto resolved_type = std::visit(overloaded {
         [&](const node_named_type& node) {
-            // This possibly could be deleted, feels like there's a better place to do this
-            // since we need to be able to resolve compound types like T& where T is a template
-            const auto& map = current(com).map;
-            if (auto it = map.find(node.type); it != map.end()) {
-                return it->second;
-            }
             return node.type;
         },
         [&](const node_expr_type& node) {
@@ -99,8 +93,9 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
         }
     }, *type);
 
-    tok.assert(com.types.contains(resolved_type), "{} is not a recognised type", resolved_type);
-    return resolved_type;
+    const auto ret = com.types.resolve_template(resolved_type);
+    tok.assert(com.types.contains(ret), "{} is not a recognised type", ret);
+    return ret;
 }
 
 auto full_function_name(

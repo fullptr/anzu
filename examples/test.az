@@ -1,9 +1,9 @@
 
 
-fn do|T|(x: T)
+fn do|T|(x: T&)
 {
-    print("{}\n", x);
+    print("{}\n", x@);
 }
 
-do|i64|(5);
-do|f64|(6.0);
+let x := 6;
+do|i64|(x&);
