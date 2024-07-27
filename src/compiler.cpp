@@ -60,7 +60,7 @@ auto compile_function(
 auto new_function(compiler& com, const std::string& name, const token& tok, const template_map& map)
 {
     const auto id = com.functions.size();
-    com.functions.emplace_back(name, id, variable_manager{true});
+    com.functions.emplace_back(name, id, variable_manager{true}, map);
     com.current_compiling.push_back(id);
     const auto [it, success] = com.functions_by_name.emplace(name, id);
     tok.assert(success, "a function with the name '{}' already exists", name);

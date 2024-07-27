@@ -25,10 +25,10 @@ struct function_info
     std::string      name;
     std::size_t      id;
     variable_manager variables;
+    template_map     map;
     
     std::vector<std::byte> code = {};
     signature              sig  = {};
-    template_map           map  = {};
 };
 
 struct compiler
