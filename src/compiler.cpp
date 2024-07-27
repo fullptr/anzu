@@ -73,8 +73,9 @@ auto finish_function(compiler& com)
 
 auto resolve_templates(compiler& com, const type_name& type) -> type_name
 {
+    const auto& map = current(com).template_types;
     const auto try_resolve = [&](const type_name& t) {
-        if (auto it = current(com).map.find(type); it != current(com).map.end()) return it->second;
+        if (auto it = map.find(type); it != map.end()) return it->second;
         return type;
     };
 
