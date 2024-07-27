@@ -77,6 +77,29 @@ auto finish_function(compiler& com)
     com.current_compiling.pop_back();
 }
 
+auto resolve_templates(compiler& com, const type_name& type) -> type_name
+{
+    const auto try_resolve = [&](const type_name& t) {
+        if (auto it = current(com).map.find(type); it != current(com).map.end()) return it->second;
+        return type;
+    };
+
+    return std::visit(overloaded{
+        [&](type_fundamental)         { return try_resolve(type); },
+        [&](const type_struct& t)     { return try_resolve(type); },
+        [&](const type_array& t)      { return type_name{type_array{resolve_templates(com, *t.inner_type), t.count}}; },
+        [&](const type_span& t)       { return type_name{type_span{resolve_templates(com, *t.inner_type)}}; },
+        [&](const type_ptr& t)        { return type_name{type_ptr{resolve_templates(com, *t.inner_type)}}; },
+        [&](const type_function_ptr&) { return type; }, // TODO: resolve function ptr types too
+        [&](const type_arena&)        { return try_resolve(type); },
+    }, type);
+}
+
+auto make_type(compiler& com, const std::string& name) -> type_name
+{
+    const auto simple = type_name{ type_struct{ .name=name } };
+    return resolve_templates(com, simple);
+}
 
 auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) -> type_name
 {
@@ -93,7 +116,7 @@ auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) ->
         }
     }, *type);
 
-    const auto ret = com.types.resolve_template(resolved_type);
+    const auto ret = resolve_templates(com, resolved_type);
     tok.assert(com.types.contains(ret), "{} is not a recognised type", ret);
     return ret;
 }
@@ -595,7 +618,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
         auto& inner = std::get<node_name_expr>(*node.expr);
 
         // First, it might be a constructor call
-        const auto type = com.types.get(inner.name);
+        const auto type = make_type(com, inner.name);
         if (com.types.contains(type)) {
             const auto expected_params = get_constructor_params(com, type);
             node.token.assert(node.template_args.empty(), "no support for template structs yet");
@@ -648,7 +671,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
             auto map = template_map{};
             for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
-                const auto expected = com.types.get(expected_str);
+                const auto expected = make_type(com, expected_str);
                 if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
                 const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
                 if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
@@ -1100,7 +1123,7 @@ void push_stmt(compiler& com, const node_if_stmt& node)
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     const auto message = std::format("type '{}' already defined", node.name);
-    node.token.assert(!com.types.contains(com.types.get(node.name)), "{}", message);
+    node.token.assert(!com.types.contains(make_type(com, node.name)), "{}", message);
     node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);
 
     auto fields = std::vector<type_field>{};
@@ -1108,7 +1131,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
         fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
     }
 
-    com.types.add(com.types.get(node.name), fields);
+    com.types.add(make_type(com, node.name), fields);
     for (const auto& function : node.functions) {
         push_stmt(com, *function);
     }
@@ -1183,7 +1206,6 @@ auto compile_function(
     -> void
 {
     new_function(com, full_name, tok, map);
-    com.types.push_template_types(map);
     {
         variables(com).new_function_scope();
 
@@ -1209,13 +1231,12 @@ auto compile_function(
 
         variables(com).pop_scope(code(com));
     }
-    com.types.pop_template_types();
     finish_function(com);
 }
 
 void push_stmt(compiler& com, const node_function_def_stmt& node)
 {
-    if (com.types.contains(com.types.get(node.name))) {
+    if (com.types.contains(make_type(com, node.name))) {
         node.token.error("'{}' cannot be a function name, it is a type def", node.name);
     }
 
@@ -1233,7 +1254,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
-    const auto struct_type = com.types.get(node.struct_name);
+    const auto struct_type = make_type(com, node.struct_name);
 
     // First argument must be a pointer to an instance of the class
     node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");

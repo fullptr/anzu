@@ -6,6 +6,8 @@ fn do|T|(x: T) -> T
     return T(10, 20);
 }
 
+fn ptr|T|(x: T&) { print("{}\n", x); }
+
 struct foo
 {
     x: i64;
@@ -15,3 +17,6 @@ struct foo
 let f := foo(1, 2);
 let g := do|foo|(f);
 print("{} {}\n", g.x, g.y);
+
+var x := 10;
+ptr|i64|(x&);

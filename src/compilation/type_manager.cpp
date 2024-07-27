@@ -25,12 +25,6 @@ auto type_manager::contains(const type_name& type) const -> bool
     }, type);
 }
 
-auto type_manager::get(const std::string& name) -> type_name
-{
-    const auto simple = type_name{ type_struct{ .name=name } };
-    return resolve_template(simple);
-}
-
 auto type_manager::size_of(const type_name& type) const -> std::size_t
 {
     const auto size = std::visit(overloaded{
@@ -87,29 +81,6 @@ auto type_manager::fields_of(const type_name& t) const -> type_fields
         return it->second;
     }
     return {};
-}
-
-auto type_manager::resolve_template(const type_name& type) const -> type_name
-{
-    const auto resolved = std::visit(overloaded{
-        [&](type_fundamental) { return
-            (!d_template_args.empty() && d_template_args.top().contains(type)) ? d_template_args.top().at(type)
-                                                                               : type;
-        },
-        [&](const type_struct& t) { return
-            (!d_template_args.empty() && d_template_args.top().contains(type)) ? d_template_args.top().at(type)
-                                                                               : type;
-        },
-        [&](const type_array& t)      { return type_name{type_array{resolve_template(*t.inner_type), t.count}}; },
-        [&](const type_span& t)       { return type_name{type_span{resolve_template(*t.inner_type)}}; },
-        [&](const type_ptr& t)        { return type_name{type_ptr{resolve_template(*t.inner_type)}}; },
-        [&](const type_function_ptr&) { return type; }, // TODO: resolve function ptr types too
-        [&](const type_arena&) { return
-            (!d_template_args.empty() && d_template_args.top().contains(type)) ? d_template_args.top().at(type)
-                                                                               : type;
-        },
-    }, type);
-    return resolved;
 }
 
 }
