@@ -57,19 +57,13 @@ auto compile_function(
     const template_map& map = {}
 ) -> void;
 
-auto new_function(
-    compiler& com, const std::string& name, const token& tok, const template_map& map)
+auto new_function(compiler& com, const std::string& name, const token& tok, const template_map& map)
 {
     const auto id = com.functions.size();
-
-    // The function signature can only be filled in after declaring the function parameters
-    // since the types of some may depend on earlier parameters via typeof
-    com.functions.emplace_back(name, signature{}, tok, variable_manager{true}, id);
-    com.functions.back().map = map;
-
-    if (com.functions_by_name.contains(name)) tok.error("a function with the name '{}' already exists", name);
-    com.functions_by_name.emplace(name, id);
+    com.functions.emplace_back(name, id, variable_manager{true});
     com.current_compiling.push_back(id);
+    const auto [it, success] = com.functions_by_name.emplace(name, id);
+    tok.assert(success, "a function with the name '{}' already exists", name);
 }
 
 auto finish_function(compiler& com)
@@ -1385,7 +1379,7 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 auto compile(const anzu_module& ast) -> bytecode_program
 {
     auto com = compiler{};
-    com.functions.emplace_back("$main", signature{}, token{}, variable_manager{false}, 0);
+    com.functions.emplace_back("$main", 0, variable_manager{false});
     com.current_compiling.push_back(0);
     {
         variables(com).new_scope();
