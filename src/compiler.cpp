@@ -64,7 +64,7 @@ auto new_function(compiler& com, const std::string& name, const token& tok, cons
     com.current_compiling.push_back(id);
     const auto [it, success] = com.functions_by_name.emplace(name, id);
     tok.assert(success, "a function with the name '{}' already exists", name);
-    variables(com).new_function_scope();
+    variables(com).new_scope();
 }
 
 auto finish_function(compiler& com)

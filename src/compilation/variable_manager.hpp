@@ -27,17 +27,13 @@ struct simple_scope
 {
 };
 
-struct function_scope
-{
-};
-
 struct loop_scope
 {
     std::vector<std::size_t> continues;
     std::vector<std::size_t> breaks;
 };
 
-using scope_info = std::variant<simple_scope, function_scope, loop_scope>;
+using scope_info = std::variant<simple_scope, loop_scope>;
 
 struct scope
 {
@@ -62,12 +58,10 @@ public:
     auto get_loop_info() -> loop_scope&;
     
     auto in_function() const -> bool;
-    auto get_function_info() -> function_scope&;
 
     auto size() -> std::size_t;
 
     void new_scope();
-    void new_function_scope();
     void new_loop_scope();
     void pop_scope(std::vector<std::byte>& code);
 

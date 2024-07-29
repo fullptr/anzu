@@ -24,11 +24,6 @@ void variable_manager::new_scope()
     );
 }
 
-void variable_manager::new_function_scope()
-{
-    d_scopes.emplace_back(function_scope{}, 0);
-}
-
 void variable_manager::new_loop_scope()
 {
     d_scopes.emplace_back(loop_scope{}, d_scopes.back().next);
@@ -67,10 +62,7 @@ auto variable_manager::in_loop() const -> bool
 
 auto variable_manager::in_function() const -> bool
 {
-    for (const auto& scope : d_scopes | std::views::reverse) {
-        if (std::holds_alternative<function_scope>(scope.info)) return true;
-    }
-    return false;
+    return d_local;
 }
 
 auto variable_manager::get_loop_info() -> loop_scope&
@@ -81,16 +73,6 @@ auto variable_manager::get_loop_info() -> loop_scope&
         }
     }
     panic("could not get loop info, not in a loop!");
-}
-
-auto variable_manager::get_function_info() -> function_scope&
-{
-    for (auto& scope : d_scopes | std::views::reverse) {
-        if (auto func = std::get_if<function_scope>(&scope.info)) {
-            return *func;
-        }
-    }
-    panic("could not get function info, not in a function!");
 }
 
 auto variable_manager::size() -> std::size_t
@@ -113,9 +95,9 @@ auto variable_manager::handle_loop_exit(std::vector<std::byte>& code) -> void
 // op::ret op code does this for us.
 auto variable_manager::handle_function_exit(std::vector<std::byte>& code) -> void
 {
+    panic_if(!in_function(), "cannot call handle_function_exit in the global scope");
     for (const auto& scope : d_scopes | std::views::reverse) {
         delete_arenas_in_scope(code, scope, d_local);
-        if (std::holds_alternative<function_scope>(scope.info)) break;
     }
 }
 
