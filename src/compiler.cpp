@@ -711,19 +711,30 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 // TODO- Allow member call through a pointer
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
-    const auto type = type_of_expr(com, *node.expr); 
+    const auto type = type_of_expr(com, *node.expr);
+
+    const auto stripped_type = [&] {
+        auto t = type;
+        while (t.is_ptr()) { t = t.remove_ptr(); }
+        return t;
+    }();
 
     // Handle .size() calls on arrays
-    if (type.is_array() && node.function_name == "size") {
+    if (stripped_type.is_array() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
-        push_value(code(com), op::push_u64, array_length(type));
+        push_value(code(com), op::push_u64, array_length(stripped_type));
         return u64_type();
     }
 
     // Handle .size() calls on spans
-    if (type.is_span() && node.function_name == "size") {
+    if (stripped_type.is_span() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
         push_expr_ptr(com, *node.expr); // push pointer to span
+        auto t = type;
+        while (t.is_ptr()) { // allow for calling member functions through pointers
+            push_value(code(com), op::load, sizeof(std::byte*));
+            t = t.remove_ptr();
+        }
         push_value(code(com), op::push_u64, sizeof(std::byte*));
         push_value(code(com), op::u64_add); // offset to the size value
         push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
@@ -731,7 +742,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     }
 
     // Handle arena functions
-    if (type.is_arena()) {
+    if (stripped_type.is_arena()) {
         if (node.function_name == "new") {
             if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
             const auto result_type = resolve_type(com, node.token, node.template_type);
@@ -751,6 +762,11 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            auto t = type;
+            while (t.is_ptr()) { // allow for calling member functions through pointers
+                push_value(code(com), op::load, sizeof(std::byte*));
+                t = t.remove_ptr();
+            }
             push_value(code(com), op::arena_alloc, size);
             return result_type.add_ptr();
         }
@@ -770,16 +786,31 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            auto t = type;
+            while (t.is_ptr()) { // allow for calling member functions through pointers
+                push_value(code(com), op::load, sizeof(std::byte*));
+                t = t.remove_ptr();
+            }
             push_value(code(com), op::arena_alloc_array, size);
             return result_type.add_span();
         }
         else if (node.function_name == "size") {
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            auto t = type;
+            while (t.is_ptr()) { // allow for calling member functions through pointers
+                push_value(code(com), op::load, sizeof(std::byte*));
+                t = t.remove_ptr();
+            }
             push_value(code(com), op::arena_size);
             return u64_type();
         }
         else if (node.function_name == "capacity") {
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            auto t = type;
+            while (t.is_ptr()) { // allow for calling member functions through pointers
+                push_value(code(com), op::load, sizeof(std::byte*));
+                t = t.remove_ptr();
+            }
             push_value(code(com), op::arena_capacity);
             return u64_type();
         }
@@ -787,12 +818,6 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             node.token.error("Unknown arena function '{}'\n", node.function_name);
         }
     }
-
-    const auto stripped_type = [&] {
-        auto t = type;
-        while (t.is_ptr()) { t = t.remove_ptr(); }
-        return t;
-    }();
 
     auto params = std::vector<type_name>{};
     params.push_back(stripped_type.add_ptr());
