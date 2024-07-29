@@ -153,7 +153,7 @@ auto parse_name(tokenstream& tokens)
 {
     const auto token = tokens.consume();
     if (token.type != token_type::identifier) {
-        token.error("'{}' is not a valid name", token.text);
+        token.error("'{}' is not a valid name (type={})", token.text, token.type);
     }
     return token.text;
 }
@@ -174,14 +174,14 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
             expr.other_args.push_back(parse_expression(tokens));
         });
     }
-    else if (tokens.peek_next(token_type::less)) {
+    else if (tokens.peek_next(token_type::bar)) {
         auto& expr = new_node->emplace<node_member_call_expr>();
         expr.expr = node;
         expr.token = tok;
         expr.function_name = parse_name(tokens);
-        tokens.consume_only(token_type::less);
+        tokens.consume_only(token_type::bar);
         expr.template_type = parse_type_node(tokens);
-        tokens.consume_only(token_type::greater);
+        tokens.consume_only(token_type::bar);
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.other_args.push_back(parse_expression(tokens));

@@ -1,20 +1,2 @@
-fn do|T|(x: T) -> T
-{
-    print("{} {}\n", x.x, x.y);
-    return T(10, 20);
-}
-
-fn ptr|T|(x: T&) { print("{}\n", x); }
-
-struct foo
-{
-    x: i64;
-    y: i64;
-}
-
-let f := foo(1, 2);
-let g := do|foo|(f);
-print("{} {}\n", g.x, g.y);
-
-var x := 10;
-ptr|i64|(x&);
+arena a;
+let p := a.new|i64|(6);

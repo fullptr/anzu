@@ -666,7 +666,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
         }
 
-        // Now with the new template function compiled, we can call it, this is just a copy of step 2
+        // Thirdly, if it's a function, call it
         if (const auto func = get_function(com, full_name); func) {
             node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
