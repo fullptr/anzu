@@ -232,7 +232,15 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.body, indent + 1);
         },
         [&](const node_member_function_def_stmt& node) {
-            print("{}MemberFunction: {}::{} (", spaces, node.struct_name, node.function_name);
+            print("{}MemberFunction: {}::{}", spaces, node.struct_name, node.function_name);
+            if (!node.template_types.empty()) {
+                std::print("|");
+                print_comma_separated(node.template_types, [](const auto& arg) {
+                    return arg;
+                });
+                std::print("|");
+            }
+            std::print("(");
             print_comma_separated(node.sig.params, [](const auto& arg) {
                 return std::format("{}: {}", arg.name, *arg.type);
             });

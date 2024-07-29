@@ -328,10 +328,11 @@ struct node_function_def_stmt
 
 struct node_member_function_def_stmt
 {
-    std::string    struct_name;
-    std::string    function_name;
-    node_signature sig;
-    node_stmt_ptr  body;
+    std::string              struct_name;
+    std::string              function_name;
+    std::vector<std::string> template_types;
+    node_signature           sig;
+    node_stmt_ptr            body;
 
     anzu::token token;
 };
