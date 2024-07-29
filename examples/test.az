@@ -1,11 +1,11 @@
-arena a;
-let ap := a&;
-
-print("{} {}\n", a.size(), a.capacity());
-print("{} {}\n", ap.size(), ap.capacity());
-let p := a.new|i64|(10);
-print("{} {}\n", a.size(), a.capacity());
-print("{} {}\n", ap.size(), ap.capacity());
-
-let ap2 := ap&;
-print("{} {}\n", ap2.size(), ap2.capacity());
+# The next thing to implement; template member functions
+#struct foo
+#{
+#    fn bar|T|(self: foo const&)
+#    {
+#        print("{}\n", sizeof(T));
+#    }
+#}
+#
+#let f := foo();
+#f.bar|i64|(6);

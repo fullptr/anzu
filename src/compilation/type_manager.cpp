@@ -27,7 +27,7 @@ auto type_manager::contains(const type_name& type) const -> bool
 
 auto type_manager::size_of(const type_name& type) const -> std::size_t
 {
-    const auto size = std::visit(overloaded{
+    return std::visit(overloaded{
         [](type_fundamental t) -> std::size_t {
             switch (t) {
                 case type_fundamental::null_type:
@@ -72,7 +72,6 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
             return sizeof(std::byte*); // the runtime will store the arena separately
         }
     }, type);
-    return size;
 }
 
 auto type_manager::fields_of(const type_name& t) const -> type_fields
