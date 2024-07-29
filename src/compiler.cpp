@@ -806,12 +806,12 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     
     // We wrap the LHS in a addrof so that we can use push_copy_typechecked to push it
     // like a regular function arg.
-    auto synthetic_node = std::make_shared<node_expr>();
-    auto& inner = synthetic_node->emplace<node_addrof_expr>();
+    auto self_ptr_node = std::make_shared<node_expr>();
+    auto& inner = self_ptr_node->emplace<node_addrof_expr>();
     inner.expr = node.expr;
     inner.token = node.token;
 
-    push_copy_typechecked(com, *synthetic_node, func->sig.params[0], node.token);
+    push_copy_typechecked(com, *self_ptr_node, func->sig.params[0], node.token);
     auto t = type;
     while (t.is_ptr()) { // allow for calling member functions through pointers
         push_value(code(com), op::load, sizeof(std::byte*));

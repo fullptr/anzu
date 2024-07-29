@@ -1,2 +1,11 @@
-arena a;
-let p := a.new|i64|(6);
+struct foo
+{
+    fn bar(self: foo const&) { print("in bar\n"); }
+}
+
+let f := foo();
+let p := f&;
+let q := p&;
+__dump_type(p, q);
+
+f.bar();
