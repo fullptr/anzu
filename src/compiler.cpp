@@ -64,10 +64,12 @@ auto new_function(compiler& com, const std::string& name, const token& tok, cons
     com.current_compiling.push_back(id);
     const auto [it, success] = com.functions_by_name.emplace(name, id);
     tok.assert(success, "a function with the name '{}' already exists", name);
+    variables(com).new_function_scope();
 }
 
 auto finish_function(compiler& com)
 {
+    variables(com).pop_scope(code(com));
     com.current_compiling.pop_back();
 }
 
@@ -643,19 +645,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
         const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
 
-        // Second, it might be a function call
-        if (const auto func = get_function(com, full_name); func) {
-            node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
-            for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_copy_typechecked(com, *node.args.at(i), func->sig.params[i], node.token);
-            }
-            push_function_call(com, *func);
-            return func->sig.return_type;
-        }
-
-        // Third, this might be a template function with this being the first time we're calling it with specific
-        // types, so we need to compile that instantiation and call it here
-        if (!node.template_args.empty() && com.function_templates.contains(inner.name)) {
+        // Second, this might be a template function with this being the first time we're calling it with
+        // specific types, so we need to compile that instantiation before we can call it
+        if (!node.template_args.empty() && com.function_templates.contains(inner.name) && !get_function(com, full_name)) {
             const auto function_ast = com.function_templates.at(inner.name);
 
             if (node.template_args.size() != function_ast.template_types.size()) {
@@ -1201,31 +1193,23 @@ auto compile_function(
     -> void
 {
     new_function(com, full_name, tok, map);
-    {
-        variables(com).new_function_scope();
 
-        for (const auto& arg : node_sig.params) {
-            const auto type = resolve_type(com, tok, arg.type);
-            declare_var(com, tok, arg.name, type);
-            current(com).sig.params.push_back(type);
-        }
-        current(com).sig.return_type = resolve_type(com, tok, node_sig.return_type);
-
-        push_stmt(com, *body);
-
-        if (!ends_in_return(*body)) {
-            // A function returning null does not need a final return statement, and in this case
-            // we manually add a return value of null here.
-            if (current(com).sig.return_type == null_type()) {
-                push_value(code(com), op::push_null);
-                push_value(code(com), op::ret, std::uint64_t{1});
-            } else {
-                tok.error("function '{}' does not end in a return statement", full_name);
-            }
-        }
-
-        variables(com).pop_scope(code(com));
+    auto& sig = current(com).sig;
+    for (const auto& arg : node_sig.params) {
+        const auto type = resolve_type(com, tok, arg.type);
+        declare_var(com, tok, arg.name, type);
+        sig.params.push_back(type);
     }
+    sig.return_type = resolve_type(com, tok, node_sig.return_type);
+
+    push_stmt(com, *body);
+
+    if (!ends_in_return(*body)) {
+        // Functions returning null don't need a final return, since we can just add it
+        tok.assert(sig.return_type == null_type(), "fn '{}' does not end in a return", full_name);
+        push_value(code(com), op::push_null, op::ret, std::uint64_t{1});
+    }
+
     finish_function(com);
 }
 
