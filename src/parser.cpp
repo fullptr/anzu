@@ -168,7 +168,6 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         expr.expr = node;
         expr.token = tok;
         expr.function_name = parse_name(tokens);
-        expr.template_type = nullptr;
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.other_args.push_back(parse_expression(tokens));
@@ -180,8 +179,9 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         expr.token = tok;
         expr.function_name = parse_name(tokens);
         tokens.consume_only(token_type::bar);
-        expr.template_type = parse_type_node(tokens);
-        tokens.consume_only(token_type::bar);
+        tokens.consume_comma_separated_list(token_type::bar, [&] {
+            expr.template_args.push_back(parse_type_node(tokens));
+        });
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.other_args.push_back(parse_expression(tokens));

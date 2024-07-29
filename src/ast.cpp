@@ -80,8 +80,11 @@ auto print_node(const node_expr& root, int indent) -> void
             print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
             print("{}- FunctionName: {}\n", spaces, node.function_name);
-            if (node.template_type) {
-                print("{}- TemplateType: {}\n", spaces, *node.template_type);
+            if (!node.template_args.empty()) {
+                print("{}- TemplateArgs:\n", spaces);
+                for (const auto& arg : node.template_args) {
+                    print_node(*arg, indent + 1);
+                }
             }
             print("{}- OtherArgs:\n", spaces);
             for (const auto& arg : node.other_args) {

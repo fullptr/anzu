@@ -746,8 +746,8 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     // Handle arena functions
     if (stripped_type.is_arena()) {
         if (node.function_name == "new") {
-            if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
-            const auto result_type = resolve_type(com, node.token, node.template_type);
+            if (node.template_args.size() != 1) node.token.error("calls to arena 'new' must have a single template type");
+            const auto result_type = resolve_type(com, node.token, node.template_args[0]);
             
             // First, build the object on the stack
             const auto expected_params = get_constructor_params(com, result_type);
@@ -769,8 +769,8 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             return result_type.add_ptr();
         }
         else if (node.function_name == "new_array") {
-            if (!node.template_type) node.token.error("calls to arena 'create' must have a template type");
-            const auto result_type = resolve_type(com, node.token, node.template_type);
+            if (node.template_args.size() != 1) node.token.error("calls to arena 'new_array' must have a template type");
+            const auto result_type = resolve_type(com, node.token, node.template_args[0]);
             
             // First, push the count onto the stack
             const auto expected_params = std::vector<type_name>{u64_type()};
@@ -799,11 +799,25 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         }
     }
 
-    auto params = std::vector<type_name>{};
-    params.push_back(stripped_type.add_ptr());
-    for (const auto& arg : node.other_args) {
-        params.push_back(type_of_expr(com, *arg));
-    }
+    // If this is a template call, it may need to compile the function first.
+    //if (!node.template_args.empty() && com.function_templates.contains(inner.name) && !get_function(com, full_name)) {
+    //    const auto function_ast = com.function_templates.at(inner.name);
+//
+    //    if (node.template_args.size() != function_ast.template_types.size()) {
+    //        node.token.error("mismatching number of template args, expected {}, got {}",
+    //                            function_ast.template_types.size(),
+    //                            node.template_args.size());
+    //    }
+//
+    //    auto map = template_map{};
+    //    for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
+    //        const auto expected = make_type(com, expected_str);
+    //        if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
+    //        const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
+    //        if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
+    //    }
+    //    compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
+    //}
 
     const auto full_name = full_function_name(com, stripped_type, node.function_name);
     const auto func = get_function(com, full_name);
