@@ -1248,8 +1248,21 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
         actual
     );
 
+    // We always ignore the template types here because it is either not a template function and so
+    // this is in fact the full name, or it is and we use this as the key for the function_templates
+    // map which is just the name without the template section.
     const auto full_name = full_function_name(com, struct_type, node.function_name);
-    compile_function(com, node.token, full_name, node.sig, node.body);
+
+    // Template functions only get compiled at the call site, so we just stash the ast
+    if (!node.template_types.empty()) {
+        const auto [it, success] = com.member_function_templates.emplace(full_name, node);
+        if (!success) {
+            node.token.error("function template named '{}' already defined", full_name);
+        }
+    } else {
+        compile_function(com, node.token, full_name, node.sig, node.body);
+    }
+
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)

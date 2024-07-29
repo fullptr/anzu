@@ -1,11 +1,11 @@
 # The next thing to implement; template member functions
 struct foo
 {
-    fn bar|T|(self: foo const&)
+    fn bar|T|(self: foo const&, x: T)
     {
-        print("{}\n", sizeof(T));
+        print("{}\n", sizeof(x));
     }
 }
 
 let f := foo();
-f.bar|i64|(6);
+f.bar|i64|(5);

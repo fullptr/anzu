@@ -38,9 +38,10 @@ struct compiler
 
     type_manager types;
 
-    std::unordered_map<std::string, std::size_t>            functions_by_name;
-    std::unordered_map<std::string, node_function_def_stmt> function_templates;
-    std::vector<std::size_t>                                current_compiling;
+    std::unordered_map<std::string, std::size_t>                   functions_by_name;
+    std::unordered_map<std::string, node_function_def_stmt>        function_templates;
+    std::unordered_map<std::string, node_member_function_def_stmt> member_function_templates;
+    std::vector<std::size_t>                                       current_compiling;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;
