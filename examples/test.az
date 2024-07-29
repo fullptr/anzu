@@ -3,9 +3,10 @@ struct foo
 {
     fn bar|T|(self: foo const&, x: T)
     {
-        print("{}\n", 12);
+        print("{}\n", x);
     }
 }
 
 let f := foo();
-f.bar|i64|(5);
+f.bar|i64|(6);
+f.bar|f64|(10.0);
