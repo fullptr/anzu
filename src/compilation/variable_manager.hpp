@@ -21,16 +21,10 @@ struct variable
     type_name   type;
     std::size_t location;
     std::size_t size;
-    bool        is_local;
 };
 
 struct simple_scope
 {
-};
-
-struct function_scope
-{
-    type_name return_type;
 };
 
 struct loop_scope
@@ -39,7 +33,7 @@ struct loop_scope
     std::vector<std::size_t> breaks;
 };
 
-using scope_info = std::variant<simple_scope, function_scope, loop_scope>;
+using scope_info = std::variant<simple_scope, loop_scope>;
 
 struct scope
 {
@@ -49,26 +43,13 @@ struct scope
     std::vector<variable> variables = {};
 };
 
-class scope_guard
-{
-    variable_manager* d_manager;
-    scope_guard(const scope_guard&) = delete;
-    scope_guard& operator=(const scope_guard&) = delete;
-
-public:
-    scope_guard(variable_manager& manager);
-    ~scope_guard();
-};
-
 class variable_manager
 {
-    compiler* d_compiler;
     std::vector<scope> d_scopes;
-    friend scope_guard;
+    bool d_local;
 
 public:
-    auto set_compiler(compiler& c) { d_compiler = &c; }
-
+    variable_manager(bool local) : d_local{local} {}
     auto declare(const std::string& name, const type_name& type, std::size_t size) -> bool;
     auto find(const std::string& name) const -> std::optional<variable>;
     auto scopes() const -> std::span<const scope> { return d_scopes; }
@@ -77,18 +58,17 @@ public:
     auto get_loop_info() -> loop_scope&;
     
     auto in_function() const -> bool;
-    auto get_function_info() -> function_scope&;
 
     auto size() -> std::size_t;
 
-    auto new_scope() -> scope_guard;
-    auto new_function_scope(const type_name& return_type) -> scope_guard;
-    auto new_loop_scope() -> scope_guard;
+    void new_scope();
+    void new_loop_scope();
+    void pop_scope(std::vector<std::byte>& code);
 
     // Functions to handle changes to control flow, ie- break, continue and return.
     // All of these can result in control flow not reaching the end of a scope
-    auto handle_loop_exit() -> void;
-    auto handle_function_exit() -> void;
+    auto handle_loop_exit(std::vector<std::byte>& code) -> void;
+    auto handle_function_exit(std::vector<std::byte>& code) -> void;
 };
 
 }

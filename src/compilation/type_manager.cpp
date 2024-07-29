@@ -1,4 +1,5 @@
 #include "type_manager.hpp"
+#include "object.hpp"
 
 namespace anzu {
 
@@ -45,7 +46,7 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
                 return 0;
             }
         },
-        [&](const type_struct& t) -> std::size_t {
+        [&](const type_struct&) -> std::size_t {
             if (!d_classes.contains(type)) {
                 panic("unknown type '{}'", type);
             }
@@ -80,6 +81,5 @@ auto type_manager::fields_of(const type_name& t) const -> type_fields
     }
     return {};
 }
-
 
 }

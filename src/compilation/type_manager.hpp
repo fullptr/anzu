@@ -14,7 +14,6 @@ struct type_field
 
 class type_manager
 {
-    using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
     using type_fields = std::vector<type_field>;
     std::unordered_map<type_name, type_fields, type_hash> d_classes;
 

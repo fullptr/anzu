@@ -104,7 +104,6 @@ struct node_literal_string_expr
 
 struct node_name_expr
 {
-    node_type_ptr struct_name = nullptr;
     std::string name;
 
     anzu::token token;
@@ -136,6 +135,7 @@ struct node_binary_op_expr
 struct node_call_expr
 {
     node_expr_ptr expr;
+    std::vector<node_type_ptr> template_args;
     std::vector<node_expr_ptr> args;
 
     anzu::token token;
@@ -318,9 +318,10 @@ struct node_assignment_stmt
 
 struct node_function_def_stmt
 {
-    std::string    name;
-    node_signature sig;
-    node_stmt_ptr  body;
+    std::string              name;
+    std::vector<std::string> template_types;
+    node_signature           sig;
+    node_stmt_ptr            body;
 
     anzu::token token;
 };

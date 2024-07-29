@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <map>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 namespace anzu {
@@ -21,37 +22,25 @@ struct signature
 
 struct function_info
 {
-    std::string            name;
-    signature              sig;
-    token                  tok;
+    std::string      name;
+    std::size_t      id;
+    variable_manager variables;
+    template_map     template_types;
     
-    std::size_t            id;
-    std::vector<std::byte> code;
+    std::vector<std::byte> code = {};
+    signature              sig  = {};
 };
 
-// Struct used to store information while compiling an AST. Contains the output program
-// as well as information such as function definitions.
 struct compiler
 {
-    // Returns the current function
-    auto current() -> function_info& {
-        return in_function ? compiled_functions.back()   // current function
-                           : compiled_functions.front(); // $main function
-    }
+    std::vector<function_info> functions;
+    std::string                rom;
 
-    // Returns the bytecode that we are currently writing to
-    auto code() -> std::vector<std::byte>& {
-        return current().code;
-    }
+    type_manager types;
 
-    std::string rom;
-
-    bool in_function = false;
-    std::unordered_map<std::string, std::size_t> functions_by_name;
-    std::vector<function_info>                   compiled_functions;
-    
-    type_manager     types;
-    variable_manager variables;
+    std::unordered_map<std::string, std::size_t>            functions_by_name;
+    std::unordered_map<std::string, node_function_def_stmt> function_templates;
+    std::vector<std::size_t>                                current_compiling;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

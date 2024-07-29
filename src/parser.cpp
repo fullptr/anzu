@@ -153,7 +153,7 @@ auto parse_name(tokenstream& tokens)
 {
     const auto token = tokens.consume();
     if (token.type != token_type::identifier) {
-        token.error("'{}' is not a valid name", token.text);
+        token.error("'{}' is not a valid name (type={})", token.text, token.type);
     }
     return token.text;
 }
@@ -174,14 +174,14 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
             expr.other_args.push_back(parse_expression(tokens));
         });
     }
-    else if (tokens.peek_next(token_type::less)) {
+    else if (tokens.peek_next(token_type::bar)) {
         auto& expr = new_node->emplace<node_member_call_expr>();
         expr.expr = node;
         expr.token = tok;
         expr.function_name = parse_name(tokens);
-        tokens.consume_only(token_type::less);
+        tokens.consume_only(token_type::bar);
         expr.template_type = parse_type_node(tokens);
-        tokens.consume_only(token_type::greater);
+        tokens.consume_only(token_type::bar);
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.other_args.push_back(parse_expression(tokens));
@@ -303,6 +303,20 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
                 auto& inner = new_node->emplace<node_call_expr>();
                 inner.token = tokens.consume();
                 inner.expr = node;
+                tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+                    inner.args.push_back(parse_expression(tokens));
+                });
+                node = new_node;
+            } break;
+            case token_type::bar: { // callable expressions
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_call_expr>();
+                inner.token = tokens.consume();
+                inner.expr = node;
+                tokens.consume_comma_separated_list(token_type::bar, [&] {
+                    inner.template_args.push_back(parse_type_node(tokens));
+                });
+                tokens.consume_only(token_type::left_paren);
                 tokens.consume_comma_separated_list(token_type::right_paren, [&] {
                     inner.args.push_back(parse_expression(tokens));
                 });
@@ -457,9 +471,15 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_function_def_stmt>();
-
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.name = parse_name(tokens);
+
+    if (tokens.consume_maybe(token_type::bar)) {
+        tokens.consume_comma_separated_list(token_type::bar, [&]{
+            stmt.template_types.push_back(std::string{parse_name(tokens)});
+        });
+    }
+
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{
         auto param = node_parameter{};

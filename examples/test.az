@@ -1,6 +1,11 @@
-
-
-let x := 10;
-var y := x&;
-y@ = 15;
-__dump_type(x, y);
+# The next thing to implement; template member functions
+#struct foo
+#{
+#    fn bar|T|(self: foo const&)
+#    {
+#        print("{}\n", sizeof(T));
+#    }
+#}
+#
+#let f := foo();
+#f.bar|i64|(6);

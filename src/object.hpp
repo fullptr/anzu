@@ -112,6 +112,10 @@ auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
+using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
+
+// Used for resolving template types. In the future could also be used for type aliases
+using template_map = std::unordered_map<type_name, type_name, type_hash>;
 
 auto null_type() -> type_name;
 auto nullptr_type() -> type_name;
@@ -123,8 +127,6 @@ auto u64_type() -> type_name;
 auto f64_type() -> type_name;
 auto arena_type() -> type_name;
 auto string_literal_type() -> type_name;
-
-auto make_type(const std::string& name) -> type_name;
 
 // Extracts the single inner type of the given t. Undefined if the given t is not a compound
 // type with a single subtype.

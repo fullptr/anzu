@@ -21,13 +21,12 @@ auto type_name::is_ptr() const -> bool
 
 auto type_name::add_ptr() const -> type_name
 {
-    if (is_ptr()) return *this;
     return { type_ptr{ .inner_type{*this} } };
 }
 
 auto type_name::remove_ptr() const -> type_name
 {
-    if (!is_ptr()) return *this;
+    if (!is_ptr()) panic("tried to remove_ptr on a non-ptr type\n");
     return *std::get<type_ptr>(*this).inner_type;
 }
 
@@ -216,12 +215,7 @@ auto arena_type() -> type_name
 
 auto string_literal_type() -> type_name
 {
-    return char_type().add_const().add_span()
-}
-
-auto make_type(const std::string& name) -> type_name
-{
-    return { type_struct{ .name=name } };
+    return char_type().add_const().add_span();
 }
 
 auto type_name::is_array() const -> bool
