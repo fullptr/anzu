@@ -306,19 +306,26 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
     return type;
 }
 
+// Given a type, push the number of op::load calls required to dereference away all the pointers.
+// If the type is not a pointer, this is a noop.
+auto auto_deref_pointer(compiler& com, const type_name& type) -> type_name
+{
+    auto t = type;
+    while (t.is_ptr()) {
+        push_value(code(com), op::load, sizeof(std::byte*));
+        t = t.remove_ptr();
+    }
+    return t;
+}
+
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
 {
     auto type = push_expr_ptr(com, *node.expr);
+    const auto stripped_type = auto_deref_pointer(com, type); // allow for field access through a pointer
 
-    // Allow for field access on a pointer.
-    while (type.is_ptr()) {
-        push_value(code(com), op::load, sizeof(std::byte*));
-        type = type.remove_ptr();
-    }
-
-    const auto field_type = push_field_offset(com, node.token, type, node.field_name);
+    const auto field_type = push_field_offset(com, node.token, stripped_type, node.field_name);
     push_value(code(com), op::u64_add); // modify ptr
-    if (type.is_const) return field_type.add_const(); // propagate const to fields
+    if (stripped_type.is_const) return field_type.add_const(); // propagate const to fields
     return field_type;
 }
 
@@ -708,7 +715,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     return *sig.return_type;
 }
 
-// TODO- Allow member call through a pointer
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
@@ -730,11 +736,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     if (stripped_type.is_span() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
         push_expr_ptr(com, *node.expr); // push pointer to span
-        auto t = type;
-        while (t.is_ptr()) { // allow for calling member functions through pointers
-            push_value(code(com), op::load, sizeof(std::byte*));
-            t = t.remove_ptr();
-        }
+        auto_deref_pointer(com, type);  // because we pushed a T& instead of a T, this will leave a pointer on the stack
         push_value(code(com), op::push_u64, sizeof(std::byte*));
         push_value(code(com), op::u64_add); // offset to the size value
         push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
@@ -762,11 +764,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            auto t = type;
-            while (t.is_ptr()) { // allow for calling member functions through pointers
-                push_value(code(com), op::load, sizeof(std::byte*));
-                t = t.remove_ptr();
-            }
+            auto_deref_pointer(com, type);  // if we instead pushed a pointer to an arena, deref down to it
             push_value(code(com), op::arena_alloc, size);
             return result_type.add_ptr();
         }
@@ -786,32 +784,14 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            auto t = type;
-            while (t.is_ptr()) { // allow for calling member functions through pointers
-                push_value(code(com), op::load, sizeof(std::byte*));
-                t = t.remove_ptr();
-            }
+            auto_deref_pointer(com, type);  // if we instead pushed a pointer to an arena, deref down to it
             push_value(code(com), op::arena_alloc_array, size);
             return result_type.add_span();
         }
-        else if (node.function_name == "size") {
+        else if (node.function_name == "size" || node.function_name == "capacity") {
             push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            auto t = type;
-            while (t.is_ptr()) { // allow for calling member functions through pointers
-                push_value(code(com), op::load, sizeof(std::byte*));
-                t = t.remove_ptr();
-            }
-            push_value(code(com), op::arena_size);
-            return u64_type();
-        }
-        else if (node.function_name == "capacity") {
-            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
-            auto t = type;
-            while (t.is_ptr()) { // allow for calling member functions through pointers
-                push_value(code(com), op::load, sizeof(std::byte*));
-                t = t.remove_ptr();
-            }
-            push_value(code(com), op::arena_capacity);
+            auto_deref_pointer(com, type);  // if we instead pushed a pointer to an arena, deref down to it
+            push_value(code(com), node.function_name == "size" ? op::arena_size : op::arena_capacity);
             return u64_type();
         }
         else {
@@ -837,11 +817,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     inner.token = node.token;
 
     push_copy_typechecked(com, *self_ptr_node, func->sig.params[0], node.token);
-    auto t = type;
-    while (t.is_ptr()) { // allow for calling member functions through pointers
-        push_value(code(com), op::load, sizeof(std::byte*));
-        t = t.remove_ptr();
-    }
+    auto_deref_pointer(com, type); // because we pushed a T& instead of a T, this will leave a pointer on the stack
     for (std::size_t i = 0; i != node.other_args.size(); ++i) {
         push_copy_typechecked(com, *node.other_args.at(i), func->sig.params[i + 1], node.token);
     }

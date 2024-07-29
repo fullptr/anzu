@@ -1,5 +1,11 @@
-let x := [1, 2, 3, 4, 5];
-let p := x[];
-let v := p&;
+arena a;
+let ap := a&;
 
-print("{}\n", v.size());
+print("{} {}\n", a.size(), a.capacity());
+print("{} {}\n", ap.size(), ap.capacity());
+let p := a.new|i64|(10);
+print("{} {}\n", a.size(), a.capacity());
+print("{} {}\n", ap.size(), ap.capacity());
+
+let ap2 := ap&;
+print("{} {}\n", ap2.size(), ap2.capacity());
