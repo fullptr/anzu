@@ -317,6 +317,11 @@ struct foo
 {
     x: i64;
     y: i64;
+
+    fn bar|T|(self: foo const&, x: T)
+    {
+        print("{}\n", x);
+    }
 }
 
 let f := foo(1, 2);
@@ -325,3 +330,6 @@ print("{} {}\n", g.x, g.y);
 
 var x := 10;
 ptr|i64|(x&);
+
+f.bar|i64|(6);
+f.bar|f64|(10.0);

@@ -168,7 +168,6 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         expr.expr = node;
         expr.token = tok;
         expr.function_name = parse_name(tokens);
-        expr.template_type = nullptr;
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.other_args.push_back(parse_expression(tokens));
@@ -180,8 +179,9 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         expr.token = tok;
         expr.function_name = parse_name(tokens);
         tokens.consume_only(token_type::bar);
-        expr.template_type = parse_type_node(tokens);
-        tokens.consume_only(token_type::bar);
+        tokens.consume_comma_separated_list(token_type::bar, [&] {
+            expr.template_args.push_back(parse_type_node(tokens));
+        });
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             expr.other_args.push_back(parse_expression(tokens));
@@ -506,6 +506,12 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.struct_name = struct_name;
     stmt.function_name = parse_name(tokens);
+
+    if (tokens.consume_maybe(token_type::bar)) {
+        tokens.consume_comma_separated_list(token_type::bar, [&]{
+            stmt.template_types.push_back(std::string{parse_name(tokens)});
+        });
+    }
 
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&]{

@@ -80,8 +80,11 @@ auto print_node(const node_expr& root, int indent) -> void
             print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
             print("{}- FunctionName: {}\n", spaces, node.function_name);
-            if (node.template_type) {
-                print("{}- TemplateType: {}\n", spaces, *node.template_type);
+            if (!node.template_args.empty()) {
+                print("{}- TemplateArgs:\n", spaces);
+                for (const auto& arg : node.template_args) {
+                    print_node(*arg, indent + 1);
+                }
             }
             print("{}- OtherArgs:\n", spaces);
             for (const auto& arg : node.other_args) {
@@ -232,7 +235,15 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.body, indent + 1);
         },
         [&](const node_member_function_def_stmt& node) {
-            print("{}MemberFunction: {}::{} (", spaces, node.struct_name, node.function_name);
+            print("{}MemberFunction: {}::{}", spaces, node.struct_name, node.function_name);
+            if (!node.template_types.empty()) {
+                std::print("|");
+                print_comma_separated(node.template_types, [](const auto& arg) {
+                    return arg;
+                });
+                std::print("|");
+            }
+            std::print("(");
             print_comma_separated(node.sig.params, [](const auto& arg) {
                 return std::format("{}: {}", arg.name, *arg.type);
             });

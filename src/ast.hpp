@@ -145,7 +145,7 @@ struct node_member_call_expr
 {
     node_expr_ptr              expr;
     std::string                function_name;
-    node_type_ptr              template_type; // used only for arena.create<type>() calls for now
+    std::vector<node_type_ptr> template_args;
     std::vector<node_expr_ptr> other_args;
 
     anzu::token token;
@@ -328,10 +328,11 @@ struct node_function_def_stmt
 
 struct node_member_function_def_stmt
 {
-    std::string    struct_name;
-    std::string    function_name;
-    node_signature sig;
-    node_stmt_ptr  body;
+    std::string              struct_name;
+    std::string              function_name;
+    std::vector<std::string> template_types;
+    node_signature           sig;
+    node_stmt_ptr            body;
 
     anzu::token token;
 };
