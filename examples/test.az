@@ -3,7 +3,7 @@ struct foo
 {
     fn bar|T|(self: foo const&, x: T)
     {
-        print("{}\n", sizeof(x));
+        print("{}\n", 12);
     }
 }
 

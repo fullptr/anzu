@@ -719,21 +719,21 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
 {
     const auto type = type_of_expr(com, *node.expr);
 
-    const auto stripped_type = [&] {
+    const auto struct_type = [&] {
         auto t = type;
         while (t.is_ptr()) { t = t.remove_ptr(); }
         return t;
     }();
 
     // Handle .size() calls on arrays
-    if (stripped_type.is_array() && node.function_name == "size") {
+    if (struct_type.is_array() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
-        push_value(code(com), op::push_u64, array_length(stripped_type));
+        push_value(code(com), op::push_u64, array_length(struct_type));
         return u64_type();
     }
 
     // Handle .size() calls on spans
-    if (stripped_type.is_span() && node.function_name == "size") {
+    if (struct_type.is_span() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
         push_expr_ptr(com, *node.expr); // push pointer to span
         auto_deref_pointer(com, type);  // because we pushed a T& instead of a T, this will leave a pointer on the stack
@@ -744,7 +744,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     }
 
     // Handle arena functions
-    if (stripped_type.is_arena()) {
+    if (struct_type.is_arena()) {
         if (node.function_name == "new") {
             if (node.template_args.size() != 1) node.token.error("calls to arena 'new' must have a single template type");
             const auto result_type = resolve_type(com, node.token, node.template_args[0]);
@@ -799,27 +799,29 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         }
     }
 
-    // If this is a template call, it may need to compile the function first.
-    //if (!node.template_args.empty() && com.function_templates.contains(inner.name) && !get_function(com, full_name)) {
-    //    const auto function_ast = com.function_templates.at(inner.name);
-//
-    //    if (node.template_args.size() != function_ast.template_types.size()) {
-    //        node.token.error("mismatching number of template args, expected {}, got {}",
-    //                            function_ast.template_types.size(),
-    //                            node.template_args.size());
-    //    }
-//
-    //    auto map = template_map{};
-    //    for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
-    //        const auto expected = make_type(com, expected_str);
-    //        if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
-    //        const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
-    //        if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
-    //    }
-    //    compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
-    //}
+    const auto full_name_no_templates = full_function_name(com, struct_type, node.function_name);
+    const auto full_name = full_function_name(com, struct_type, node.function_name, node.template_args);
 
-    const auto full_name = full_function_name(com, stripped_type, node.function_name);
+    // If this is a template call, it may need to compile the function first.
+    if (!node.template_args.empty() && com.member_function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+        const auto function_ast = com.member_function_templates.at(full_name_no_templates);
+
+        if (node.template_args.size() != function_ast.template_types.size()) {
+            node.token.error("mismatching number of template args, expected {}, got {}",
+                                function_ast.template_types.size(),
+                                node.template_args.size());
+        }
+
+        auto map = template_map{};
+        for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
+            const auto expected = make_type(com, expected_str);
+            if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
+            const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
+            if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
+        }
+        compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
+    }
+    
     const auto func = get_function(com, full_name);
     node.token.assert(func.has_value(), "could not find member function {}", full_name);
     
