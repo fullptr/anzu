@@ -99,8 +99,7 @@ auto parse_nullptr(const token& tok) -> node_expr_ptr
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
-auto parse_type(tokenstream& tokens) -> type_name;
-auto parse_type_node(tokenstream& tokens) -> node_type_ptr;
+auto parse_type(tokenstream& tokens) -> node_expr_ptr;
 
 auto parse_literal(tokenstream& tokens) -> node_expr_ptr
 {
@@ -180,7 +179,7 @@ auto parse_member_access(tokenstream& tokens, node_expr_ptr& node)
         expr.function_name = parse_name(tokens);
         tokens.consume_only(token_type::bar);
         tokens.consume_comma_separated_list(token_type::bar, [&] {
-            expr.template_args.push_back(parse_type_node(tokens));
+            expr.template_args.push_back(parse_type(tokens));
         });
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
@@ -314,7 +313,7 @@ auto parse_single_factor(tokenstream& tokens) -> node_expr_ptr
                 inner.token = tokens.consume();
                 inner.expr = node;
                 tokens.consume_comma_separated_list(token_type::bar, [&] {
-                    inner.template_args.push_back(parse_type_node(tokens));
+                    inner.template_args.push_back(parse_type(tokens));
                 });
                 tokens.consume_only(token_type::left_paren);
                 tokens.consume_comma_separated_list(token_type::right_paren, [&] {
@@ -352,37 +351,54 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr
     return parse_compound_factor(tokens, 0);
 }
 
-// If it's a fundamental type, return that, otherwise return a struct_type
-auto parse_simple_type(tokenstream& tokens) -> type_name
+// Let the compiler figure out if the name is a type
+auto parse_simple_type(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume();
-    if (tok.text == "null")    return type_fundamental::null_type;
-    if (tok.text == "bool")    return type_fundamental::bool_type;
-    if (tok.text == "char")    return type_fundamental::char_type;
-    if (tok.text == "i32")     return type_fundamental::i32_type;
-    if (tok.text == "i64")     return type_fundamental::i64_type;
-    if (tok.text == "u64")     return type_fundamental::u64_type;
-    if (tok.text == "f64")     return type_fundamental::f64_type;
-    if (tok.text == "nullptr") return type_fundamental::nullptr_type;
-    if (tok.text == "arena")   return type_arena{};
-    return {type_struct{ .name=std::string{tok.text} }};
+    auto node = std::make_shared<node_expr>();
+    const auto token = tokens.consume();
+    switch (token.type) {
+        case token_type::kw_null:
+        case token_type::kw_bool:
+        case token_type::kw_char:
+        case token_type::kw_i32:
+        case token_type::kw_i64:
+        case token_type::kw_u64:
+        case token_type::kw_f64:
+        case token_type::kw_nullptr:
+        case token_type::kw_arena: {
+            auto& inner = node->emplace<node_builtin_name_expr>();
+            inner.name = std::string{tokens.consume().text};
+        } break;
+
+        case token_type::identifier: {
+            auto& inner = node->emplace<node_name_expr>();
+            inner.name = std::string{tokens.consume().text};
+        } break;
+        default: {
+            tokens.curr().error("invalid token to parse as a simple_type");
+        } break;
+    }
+
+    return node;
 }
 
-auto parse_type(tokenstream& tokens) -> node_expr_ptr
+auto parse_type_inner(tokenstream& tokens) -> node_expr_ptr
 {
     // Function pointers
     if (tokens.consume_maybe(token_type::kw_function)) {
+        auto node = std::make_shared<node_expr>();
+        auto& inner = node->emplace<node_function_ptr_type_expr>();
+
         tokens.consume_only(token_type::left_paren);
-        auto ret = type_function_ptr{};
         tokens.consume_comma_separated_list(token_type::right_paren, [&]{
-            ret.param_types.push_back(parse_type(tokens));
+            inner.params.push_back(parse_type(tokens));
         });
         tokens.consume_only(token_type::arrow);
-        ret.return_type = make_value<type_name>(parse_type(tokens));
-        return ret;
+        inner.return_type = parse_type(tokens);
+        return node;
     }
 
-    auto type = null_type();
+    auto type = node_expr_ptr{nullptr};
     if (tokens.consume_maybe(token_type::left_paren)) {
         type = parse_type(tokens);
         tokens.consume_only(token_type::right_paren);
@@ -392,19 +408,38 @@ auto parse_type(tokenstream& tokens) -> node_expr_ptr
 
     while (true) {
         if (tokens.consume_maybe(token_type::left_bracket)) {
+            const auto token = tokens.curr();
             if (tokens.consume_maybe(token_type::right_bracket)) {
-                type = type_name{type_span{ .inner_type=type }};
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_span_expr>();
+                inner.expr = type;
+                inner.token = token;
+                type = new_node;
             }
             else {
-                type = type_name{type_array{ .inner_type=type, .count=tokens.consume_u64() }};
+                auto new_node = std::make_shared<node_expr>();
+                auto& inner = new_node->emplace<node_subscript_expr>();
+                inner.token = token;
+                inner.expr = type;
+                inner.index = std::make_shared<node_expr>();
+                auto& literal = inner.index->emplace<node_literal_u64_expr>();
+                literal.token = tokens.curr();
+                literal.value = tokens.consume_u64();
+                type = new_node;
                 tokens.consume_only(token_type::right_bracket);
             }
         }
         else if (tokens.consume_maybe(token_type::ampersand)) {
-            type = type_name{type_ptr{ .inner_type=type }};
+            auto new_node = std::make_shared<node_expr>();
+            auto& inner = new_node->emplace<node_addrof_expr>();
+            inner.expr = type;
+            type = new_node;
         }
         else if (tokens.consume_maybe(token_type::kw_const)) {
-            type.is_const = true;
+            auto new_node = std::make_shared<node_expr>();
+            auto& inner = new_node->emplace<node_const_expr>();
+            inner.expr = type;
+            type = new_node;
         }
         else {
             break;
@@ -413,7 +448,7 @@ auto parse_type(tokenstream& tokens) -> node_expr_ptr
     return type;
 }
 
-auto parse_type_node(tokenstream& tokens) -> node_expr_ptr
+auto parse_type(tokenstream& tokens) -> node_expr_ptr
 {
     if (tokens.peek(token_type::kw_typeof)) {
         auto node = std::make_shared<node_expr>();
@@ -425,7 +460,7 @@ auto parse_type_node(tokenstream& tokens) -> node_expr_ptr
         return node;
     }
 
-    return parse_type(tokens);
+    return parse_type_inner(tokens);
 }
 
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
@@ -446,13 +481,14 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         auto param = node_parameter{};
         param.name = parse_name(tokens);
         tokens.consume_only(token_type::colon);
-        param.type = parse_type_node(tokens);
+        param.type = parse_type(tokens);
         stmt.sig.params.push_back(param);
     });
     if (tokens.consume_maybe(token_type::arrow)) {
-        stmt.sig.return_type = parse_type_node(tokens);
+        stmt.sig.return_type = parse_type(tokens);
     } else {
-        stmt.sig.return_type = std::make_shared<node_type>(node_named_type{null_type()});
+        stmt.sig.return_type = std::make_shared<node_expr>();
+        auto& inner = stmt.sig.return_type->emplace<node_name_expr>(std::string{"null"}, tokens.curr());
     }
     stmt.body = parse_statement(tokens);
     return node;
@@ -479,13 +515,14 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
         auto param = node_parameter{};
         param.name = parse_name(tokens);
         tokens.consume_only(token_type::colon);
-        param.type = parse_type_node(tokens);
+        param.type = parse_type(tokens);
         stmt.sig.params.push_back(param);
     });
     if (tokens.consume_maybe(token_type::arrow)) {
-        stmt.sig.return_type = parse_type_node(tokens);
+        stmt.sig.return_type = parse_type(tokens);
     } else {
-        stmt.sig.return_type = std::make_shared<node_type>(node_named_type{null_type()});
+        stmt.sig.return_type = std::make_shared<node_expr>();
+        auto& inner = stmt.sig.return_type->emplace<node_name_expr>(std::string{"null"}, tokens.curr());
     }
     stmt.body = parse_statement(tokens);
     return node;
@@ -572,7 +609,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
             auto& f = stmt.fields.back();
             f.name = parse_name(tokens);
             tokens.consume_only(token_type::colon);
-            f.type = parse_type_node(tokens);
+            f.type = parse_type(tokens);
             tokens.consume_only(token_type::semicolon);
         }
     }
@@ -596,7 +633,7 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.name = parse_name(tokens);
     if (tokens.consume_maybe(token_type::colon)) {
-        stmt.explicit_type = parse_type_node(tokens);
+        stmt.explicit_type = parse_type(tokens);
         tokens.consume_only(token_type::equal);
     } else {
         tokens.consume_only(token_type::colon_equal);
