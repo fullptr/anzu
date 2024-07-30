@@ -607,12 +607,6 @@ auto get_builtin_id(const std::string& name) -> std::optional<std::size_t>
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 {
-    // TODO: This seems related to constructors
-    const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
-        node.token.error("invalid use of type expression");
-    }
-
     // First, handle the cases where the thing we are trying to call is a name.
     if (std::holds_alternative<node_name_expr>(*node.expr)) {
         auto& inner = std::get<node_name_expr>(*node.expr);
@@ -694,6 +688,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     }
 
     // Otherwise, the expression must be a function pointer.
+    const auto type = type_of_expr(com, *node.expr);
     node.token.assert(type.is_function_ptr(), "unable to call non-callable type {}", type);
 
     const auto& sig = std::get<type_function_ptr>(type);
@@ -963,13 +958,17 @@ auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_subscript_expr& node) -> type_name
 {
-    // TODO: Handle parsing array types
     const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
-        node.token.error("invalid use of type expressions");
+    if (type.is_type_value()) {
+        if (!std::holds_alternative<node_literal_u64_expr>(*node.index)) {
+            node.token.error("index must be a u64 literal when delcaring an array type");
+        }
+        const auto index = std::get<node_literal_u64_expr>(*node.index).value;
+        return type_type{inner_type(type).add_array(index)};
     }
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
+    const auto t = push_expr_ptr(com, node);
+    push_value(code(com), op::load, com.types.size_of(t));
+    return t;
 }
 
 auto push_expr_val(compiler& com, const node_typeof_expr& node) -> type_name
