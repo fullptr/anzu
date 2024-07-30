@@ -982,9 +982,13 @@ auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> ty
     auto type = make_value<type_name>();
     auto& inner = type->emplace<type_function_ptr>();
     for (const auto& param : node.params) {
-        inner.param_types.push_back(type_of_expr(com, *param));
+        const auto t = type_of_expr(com, *param);
+        node.token.assert(t.is_type_value(), "expr in function pointer is not a type expr");
+        inner.param_types.push_back(inner_type(t));
     }
-    inner.return_type = type_of_expr(com, *node.return_type);
+    const auto t = type_of_expr(com, *node.return_type);
+    node.token.assert(t.is_type_value(), "expr in function pointer is not a type expr");
+    inner.return_type = inner_type(t);
     return type_type{type};
 }
 

@@ -1,5 +1,9 @@
 
-fn typeof_example2(a: u64) -> typeof(a)
+fn foo(x: u64[1u]) -> f64
 {
-    return a * a;
+    return 1.0;
 }
+
+let f : fn(u64[1u]) -> f64 = foo;
+__dump_type(f);
+print("{}\n", f([10u]));
