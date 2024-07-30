@@ -367,12 +367,12 @@ auto parse_simple_type(tokenstream& tokens) -> node_expr_ptr
         case token_type::kw_nullptr:
         case token_type::kw_arena: {
             auto& inner = node->emplace<node_builtin_name_expr>();
-            inner.name = std::string{tokens.consume().text};
+            inner.name = std::string{token.text};
         } break;
 
         case token_type::identifier: {
             auto& inner = node->emplace<node_name_expr>();
-            inner.name = std::string{tokens.consume().text};
+            inner.name = std::string{token.text};
         } break;
         default: {
             tokens.curr().error("invalid token to parse as a simple_type");

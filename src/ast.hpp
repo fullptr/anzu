@@ -230,6 +230,7 @@ struct node_expr : std::variant<
     node_repeat_array_expr,
     node_addrof_expr,
     node_sizeof_expr,
+    node_span_expr,
     node_typeof_expr,
     node_function_ptr_type_expr,
     node_const_expr,
@@ -239,8 +240,7 @@ struct node_expr : std::variant<
     node_name_expr,
     node_field_expr,
     node_deref_expr,
-    node_subscript_expr,
-    node_span_expr>
+    node_subscript_expr>
 {
 };
 

@@ -281,8 +281,10 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
         return ptr_type;
     }
 
-    // This is the default logic for pushing an lvalue.
     const auto type = push_expr_ptr(com, node);
+    if (std::holds_alternative<type_type>(type)) {
+        node.token.error("invalid use of type expressions");
+    }
     push_value(code(com), op::load, com.types.size_of(type));
     return type;
 }
@@ -417,6 +419,11 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     auto lhs = push_expr_val(com, *node.lhs);
     auto rhs = push_expr_val(com, *node.rhs);
 
+    // TODO: Implement using == for comparing types
+    if (std::holds_alternative<type_type>(lhs) || std::holds_alternative<type_type>(rhs)) {
+        node.token.error("invalid use of type expression");
+    }
+
     // Pointers can compare to nullptr
     if ((lhs.is_ptr() && rhs == nullptr_type()) || (rhs.is_ptr() && lhs == nullptr_type())) {
         switch (node.token.type) {
@@ -516,7 +523,9 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     using tt = token_type;
     const auto type = push_expr_val(com, *node.expr);
-    print_node(*node.expr);
+    if (std::holds_alternative<type_type>(type)) {
+        node.token.error("invalid use of type expression");
+    }
 
     switch (node.token.type) {
         case tt::minus: {
@@ -598,6 +607,12 @@ auto get_builtin_id(const std::string& name) -> std::optional<std::size_t>
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 {
+    // TODO: This seems related to constructors
+    const auto type = type_of_expr(com, *node.expr);
+    if (std::holds_alternative<type_type>(type)) {
+        node.token.error("invalid use of type expression");
+    }
+
     // First, handle the cases where the thing we are trying to call is a name.
     if (std::holds_alternative<node_name_expr>(*node.expr)) {
         auto& inner = std::get<node_name_expr>(*node.expr);
@@ -679,7 +694,6 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     }
 
     // Otherwise, the expression must be a function pointer.
-    const auto type = type_of_expr(com, *node.expr);
     node.token.assert(type.is_function_ptr(), "unable to call non-callable type {}", type);
 
     const auto& sig = std::get<type_function_ptr>(type);
@@ -699,6 +713,9 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
+    if (std::holds_alternative<type_type>(type)) {
+        node.token.error("invalid use of type expressions");
+    }
 
     const auto struct_type = [&] {
         auto t = type;
@@ -827,6 +844,9 @@ auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
     node.token.assert(!node.elements.empty(), "cannot have empty array literals");
 
     const auto inner_type = push_expr_val(com, *node.elements.front());
+    if (std::holds_alternative<type_type>(inner_type)) {
+        node.token.error("invalid use of type expressions");
+    }
     for (const auto& element : node.elements | std::views::drop(1)) {
         const auto element_type = push_expr_val(com, *element);
         node.token.assert_eq(element_type, inner_type, "array has mismatching element types");
@@ -839,6 +859,9 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
     node.token.assert(node.size != 0, "cannot have empty array literals");
 
     const auto inner_type = type_of_expr(com, *node.value);
+    if (std::holds_alternative<type_type>(inner_type)) {
+        node.token.error("invalid use of type expressions");
+    }
     for (std::size_t i = 0; i != node.size; ++i) {
         push_expr_val(com, *node.value);
     }
@@ -847,13 +870,21 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
 
 auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr);
+    if (std::holds_alternative<type_type>(type)) {
+        return type_type{std::get<type_type>(type).type_val->add_ptr()};
+    }
+
+    push_expr_ptr(com, *node.expr);
     return type.add_ptr();
 }
 
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
+    if (std::holds_alternative<type_type>(type)) { // Could this be changed to allow for passing in a type?
+        node.token.error("invalid use of type expressions");
+    }
     push_value(code(com), op::push_u64, com.types.size_of(type));
     return u64_type();
 }
@@ -865,6 +896,10 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     }
 
     const auto type = type_of_expr(com, *node.expr);
+    if (std::holds_alternative<type_type>(type)) {
+        return type_type{std::get<type_type>(type).type_val->add_span()};
+    }
+
     node.token.assert(
         type.is_array() || type.is_span(),
         "can only span arrays and other spans, not {}", type
@@ -906,13 +941,76 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     return type.remove_array().add_span();
 }
 
-// If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
-// we can load it by pushing the address to the stack and loading.
-auto push_expr_val(compiler& com, const auto& node) -> type_name
+auto push_expr_val(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, node);
+    const auto type = type_of_expr(com, *node.expr);
+    if (std::holds_alternative<type_type>(type)) {
+        node.token.error("invalid use of type expressions");
+    }
     push_value(code(com), op::load, com.types.size_of(type));
     return type;
+}
+
+auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    if (std::holds_alternative<type_type>(type)) {
+        node.token.error("invalid use of type expressions");
+    }
+    push_value(code(com), op::load, com.types.size_of(type));
+    return type;
+}
+
+auto push_expr_val(compiler& com, const node_subscript_expr& node) -> type_name
+{
+    // TODO: Handle parsing array types
+    const auto type = type_of_expr(com, *node.expr);
+    if (std::holds_alternative<type_type>(type)) {
+        node.token.error("invalid use of type expressions");
+    }
+    push_value(code(com), op::load, com.types.size_of(type));
+    return type;
+}
+
+auto push_expr_val(compiler& com, const node_typeof_expr& node) -> type_name
+{
+    return type_type{type_of_expr(com, *node.expr)};
+}
+
+auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> type_name
+{
+    auto type = make_value<type_name>();
+    auto& inner = type->emplace<type_function_ptr>();
+    for (const auto& param : node.params) {
+        inner.param_types.push_back(type_of_expr(com, *param));
+    }
+    inner.return_type = type_of_expr(com, *node.return_type);
+    return type_type{type};
+}
+
+auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    if (!std::holds_alternative<type_type>(type)) {
+        node.token.error("invalid use of a const-expr");   
+    }
+    auto inner = *std::get<type_type>(type).type_val;
+    inner.is_const = true;
+    return type_type{inner};
+}
+
+auto push_expr_val(compiler& com, const node_builtin_name_expr& node) -> type_name
+{
+    if (node.name == "null") return type_type{ make_value<type_name>(type_fundamental::null_type) };
+    if (node.name == "bool") return type_type{ make_value<type_name>(type_fundamental::bool_type) };
+    if (node.name == "char") return type_type{ make_value<type_name>(type_fundamental::char_type) };
+    if (node.name == "i32") return type_type{ make_value<type_name>(type_fundamental::i32_type) };
+    if (node.name == "i64") return type_type{ make_value<type_name>(type_fundamental::i64_type) };
+    if (node.name == "u64") return type_type{ make_value<type_name>(type_fundamental::u64_type) };
+    if (node.name == "f64") return type_type{ make_value<type_name>(type_fundamental::f64_type) };
+    if (node.name == "nullptr") return type_type{ make_value<type_name>(type_fundamental::nullptr_type) };
+    if (node.name == "arena") return type_type{ make_value<type_name>(type_arena{}) };
+    return null_type();
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
