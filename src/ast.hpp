@@ -235,8 +235,6 @@ struct node_expr : std::variant<
     node_function_ptr_type_expr,
     node_const_expr,
     node_builtin_name_expr,
-
-    // Lvalue expressions
     node_name_expr,
     node_field_expr,
     node_deref_expr,

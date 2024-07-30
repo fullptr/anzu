@@ -1299,10 +1299,13 @@ auto compile_function(
     auto& sig = current(com).sig;
     for (const auto& arg : node_sig.params) {
         const auto type = type_of_expr(com, *arg.type);
-        declare_var(com, tok, arg.name, type);
-        sig.params.push_back(type);
+        tok.assert(type.is_type_value(), "type of param is not a type expression");
+        declare_var(com, tok, arg.name, inner_type(type));
+        sig.params.push_back(inner_type(type));
     }
-    sig.return_type = type_of_expr(com, *node_sig.return_type);
+    const auto ret_val = type_of_expr(com, *node_sig.return_type);
+    tok.assert(ret_val.is_type_value(), "return type is not a type expression");
+    sig.return_type = inner_type(ret_val);
 
     push_stmt(com, *body);
 

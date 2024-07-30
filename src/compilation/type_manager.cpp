@@ -28,7 +28,6 @@ auto type_manager::contains(const type_name& type) const -> bool
 
 auto type_manager::size_of(const type_name& type) const -> std::size_t
 {
-    std::print("getting size of {}\n", type);
     return std::visit(overloaded{
         [](type_fundamental t) -> std::size_t {
             switch (t) {
