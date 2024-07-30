@@ -89,6 +89,7 @@ auto resolve_templates(compiler& com, const type_name& type) -> type_name
         [&](const type_ptr& t)        { return type_name{type_ptr{resolve_templates(com, *t.inner_type)}}; },
         [&](const type_function_ptr&) { return type; }, // TODO: resolve function ptr types too
         [&](const type_arena&)        { return try_resolve(type); },
+        [&](const type_type&)         { return type; } // compile
     }, type);
 }
 

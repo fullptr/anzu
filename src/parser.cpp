@@ -368,23 +368,23 @@ auto parse_simple_type(tokenstream& tokens) -> type_name
     return {type_struct{ .name=std::string{tok.text} }};
 }
 
-auto parse_type_inner(tokenstream& tokens) -> type_name
+auto parse_type(tokenstream& tokens) -> type_name
 {
     // Function pointers
     if (tokens.consume_maybe(token_type::kw_function)) {
         tokens.consume_only(token_type::left_paren);
         auto ret = type_function_ptr{};
         tokens.consume_comma_separated_list(token_type::right_paren, [&]{
-            ret.param_types.push_back(parse_type_inner(tokens));
+            ret.param_types.push_back(parse_type(tokens));
         });
         tokens.consume_only(token_type::arrow);
-        ret.return_type = make_value<type_name>(parse_type_inner(tokens));
+        ret.return_type = make_value<type_name>(parse_type(tokens));
         return ret;
     }
 
     auto type = null_type();
     if (tokens.consume_maybe(token_type::left_paren)) {
-        type = parse_type_inner(tokens);
+        type = parse_type(tokens);
         tokens.consume_only(token_type::right_paren);
     } else {
         type = parse_simple_type(tokens);
@@ -409,44 +409,6 @@ auto parse_type_inner(tokenstream& tokens) -> type_name
         else {
             break;
         }
-    }
-    return type;
-}
-
-auto validate_type_inner(const type_name& type) -> std::optional<std::string_view>
-{
-    using Ret = std::optional<std::string_view>;
-    return std::visit(overloaded{
-        [](type_fundamental) { return Ret{}; },
-        [](const type_struct&) { return Ret{}; },
-        [](const type_array& t) { return validate_type_inner(*t.inner_type); },
-        [](const type_ptr& t) { return validate_type_inner(*t.inner_type); },
-        [](const type_span& t) { return validate_type_inner(*t.inner_type); },
-        [](const type_function_ptr& t) {
-            for (const auto& param : t.param_types) {
-                const auto err = validate_type_inner(param);
-                if (err) {
-                    return Ret{"invalid function param of fn ptr type"};
-                }
-            }
-            const auto err = validate_type_inner(*t.return_type);
-            if (err) {
-                return Ret{"invalid return type of fn ptr type"};
-            }
-            return Ret{};
-        },
-        [](const type_arena&) { return Ret{}; }
-    }, type);
-}
-
-// Parses a type, then checks it's valid (no internal references)
-auto parse_type(tokenstream& tokens) -> type_name
-{
-    const auto token = tokens.curr();
-    const auto type = parse_type_inner(tokens);
-    const auto err = validate_type_inner(type);
-    if (err) {
-        token.error("Invalid type ({}) - {}", type, *err);
     }
     return type;
 }

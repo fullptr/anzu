@@ -111,6 +111,10 @@ auto to_string(const type_arena& type) -> std::string
     return std::string{"arena"};
 }
 
+auto to_string(const type_type& type) -> std::string
+{
+    return std::format("type[[ actual={} ]]", *type.type_val);
+}
 
 auto hash(const type_name& type) -> std::size_t
 {
@@ -157,6 +161,12 @@ auto hash(const type_arena& type) -> std::size_t
 {
     static const auto base = std::hash<std::string_view>{}("type_arena");
     return base;
+}
+
+auto hash(const type_type& type) -> std::size_t
+{
+    static const auto base = std::hash<std::string_view>{}("type_arena");
+    return hash(*type.type_val) ^ base;
 }
 
 auto hash(std::span<const type_name> types) -> std::size_t

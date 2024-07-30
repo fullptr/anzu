@@ -273,18 +273,14 @@ auto print_node(const node_stmt& root, int indent) -> void
     }, root);
 }
 
-auto print_node(const anzu::node_type& root, int indent) -> void
+auto print_node(const node_type& root, int indent) -> void
 {
-    const auto spaces = std::string(4 * indent, ' ');
-    std::visit(overloaded {
-        [&](const node_named_type& node) {
-            print("{}NamedType: {}\n", spaces, node.type);
-        },
-        [&](const node_expr_type& node) {
-            print("{}ExprType:\n", spaces);
-            print_node(*node.expr, indent + 1);
-        }
-    }, root);
+    std::print("not implemented");
+}
+
+auto to_string(const node_type& node) -> std::string
+{
+    return "not implemented";
 }
 
 auto is_lvalue_expr(const node_expr& expr) -> bool
@@ -298,18 +294,6 @@ auto is_lvalue_expr(const node_expr& expr) -> bool
 auto is_rvalue_expr(const node_expr& expr) -> bool
 {
     return !is_lvalue_expr(expr);
-}
-
-auto to_string(const node_type& node) -> std::string
-{
-    return std::visit(overloaded{
-        [&](const node_named_type& n) {
-            return to_string(n.type);
-        },
-        [&](const node_expr_type& n) {
-            return std::string{"typeof(<expr>)"};
-        }
-    }, node);
 }
 
 }
