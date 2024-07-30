@@ -368,7 +368,7 @@ auto parse_simple_type(tokenstream& tokens) -> type_name
     return {type_struct{ .name=std::string{tok.text} }};
 }
 
-auto parse_type(tokenstream& tokens) -> type_name
+auto parse_type(tokenstream& tokens) -> node_expr_ptr
 {
     // Function pointers
     if (tokens.consume_maybe(token_type::kw_function)) {
@@ -413,11 +413,11 @@ auto parse_type(tokenstream& tokens) -> type_name
     return type;
 }
 
-auto parse_type_node(tokenstream& tokens) -> node_type_ptr
+auto parse_type_node(tokenstream& tokens) -> node_expr_ptr
 {
     if (tokens.peek(token_type::kw_typeof)) {
-        auto node = std::make_shared<node_type>();
-        auto& inner = node->emplace<node_expr_type>();
+        auto node = std::make_shared<node_expr>();
+        auto& inner = node->emplace<node_typeof_expr>();
         inner.token = tokens.consume();
         tokens.consume_only(token_type::left_paren);
         inner.expr = parse_expression(tokens);
@@ -425,8 +425,7 @@ auto parse_type_node(tokenstream& tokens) -> node_type_ptr
         return node;
     }
 
-    const auto type = parse_type(tokens);
-    return std::make_shared<node_type>(node_named_type{type});
+    return parse_type(tokens);
 }
 
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
