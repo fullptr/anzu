@@ -143,7 +143,6 @@ auto push_function_call(compiler& com, const function_info& function) -> void
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
-    std::print("name = {} type = {}\n", name, type);
     if (!current(com).variables.declare(name, type, com.types.size_of(type))) {
         tok.error("name already in use: '{}'", name);
     }
@@ -878,8 +877,9 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) { // Could this be changed to allow for passing in a type?
-        node.token.error("invalid use of type expressions");
+    if (std::holds_alternative<type_type>(type)) {
+        push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
+        return u64_type();
     }
     push_value(code(com), op::push_u64, com.types.size_of(type));
     return u64_type();

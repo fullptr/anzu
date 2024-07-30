@@ -103,20 +103,20 @@ auto parse_type(tokenstream& tokens) -> node_expr_ptr;
 
 auto parse_literal(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto token = tokens.consume();
+    const auto token = tokens.curr();
     switch (token.type) {
-        case token_type::int32:      return parse_i32(token);
-        case token_type::int64:      return parse_i64(token);
-        case token_type::uint64:     return parse_u64(token);
-        case token_type::float64:    return parse_f64(token);
-        case token_type::character:  return parse_char(token);
-        case token_type::kw_true:    return parse_bool(token);
-        case token_type::kw_false:   return parse_bool(token);
-        case token_type::kw_null:    return parse_null(token);
-        case token_type::kw_nullptr: return parse_nullptr(token);
-        case token_type::string:     return parse_string(token);
+        case token_type::int32:      return parse_i32(tokens.consume());
+        case token_type::int64:      return parse_i64(tokens.consume());
+        case token_type::uint64:     return parse_u64(tokens.consume());
+        case token_type::float64:    return parse_f64(tokens.consume());
+        case token_type::character:  return parse_char(tokens.consume());
+        case token_type::kw_true:    return parse_bool(tokens.consume());
+        case token_type::kw_false:   return parse_bool(tokens.consume());
+        case token_type::kw_null:    return parse_null(tokens.consume());
+        case token_type::kw_nullptr: return parse_nullptr(tokens.consume());
+        case token_type::string:     return parse_string(tokens.consume());
     }
-    token.error("failed to parse literal ({})", token.text);
+    return parse_type(tokens); // the literal may be a type
 };
 
 static constexpr auto prec_none = 0;
@@ -375,7 +375,7 @@ auto parse_simple_type(tokenstream& tokens) -> node_expr_ptr
             inner.name = std::string{token.text};
         } break;
         default: {
-            tokens.curr().error("invalid token to parse as a simple_type");
+            token.error("invalid token to parse as a simple_type {}", token.type);
         } break;
     }
 
