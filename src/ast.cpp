@@ -145,7 +145,7 @@ auto print_node(const node_expr& root, int indent) -> void
             std::print("TODO: Add implementation for node_const_expr printing");
         },
         [&](const node_builtin_name_expr& node) {
-            std::print("TODO: Add implementation for node_builtin_name_expr");
+            std::print("{}BuiltinName: {}\n", spaces, node.name);
         },
     }, root);
 }
@@ -194,10 +194,12 @@ auto print_node(const node_stmt& root, int indent) -> void
             std::print("{}Struct:\n", spaces);
             std::print("{}- Name: {}\n", spaces, node.name);
             std::print("{}- Fields: (TODO: add printing)\n", spaces);
-            
-            //for (const auto& field : node.fields) {
-            //    std::print("{}  - {}: {}\n", spaces, field.name, *field.type);
-            //}
+
+            std::print("{}- FunctionArguments:\n", spaces);
+            for (const auto& field : node.fields) {
+                std::print("    {}:\n", field.name);
+                print_node(*field.type, indent + 1);
+            }
             std::print("{}- MemberFunctions:\n", spaces);
             for (const auto& function : node.functions) {
                 print_node(*function, indent + 1);
@@ -240,11 +242,14 @@ auto print_node(const node_stmt& root, int indent) -> void
                 });
                 std::print("|");
             }
-            std::print("( (TODO: add printing) ");
-            //print_comma_separated(node.sig.params, [](const auto& arg) {
-            //    return std::format("{}: {}", arg.name, *arg.type);
-            //});
-            std::print(") -> {}\n", /**node.sig.return_type*/"TODO: add printing");
+            std::print("{}- FunctionArguments:\n", spaces);
+            for (const auto& param : node.sig.params) {
+                std::print("    {}:\n", param.name);
+                print_node(*param.type, indent + 1);
+            }
+            std::print("{}- ReturnType:\n", spaces);
+            print_node(*node.sig.return_type, indent + 1);
+            std::print("{}- Body\n", spaces);
             print_node(*node.body, indent + 1);
         },
         [&](const node_member_function_def_stmt& node) {
@@ -256,11 +261,14 @@ auto print_node(const node_stmt& root, int indent) -> void
                 });
                 std::print("|");
             }
-            std::print("( (TODO: add printing) ");
-            //print_comma_separated(node.sig.params, [](const auto& arg) {
-            //    return std::format("{}: {}", arg.name, *arg.type);
-            //});
-            //std::print(") -> {}\n", *node.sig.return_type);
+            std::print("{}- FunctionArguments:\n", spaces);
+            for (const auto& param : node.sig.params) {
+                std::print("    {}:\n", param.name);
+                print_node(*param.type, indent + 1);
+            }
+            std::print("{}- ReturnType:\n", spaces);
+            print_node(*node.sig.return_type, indent + 1);
+            std::print("{}- Body\n", spaces);
             print_node(*node.body, indent + 1);
         },
         [&](const node_expression_stmt& node) {
