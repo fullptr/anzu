@@ -143,6 +143,7 @@ auto push_function_call(compiler& com, const function_info& function) -> void
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
+    std::print("name = {} type = {}\n", name, type);
     if (!current(com).variables.declare(name, type, com.types.size_of(type))) {
         tok.error("name already in use: '{}'", name);
     }

@@ -1,4 +1,5 @@
 
-var x : i64[4u] = [1, 2, 3, 4];
-
-print("{}\n", x[3u]);
+fn typeof_example2(a: u64) -> typeof(a)
+{
+    return a * a;
+}
