@@ -1236,8 +1236,14 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    auto type = node.explicit_type ? type_of_expr(com, *node.explicit_type)
-                                   : type_of_expr(com, *node.expr);
+    auto type = null_type();
+    if (node.explicit_type) {
+        const auto explicit_type = type_of_expr(com, *node.explicit_type);
+        node.token.assert(explicit_type.is_type_value(), "expected an expression that evaluates to a type");
+        type = inner_type(explicit_type);
+    } else {
+        type = type_of_expr(com, *node.expr);
+    }
     type.is_const = node.add_const;
 
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");

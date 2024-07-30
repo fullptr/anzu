@@ -270,6 +270,11 @@ auto type_name::is_arena() const -> bool
     return std::holds_alternative<type_arena>(*this);
 }
 
+auto type_name::is_type_value() const -> bool
+{
+    return std::holds_alternative<type_type>(*this);
+}
+
 auto inner_type(const type_name& t) -> type_name
 {
     if (t.is_array()) {
@@ -278,8 +283,11 @@ auto inner_type(const type_name& t) -> type_name
     if (t.is_span()) {
         return *std::get<type_span>(t).inner_type; 
     }
+    if (t.is_type_value()) {
+        return *std::get<type_type>(t).type_val; 
+    }
     panic("tried to get the inner type of an invalid type category, "
-          "can only get the inner type for arrays and spans");
+          "can only get the inner type for arrays, spans and type values");
 }
 
 auto array_length(const type_name& t) -> std::size_t

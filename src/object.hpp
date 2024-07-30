@@ -109,6 +109,8 @@ struct type_name : public std::variant<
 
     [[nodiscard]] auto is_function_ptr() const -> bool;
     [[nodiscard]] auto is_arena() const -> bool;
+
+    [[nodiscard]] auto is_type_value() const -> bool;
 };
 
 auto hash(const type_name& type) -> std::size_t;
