@@ -1316,7 +1316,7 @@ auto compile_function(
     for (const auto& arg : node_sig.params) {
         const auto type = resolve_type_expr(com, tok, arg.type);
         declare_var(com, tok, arg.name, type);
-        sig.params.push_back(inner_type(type));
+        sig.params.push_back(type);
     }
     if (node_sig.return_type) {
         sig.return_type = resolve_type_expr(com, tok, node_sig.return_type);

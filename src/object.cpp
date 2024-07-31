@@ -287,7 +287,7 @@ auto inner_type(const type_name& t) -> type_name
         return *std::get<type_type>(t).type_val; 
     }
     panic("tried to get the inner type of an invalid type category, "
-          "can only get the inner type for arrays, spans and type values");
+          "can only get the inner type for arrays, spans and type values, type={}", t);
 }
 
 auto array_length(const type_name& t) -> std::size_t
