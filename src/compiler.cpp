@@ -274,17 +274,14 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
     }
 
     // The name may be a type
-    const auto type = make_type(com, node.name);
-    if (com.types.contains(type)) {
+    if (const auto type = make_type(com, node.name); com.types.contains(type)) {
         return type_type{type};
     }
 
-    const auto t = push_expr_ptr(com, node);
-    if (std::holds_alternative<type_type>(t)) {
-        node.token.error("invalid use of type expressions");
-    }
-    push_value(code(com), op::load, com.types.size_of(t));
-    return t;
+    const auto type = push_expr_ptr(com, node);
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
+    push_value(code(com), op::load, com.types.size_of(type));
+    return type;
 }
 
 // Given a type, push the number of op::load calls required to dereference away all the pointers.
@@ -418,9 +415,7 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     auto rhs = push_expr_val(com, *node.rhs);
 
     // TODO: Implement using == for comparing types
-    if (std::holds_alternative<type_type>(lhs) || std::holds_alternative<type_type>(rhs)) {
-        node.token.error("invalid use of type expression");
-    }
+    node.token.assert(!lhs.is_type_value() && !rhs.is_type_value(), "invalid use of type expression");
 
     // Pointers can compare to nullptr
     if ((lhs.is_ptr() && rhs == nullptr_type()) || (rhs.is_ptr() && lhs == nullptr_type())) {
@@ -521,9 +516,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     using tt = token_type;
     const auto type = push_expr_val(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
-        node.token.error("invalid use of type expression");
-    }
+    node.token.assert(!type.is_type_value(), "invalid use of type expression");
 
     switch (node.token.type) {
         case tt::minus: {
@@ -704,9 +697,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
-        node.token.error("invalid use of type expressions");
-    }
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
 
     const auto struct_type = [&] {
         auto t = type;
@@ -833,9 +824,7 @@ auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
     node.token.assert(!node.elements.empty(), "cannot have empty array literals");
 
     const auto inner_type = push_expr_val(com, *node.elements.front());
-    if (std::holds_alternative<type_type>(inner_type)) {
-        node.token.error("invalid use of type expressions");
-    }
+    node.token.assert(!inner_type.is_type_value(), "invalid use of type expressions");
     for (const auto& element : node.elements | std::views::drop(1)) {
         const auto element_type = push_expr_val(com, *element);
         node.token.assert_eq(element_type, inner_type, "array has mismatching element types");
@@ -848,9 +837,7 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
     node.token.assert(node.size != 0, "cannot have empty array literals");
 
     const auto inner_type = type_of_expr(com, *node.value);
-    if (std::holds_alternative<type_type>(inner_type)) {
-        node.token.error("invalid use of type expressions");
-    }
+    node.token.assert(!inner_type.is_type_value(), "invalid use of type expressions");
     for (std::size_t i = 0; i != node.size; ++i) {
         push_expr_val(com, *node.value);
     }
@@ -860,10 +847,9 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
 auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
+    if (type.is_type_value()) {
         return type_type{std::get<type_type>(type).type_val->add_ptr()};
     }
-
     push_expr_ptr(com, *node.expr);
     return type.add_ptr();
 }
@@ -871,11 +857,11 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
+    if (type.is_type_value()) { // can call sizeof on a type directly
         push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
-        return u64_type();
+    } else {
+        push_value(code(com), op::push_u64, com.types.size_of(type));
     }
-    push_value(code(com), op::push_u64, com.types.size_of(type));
     return u64_type();
 }
 
@@ -886,7 +872,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     }
 
     const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
+    if (type.is_type_value()) {
         if (node.lower_bound || node.upper_bound) { // should not be possible since the parser doesn't allow it
             node.token.error("cannot specify lower and upper bounds when declaring a span type");
         }
@@ -937,9 +923,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_field_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
-        node.token.error("invalid use of type expressions");
-    }
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
     const auto t = push_expr_ptr(com, node);
     push_value(code(com), op::load, com.types.size_of(t));
     return t;
@@ -948,9 +932,7 @@ auto push_expr_val(compiler& com, const node_field_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (std::holds_alternative<type_type>(type)) {
-        node.token.error("invalid use of type expressions");
-    }
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
     const auto t = push_expr_ptr(com, node);
     push_value(code(com), op::load, com.types.size_of(t));
     return t;
@@ -990,9 +972,7 @@ auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> ty
 auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    if (!std::holds_alternative<type_type>(type)) {
-        node.token.error("invalid use of a const-expr");   
-    }
+    node.token.assert(type.is_type_value(), "invalid use of a const-expr");
     auto inner = *std::get<type_type>(type).type_val;
     inner.is_const = true;
     return type_type{inner};
