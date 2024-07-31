@@ -848,7 +848,7 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_type_value()) {
-        return type_type{std::get<type_type>(type).type_val->add_ptr()};
+        return type_type{inner_type(type).add_ptr()};
     }
     push_expr_ptr(com, *node.expr);
     return type.add_ptr();
@@ -876,7 +876,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         if (node.lower_bound || node.upper_bound) { // should not be possible since the parser doesn't allow it
             node.token.error("cannot specify lower and upper bounds when declaring a span type");
         }
-        return type_type{std::get<type_type>(type).type_val->add_span()};
+        return type_type{inner_type(type).add_span()};
     }
 
     node.token.assert(
@@ -973,9 +973,7 @@ auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
     node.token.assert(type.is_type_value(), "invalid use of a const-expr");
-    auto inner = *std::get<type_type>(type).type_val;
-    inner.is_const = true;
-    return type_type{inner};
+    return type_type{inner_type(type).add_const()};
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
