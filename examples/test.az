@@ -3,6 +3,8 @@ struct foo
     x: i64;
 }
 
-var f := foo(1);
-__dump_type(f, f.x);
-print("{}\n", f.x);
+fn test(g: foo) { }
+
+#var f := foo(1);
+#__dump_type(f, f.x);
+#print("{}\n", f.x);

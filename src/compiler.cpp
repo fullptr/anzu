@@ -99,6 +99,11 @@ auto make_type(compiler& com, const std::string& name) -> type_name
     return resolve_templates(com, simple);
 }
 
+auto resolve_type(compiler& com, token& tok, const node_expr_ptr& expr) -> type_name
+{
+
+}
+
 auto full_function_name(
     compiler& com,
     const type_name& struct_name,
@@ -281,12 +286,18 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
         return ptr_type;
     }
 
-    const auto type = push_expr_ptr(com, node);
-    if (std::holds_alternative<type_type>(type)) {
+    // The name may be a type
+    const auto type = make_type(com, node.name);
+    if (com.types.contains(type)) {
+        return type_type{type};
+    }
+
+    const auto t = push_expr_ptr(com, node);
+    if (std::holds_alternative<type_type>(t)) {
         node.token.error("invalid use of type expressions");
     }
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
+    push_value(code(com), op::load, com.types.size_of(t));
+    return t;
 }
 
 // Given a type, push the number of op::load calls required to dereference away all the pointers.
@@ -1016,6 +1027,7 @@ auto push_expr_val(compiler& com, const node_builtin_name_expr& node) -> type_na
     if (node.name == "f64") return type_type{ make_value<type_name>(type_fundamental::f64_type) };
     if (node.name == "nullptr") return type_type{ make_value<type_name>(type_fundamental::nullptr_type) };
     if (node.name == "arena") return type_type{ make_value<type_name>(type_arena{}) };
+    node.token.error("unknown builtin name: {}", node.name);
     return null_type();
 }
 
@@ -1311,9 +1323,13 @@ auto compile_function(
         declare_var(com, tok, arg.name, inner_type(type));
         sig.params.push_back(inner_type(type));
     }
-    const auto ret_val = type_of_expr(com, *node_sig.return_type);
-    tok.assert(ret_val.is_type_value(), "return type is not a type expression");
-    sig.return_type = inner_type(ret_val);
+    if (node_sig.return_type) {
+        const auto ret_val = type_of_expr(com, *node_sig.return_type);
+        tok.assert(ret_val.is_type_value(), "return type is not a type expression");
+        sig.return_type = inner_type(ret_val);
+    } else {
+        sig.return_type = null_type();
+    }
 
     push_stmt(com, *body);
 
