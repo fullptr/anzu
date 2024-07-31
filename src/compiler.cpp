@@ -100,6 +100,7 @@ auto resolve_type_expr(compiler& com, const token& tok, const node_expr_ptr& exp
 
 auto full_function_name(
     compiler& com,
+    const token& tok,
     const type_name& struct_name,
     const std::string& function_name,
     const std::vector<node_expr_ptr>& template_args = {}
@@ -110,15 +111,9 @@ auto full_function_name(
         return std::format("{}::{}", struct_name.remove_const(), function_name);
     }
 
-    const auto type_token = [](const node_expr& t) {
-        return std::visit([](const auto& inner) { return inner.token; }, t);
-    };
-
     const auto template_args_string = format_comma_separated(
-        template_args,
-        [&](const node_expr_ptr& typenode) { return type_of_expr(com, *typenode); }
+        template_args, [&](const node_expr_ptr& n) { return resolve_type_expr(com, tok, n); }
     );
-    
     return std::format("{}::{}|{}|", struct_name.remove_const(), function_name, template_args_string);
 }
 
@@ -255,7 +250,7 @@ auto push_assert(compiler& com, std::string_view message) -> void
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
-    const auto full_name = full_function_name(com, global_namespace, node.name);
+    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
     if (auto func = get_function(com, full_name)) {
         node.token.error("cannot take address of a function pointer");
     }
@@ -265,7 +260,7 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
-    const auto full_name = full_function_name(com, global_namespace, node.name);
+    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
     if (auto func = get_function(com, full_name)) {
         const auto& info = *func;
         push_value(code(com), op::push_u64, info.id);
@@ -643,7 +638,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return null_type();
         }
 
-        const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
+        const auto full_name = full_function_name(com, node.token, global_namespace, inner.name, node.template_args);
 
         // Second, this might be a template function with this being the first time we're calling it with
         // specific types, so we need to compile that instantiation before we can call it
@@ -793,8 +788,8 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         }
     }
 
-    const auto full_name_no_templates = full_function_name(com, struct_type, node.function_name);
-    const auto full_name = full_function_name(com, struct_type, node.function_name, node.template_args);
+    const auto full_name_no_templates = full_function_name(com, node.token, struct_type, node.function_name);
+    const auto full_name = full_function_name(com, node.token, struct_type, node.function_name, node.template_args);
 
     // If this is a template call, it may need to compile the function first.
     if (!node.template_args.empty() && com.member_function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
@@ -1320,7 +1315,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
             node.token.error("function template named '{}' already defined", node.name);
         }
     } else {
-        const auto full_name = full_function_name(com, global_namespace, node.name);
+        const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
         compile_function(com, node.token, full_name, node.sig, node.body);
     }
 }
@@ -1344,7 +1339,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     // We always ignore the template types here because it is either not a template function and so
     // this is in fact the full name, or it is and we use this as the key for the function_templates
     // map which is just the name without the template section.
-    const auto full_name = full_function_name(com, struct_type, node.function_name);
+    const auto full_name = full_function_name(com, node.token, struct_type, node.function_name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.template_types.empty()) {

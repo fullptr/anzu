@@ -1,5 +1,4 @@
 
-struct foo
-{}
+fn foo|T, T|() {}
 
-let f := foo();
+foo|i64, f64|();
