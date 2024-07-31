@@ -1,3 +1,10 @@
 
+fn func(x: i64, y: i64) -> u64 { return 10u; }
 
-(fn() -> u64) = 10;
+fn bar() -> fn(i64, i64) -> u64
+{
+    return func;
+}
+
+let f := bar();
+print("{}\n", f(1, 2));

@@ -139,10 +139,17 @@ auto print_node(const node_expr& root, int indent) -> void
             std::print("TODO: Add implementation for node_typeof_expr printing");
         },
         [&](const node_function_ptr_type_expr& node) {
-            std::print("TODO: Add implementation for node_function_ptr_type_expr printing");
+            std::print("{}FunctionPtrType:\n", spaces);
+            std::print("{}- Params:\n", spaces);
+            for (const auto& param : node.params) {
+                print_node(*param, indent + 1);
+            }
+            std::print("{}- ReturnType:\n", spaces);
+            print_node(*node.return_type, indent + 1);
         },
         [&](const node_const_expr& node) {
-            std::print("TODO: Add implementation for node_const_expr printing");
+            std::print("{}Const:\n", spaces);
+            print_node(*node.expr, indent + 1);
         },
         [&](const node_builtin_name_expr& node) {
             std::print("{}BuiltinName: {}\n", spaces, node.name);
