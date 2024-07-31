@@ -873,9 +873,6 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_type_value()) {
-        if (node.lower_bound || node.upper_bound) { // should not be possible since the parser doesn't allow it
-            node.token.error("cannot specify lower and upper bounds when declaring a span type");
-        }
         return type_type{inner_type(type).add_span()};
     }
 
