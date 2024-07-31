@@ -943,8 +943,9 @@ auto push_expr_val(compiler& com, const node_field_expr& node) -> type_name
     if (std::holds_alternative<type_type>(type)) {
         node.token.error("invalid use of type expressions");
     }
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
+    const auto t = push_expr_ptr(com, node);
+    push_value(code(com), op::load, com.types.size_of(t));
+    return t;
 }
 
 auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
@@ -953,8 +954,9 @@ auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
     if (std::holds_alternative<type_type>(type)) {
         node.token.error("invalid use of type expressions");
     }
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
+    const auto t = push_expr_ptr(com, node);
+    push_value(code(com), op::load, com.types.size_of(t));
+    return t;
 }
 
 auto push_expr_val(compiler& com, const node_subscript_expr& node) -> type_name
@@ -1215,7 +1217,9 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 
     auto fields = std::vector<type_field>{};
     for (const auto& p : node.fields) {
-        fields.emplace_back(type_field{ .name=p.name, .type=type_of_expr(com, *p.type) });
+        const auto field_type = type_of_expr(com, *p.type);
+        node.token.assert(field_type.is_type_value(), "expected type expression");
+        fields.emplace_back(type_field{ .name=p.name, .type=inner_type(field_type) });
     }
 
     com.types.add(make_type(com, node.name), fields);

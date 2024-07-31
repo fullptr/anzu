@@ -1,2 +1,8 @@
+struct foo
+{
+    x: i64;
+}
 
-print("{}\n", sizeof(u64[]));
+var f := foo(1);
+__dump_type(f, f.x);
+print("{}\n", f.x);
