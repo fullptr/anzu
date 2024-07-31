@@ -1,4 +1,6 @@
-
-fn foo|T, T|() {}
-
-foo|i64, f64|();
+fn foo|T|(ptr: T const&) 
+{
+    print("{}\n", ptr);
+}
+let x := 10;
+foo|i64|(x&);
