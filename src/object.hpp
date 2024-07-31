@@ -68,6 +68,13 @@ struct type_arena
     auto operator==(const type_arena&) const -> bool = default;
 };
 
+// Represents a type as a value along with the compile-time value
+struct type_type
+{
+    value_ptr<type_name> type_val;
+    auto operator==(const type_type&) const -> bool = default;
+};
+
 
 struct type_name : public std::variant<
     type_fundamental,
@@ -76,7 +83,8 @@ struct type_name : public std::variant<
     type_ptr,
     type_span,
     type_function_ptr,
-    type_arena>
+    type_arena,
+    type_type>
 {
     using variant::variant;
     
@@ -101,6 +109,8 @@ struct type_name : public std::variant<
 
     [[nodiscard]] auto is_function_ptr() const -> bool;
     [[nodiscard]] auto is_arena() const -> bool;
+
+    [[nodiscard]] auto is_type_value() const -> bool;
 };
 
 auto hash(const type_name& type) -> std::size_t;
@@ -111,11 +121,12 @@ auto hash(const type_ptr& type) -> std::size_t;
 auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
+auto hash(const type_type& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
 using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
 
 // Used for resolving template types. In the future could also be used for type aliases
-using template_map = std::unordered_map<type_name, type_name, type_hash>;
+using template_map = std::unordered_map<std::string, type_name>;
 
 auto null_type() -> type_name;
 auto nullptr_type() -> type_name;
@@ -143,6 +154,7 @@ auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
 auto to_string(const type_arena& type) -> std::string;
+auto to_string(const type_type& type) -> std::string;
 
 }
 

@@ -73,56 +73,37 @@ auto finish_function(compiler& com)
     com.current_compiling.pop_back();
 }
 
-auto resolve_templates(compiler& com, const type_name& type) -> type_name
-{
-    const auto& map = current(com).template_types;
-    const auto try_resolve = [&](const type_name& t) {
-        if (auto it = map.find(type); it != map.end()) return it->second;
-        return type;
-    };
-
-    return std::visit(overloaded{
-        [&](type_fundamental)         { return try_resolve(type); },
-        [&](const type_struct& t)     { return try_resolve(type); },
-        [&](const type_array& t)      { return type_name{type_array{resolve_templates(com, *t.inner_type), t.count}}; },
-        [&](const type_span& t)       { return type_name{type_span{resolve_templates(com, *t.inner_type)}}; },
-        [&](const type_ptr& t)        { return type_name{type_ptr{resolve_templates(com, *t.inner_type)}}; },
-        [&](const type_function_ptr&) { return type; }, // TODO: resolve function ptr types too
-        [&](const type_arena&)        { return try_resolve(type); },
-    }, type);
-}
-
 auto make_type(compiler& com, const std::string& name) -> type_name
 {
-    const auto simple = type_name{ type_struct{ .name=name } };
-    return resolve_templates(com, simple);
+    const auto& map = current(com).template_types;
+    if (auto it = map.find(name); it != map.end()) return it->second;
+    if (name == "null") return type_name(type_fundamental::null_type);
+    if (name == "bool") return type_name(type_fundamental::bool_type);
+    if (name == "char") return type_name(type_fundamental::char_type);
+    if (name == "i32") return  type_name(type_fundamental::i32_type);
+    if (name == "i64") return  type_name(type_fundamental::i64_type);
+    if (name == "u64") return  type_name(type_fundamental::u64_type);
+    if (name == "f64") return  type_name(type_fundamental::f64_type);
+    if (name == "nullptr") return type_name(type_fundamental::nullptr_type);
+    if (name == "arena") return type_name(type_arena{});
+    return type_struct{ .name=name };
 }
 
-auto resolve_type(compiler& com, const token& tok, const node_type_ptr& type) -> type_name
+// If the given expression results in a type expression, return the inner type.
+// Otherwise program is ill-formed.
+auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) -> type_name
 {
-    if (!type) {
-        return global_namespace;
-    }
-
-    const auto resolved_type = std::visit(overloaded {
-        [&](const node_named_type& node) {
-            return node.type;
-        },
-        [&](const node_expr_type& node) {
-            return type_of_expr(com, *node.expr);
-        }
-    }, *type);
-
-    const auto ret = resolve_templates(com, resolved_type);
-    tok.assert(com.types.contains(ret), "{} is not a recognised type", ret);
-    return ret;
+    const auto type_expr_type = type_of_expr(com, *expr);
+    tok.assert(type_expr_type.is_type_value(), "expected type expression, got {}", type_expr_type);
+    return inner_type(type_expr_type);
 }
 
 auto full_function_name(
     compiler& com,
+    const token& tok,
     const type_name& struct_name,
     const std::string& function_name,
-    const std::vector<node_type_ptr>& template_args = {}
+    const std::vector<node_expr_ptr>& template_args = {}
 )
     -> std::string
 {
@@ -130,15 +111,9 @@ auto full_function_name(
         return std::format("{}::{}", struct_name.remove_const(), function_name);
     }
 
-    const auto type_token = [](const node_type& t) {
-        return std::visit([](const auto& inner) { return inner.token; }, t);
-    };
-
     const auto template_args_string = format_comma_separated(
-        template_args,
-        [&](const node_type_ptr& typenode) { return resolve_type(com, type_token(*typenode), typenode); }
+        template_args, [&](const node_expr_ptr& n) { return resolve_type(com, tok, n); }
     );
-    
     return std::format("{}::{}|{}|", struct_name.remove_const(), function_name, template_args_string);
 }
 
@@ -275,7 +250,7 @@ auto push_assert(compiler& com, std::string_view message) -> void
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
-    const auto full_name = full_function_name(com, global_namespace, node.name);
+    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
     if (auto func = get_function(com, full_name)) {
         node.token.error("cannot take address of a function pointer");
     }
@@ -283,11 +258,9 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
     return push_var_addr(com, node.token, node.name);
 }
 
-// I think this is a bit of a hack; when pushing the value of a function pointer, we need
-// to do it in a special way.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
-    const auto full_name = full_function_name(com, global_namespace, node.name);
+    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
     if (auto func = get_function(com, full_name)) {
         const auto& info = *func;
         push_value(code(com), op::push_u64, info.id);
@@ -300,8 +273,13 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
         return ptr_type;
     }
 
-    // This is the default logic for pushing an lvalue.
+    // The name may be a type
+    if (const auto type = make_type(com, node.name); com.types.contains(type)) {
+        return type_type{type};
+    }
+
     const auto type = push_expr_ptr(com, node);
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
     push_value(code(com), op::load, com.types.size_of(type));
     return type;
 }
@@ -436,6 +414,9 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     auto lhs = push_expr_val(com, *node.lhs);
     auto rhs = push_expr_val(com, *node.rhs);
 
+    // TODO: Implement using == for comparing types
+    node.token.assert(!lhs.is_type_value() && !rhs.is_type_value(), "invalid use of type expression");
+
     // Pointers can compare to nullptr
     if ((lhs.is_ptr() && rhs == nullptr_type()) || (rhs.is_ptr() && lhs == nullptr_type())) {
         switch (node.token.type) {
@@ -535,7 +516,7 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
 {
     using tt = token_type;
     const auto type = push_expr_val(com, *node.expr);
-    print_node(*node.expr);
+    node.token.assert(!type.is_type_value(), "invalid use of type expression");
 
     switch (node.token.type) {
         case tt::minus: {
@@ -650,7 +631,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             return null_type();
         }
 
-        const auto full_name = full_function_name(com, global_namespace, inner.name, node.template_args);
+        const auto full_name = full_function_name(com, node.token, global_namespace, inner.name, node.template_args);
 
         // Second, this might be a template function with this being the first time we're calling it with
         // specific types, so we need to compile that instantiation before we can call it
@@ -664,9 +645,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             }
 
             auto map = template_map{};
-            for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
-                const auto expected = make_type(com, expected_str);
-                if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
+            for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
                 const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
                 if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
             }
@@ -718,6 +697,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
 
     const auto struct_type = [&] {
         auto t = type;
@@ -799,8 +779,8 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         }
     }
 
-    const auto full_name_no_templates = full_function_name(com, struct_type, node.function_name);
-    const auto full_name = full_function_name(com, struct_type, node.function_name, node.template_args);
+    const auto full_name_no_templates = full_function_name(com, node.token, struct_type, node.function_name);
+    const auto full_name = full_function_name(com, node.token, struct_type, node.function_name, node.template_args);
 
     // If this is a template call, it may need to compile the function first.
     if (!node.template_args.empty() && com.member_function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
@@ -813,9 +793,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         }
 
         auto map = template_map{};
-        for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
-            const auto expected = make_type(com, expected_str);
-            if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
+        for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
@@ -846,6 +824,7 @@ auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
     node.token.assert(!node.elements.empty(), "cannot have empty array literals");
 
     const auto inner_type = push_expr_val(com, *node.elements.front());
+    node.token.assert(!inner_type.is_type_value(), "invalid use of type expressions");
     for (const auto& element : node.elements | std::views::drop(1)) {
         const auto element_type = push_expr_val(com, *element);
         node.token.assert_eq(element_type, inner_type, "array has mismatching element types");
@@ -858,6 +837,7 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
     node.token.assert(node.size != 0, "cannot have empty array literals");
 
     const auto inner_type = type_of_expr(com, *node.value);
+    node.token.assert(!inner_type.is_type_value(), "invalid use of type expressions");
     for (std::size_t i = 0; i != node.size; ++i) {
         push_expr_val(com, *node.value);
     }
@@ -866,14 +846,22 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
 
 auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr);
+    if (type.is_type_value()) {
+        return type_type{inner_type(type).add_ptr()};
+    }
+    push_expr_ptr(com, *node.expr);
     return type.add_ptr();
 }
 
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    push_value(code(com), op::push_u64, com.types.size_of(type));
+    if (type.is_type_value()) { // can call sizeof on a type directly
+        push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
+    } else {
+        push_value(code(com), op::push_u64, com.types.size_of(type));
+    }
     return u64_type();
 }
 
@@ -884,6 +872,10 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     }
 
     const auto type = type_of_expr(com, *node.expr);
+    if (type.is_type_value()) {
+        return type_type{inner_type(type).add_span()};
+    }
+
     node.token.assert(
         type.is_array() || type.is_span(),
         "can only span arrays and other spans, not {}", type
@@ -925,13 +917,60 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     return type.remove_array().add_span();
 }
 
-// If not implemented explicitly, assume that the given node_expr is an lvalue, in which case
-// we can load it by pushing the address to the stack and loading.
-auto push_expr_val(compiler& com, const auto& node) -> type_name
+auto push_expr_val(compiler& com, const node_field_expr& node) -> type_name
 {
-    const auto type = push_expr_ptr(com, node);
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
+    const auto type = type_of_expr(com, *node.expr);
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
+    const auto t = push_expr_ptr(com, node);
+    push_value(code(com), op::load, com.types.size_of(t));
+    return t;
+}
+
+auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
+    const auto t = push_expr_ptr(com, node);
+    push_value(code(com), op::load, com.types.size_of(t));
+    return t;
+}
+
+auto push_expr_val(compiler& com, const node_subscript_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    if (type.is_type_value()) {
+        if (!std::holds_alternative<node_literal_u64_expr>(*node.index)) {
+            node.token.error("index must be a u64 literal when delcaring an array type");
+        }
+        const auto index = std::get<node_literal_u64_expr>(*node.index).value;
+        return type_type{inner_type(type).add_array(index)};
+    }
+    const auto t = push_expr_ptr(com, node);
+    push_value(code(com), op::load, com.types.size_of(t));
+    return t;
+}
+
+auto push_expr_val(compiler& com, const node_typeof_expr& node) -> type_name
+{
+    return type_type{type_of_expr(com, *node.expr)};
+}
+
+auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> type_name
+{
+    auto type = make_value<type_name>();
+    auto& inner = type->emplace<type_function_ptr>();
+    for (const auto& param : node.params) {
+        inner.param_types.push_back(resolve_type(com, node.token, param));
+    }
+    inner.return_type = resolve_type(com, node.token, node.return_type);
+    return type_type{type};
+}
+
+auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    node.token.assert(type.is_type_value(), "invalid use of a const-expr");
+    return type_type{inner_type(type).add_const()};
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
@@ -1217,7 +1256,7 @@ auto compile_function(
         declare_var(com, tok, arg.name, type);
         sig.params.push_back(type);
     }
-    sig.return_type = resolve_type(com, tok, node_sig.return_type);
+    sig.return_type = node_sig.return_type ? resolve_type(com, tok, node_sig.return_type) : null_type();
 
     push_stmt(com, *body);
 
@@ -1243,7 +1282,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
             node.token.error("function template named '{}' already defined", node.name);
         }
     } else {
-        const auto full_name = full_function_name(com, global_namespace, node.name);
+        const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
         compile_function(com, node.token, full_name, node.sig, node.body);
     }
 }
@@ -1267,7 +1306,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     // We always ignore the template types here because it is either not a template function and so
     // this is in fact the full name, or it is and we use this as the key for the function_templates
     // map which is just the name without the template section.
-    const auto full_name = full_function_name(com, struct_type, node.function_name);
+    const auto full_name = full_function_name(com, node.token, struct_type, node.function_name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.template_types.empty()) {

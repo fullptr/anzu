@@ -21,7 +21,8 @@ auto type_manager::contains(const type_name& type) const -> bool
         [&](const type_span& t)       { return contains(*t.inner_type); },
         [&](const type_ptr& t)        { return contains(*t.inner_type); },
         [&](const type_function_ptr&) { return true; },
-        [&](const type_arena&)        { return true; }
+        [&](const type_arena&)        { return true; },
+        [&](const type_type& t)       { return contains(*t.type_val); }
     }, type);
 }
 
@@ -70,6 +71,10 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         },
         [](const type_arena& arena) {
             return sizeof(std::byte*); // the runtime will store the arena separately
+        },
+        [&](const type_type&) {
+            panic("tried to get the size of type: {}", type);
+            return sizeof(void*);
         }
     }, type);
 }

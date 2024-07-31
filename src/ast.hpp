@@ -12,42 +12,19 @@ namespace anzu {
 struct node_expr;
 using node_expr_ptr = std::shared_ptr<node_expr>;
 
-struct node_type;
-using node_type_ptr = std::shared_ptr<node_type>;
-
 struct node_stmt;
 using node_stmt_ptr = std::shared_ptr<node_stmt>;
-
-struct node_named_type
-{
-    type_name type;
-
-    anzu::token token;
-};
-
-struct node_expr_type
-{
-    node_expr_ptr expr;
-
-    anzu::token token;
-};
-
-struct node_type : std::variant<
-    node_named_type,
-    node_expr_type>
-{
-};
 
 struct node_parameter
 {
     std::string   name;
-    node_type_ptr type;
+    node_expr_ptr type;
 };
 
 struct node_signature
 {
     std::vector<node_parameter> params;
-    node_type_ptr               return_type;
+    node_expr_ptr               return_type;
 };
 
 struct node_literal_i32_expr
@@ -135,7 +112,7 @@ struct node_binary_op_expr
 struct node_call_expr
 {
     node_expr_ptr expr;
-    std::vector<node_type_ptr> template_args;
+    std::vector<node_expr_ptr> template_args;
     std::vector<node_expr_ptr> args;
 
     anzu::token token;
@@ -145,7 +122,7 @@ struct node_member_call_expr
 {
     node_expr_ptr              expr;
     std::string                function_name;
-    std::vector<node_type_ptr> template_args;
+    std::vector<node_expr_ptr> template_args;
     std::vector<node_expr_ptr> other_args;
 
     anzu::token token;
@@ -204,8 +181,29 @@ struct node_span_expr
     anzu::token token;
 };
 
+struct node_typeof_expr
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
+struct node_function_ptr_type_expr
+{
+    std::vector<node_expr_ptr> params;
+    node_expr_ptr              return_type;
+
+    anzu::token                token;
+};
+
+struct node_const_expr
+{
+    node_expr_ptr expr;
+
+    anzu::token   token;
+};
+
 struct node_expr : std::variant<
-    // Rvalue expressions
     node_literal_i32_expr,
     node_literal_i64_expr,
     node_literal_u64_expr,
@@ -223,13 +221,14 @@ struct node_expr : std::variant<
     node_repeat_array_expr,
     node_addrof_expr,
     node_sizeof_expr,
-
-    // Lvalue expressions
+    node_span_expr,
+    node_typeof_expr,
+    node_function_ptr_type_expr,
+    node_const_expr,
     node_name_expr,
     node_field_expr,
     node_deref_expr,
-    node_subscript_expr,
-    node_span_expr>
+    node_subscript_expr>
 {
 };
 
@@ -296,7 +295,7 @@ struct node_declaration_stmt
 {
     std::string   name;
     node_expr_ptr expr;
-    node_type_ptr explicit_type;
+    node_expr_ptr explicit_type;
     bool          add_const;
 
     anzu::token token;
@@ -400,16 +399,5 @@ auto is_rvalue_expr(const node_expr& expr) -> bool;
 
 auto print_node(const anzu::node_expr& root, int indent = 0) -> void;
 auto print_node(const anzu::node_stmt& root, int indent = 0) -> void;
-auto print_node(const anzu::node_type& root, int indent = 0) -> void;
-
-auto to_string(const node_type& node) -> std::string;
 
 }
-
-template <>
-struct std::formatter<anzu::node_type> : std::formatter<std::string>
-{
-    auto format(const anzu::node_type& type, auto& ctx) const {
-        return std::formatter<std::string>::format(anzu::to_string(type), ctx);
-    }
-};

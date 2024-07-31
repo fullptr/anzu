@@ -111,6 +111,10 @@ auto to_string(const type_arena& type) -> std::string
     return std::string{"arena"};
 }
 
+auto to_string(const type_type& type) -> std::string
+{
+    return std::format("type-expression ({})", *type.type_val);
+}
 
 auto hash(const type_name& type) -> std::size_t
 {
@@ -134,14 +138,12 @@ auto hash(const type_array& type) -> std::size_t
 
 auto hash(const type_ptr& type) -> std::size_t
 {
-    static const auto base = std::hash<std::string_view>{}("type_ptr");
-    return hash(*type.inner_type) ^ base;
+    return hash(*type.inner_type) ^ std::hash<std::string_view>{}("type_ptr");
 }
 
 auto hash(const type_span& type) -> std::size_t
 {
-    static const auto base = std::hash<std::string_view>{}("type_span");
-    return hash(*type.inner_type) ^ base;
+    return hash(*type.inner_type) ^ std::hash<std::string_view>{}("type_span");
 }
 
 auto hash(const type_function_ptr& type) -> std::size_t
@@ -155,8 +157,12 @@ auto hash(const type_function_ptr& type) -> std::size_t
 
 auto hash(const type_arena& type) -> std::size_t
 {
-    static const auto base = std::hash<std::string_view>{}("type_arena");
-    return base;
+    return std::hash<std::string_view>{}("type_arena");
+}
+
+auto hash(const type_type& type) -> std::size_t
+{
+    return hash(*type.type_val) ^ std::hash<std::string_view>{}("type_type");
 }
 
 auto hash(std::span<const type_name> types) -> std::size_t
@@ -260,6 +266,11 @@ auto type_name::is_arena() const -> bool
     return std::holds_alternative<type_arena>(*this);
 }
 
+auto type_name::is_type_value() const -> bool
+{
+    return std::holds_alternative<type_type>(*this);
+}
+
 auto inner_type(const type_name& t) -> type_name
 {
     if (t.is_array()) {
@@ -268,8 +279,11 @@ auto inner_type(const type_name& t) -> type_name
     if (t.is_span()) {
         return *std::get<type_span>(t).inner_type; 
     }
+    if (t.is_type_value()) {
+        return *std::get<type_type>(t).type_val; 
+    }
     panic("tried to get the inner type of an invalid type category, "
-          "can only get the inner type for arrays and spans");
+          "can only get the inner type for arrays, spans and type values, type={}", t);
 }
 
 auto array_length(const type_name& t) -> std::size_t

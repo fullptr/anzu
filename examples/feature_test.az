@@ -252,8 +252,8 @@ fn print_success() -> null
     print("Success!\n");
 }
 
-#var function_ptr := print_success;
-#function_ptr();
+var function_ptr := print_success;
+function_ptr();
 
 # Arena test
 fn get(a: arena&, count: u64) -> u64[]

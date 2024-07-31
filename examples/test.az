@@ -1,12 +1,6 @@
-# The next thing to implement; template member functions
-struct foo
+fn foo|T|(ptr: T const&) 
 {
-    fn bar|T|(self: foo const&, x: T)
-    {
-        print("{}\n", x);
-    }
+    print("{}\n", ptr);
 }
-
-let f := foo();
-f.bar|i64|(6);
-f.bar|f64|(10.0);
+let x := 10;
+foo|i64|(x&);
