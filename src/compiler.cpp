@@ -99,9 +99,13 @@ auto make_type(compiler& com, const std::string& name) -> type_name
     return resolve_templates(com, simple);
 }
 
-auto resolve_type(compiler& com, token& tok, const node_expr_ptr& expr) -> type_name
+// If the given expression results in a type expression, return the inner type.
+// Otherwise program is ill-formed.
+auto resolve_type_expr(compiler& com, const token& tok, const node_expr_ptr& expr) -> type_name
 {
-
+    const auto type_expr_type = type_of_expr(com, *expr);
+    tok.assert(type_expr_type.is_type_value(), "expected type expression, got {}", type_expr_type);
+    return inner_type(type_expr_type);
 }
 
 auto full_function_name(
@@ -995,13 +999,9 @@ auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> ty
     auto type = make_value<type_name>();
     auto& inner = type->emplace<type_function_ptr>();
     for (const auto& param : node.params) {
-        const auto t = type_of_expr(com, *param);
-        node.token.assert(t.is_type_value(), "expr in function pointer is not a type expr");
-        inner.param_types.push_back(inner_type(t));
+        inner.param_types.push_back(resolve_type_expr(com, node.token, param));
     }
-    const auto t = type_of_expr(com, *node.return_type);
-    node.token.assert(t.is_type_value(), "expr in function pointer is not a type expr");
-    inner.return_type = inner_type(t);
+    inner.return_type = resolve_type_expr(com, node.token, node.return_type);
     return type_type{type};
 }
 
@@ -1229,9 +1229,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 
     auto fields = std::vector<type_field>{};
     for (const auto& p : node.fields) {
-        const auto field_type = type_of_expr(com, *p.type);
-        node.token.assert(field_type.is_type_value(), "expected type expression");
-        fields.emplace_back(type_field{ .name=p.name, .type=inner_type(field_type) });
+        fields.emplace_back(type_field{ .name=p.name, .type=resolve_type_expr(com, node.token, p.type) });
     }
 
     com.types.add(make_type(com, node.name), fields);
@@ -1258,9 +1256,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
     auto type = null_type();
     if (node.explicit_type) {
-        const auto explicit_type = type_of_expr(com, *node.explicit_type);
-        node.token.assert(explicit_type.is_type_value(), "expected an expression that evaluates to a type");
-        type = inner_type(explicit_type);
+        type = resolve_type_expr(com, node.token, node.explicit_type);
     } else {
         type = type_of_expr(com, *node.expr);
     }
@@ -1318,15 +1314,12 @@ auto compile_function(
 
     auto& sig = current(com).sig;
     for (const auto& arg : node_sig.params) {
-        const auto type = type_of_expr(com, *arg.type);
-        tok.assert(type.is_type_value(), "type of param is not a type expression");
-        declare_var(com, tok, arg.name, inner_type(type));
+        const auto type = resolve_type_expr(com, tok, arg.type);
+        declare_var(com, tok, arg.name, type);
         sig.params.push_back(inner_type(type));
     }
     if (node_sig.return_type) {
-        const auto ret_val = type_of_expr(com, *node_sig.return_type);
-        tok.assert(ret_val.is_type_value(), "return type is not a type expression");
-        sig.return_type = inner_type(ret_val);
+        sig.return_type = resolve_type_expr(com, tok, node_sig.return_type);
     } else {
         sig.return_type = null_type();
     }
@@ -1366,7 +1359,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 
     // First argument must be a pointer to an instance of the class
     node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
-    const auto actual = type_of_expr(com, *node.sig.params[0].type);
+    const auto actual = resolve_type_expr(com, node.token, node.sig.params[0].type);
     const auto expected = struct_type.add_const().add_ptr().add_const();
     
     node.token.assert(
