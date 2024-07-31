@@ -263,8 +263,6 @@ auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
     return push_var_addr(com, node.token, node.name);
 }
 
-// I think this is a bit of a hack; when pushing the value of a function pointer, we need
-// to do it in a special way.
 auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
 {
     const auto full_name = full_function_name(com, global_namespace, node.name);
