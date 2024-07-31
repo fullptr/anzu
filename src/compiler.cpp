@@ -189,24 +189,6 @@ auto push_field_offset(
     tok.error("could not find field '{}' for type '{}'\n", field_name, type);
 }
 
-void verify_sig(
-    const token& tok,
-    const std::vector<type_name>& expected,
-    const std::vector<type_name>& actual)
-{
-    if (expected.size() != actual.size()) {
-        tok.error("function expected {} args, got {}", expected.size(), actual.size());
-    }
-
-    auto arg_index = std::size_t{0};
-    for (const auto& [expected_param, actual_param] : zip(expected, actual)) {
-        if (actual_param != expected_param) {
-            tok.error("arg {} type '{}' does not match '{}'", arg_index, actual_param, expected_param);
-            ++arg_index;
-        }
-    }
-}
-
 auto get_constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
 {
     if (type.is_fundamental()) {
@@ -242,11 +224,208 @@ auto insert_into_rom(compiler& com, std::string_view data) -> std::size_t
     return ptr;
 }
 
-auto push_assert(compiler& com, std::string_view message) -> void
+// Given a type, push the number of op::load calls required to dereference away all the pointers.
+// If the type is not a pointer, this is a noop.
+auto auto_deref_pointer(compiler& com, const type_name& type) -> type_name
 {
-    const auto index = insert_into_rom(com, message);
-    push_value(code(com), op::assert, index, message.size());
+    auto t = type;
+    while (t.is_ptr()) {
+        push_value(code(com), op::load, sizeof(std::byte*));
+        t = t.remove_ptr();
+    }
+    return t;
 }
+
+auto const_convertable_to(const token& tok, const type_name& src, const type_name& dst) {
+    if (src.is_const && !dst.is_const) {
+        return false;
+    }
+
+    return std::visit(overloaded{
+        [&](type_fundamental l, type_fundamental r) { return l == r; },
+        [&](const type_struct& l, const type_struct& r) { return l == r; },
+        [&](const type_array& l, const type_array& r) {
+            return l.count == r.count && const_convertable_to(tok, *l.inner_type, *r.inner_type);
+        },
+        [&](const type_ptr& l, const type_ptr& r) {
+            return const_convertable_to(tok, *l.inner_type, *r.inner_type);
+        },
+        [&](const type_span& l, const type_span& r) {
+            return const_convertable_to(tok, *l.inner_type, *r.inner_type);
+        },
+        [&](const type_function_ptr& l, const type_function_ptr& r) { return l == r; },
+        [&](const type_arena& l, const type_arena& r) { return true; },
+        [&](const auto& l, const auto& r) {
+            return false;
+        }
+    }, src, dst);
+}
+
+// Used for passing copies of variables to functions, as well as for assignments and declarations.
+// Verifies that the type of the expression can be converted to the type 
+auto push_copy_typechecked(
+    compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
+) -> void
+{
+    // Remove top-level const since we are making a copy, ie- you should be able to pass a
+    // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
+    // for a 'u64 const&' is fine)
+    const auto actual = type_of_expr(com, expr).remove_const();
+    const auto expected = expected_raw.remove_const();
+
+    if (actual.is_arena() || expected.is_arena()) {
+        tok.error("arenas can not be copied or assigned");
+    }
+
+    if (actual == nullptr_type() && expected.is_ptr()) {
+        push_expr_val(com, expr);
+        return;
+    }
+
+    if (const_convertable_to(tok, actual, expected)) {
+        push_expr_val(com, expr);
+    } else {
+        tok.error("Cannot convert '{}' to '{}'", actual, expected);
+    }
+}
+
+auto get_builtin_id(const std::string& name) -> std::optional<std::size_t>
+{
+    auto index = std::size_t{0};
+    for (const auto& b : get_builtins()) {
+        if (name == b.name) {
+            return index;
+        }
+        ++index;
+    }
+    return std::nullopt;
+}
+
+void push_break(compiler& com, const token& tok)
+{
+    tok.assert(variables(com).in_loop(), "cannot use 'break' outside of a loop");
+    variables(com).handle_loop_exit(code(com));
+    push_value(code(com), op::jump);
+    const auto pos = push_value(code(com), std::uint64_t{0}); // filled in later
+    variables(com).get_loop_info().breaks.push_back(pos);
+}
+
+auto ends_in_return(const node_stmt& node) -> bool
+{
+    return std::visit(overloaded{
+        [&](const node_sequence_stmt& n) {
+            if (n.sequence.empty()) { return false; }
+            return ends_in_return(*n.sequence.back());
+        },
+        [&](const node_if_stmt& n) {
+            if (!n.else_body) { return false; } // both branches must exist
+            return ends_in_return(*n.body) && ends_in_return(*n.else_body);
+        },
+        [](const node_return_stmt&) { return true; },
+        [](const auto&)             { return false; }
+    }, node);
+}
+
+auto compile_function(
+    compiler& com,
+    const token& tok,
+    const std::string& full_name,
+    const node_signature& node_sig,
+    const node_stmt_ptr& body,
+    const template_map& map
+)
+    -> void
+{
+    new_function(com, full_name, tok, map);
+
+    auto& sig = current(com).sig;
+    for (const auto& arg : node_sig.params) {
+        const auto type = resolve_type(com, tok, arg.type);
+        declare_var(com, tok, arg.name, type);
+        sig.params.push_back(type);
+    }
+    sig.return_type = node_sig.return_type ? resolve_type(com, tok, node_sig.return_type) : null_type();
+
+    push_stmt(com, *body);
+
+    if (!ends_in_return(*body)) {
+        // Functions returning null don't need a final return, since we can just add it
+        tok.assert(sig.return_type == null_type(), "fn '{}' does not end in a return", full_name);
+        push_value(code(com), op::push_null, op::ret, std::uint64_t{1});
+    }
+
+    finish_function(com);
+}
+
+// Temp: remove this for a more efficient function
+auto string_replace(
+    std::string subject, std::string_view search, std::string_view replace
+)
+    -> std::string
+{
+    std::size_t pos = 0;
+    while ((pos = subject.find(search, pos)) != std::string::npos) {
+         subject.replace(pos, search.length(), replace);
+         pos += replace.length();
+    }
+    return subject;
+}
+
+// Temp: remove this for a more efficient function
+auto string_split(std::string s, std::string_view delimiter) -> std::vector<std::string>
+{
+    std::size_t pos_start = 0;
+    std::size_t pos_end = 0;
+    std::string token;
+    std::vector<std::string> res;
+
+    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+        token = s.substr(pos_start, pos_end - pos_start);
+        pos_start = pos_end + delimiter.length();
+        res.push_back(token);
+    }
+
+    res.push_back(s.substr(pos_start));
+    return res;
+}
+
+auto push_print_fundamental(compiler& com, const node_expr& node, const token& tok) -> void
+{
+    const auto type = push_expr_val(com, node);
+    if (type == null_type()) { push_value(code(com), op::print_null); }
+    else if (type == bool_type()) { push_value(code(com), op::print_bool); }
+    else if (type == char_type()) { push_value(code(com), op::print_char); }
+    else if (type == i32_type()) { push_value(code(com), op::print_i32); }
+    else if (type == i64_type()) { push_value(code(com), op::print_i64); }
+    else if (type == u64_type()) { push_value(code(com), op::print_u64); }
+    else if (type == f64_type()) { push_value(code(com), op::print_f64); }
+    else if (type == char_type().add_span()) {
+        push_value(code(com), op::print_char_span);
+    }
+    else if (type == nullptr_type()) { push_value(code(com), op::print_ptr); }
+    else if (type.is_ptr()) { push_value(code(com), op::print_ptr); }
+    else { tok.error("cannot print value of type {}", type); }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
 {
@@ -282,18 +461,6 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
     node.token.assert(!type.is_type_value(), "invalid use of type expressions");
     push_value(code(com), op::load, com.types.size_of(type));
     return type;
-}
-
-// Given a type, push the number of op::load calls required to dereference away all the pointers.
-// If the type is not a pointer, this is a noop.
-auto auto_deref_pointer(compiler& com, const type_name& type) -> type_name
-{
-    auto t = type;
-    while (t.is_ptr()) {
-        push_value(code(com), op::load, sizeof(std::byte*));
-        t = t.remove_ptr();
-    }
-    return t;
 }
 
 auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
@@ -529,71 +696,6 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
         } break;
     }
     node.token.error("could not find op '{}{}'", node.token.type, type);
-}
-
-auto const_convertable_to(const token& tok, const type_name& src, const type_name& dst) {
-    if (src.is_const && !dst.is_const) {
-        return false;
-    }
-
-    return std::visit(overloaded{
-        [&](type_fundamental l, type_fundamental r) { return l == r; },
-        [&](const type_struct& l, const type_struct& r) { return l == r; },
-        [&](const type_array& l, const type_array& r) {
-            return l.count == r.count && const_convertable_to(tok, *l.inner_type, *r.inner_type);
-        },
-        [&](const type_ptr& l, const type_ptr& r) {
-            return const_convertable_to(tok, *l.inner_type, *r.inner_type);
-        },
-        [&](const type_span& l, const type_span& r) {
-            return const_convertable_to(tok, *l.inner_type, *r.inner_type);
-        },
-        [&](const type_function_ptr& l, const type_function_ptr& r) { return l == r; },
-        [&](const type_arena& l, const type_arena& r) { return true; },
-        [&](const auto& l, const auto& r) {
-            return false;
-        }
-    }, src, dst);
-}
-
-// Used for passing copies of variables to functions, as well as for assignments and declarations.
-// Verifies that the type of the expression can be converted to the type 
-auto push_copy_typechecked(
-    compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
-) -> void
-{
-    // Remove top-level const since we are making a copy, ie- you should be able to pass a
-    // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
-    // for a 'u64 const&' is fine)
-    const auto actual = type_of_expr(com, expr).remove_const();
-    const auto expected = expected_raw.remove_const();
-
-    if (actual.is_arena() || expected.is_arena()) {
-        tok.error("arenas can not be copied or assigned");
-    }
-
-    if (actual == nullptr_type() && expected.is_ptr()) {
-        push_expr_val(com, expr);
-        return;
-    }
-
-    if (const_convertable_to(tok, actual, expected)) {
-        push_expr_val(com, expr);
-    } else {
-        tok.error("Cannot convert '{}' to '{}'", actual, expected);
-    }
-}
-
-auto get_builtin_id(const std::string& name) -> std::optional<std::size_t>
-{
-    auto index = std::size_t{0};
-    for (const auto& b : get_builtins()) {
-        if (name == b.name) {
-            return index;
-        }
-        ++index;
-    }
-    return std::nullopt;
 }
 
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
@@ -1013,15 +1115,6 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
     });
 }
 
-void push_break(compiler& com, const token& tok)
-{
-    tok.assert(variables(com).in_loop(), "cannot use 'break' outside of a loop");
-    variables(com).handle_loop_exit(code(com));
-    push_value(code(com), op::jump);
-    const auto pos = push_value(code(com), std::uint64_t{0}); // filled in later
-    variables(com).get_loop_info().breaks.push_back(pos);
-}
-
 /*
 while <condition> {
     <body>
@@ -1222,52 +1315,6 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     return;
 }
 
-auto ends_in_return(const node_stmt& node) -> bool
-{
-    return std::visit(overloaded{
-        [&](const node_sequence_stmt& n) {
-            if (n.sequence.empty()) { return false; }
-            return ends_in_return(*n.sequence.back());
-        },
-        [&](const node_if_stmt& n) {
-            if (!n.else_body) { return false; } // both branches must exist
-            return ends_in_return(*n.body) && ends_in_return(*n.else_body);
-        },
-        [](const node_return_stmt&) { return true; },
-        [](const auto&)             { return false; }
-    }, node);
-}
-
-auto compile_function(
-    compiler& com,
-    const token& tok,
-    const std::string& full_name,
-    const node_signature& node_sig,
-    const node_stmt_ptr& body,
-    const template_map& map
-)
-    -> void
-{
-    new_function(com, full_name, tok, map);
-
-    auto& sig = current(com).sig;
-    for (const auto& arg : node_sig.params) {
-        const auto type = resolve_type(com, tok, arg.type);
-        declare_var(com, tok, arg.name, type);
-        sig.params.push_back(type);
-    }
-    sig.return_type = node_sig.return_type ? resolve_type(com, tok, node_sig.return_type) : null_type();
-
-    push_stmt(com, *body);
-
-    if (!ends_in_return(*body)) {
-        // Functions returning null don't need a final return, since we can just add it
-        tok.assert(sig.return_type == null_type(), "fn '{}' does not end in a return", full_name);
-        push_value(code(com), op::push_null, op::ret, std::uint64_t{1});
-    }
-
-    finish_function(com);
-}
 
 void push_stmt(compiler& com, const node_function_def_stmt& node)
 {
@@ -1342,57 +1389,9 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
     const auto expr = type_of_expr(com, *node.expr);
     node.token.assert_eq(expr, bool_type(), "bad assertion expression");
     push_expr_val(com, *node.expr);
-    push_assert(com, std::format("line {}", node.token.line));
-}
-
-// Temp: remove this for a more efficient function
-auto string_replace(
-    std::string subject, std::string_view search, std::string_view replace
-)
-    -> std::string
-{
-    std::size_t pos = 0;
-    while ((pos = subject.find(search, pos)) != std::string::npos) {
-         subject.replace(pos, search.length(), replace);
-         pos += replace.length();
-    }
-    return subject;
-}
-
-// Temp: remove this for a more efficient function
-auto string_split(std::string s, std::string_view delimiter) -> std::vector<std::string>
-{
-    std::size_t pos_start = 0;
-    std::size_t pos_end = 0;
-    std::string token;
-    std::vector<std::string> res;
-
-    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
-        token = s.substr(pos_start, pos_end - pos_start);
-        pos_start = pos_end + delimiter.length();
-        res.push_back(token);
-    }
-
-    res.push_back(s.substr(pos_start));
-    return res;
-}
-
-auto push_print_fundamental(compiler& com, const node_expr& node, const token& tok) -> void
-{
-    const auto type = push_expr_val(com, node);
-    if (type == null_type()) { push_value(code(com), op::print_null); }
-    else if (type == bool_type()) { push_value(code(com), op::print_bool); }
-    else if (type == char_type()) { push_value(code(com), op::print_char); }
-    else if (type == i32_type()) { push_value(code(com), op::print_i32); }
-    else if (type == i64_type()) { push_value(code(com), op::print_i64); }
-    else if (type == u64_type()) { push_value(code(com), op::print_u64); }
-    else if (type == f64_type()) { push_value(code(com), op::print_f64); }
-    else if (type == char_type().add_span()) {
-        push_value(code(com), op::print_char_span);
-    }
-    else if (type == nullptr_type()) { push_value(code(com), op::print_ptr); }
-    else if (type.is_ptr()) { push_value(code(com), op::print_ptr); }
-    else { tok.error("cannot print value of type {}", type); }
+    const auto message = std::format("line {}", node.token.line);
+    const auto index = insert_into_rom(com, message);
+    push_value(code(com), op::assert, index, message.size());
 }
 
 void push_stmt(compiler& com, const node_print_stmt& node)
