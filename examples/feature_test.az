@@ -103,7 +103,7 @@ fn adder(a: i64, b: i64, c: i64) -> i64
     }
 }
 
-## Allowing functions from other functions
+# Allowing functions from other functions
 fn add2(x: i64, y: i64) -> i64
 {
     return x + y;

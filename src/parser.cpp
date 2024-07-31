@@ -356,29 +356,9 @@ auto parse_simple_type(tokenstream& tokens) -> node_expr_ptr
 {
     auto node = std::make_shared<node_expr>();
     const auto token = tokens.consume();
-    switch (token.type) {
-        case token_type::kw_null:
-        case token_type::kw_bool:
-        case token_type::kw_char:
-        case token_type::kw_i32:
-        case token_type::kw_i64:
-        case token_type::kw_u64:
-        case token_type::kw_f64:
-        case token_type::kw_nullptr:
-        case token_type::kw_arena: {
-            auto& inner = node->emplace<node_builtin_name_expr>();
-            inner.name = std::string{token.text};
-        } break;
-
-        case token_type::identifier: {
-            auto& inner = node->emplace<node_name_expr>();
-            inner.name = std::string{token.text};
-        } break;
-        default: {
-            token.error("invalid token to parse as a simple_type {}", token.type);
-        } break;
-    }
-
+    auto& inner = node->emplace<node_name_expr>();
+    inner.name = std::string{token.text};
+    inner.token = token;
     return node;
 }
 

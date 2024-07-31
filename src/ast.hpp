@@ -203,14 +203,6 @@ struct node_const_expr
     anzu::token   token;
 };
 
-// Represents a name that is a keyword, such as i64, arena, ...
-struct node_builtin_name_expr
-{
-    std::string name;
-
-    anzu::token token;
-};
-
 struct node_expr : std::variant<
     node_literal_i32_expr,
     node_literal_i64_expr,
@@ -233,7 +225,6 @@ struct node_expr : std::variant<
     node_typeof_expr,
     node_function_ptr_type_expr,
     node_const_expr,
-    node_builtin_name_expr,
     node_name_expr,
     node_field_expr,
     node_deref_expr,

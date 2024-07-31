@@ -77,7 +77,16 @@ auto make_type(compiler& com, const std::string& name) -> type_name
 {
     const auto& map = current(com).template_types;
     if (auto it = map.find(name); it != map.end()) return it->second;
-    return type_name{ type_struct{ .name=name } };
+    if (name == "null") return type_name(type_fundamental::null_type);
+    if (name == "bool") return type_name(type_fundamental::bool_type);
+    if (name == "char") return type_name(type_fundamental::char_type);
+    if (name == "i32") return  type_name(type_fundamental::i32_type);
+    if (name == "i64") return  type_name(type_fundamental::i64_type);
+    if (name == "u64") return  type_name(type_fundamental::u64_type);
+    if (name == "f64") return  type_name(type_fundamental::f64_type);
+    if (name == "nullptr") return type_name(type_fundamental::nullptr_type);
+    if (name == "arena") return type_name(type_arena{});
+    return type_struct{ .name=name };
 }
 
 // If the given expression results in a type expression, return the inner type.
@@ -994,21 +1003,6 @@ auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
     auto inner = *std::get<type_type>(type).type_val;
     inner.is_const = true;
     return type_type{inner};
-}
-
-auto push_expr_val(compiler& com, const node_builtin_name_expr& node) -> type_name
-{
-    if (node.name == "null") return type_type{ make_value<type_name>(type_fundamental::null_type) };
-    if (node.name == "bool") return type_type{ make_value<type_name>(type_fundamental::bool_type) };
-    if (node.name == "char") return type_type{ make_value<type_name>(type_fundamental::char_type) };
-    if (node.name == "i32") return type_type{ make_value<type_name>(type_fundamental::i32_type) };
-    if (node.name == "i64") return type_type{ make_value<type_name>(type_fundamental::i64_type) };
-    if (node.name == "u64") return type_type{ make_value<type_name>(type_fundamental::u64_type) };
-    if (node.name == "f64") return type_type{ make_value<type_name>(type_fundamental::f64_type) };
-    if (node.name == "nullptr") return type_type{ make_value<type_name>(type_fundamental::nullptr_type) };
-    if (node.name == "arena") return type_type{ make_value<type_name>(type_arena{}) };
-    node.token.error("unknown builtin name: {}", node.name);
-    return null_type();
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)

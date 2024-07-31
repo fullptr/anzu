@@ -151,10 +151,7 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_const_expr& node) {
             std::print("{}Const:\n", spaces);
             print_node(*node.expr, indent + 1);
-        },
-        [&](const node_builtin_name_expr& node) {
-            std::print("{}BuiltinName: {}\n", spaces, node.name);
-        },
+        }
     }, root);
 }
 
