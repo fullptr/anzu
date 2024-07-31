@@ -1,10 +1,5 @@
 
-fn func(x: i64, y: i64) -> u64 { return 10u; }
-
-fn bar() -> fn(i64, i64) -> u64
+fn foo() -> typeof(10)
 {
-    return func;
+    return 10;
 }
-
-let f := bar();
-print("{}\n", f(1, 2));
