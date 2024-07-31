@@ -1256,11 +1256,7 @@ auto compile_function(
         declare_var(com, tok, arg.name, type);
         sig.params.push_back(type);
     }
-    if (node_sig.return_type) {
-        sig.return_type = resolve_type(com, tok, node_sig.return_type);
-    } else {
-        sig.return_type = null_type();
-    }
+    sig.return_type = node_sig.return_type ? resolve_type(com, tok, node_sig.return_type) : null_type();
 
     push_stmt(com, *body);
 
