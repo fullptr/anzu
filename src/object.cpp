@@ -113,7 +113,7 @@ auto to_string(const type_arena& type) -> std::string
 
 auto to_string(const type_type& type) -> std::string
 {
-    return std::format("type[[ actual={} ]]", *type.type_val);
+    return std::format("type-expression ({})", *type.type_val);
 }
 
 auto hash(const type_name& type) -> std::size_t

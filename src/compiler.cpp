@@ -755,7 +755,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     if (struct_type.is_arena()) {
         if (node.function_name == "new") {
             if (node.template_args.size() != 1) node.token.error("calls to arena 'new' must have a single template type");
-            const auto result_type = type_of_expr(com, *node.template_args[0]);
+            const auto result_type = resolve_type_expr(com, node.token, node.template_args[0]);
             
             // First, build the object on the stack
             const auto expected_params = get_constructor_params(com, result_type);
@@ -778,7 +778,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         }
         else if (node.function_name == "new_array") {
             if (node.template_args.size() != 1) node.token.error("calls to arena 'new_array' must have a template type");
-            const auto result_type = type_of_expr(com, *node.template_args[0]);
+            const auto result_type = resolve_type_expr(com, node.token, node.template_args[0]);
             
             // First, push the count onto the stack
             const auto expected_params = std::vector<type_name>{u64_type()};

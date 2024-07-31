@@ -73,7 +73,7 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
             return sizeof(std::byte*); // the runtime will store the arena separately
         },
         [&](const type_type&) {
-            panic("tried to get the size of a compile-time object {}", type);
+            panic("tried to get the size of type: {}", type);
             return sizeof(void*);
         }
     }, type);
