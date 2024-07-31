@@ -351,17 +351,6 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr
     return parse_compound_factor(tokens, 0);
 }
 
-// Let the compiler figure out if the name is a type
-auto parse_simple_type(tokenstream& tokens) -> node_expr_ptr
-{
-    auto node = std::make_shared<node_expr>();
-    const auto token = tokens.consume();
-    auto& inner = node->emplace<node_name_expr>();
-    inner.name = std::string{token.text};
-    inner.token = token;
-    return node;
-}
-
 auto parse_type_inner(tokenstream& tokens) -> node_expr_ptr
 {
     // Function pointers
@@ -383,7 +372,10 @@ auto parse_type_inner(tokenstream& tokens) -> node_expr_ptr
         type = parse_type(tokens);
         tokens.consume_only(token_type::right_paren);
     } else {
-        type = parse_simple_type(tokens);
+        type = std::make_shared<node_expr>();
+        auto& inner = type->emplace<node_name_expr>();
+        inner.token = tokens.consume();
+        inner.name = std::string{inner.token.text};
     }
 
     while (true) {
