@@ -91,7 +91,7 @@ auto make_type(compiler& com, const std::string& name) -> type_name
 
 // If the given expression results in a type expression, return the inner type.
 // Otherwise program is ill-formed.
-auto resolve_type_expr(compiler& com, const token& tok, const node_expr_ptr& expr) -> type_name
+auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) -> type_name
 {
     const auto type_expr_type = type_of_expr(com, *expr);
     tok.assert(type_expr_type.is_type_value(), "expected type expression, got {}", type_expr_type);
@@ -112,7 +112,7 @@ auto full_function_name(
     }
 
     const auto template_args_string = format_comma_separated(
-        template_args, [&](const node_expr_ptr& n) { return resolve_type_expr(com, tok, n); }
+        template_args, [&](const node_expr_ptr& n) { return resolve_type(com, tok, n); }
     );
     return std::format("{}::{}|{}|", struct_name.remove_const(), function_name, template_args_string);
 }
@@ -646,7 +646,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 
             auto map = template_map{};
             for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
-                const auto [it, success] = map.emplace(expected, resolve_type_expr(com, node.token, actual));
+                const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
                 if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
             }
             compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
@@ -727,7 +727,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     if (struct_type.is_arena()) {
         if (node.function_name == "new") {
             if (node.template_args.size() != 1) node.token.error("calls to arena 'new' must have a single template type");
-            const auto result_type = resolve_type_expr(com, node.token, node.template_args[0]);
+            const auto result_type = resolve_type(com, node.token, node.template_args[0]);
             
             // First, build the object on the stack
             const auto expected_params = get_constructor_params(com, result_type);
@@ -750,7 +750,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         }
         else if (node.function_name == "new_array") {
             if (node.template_args.size() != 1) node.token.error("calls to arena 'new_array' must have a template type");
-            const auto result_type = resolve_type_expr(com, node.token, node.template_args[0]);
+            const auto result_type = resolve_type(com, node.token, node.template_args[0]);
             
             // First, push the count onto the stack
             const auto expected_params = std::vector<type_name>{u64_type()};
@@ -794,7 +794,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
 
         auto map = template_map{};
         for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
-            const auto [it, success] = map.emplace(expected, resolve_type_expr(com, node.token, actual));
+            const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
@@ -963,9 +963,9 @@ auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> ty
     auto type = make_value<type_name>();
     auto& inner = type->emplace<type_function_ptr>();
     for (const auto& param : node.params) {
-        inner.param_types.push_back(resolve_type_expr(com, node.token, param));
+        inner.param_types.push_back(resolve_type(com, node.token, param));
     }
-    inner.return_type = resolve_type_expr(com, node.token, node.return_type);
+    inner.return_type = resolve_type(com, node.token, node.return_type);
     return type_type{type};
 }
 
@@ -1174,7 +1174,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 
     auto fields = std::vector<type_field>{};
     for (const auto& p : node.fields) {
-        fields.emplace_back(type_field{ .name=p.name, .type=resolve_type_expr(com, node.token, p.type) });
+        fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
     }
 
     com.types.add(make_type(com, node.name), fields);
@@ -1199,12 +1199,8 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
-    auto type = null_type();
-    if (node.explicit_type) {
-        type = resolve_type_expr(com, node.token, node.explicit_type);
-    } else {
-        type = type_of_expr(com, *node.expr);
-    }
+    auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
+                                   : type_of_expr(com, *node.expr);
     type.is_const = node.add_const;
 
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
@@ -1259,12 +1255,12 @@ auto compile_function(
 
     auto& sig = current(com).sig;
     for (const auto& arg : node_sig.params) {
-        const auto type = resolve_type_expr(com, tok, arg.type);
+        const auto type = resolve_type(com, tok, arg.type);
         declare_var(com, tok, arg.name, type);
         sig.params.push_back(type);
     }
     if (node_sig.return_type) {
-        sig.return_type = resolve_type_expr(com, tok, node_sig.return_type);
+        sig.return_type = resolve_type(com, tok, node_sig.return_type);
     } else {
         sig.return_type = null_type();
     }
@@ -1304,7 +1300,7 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 
     // First argument must be a pointer to an instance of the class
     node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
-    const auto actual = resolve_type_expr(com, node.token, node.sig.params[0].type);
+    const auto actual = resolve_type(com, node.token, node.sig.params[0].type);
     const auto expected = struct_type.add_const().add_ptr().add_const();
     
     node.token.assert(
