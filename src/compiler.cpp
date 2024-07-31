@@ -73,30 +73,11 @@ auto finish_function(compiler& com)
     com.current_compiling.pop_back();
 }
 
-auto resolve_templates(compiler& com, const type_name& type) -> type_name
-{
-    const auto& map = current(com).template_types;
-    const auto try_resolve = [&](const type_name& t) {
-        if (auto it = map.find(type); it != map.end()) return it->second;
-        return type;
-    };
-
-    return std::visit(overloaded{
-        [&](type_fundamental)         { return try_resolve(type); },
-        [&](const type_struct& t)     { return try_resolve(type); },
-        [&](const type_array& t)      { return type_name{type_array{resolve_templates(com, *t.inner_type), t.count}}; },
-        [&](const type_span& t)       { return type_name{type_span{resolve_templates(com, *t.inner_type)}}; },
-        [&](const type_ptr& t)        { return type_name{type_ptr{resolve_templates(com, *t.inner_type)}}; },
-        [&](const type_function_ptr&) { return type; }, // TODO: resolve function ptr types too
-        [&](const type_arena&)        { return try_resolve(type); },
-        [&](const type_type&)         { return type; } // compile
-    }, type);
-}
-
 auto make_type(compiler& com, const std::string& name) -> type_name
 {
-    const auto simple = type_name{ type_struct{ .name=name } };
-    return resolve_templates(com, simple);
+    const auto& map = current(com).template_types;
+    if (auto it = map.find(name); it != map.end()) return it->second;
+    return type_name{ type_struct{ .name=name } };
 }
 
 // If the given expression results in a type expression, return the inner type.
@@ -669,9 +650,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             }
 
             auto map = template_map{};
-            for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
-                const auto expected = make_type(com, expected_str);
-                if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
+            for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
                 const auto [it, success] = map.emplace(expected, resolve_type_expr(com, node.token, actual));
                 if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
             }
@@ -821,9 +800,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         }
 
         auto map = template_map{};
-        for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
-            const auto expected = make_type(com, expected_str);
-            if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
+        for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
             const auto [it, success] = map.emplace(expected, resolve_type_expr(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
@@ -908,6 +885,9 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
     const auto type = type_of_expr(com, *node.expr);
     if (std::holds_alternative<type_type>(type)) {
+        if (node.lower_bound || node.upper_bound) { // should not be possible since the parser doesn't allow it
+            node.token.error("cannot specify lower and upper bounds when declaring a span type");
+        }
         return type_type{std::get<type_type>(type).type_val->add_span()};
     }
 

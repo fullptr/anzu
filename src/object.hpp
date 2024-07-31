@@ -126,7 +126,7 @@ auto hash(std::span<const type_name> types) -> std::size_t;
 using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
 
 // Used for resolving template types. In the future could also be used for type aliases
-using template_map = std::unordered_map<type_name, type_name, type_hash>;
+using template_map = std::unordered_map<std::string, type_name>;
 
 auto null_type() -> type_name;
 auto nullptr_type() -> type_name;

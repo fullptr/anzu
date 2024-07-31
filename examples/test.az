@@ -1,5 +1,7 @@
 
-fn foo() -> typeof(10)
+fn size_of_type|T|() -> u64
 {
-    return 10;
+    return sizeof(T);
 }
+
+print("{} {} {}\n", size_of_type|char|(), size_of_type|i32|(), size_of_type|f64|());
