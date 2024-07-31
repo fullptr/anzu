@@ -212,7 +212,6 @@ struct node_builtin_name_expr
 };
 
 struct node_expr : std::variant<
-    // Rvalue expressions
     node_literal_i32_expr,
     node_literal_i64_expr,
     node_literal_u64_expr,
