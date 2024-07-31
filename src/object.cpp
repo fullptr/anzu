@@ -138,14 +138,12 @@ auto hash(const type_array& type) -> std::size_t
 
 auto hash(const type_ptr& type) -> std::size_t
 {
-    static const auto base = std::hash<std::string_view>{}("type_ptr");
-    return hash(*type.inner_type) ^ base;
+    return hash(*type.inner_type) ^ std::hash<std::string_view>{}("type_ptr");
 }
 
 auto hash(const type_span& type) -> std::size_t
 {
-    static const auto base = std::hash<std::string_view>{}("type_span");
-    return hash(*type.inner_type) ^ base;
+    return hash(*type.inner_type) ^ std::hash<std::string_view>{}("type_span");
 }
 
 auto hash(const type_function_ptr& type) -> std::size_t
@@ -159,14 +157,12 @@ auto hash(const type_function_ptr& type) -> std::size_t
 
 auto hash(const type_arena& type) -> std::size_t
 {
-    static const auto base = std::hash<std::string_view>{}("type_arena");
-    return base;
+    return std::hash<std::string_view>{}("type_arena");
 }
 
 auto hash(const type_type& type) -> std::size_t
 {
-    static const auto base = std::hash<std::string_view>{}("type_arena");
-    return hash(*type.type_val) ^ base;
+    return hash(*type.type_val) ^ std::hash<std::string_view>{}("type_type");
 }
 
 auto hash(std::span<const type_name> types) -> std::size_t
