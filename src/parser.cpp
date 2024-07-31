@@ -353,17 +353,20 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 
 auto parse_type(tokenstream& tokens) -> node_expr_ptr
 {
-    if (tokens.peek(token_type::kw_typeof)) {
-        auto node = std::make_shared<node_expr>();
-        auto& inner = node->emplace<node_typeof_expr>();
+    auto type = std::make_shared<node_expr>();
+    if (tokens.consume_maybe(token_type::left_paren)) {
+        type = parse_type(tokens);
+        tokens.consume_only(token_type::right_paren);
+    }
+    else if (tokens.peek(token_type::kw_typeof)) {
+        auto& inner = type->emplace<node_typeof_expr>();
         inner.token = tokens.consume();
         tokens.consume_only(token_type::left_paren);
         inner.expr = parse_expression(tokens);
         tokens.consume_only(token_type::right_paren);
-        return node;
-    } else if (tokens.consume_maybe(token_type::kw_function)) {
-        auto node = std::make_shared<node_expr>();
-        auto& inner = node->emplace<node_function_ptr_type_expr>();
+    }
+    else if (tokens.consume_maybe(token_type::kw_function)) {
+        auto& inner = type->emplace<node_function_ptr_type_expr>();
 
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&]{
@@ -371,15 +374,8 @@ auto parse_type(tokenstream& tokens) -> node_expr_ptr
         });
         tokens.consume_only(token_type::arrow);
         inner.return_type = parse_type(tokens);
-        return node;
     }
-
-    auto type = node_expr_ptr{nullptr};
-    if (tokens.consume_maybe(token_type::left_paren)) {
-        type = parse_type(tokens);
-        tokens.consume_only(token_type::right_paren);
-    } else {
-        type = std::make_shared<node_expr>();
+    else {
         auto& inner = type->emplace<node_name_expr>();
         inner.token = tokens.consume();
         inner.name = std::string{inner.token.text};
