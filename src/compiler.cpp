@@ -672,7 +672,7 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
             for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
                 const auto expected = make_type(com, expected_str);
                 if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
-                const auto [it, success] = map.emplace(expected, type_of_expr(com, *actual));
+                const auto [it, success] = map.emplace(expected, resolve_type_expr(com, node.token, actual));
                 if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
             }
             compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
@@ -824,7 +824,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
         for (const auto& [actual, expected_str] : zip(node.template_args, function_ast.template_types)) {
             const auto expected = make_type(com, expected_str);
             if (com.types.contains(expected)) node.token.error("template argument {} is already a real type name", expected_str);
-            const auto [it, success] = map.emplace(expected, type_of_expr(com, *actual));
+            const auto [it, success] = map.emplace(expected, resolve_type_expr(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);

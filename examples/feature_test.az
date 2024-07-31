@@ -279,57 +279,57 @@ fn get(a: arena&, count: u64) -> u64[]
     }
 }
 
-#fn read_file(filename: char const[], a: arena&) -> char const[]
-#{
-#    let f := fopen(filename, "rb");
-#    let contents := fread(f, a);
-#    fclose(f);
-#    return contents;
-#}
-#
-#arena a;
-#let contents := read_file("examples/example_data.txt", a&);
-#
-#print("'{}'\n", contents);
-#print("\nsize={}\n", contents.size());
-#
-## nullptr checks
-#{
-#    var p : i64& = nullptr;
-#    var q : i64& = nullptr;
-#    print("{}\n", p == q);
-#
-#    var x := 10;
-#    p = x&;
-#    print("comparison of a pointer {} to nullptr: {}\n", p, p == nullptr);
-#}
-#
-## template tests
-#fn do|T|(x: T) -> T
-#{
-#    print("{} {}\n", x.x, x.y);
-#    return T(10, 20);
-#}
-#
-#fn ptr|T|(x: T&) { print("{}\n", x); }
-#
-#struct foo
-#{
-#    x: i64;
-#    y: i64;
-#
-#    fn bar|T|(self: foo const&, x: T)
-#    {
-#        print("{}\n", x);
-#    }
-#}
-#
-#let f := foo(1, 2);
-#let g := do|foo|(f);
-#print("{} {}\n", g.x, g.y);
-#
-#var x := 10;
-#ptr|i64|(x&);
-#
-#f.bar|i64|(6);
-#f.bar|f64|(10.0);
+fn read_file(filename: char const[], a: arena&) -> char const[]
+{
+    let f := fopen(filename, "rb");
+    let contents := fread(f, a);
+    fclose(f);
+    return contents;
+}
+
+arena a;
+let contents := read_file("examples/example_data.txt", a&);
+
+print("'{}'\n", contents);
+print("\nsize={}\n", contents.size());
+
+# nullptr checks
+{
+    var p : i64& = nullptr;
+    var q : i64& = nullptr;
+    print("{}\n", p == q);
+
+    var x := 10;
+    p = x&;
+    print("comparison of a pointer {} to nullptr: {}\n", p, p == nullptr);
+}
+
+# template tests
+fn do|T|(x: T) -> T
+{
+    print("{} {}\n", x.x, x.y);
+    return T(10, 20);
+}
+
+fn ptr|T|(x: T&) { print("{}\n", x); }
+
+struct foo
+{
+    x: i64;
+    y: i64;
+
+    fn bar|T|(self: foo const&, x: T)
+    {
+        print("{}\n", x);
+    }
+}
+
+let f := foo(1, 2);
+let g := do|foo|(f);
+print("{} {}\n", g.x, g.y);
+
+var x := 10;
+ptr|i64|(x&);
+
+f.bar|i64|(6);
+f.bar|f64|(10.0);

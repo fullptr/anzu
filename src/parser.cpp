@@ -484,7 +484,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         param.type = parse_type(tokens);
         stmt.sig.params.push_back(param);
     });
-    
+
     if (tokens.consume_maybe(token_type::arrow)) {
         stmt.sig.return_type = parse_type(tokens);
     }
@@ -518,9 +518,6 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
     });
     if (tokens.consume_maybe(token_type::arrow)) {
         stmt.sig.return_type = parse_type(tokens);
-    } else {
-        stmt.sig.return_type = std::make_shared<node_expr>();
-        auto& inner = stmt.sig.return_type->emplace<node_name_expr>(std::string{"null"}, tokens.curr());
     }
     stmt.body = parse_statement(tokens);
     return node;
