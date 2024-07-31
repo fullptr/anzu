@@ -201,9 +201,7 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_struct_stmt& node) {
             std::print("{}Struct:\n", spaces);
             std::print("{}- Name: {}\n", spaces, node.name);
-            std::print("{}- Fields: (TODO: add printing)\n", spaces);
-
-            std::print("{}- FunctionArguments:\n", spaces);
+            std::print("{}- Fields:\n", spaces);
             for (const auto& field : node.fields) {
                 std::print("    {}:\n", field.name);
                 print_node(*field.type, indent + 1);

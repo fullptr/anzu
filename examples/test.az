@@ -1,7 +1,5 @@
 
-fn size_of_type|T|() -> u64
-{
-    return sizeof(T);
-}
+struct foo
+{}
 
-print("{} {} {}\n", size_of_type|char|(), size_of_type|i32|(), size_of_type|f64|());
+let f := foo();
