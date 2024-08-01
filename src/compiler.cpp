@@ -1395,11 +1395,9 @@ auto compile(const anzu_module& ast) -> bytecode_program
     auto com = compiler{};
     com.functions.emplace_back("$main", 0, variable_manager{false});
     com.current_compiling.push_back(0);
-    {
-        variables(com).new_scope();
-        push_stmt(com, *ast.root);
-        variables(com).pop_scope(code(com));
-    }
+    variables(com).new_scope();
+    push_stmt(com, *ast.root);
+    variables(com).pop_scope(code(com));
     push_value(code(com), op::end_program);
     com.current_compiling.pop_back();
 
