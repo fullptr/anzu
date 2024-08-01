@@ -139,7 +139,6 @@ auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> 
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
     push_value(code(com), op::push_ptr_global, var->location);
     return var->type;
-
 }
 
 auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
@@ -199,8 +198,7 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name
 // returns the pointer.
 auto insert_into_rom(compiler& com, std::string_view data) -> std::size_t
 {
-    const auto index = com.rom.find(data);
-    if (index != std::string::npos) {
+    if (const auto index = com.rom.find(data); index != std::string::npos) {
         return index;
     }
     const auto ptr = com.rom.size();
@@ -247,9 +245,7 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
 
 // Used for passing copies of variables to functions, as well as for assignments and declarations.
 // Verifies that the type of the expression can be converted to the type 
-auto push_copy_typechecked(
-    compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok
-) -> void
+void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name& expected_raw, const token& tok)
 {
     // Remove top-level const since we are making a copy, ie- you should be able to pass a
     // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
@@ -349,10 +345,7 @@ auto compile_function(
 }
 
 // Temp: remove this for a more efficient function
-auto string_replace(
-    std::string subject, std::string_view search, std::string_view replace
-)
-    -> std::string
+auto string_replace(std::string subject, std::string_view search, std::string_view replace) -> std::string
 {
     std::size_t pos = 0;
     while ((pos = subject.find(search, pos)) != std::string::npos) {
