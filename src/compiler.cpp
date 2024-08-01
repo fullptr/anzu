@@ -57,22 +57,6 @@ auto compile_function(
     const template_map& map = {}
 ) -> void;
 
-auto new_function(compiler& com, const std::string& name, const token& tok, const template_map& map)
-{
-    const auto id = com.functions.size();
-    com.functions.emplace_back(name, id, variable_manager{true}, map);
-    com.current_compiling.push_back(id);
-    const auto [it, success] = com.functions_by_name.emplace(name, id);
-    tok.assert(success, "a function with the name '{}' already exists", name);
-    variables(com).new_scope();
-}
-
-auto finish_function(compiler& com)
-{
-    variables(com).pop_scope(code(com));
-    com.current_compiling.pop_back();
-}
-
 auto make_type(compiler& com, const std::string& name) -> type_name
 {
     const auto& map = current(com).template_types;
@@ -336,7 +320,13 @@ auto compile_function(
 )
     -> void
 {
-    new_function(com, full_name, tok, map);
+    const auto id = com.functions.size();
+    com.functions.emplace_back(full_name, id, variable_manager{true}, map);
+    const auto [it, success] = com.functions_by_name.emplace(full_name, id);
+    tok.assert(success, "a function with the name '{}' already exists", full_name);
+    
+    com.current_compiling.push_back(id);
+    variables(com).new_scope();
 
     auto& sig = current(com).sig;
     for (const auto& arg : node_sig.params) {
@@ -354,7 +344,8 @@ auto compile_function(
         push_value(code(com), op::push_null, op::ret, std::uint64_t{1});
     }
 
-    finish_function(com);
+    variables(com).pop_scope(code(com));
+    com.current_compiling.pop_back();
 }
 
 // Temp: remove this for a more efficient function
@@ -407,149 +398,115 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else { tok.error("cannot print value of type {}", type); }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
+auto push_loop(compiler& com, std::function<void()> body) -> void
 {
-    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
-    if (auto func = get_function(com, full_name)) {
-        node.token.error("cannot take address of a function pointer");
+    variables(com).new_loop_scope();
+    
+    const auto begin_pos = code(com).size();
+    {
+        variables(com).new_scope();
+        body();
+        variables(com).pop_scope(code(com));
+    }
+    push_value(code(com), op::jump, begin_pos);
+
+    // Fix up the breaks and continues
+    const auto& control_flow = variables(com).get_loop_info();
+    for (const auto idx : control_flow.breaks) {
+        write_value(code(com), idx, code(com).size()); // Jump past end
+    }
+    for (const auto idx : control_flow.continues) {
+        write_value(code(com), idx, begin_pos); // Jump to start
     }
 
-    return push_var_addr(com, node.token, node.name);
+    variables(com).pop_scope(code(com));
 }
 
-auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
+
+auto push_expr_ptr(compiler& com, const node_literal_i32_expr& node) -> type_name
 {
-    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
-    if (auto func = get_function(com, full_name)) {
-        const auto& info = *func;
-        push_value(code(com), op::push_u64, info.id);
-
-        // next, construct the return type.
-        const auto ptr_type = type_function_ptr{
-            .param_types = info.sig.params,
-            .return_type = make_value<type_name>(info.sig.return_type)
-        };
-        return ptr_type;
-    }
-
-    // The name may be a type
-    if (const auto type = make_type(com, node.name); com.types.contains(type)) {
-        return type_type{type};
-    }
-
-    const auto type = push_expr_ptr(com, node);
-    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
+    node.token.error("cannot take the address of a i32 literal");
 }
-
-auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
-{
-    auto type = push_expr_ptr(com, *node.expr);
-    const auto stripped_type = auto_deref_pointer(com, type); // allow for field access through a pointer
-
-    const auto field_type = push_field_offset(com, node.token, stripped_type, node.field_name);
-    push_value(code(com), op::u64_add); // modify ptr
-    if (stripped_type.is_const) return field_type.add_const(); // propagate const to fields
-    return field_type;
-}
-
-auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
-{
-    const auto type = push_expr_val(com, *node.expr); // Push the address
-    node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
-    return type.remove_ptr();
-}
-
-auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
-{
-    const auto type = type_of_expr(com, *node.expr);
-
-    const auto is_array = type.is_array();
-    const auto is_span = type.is_span();
-    node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
-
-    push_expr_ptr(com, *node.expr);
-
-    // If we are a span, we want the address that it holds rather than its own address,
-    // so switch the pointer by loading what it's pointing at.
-    if (is_span) {
-        push_value(code(com), op::load, sizeof(std::byte*));
-    }
-
-    // Offset pointer by (index * size)
-    const auto inner = inner_type(type);
-    const auto index = push_expr_val(com, *node.index);
-    node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-    push_value(code(com), op::push_u64, com.types.size_of(inner));
-    push_value(code(com), op::u64_mul);
-    push_value(code(com), op::u64_add); // modify ptr
-    if (is_array && type.is_const) {
-        return inner.add_const(); // propagate const to elements
-    }
-    return inner;
-}
-
-[[noreturn]] auto push_expr_ptr(compiler& com, const auto& node) -> type_name
-{
-    node.token.error("cannot take address of a non-lvalue\n");
-}
-
-auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
-{
-    return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
-}
-
 auto push_expr_val(compiler& com, const node_literal_i32_expr& node) -> type_name
 {
     push_value(code(com), op::push_i32, node.value);
     return i32_type();
 }
 
+auto push_expr_ptr(compiler& com, const node_literal_i64_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a i64 literal");
+}
 auto push_expr_val(compiler& com, const node_literal_i64_expr& node) -> type_name
 {
     push_value(code(com), op::push_i64, node.value);
     return i64_type();
 }
 
+auto push_expr_ptr(compiler& com, const node_literal_u64_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a u64 literal");
+}
 auto push_expr_val(compiler& com, const node_literal_u64_expr& node) -> type_name
 {
     push_value(code(com), op::push_u64, node.value);
     return u64_type();
 }
 
+auto push_expr_ptr(compiler& com, const node_literal_f64_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a f64 literal");
+}
 auto push_expr_val(compiler& com, const node_literal_f64_expr& node) -> type_name
 {
     push_value(code(com), op::push_f64, node.value);
     return f64_type();
 }
 
+auto push_expr_ptr(compiler& com, const node_literal_char_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a char literal");
+}
 auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_name
 {
     push_value(code(com), op::push_char, node.value);
     return char_type();
 }
 
+auto push_expr_ptr(compiler& com, const node_literal_bool_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a bool literal");
+}
+auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
+{
+    push_value(code(com), op::push_bool, node.value);
+    return bool_type();
+}
+
+auto push_expr_ptr(compiler& com, const node_literal_null_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a null literal");
+}
+auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_name
+{
+    push_value(code(com), op::push_null);
+    return null_type();
+}
+
+auto push_expr_ptr(compiler& com, const node_literal_nullptr_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a nullptr literal");
+}
+auto push_expr_val(compiler& com, const node_literal_nullptr_expr& node) -> type_name
+{
+    push_value(code(com), op::push_nullptr);
+    return nullptr_type();
+}
+
+auto push_expr_ptr(compiler& com, const node_literal_string_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a string literal");
+}
 auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
 {
     push_value(code(com), op::push_string_literal);
@@ -557,24 +514,33 @@ auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_
     return string_literal_type();
 }
 
-auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
+auto push_expr_ptr(compiler& com, const node_unary_op_expr& node) -> type_name
 {
-    push_value(code(com), op::push_bool, node.value);
-    return bool_type();
+    node.token.error("cannot take the address of a unary op");
+}
+auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
+{
+    using tt = token_type;
+    const auto type = push_expr_val(com, *node.expr);
+    node.token.assert(!type.is_type_value(), "invalid use of type expression");
+
+    switch (node.token.type) {
+        case tt::minus: {
+            if (type == i32_type()) { push_value(code(com), op::i32_neg); return type; }
+            if (type == i64_type()) { push_value(code(com), op::i64_neg); return type; }
+            if (type == f64_type()) { push_value(code(com), op::f64_neg); return type; }
+        } break;
+        case tt::bang: {
+            if (type == bool_type()) { push_value(code(com), op::bool_not); return type; }
+        } break;
+    }
+    node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
-auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_name
+auto push_expr_ptr(compiler& com, const node_binary_op_expr& node) -> type_name
 {
-    push_value(code(com), op::push_null);
-    return null_type();
+    node.token.error("cannot take the address of a binary op");
 }
-
-auto push_expr_val(compiler& com, const node_literal_nullptr_expr& node) -> type_name
-{
-    push_value(code(com), op::push_nullptr);
-    return nullptr_type();
-}
-
 auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
 {
     using tt = token_type;
@@ -679,25 +645,10 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
-auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
+auto push_expr_ptr(compiler& com, const node_call_expr& node) -> type_name
 {
-    using tt = token_type;
-    const auto type = push_expr_val(com, *node.expr);
-    node.token.assert(!type.is_type_value(), "invalid use of type expression");
-
-    switch (node.token.type) {
-        case tt::minus: {
-            if (type == i32_type()) { push_value(code(com), op::i32_neg); return type; }
-            if (type == i64_type()) { push_value(code(com), op::i64_neg); return type; }
-            if (type == f64_type()) { push_value(code(com), op::f64_neg); return type; }
-        } break;
-        case tt::bang: {
-            if (type == bool_type()) { push_value(code(com), op::bool_not); return type; }
-        } break;
-    }
-    node.token.error("could not find op '{}{}'", node.token.type, type);
+    node.token.error("cannot take the address of a call expression");
 }
-
 auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
 {
     // First, handle the cases where the thing we are trying to call is a name.
@@ -796,6 +747,10 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     return *sig.return_type;
 }
 
+auto push_expr_ptr(compiler& com, const node_member_call_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a member call expression");
+}
 auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
@@ -921,6 +876,10 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     return func->sig.return_type;
 }
 
+auto push_expr_ptr(compiler& com, const node_array_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of an array expression");
+}
 auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
 {
     node.token.assert(!node.elements.empty(), "cannot have empty array literals");
@@ -934,6 +893,10 @@ auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
     return inner_type.add_array(node.elements.size());
 }
 
+auto push_expr_ptr(compiler& com, const node_repeat_array_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a repeat array expression");
+}
 auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_name
 {
     node.token.assert(node.size != 0, "cannot have empty array literals");
@@ -946,6 +909,10 @@ auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_na
     return inner_type.add_array(node.size);
 }
 
+auto push_expr_ptr(compiler& com, const node_addrof_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of an addrof expression");
+}
 auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
@@ -956,6 +923,10 @@ auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
     return type.add_ptr();
 }
 
+auto push_expr_ptr(compiler& com, const node_sizeof_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a sizeof expression");
+}
 auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
@@ -965,6 +936,11 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
         push_value(code(com), op::push_u64, com.types.size_of(type));
     }
     return u64_type();
+}
+
+auto push_expr_ptr(compiler& com, const node_span_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a span expression");
 }
 
 auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
@@ -1019,6 +995,86 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     return type.remove_array().add_span();
 }
 
+auto push_expr_ptr(compiler& com, const node_typeof_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a typeof expression");
+}
+auto push_expr_val(compiler& com, const node_typeof_expr& node) -> type_name
+{
+    return type_type{type_of_expr(com, *node.expr)};
+}
+
+auto push_expr_ptr(compiler& com, const node_function_ptr_type_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a function ptr type expression");
+}
+auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> type_name
+{
+    auto type = make_value<type_name>();
+    auto& inner = type->emplace<type_function_ptr>();
+    for (const auto& param : node.params) {
+        inner.param_types.push_back(resolve_type(com, node.token, param));
+    }
+    inner.return_type = resolve_type(com, node.token, node.return_type);
+    return type_type{type};
+}
+
+auto push_expr_ptr(compiler& com, const node_const_expr& node) -> type_name
+{
+    node.token.error("cannot take the address of a const expression");
+}
+auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+    node.token.assert(type.is_type_value(), "invalid use of a const-expr");
+    return type_type{inner_type(type).add_const()};
+}
+
+auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
+{
+    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
+    if (auto func = get_function(com, full_name)) {
+        node.token.error("cannot take address of a function pointer");
+    }
+
+    return push_var_addr(com, node.token, node.name);
+}
+auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
+{
+    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
+    if (auto func = get_function(com, full_name)) {
+        const auto& info = *func;
+        push_value(code(com), op::push_u64, info.id);
+
+        // next, construct the return type.
+        const auto ptr_type = type_function_ptr{
+            .param_types = info.sig.params,
+            .return_type = make_value<type_name>(info.sig.return_type)
+        };
+        return ptr_type;
+    }
+
+    // The name may be a type
+    if (const auto type = make_type(com, node.name); com.types.contains(type)) {
+        return type_type{type};
+    }
+
+    const auto type = push_expr_ptr(com, node);
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
+    push_value(code(com), op::load, com.types.size_of(type));
+    return type;
+}
+
+auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
+{
+    auto type = push_expr_ptr(com, *node.expr);
+    const auto stripped_type = auto_deref_pointer(com, type); // allow for field access through a pointer
+
+    const auto field_type = push_field_offset(com, node.token, stripped_type, node.field_name);
+    push_value(code(com), op::u64_add); // modify ptr
+    if (stripped_type.is_const) return field_type.add_const(); // propagate const to fields
+    return field_type;
+}
 auto push_expr_val(compiler& com, const node_field_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
@@ -1028,6 +1084,12 @@ auto push_expr_val(compiler& com, const node_field_expr& node) -> type_name
     return t;
 }
 
+auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
+{
+    const auto type = push_expr_val(com, *node.expr); // Push the address
+    node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
+    return type.remove_ptr();
+}
 auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
@@ -1037,6 +1099,34 @@ auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
     return t;
 }
 
+auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
+{
+    const auto type = type_of_expr(com, *node.expr);
+
+    const auto is_array = type.is_array();
+    const auto is_span = type.is_span();
+    node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
+
+    push_expr_ptr(com, *node.expr);
+
+    // If we are a span, we want the address that it holds rather than its own address,
+    // so switch the pointer by loading what it's pointing at.
+    if (is_span) {
+        push_value(code(com), op::load, sizeof(std::byte*));
+    }
+
+    // Offset pointer by (index * size)
+    const auto inner = inner_type(type);
+    const auto index = push_expr_val(com, *node.index);
+    node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
+    push_value(code(com), op::push_u64, com.types.size_of(inner));
+    push_value(code(com), op::u64_mul);
+    push_value(code(com), op::u64_add); // modify ptr
+    if (is_array && type.is_const) {
+        return inner.add_const(); // propagate const to elements
+    }
+    return inner;
+}
 auto push_expr_val(compiler& com, const node_subscript_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
@@ -1052,28 +1142,6 @@ auto push_expr_val(compiler& com, const node_subscript_expr& node) -> type_name
     return t;
 }
 
-auto push_expr_val(compiler& com, const node_typeof_expr& node) -> type_name
-{
-    return type_type{type_of_expr(com, *node.expr)};
-}
-
-auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> type_name
-{
-    auto type = make_value<type_name>();
-    auto& inner = type->emplace<type_function_ptr>();
-    for (const auto& param : node.params) {
-        inner.param_types.push_back(resolve_type(com, node.token, param));
-    }
-    inner.return_type = resolve_type(com, node.token, node.return_type);
-    return type_type{type};
-}
-
-auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
-{
-    const auto type = type_of_expr(com, *node.expr);
-    node.token.assert(type.is_type_value(), "invalid use of a const-expr");
-    return type_type{inner_type(type).add_const()};
-}
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
@@ -1084,30 +1152,6 @@ void push_stmt(compiler& com, const node_sequence_stmt& node)
     variables(com).pop_scope(code(com));
 }
 
-auto push_loop(compiler& com, std::function<void()> body) -> void
-{
-    variables(com).new_loop_scope();
-    
-    const auto begin_pos = code(com).size();
-    {
-        variables(com).new_scope();
-        body();
-        variables(com).pop_scope(code(com));
-    }
-    push_value(code(com), op::jump, begin_pos);
-
-    // Fix up the breaks and continues
-    const auto& control_flow = variables(com).get_loop_info();
-    for (const auto idx : control_flow.breaks) {
-        write_value(code(com), idx, code(com).size()); // Jump past end
-    }
-    for (const auto idx : control_flow.continues) {
-        write_value(code(com), idx, begin_pos); // Jump to start
-    }
-
-    variables(com).pop_scope(code(com));
-}
-
 void push_stmt(compiler& com, const node_loop_stmt& node)
 {
     push_loop(com, [&] {
@@ -1115,18 +1159,10 @@ void push_stmt(compiler& com, const node_loop_stmt& node)
     });
 }
 
-/*
-while <condition> {
-    <body>
-}
-
-becomes
-
-loop {
-    if !<condition> break;
-    <body>
-}
-*/
+//loop {
+//    if !<condition> break;
+//    <body>
+//}
 void push_stmt(compiler& com, const node_while_stmt& node)
 {
     push_loop(com, [&] {
@@ -1144,25 +1180,17 @@ void push_stmt(compiler& com, const node_while_stmt& node)
     });
 }
 
-/*
-for <name> in <iter> {
-    <body>
-}
-
-becomes
-
-{
-    <<create temporary var if iter is an rvalue>>
-    idx = 0u;
-    size := <<length of iter>>;
-    loop {
-        if idx == size break;
-        name := iter[idx]~;
-        idx = idx + 1u;
-        <body>
-    }
-}
-*/
+//{
+//    <<create temporary var if iter is an rvalue>>
+//    idx = 0u;
+//    size := <<length of iter>>;
+//    loop {
+//        if idx == size break;
+//        name := iter[idx]~;
+//        idx = idx + 1u;
+//        <body>
+//    }
+//}
 void push_stmt(compiler& com, const node_for_stmt& node)
 {
     variables(com).new_scope();
@@ -1315,25 +1343,6 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     return;
 }
 
-
-void push_stmt(compiler& com, const node_function_def_stmt& node)
-{
-    if (com.types.contains(make_type(com, node.name))) {
-        node.token.error("'{}' cannot be a function name, it is a type def", node.name);
-    }
-
-    // Template functions only get compiled at the call site, so we just stash the ast
-    if (!node.template_types.empty()) {
-        const auto [it, success] = com.function_templates.emplace(node.name, node);
-        if (!success) {
-            node.token.error("function template named '{}' already defined", node.name);
-        }
-    } else {
-        const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
-        compile_function(com, node.token, full_name, node.sig, node.body);
-    }
-}
-
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
     const auto struct_type = make_type(com, node.struct_name);
@@ -1364,7 +1373,30 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     } else {
         compile_function(com, node.token, full_name, node.sig, node.body);
     }
+}
 
+void push_stmt(compiler& com, const node_function_def_stmt& node)
+{
+    if (com.types.contains(make_type(com, node.name))) {
+        node.token.error("'{}' cannot be a function name, it is a type def", node.name);
+    }
+
+    // Template functions only get compiled at the call site, so we just stash the ast
+    if (!node.template_types.empty()) {
+        const auto [it, success] = com.function_templates.emplace(node.name, node);
+        if (!success) {
+            node.token.error("function template named '{}' already defined", node.name);
+        }
+    } else {
+        const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
+        compile_function(com, node.token, full_name, node.sig, node.body);
+    }
+}
+
+void push_stmt(compiler& com, const node_expression_stmt& node)
+{
+    const auto type = push_expr_val(com, *node.expr);
+    push_value(code(com), op::pop, com.types.size_of(type));
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
@@ -1376,12 +1408,6 @@ void push_stmt(compiler& com, const node_return_stmt& node)
     );
     variables(com).handle_function_exit(code(com));
     push_value(code(com), op::ret, com.types.size_of(return_type));
-}
-
-void push_stmt(compiler& com, const node_expression_stmt& node)
-{
-    const auto type = push_expr_val(com, *node.expr);
-    push_value(code(com), op::pop, com.types.size_of(type));
 }
 
 void push_stmt(compiler& com, const node_assert_stmt& node)
@@ -1415,6 +1441,11 @@ void push_stmt(compiler& com, const node_print_stmt& node)
             push_value(code(com), op::print_char_span);
         }
     }
+}
+
+auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
+{
+    return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
 }
 
 auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
