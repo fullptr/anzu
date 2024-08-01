@@ -612,6 +612,12 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
+// push_expr should be able to return things other than types, like how type_type wraps a type
+// and indicates that the result of compiling the expression returns a type rather than pushing
+// a value to the runtime stack of a given type. Similarly, if the name in this node is a type
+// or the name of a function, the type/function information should be passed up and no bytecode
+// should be created. Then the implementation of node_call_expr does not need to specically
+// handle name expressions
 auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
@@ -967,20 +973,21 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> t
     return type_type{inner_type(type).add_const()};
 }
 
-// TODO: Clean this up, think of a way to communicate back to the caller what this node
-// evaluates to
+// A name can represent the following
+//  - a variable name
+//  - a function name
+//  - a builtin funciton name
+//  - a type name
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
+    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
     if (ct == compile_type::ptr) {
-        const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
         if (auto func = get_function(com, full_name)) {
             node.token.error("cannot take address of a function pointer");
         }
-
         return push_var_addr(com, node.token, node.name);
     }
 
-    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
     if (auto func = get_function(com, full_name)) {
         const auto& info = *func;
         push_value(code(com), op::push_u64, info.id);
@@ -1038,9 +1045,15 @@ auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> t
 
 auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) -> type_name
 {
-    if (ct == compile_type::ptr) {
-        const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr);
+    if (type.is_type_value()) {
+        if (auto index = std::get_if<node_literal_u64_expr>(&*node.index)) {
+            return type_type{inner_type(type).add_array(index->value)};
+        }
+        node.token.error("index must be a u64 literal when delcaring an array type");
+    }
 
+    if (ct == compile_type::ptr) {
         const auto is_array = type.is_array();
         const auto is_span = type.is_span();
         node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
@@ -1066,14 +1079,6 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         return inner;
     }
 
-    const auto type = type_of_expr(com, *node.expr);
-    if (type.is_type_value()) {
-        if (!std::holds_alternative<node_literal_u64_expr>(*node.index)) {
-            node.token.error("index must be a u64 literal when delcaring an array type");
-        }
-        const auto index = std::get<node_literal_u64_expr>(*node.index).value;
-        return type_type{inner_type(type).add_array(index)};
-    }
     const auto t = push_expr(com, compile_type::ptr, node);
     push_value(code(com), op::load, com.types.size_of(t));
     return t;
