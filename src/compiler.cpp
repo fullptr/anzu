@@ -43,9 +43,9 @@ auto globals(compiler& com) -> variable_manager& {
 }
 
 static const auto global_namespace = type_name{type_struct{""}};
+enum class compile_type { val, ptr };
 
-auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name;
-auto push_expr_val(compiler& com, const node_expr& expr) -> type_name;
+auto push_expr(compiler& com, compile_type ct, const node_expr& node) -> type_name;
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 auto compile_function(
@@ -190,7 +190,7 @@ auto get_constructor_params(const compiler& com, const type_name& type) -> std::
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name
 {
     const auto program_size = code(com).size();
-    const auto type = push_expr_val(com, node);
+    const auto type = push_expr(com, compile_type::val, node);
     code(com).resize(program_size);
     return type;
 }
@@ -262,12 +262,12 @@ auto push_copy_typechecked(
     }
 
     if (actual == nullptr_type() && expected.is_ptr()) {
-        push_expr_val(com, expr);
+        push_expr(com, compile_type::val, expr);
         return;
     }
 
     if (const_convertable_to(tok, actual, expected)) {
-        push_expr_val(com, expr);
+        push_expr(com, compile_type::val, expr);
     } else {
         tok.error("Cannot convert '{}' to '{}'", actual, expected);
     }
@@ -382,7 +382,7 @@ auto string_split(std::string s, std::string_view delimiter) -> std::vector<std:
 
 auto push_print_fundamental(compiler& com, const node_expr& node, const token& tok) -> void
 {
-    const auto type = push_expr_val(com, node);
+    const auto type = push_expr(com, compile_type::val, node);
     if (type == null_type()) { push_value(code(com), op::print_null); }
     else if (type == bool_type()) { push_value(code(com), op::print_bool); }
     else if (type == char_type()) { push_value(code(com), op::print_char); }
@@ -423,105 +423,75 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
 }
 
 
-auto push_expr_ptr(compiler& com, const node_literal_i32_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a i32 literal");
-}
-auto push_expr_val(compiler& com, const node_literal_i32_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a i32 literal");
     push_value(code(com), op::push_i32, node.value);
     return i32_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_literal_i64_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_i64_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a i64 literal");
-}
-auto push_expr_val(compiler& com, const node_literal_i64_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a i64 literal");
     push_value(code(com), op::push_i64, node.value);
     return i64_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_literal_u64_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_u64_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a u64 literal");
-}
-auto push_expr_val(compiler& com, const node_literal_u64_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a u64 literal");
     push_value(code(com), op::push_u64, node.value);
     return u64_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_literal_f64_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_f64_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a f64 literal");
-}
-auto push_expr_val(compiler& com, const node_literal_f64_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a f64 literal");
     push_value(code(com), op::push_f64, node.value);
     return f64_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_literal_char_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_char_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a char literal");
-}
-auto push_expr_val(compiler& com, const node_literal_char_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a char literal");
     push_value(code(com), op::push_char, node.value);
     return char_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_literal_bool_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_bool_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a bool literal");
-}
-auto push_expr_val(compiler& com, const node_literal_bool_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a bool literal");
     push_value(code(com), op::push_bool, node.value);
     return bool_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_literal_null_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_null_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a null literal");
-}
-auto push_expr_val(compiler& com, const node_literal_null_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a null literal");
     push_value(code(com), op::push_null);
     return null_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_literal_nullptr_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_nullptr_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a nullptr literal");
-}
-auto push_expr_val(compiler& com, const node_literal_nullptr_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a nullptr literal");
     push_value(code(com), op::push_nullptr);
     return nullptr_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_literal_string_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_literal_string_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a string literal");
-}
-auto push_expr_val(compiler& com, const node_literal_string_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a string literal");
     push_value(code(com), op::push_string_literal);
     push_value(code(com), insert_into_rom(com, node.value), node.value.size());
     return string_literal_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_unary_op_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_unary_op_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a unary op");
-}
-auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a unary op");
     using tt = token_type;
-    const auto type = push_expr_val(com, *node.expr);
+    const auto type = push_expr(com, compile_type::val, *node.expr);
     node.token.assert(!type.is_type_value(), "invalid use of type expression");
 
     switch (node.token.type) {
@@ -537,15 +507,12 @@ auto push_expr_val(compiler& com, const node_unary_op_expr& node) -> type_name
     node.token.error("could not find op '{}{}'", node.token.type, type);
 }
 
-auto push_expr_ptr(compiler& com, const node_binary_op_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a binary op");
-}
-auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a binary op");
     using tt = token_type;
-    auto lhs = push_expr_val(com, *node.lhs);
-    auto rhs = push_expr_val(com, *node.rhs);
+    auto lhs = push_expr(com, compile_type::val, *node.lhs);
+    auto rhs = push_expr(com, compile_type::val, *node.rhs);
 
     // TODO: Implement using == for comparing types
     node.token.assert(!lhs.is_type_value() && !rhs.is_type_value(), "invalid use of type expression");
@@ -645,12 +612,10 @@ auto push_expr_val(compiler& com, const node_binary_op_expr& node) -> type_name
     node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
-auto push_expr_ptr(compiler& com, const node_call_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a call expression");
-}
-auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
+
     // First, handle the cases where the thing we are trying to call is a name.
     if (std::holds_alternative<node_name_expr>(*node.expr)) {
         auto& inner = std::get<node_name_expr>(*node.expr);
@@ -742,17 +707,14 @@ auto push_expr_val(compiler& com, const node_call_expr& node) -> type_name
     }
 
     // push the function pointer and call it
-    push_expr_val(com, *node.expr);
+    push_expr(com, compile_type::val, *node.expr);
     push_value(code(com), op::call, args_size);
     return *sig.return_type;
 }
 
-auto push_expr_ptr(compiler& com, const node_member_call_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_member_call_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a member call expression");
-}
-auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a member call expression");
     const auto type = type_of_expr(com, *node.expr);
     node.token.assert(!type.is_type_value(), "invalid use of type expressions");
 
@@ -772,7 +734,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     // Handle .size() calls on spans
     if (struct_type.is_span() && node.function_name == "size") {
         node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
-        push_expr_ptr(com, *node.expr); // push pointer to span
+        push_expr(com, compile_type::ptr, *node.expr); // push pointer to span
         auto_deref_pointer(com, type);  // because we pushed a T& instead of a T, this will leave a pointer on the stack
         push_value(code(com), op::push_u64, sizeof(std::byte*));
         push_value(code(com), op::u64_add); // offset to the size value
@@ -800,7 +762,7 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // Allocate space in the arena and move the object there
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
-            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_expr(com, compile_type::val, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
             auto_deref_pointer(com, type);  // if we instead pushed a pointer to an arena, deref down to it
             push_value(code(com), op::arena_alloc, size);
             return result_type.add_ptr();
@@ -820,13 +782,13 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
             // Allocate space in the arena and move the object there
             // (the allocate op code will do the move)
             const auto size = com.types.size_of(result_type);
-            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_expr(com, compile_type::val, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
             auto_deref_pointer(com, type);  // if we instead pushed a pointer to an arena, deref down to it
             push_value(code(com), op::arena_alloc_array, size);
             return result_type.add_span();
         }
         else if (node.function_name == "size" || node.function_name == "capacity") {
-            push_expr_val(com, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
+            push_expr(com, compile_type::val, *node.expr); // push the value of the arena, which is a pointer to the C++ struct
             auto_deref_pointer(com, type);  // if we instead pushed a pointer to an arena, deref down to it
             push_value(code(com), node.function_name == "size" ? op::arena_size : op::arena_capacity);
             return u64_type();
@@ -876,59 +838,47 @@ auto push_expr_val(compiler& com, const node_member_call_expr& node) -> type_nam
     return func->sig.return_type;
 }
 
-auto push_expr_ptr(compiler& com, const node_array_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_array_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of an array expression");
-}
-auto push_expr_val(compiler& com, const node_array_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of an array expression");
     node.token.assert(!node.elements.empty(), "cannot have empty array literals");
 
-    const auto inner_type = push_expr_val(com, *node.elements.front());
+    const auto inner_type = push_expr(com, compile_type::val, *node.elements.front());
     node.token.assert(!inner_type.is_type_value(), "invalid use of type expressions");
     for (const auto& element : node.elements | std::views::drop(1)) {
-        const auto element_type = push_expr_val(com, *element);
+        const auto element_type = push_expr(com, compile_type::val, *element);
         node.token.assert_eq(element_type, inner_type, "array has mismatching element types");
     }
     return inner_type.add_array(node.elements.size());
 }
 
-auto push_expr_ptr(compiler& com, const node_repeat_array_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_repeat_array_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a repeat array expression");
-}
-auto push_expr_val(compiler& com, const node_repeat_array_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a repeat array expression");
     node.token.assert(node.size != 0, "cannot have empty array literals");
 
     const auto inner_type = type_of_expr(com, *node.value);
     node.token.assert(!inner_type.is_type_value(), "invalid use of type expressions");
     for (std::size_t i = 0; i != node.size; ++i) {
-        push_expr_val(com, *node.value);
+        push_expr(com, compile_type::val, *node.value);
     }
     return inner_type.add_array(node.size);
 }
 
-auto push_expr_ptr(compiler& com, const node_addrof_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of an addrof expression");
-}
-auto push_expr_val(compiler& com, const node_addrof_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of an addrof expression");
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_type_value()) {
         return type_type{inner_type(type).add_ptr()};
     }
-    push_expr_ptr(com, *node.expr);
+    push_expr(com, compile_type::ptr, *node.expr);
     return type.add_ptr();
 }
 
-auto push_expr_ptr(compiler& com, const node_sizeof_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_sizeof_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a sizeof expression");
-}
-auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a sizeof expression");
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_type_value()) { // can call sizeof on a type directly
         push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
@@ -938,13 +888,9 @@ auto push_expr_val(compiler& com, const node_sizeof_expr& node) -> type_name
     return u64_type();
 }
 
-auto push_expr_ptr(compiler& com, const node_span_expr& node) -> type_name
+auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a span expression");
-}
-
-auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a span expression");
     if ((node.lower_bound && !node.upper_bound) || (!node.lower_bound && node.upper_bound)) {
         node.token.error("a span must either have both bounds set, or neither");
     }
@@ -959,7 +905,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
         "can only span arrays and other spans, not {}", type
     );
 
-    push_expr_ptr(com, *node.expr);
+    push_expr(com, compile_type::ptr, *node.expr);
 
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
@@ -969,7 +915,7 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
     if (node.lower_bound) {// move first index of span up
         push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
-        const auto lower_bound_type = push_expr_val(com, *node.lower_bound);
+        const auto lower_bound_type = push_expr(com, compile_type::val, *node.lower_bound);
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
         push_value(code(com), op::u64_mul);
         push_value(code(com), op::u64_add);
@@ -977,12 +923,12 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
 
     // next push the size to make up the second half of the span
     if (node.lower_bound && node.upper_bound) {
-        push_expr_val(com, *node.upper_bound);
-        push_expr_val(com, *node.lower_bound);
+        push_expr(com, compile_type::val, *node.upper_bound);
+        push_expr(com, compile_type::val, *node.lower_bound);
         push_value(code(com), op::u64_sub);
     } else if (type.is_span()) {
         // Push the span pointer, offset to the size, and load the size
-        push_expr_ptr(com, *node.expr);
+        push_expr(com, compile_type::ptr, *node.expr);
         push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add);
         push_value(code(com), op::load, com.types.size_of(u64_type()));
     } else {
@@ -995,21 +941,15 @@ auto push_expr_val(compiler& com, const node_span_expr& node) -> type_name
     return type.remove_array().add_span();
 }
 
-auto push_expr_ptr(compiler& com, const node_typeof_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_typeof_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a typeof expression");
-}
-auto push_expr_val(compiler& com, const node_typeof_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a typeof expression");
     return type_type{type_of_expr(com, *node.expr)};
 }
 
-auto push_expr_ptr(compiler& com, const node_function_ptr_type_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a function ptr type expression");
-}
-auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr type expression");
     auto type = make_value<type_name>();
     auto& inner = type->emplace<type_function_ptr>();
     for (const auto& param : node.params) {
@@ -1019,28 +959,27 @@ auto push_expr_val(compiler& com, const node_function_ptr_type_expr& node) -> ty
     return type_type{type};
 }
 
-auto push_expr_ptr(compiler& com, const node_const_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> type_name
 {
-    node.token.error("cannot take the address of a const expression");
-}
-auto push_expr_val(compiler& com, const node_const_expr& node) -> type_name
-{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a const expression");
     const auto type = type_of_expr(com, *node.expr);
     node.token.assert(type.is_type_value(), "invalid use of a const-expr");
     return type_type{inner_type(type).add_const()};
 }
 
-auto push_expr_ptr(compiler& com, const node_name_expr& node) -> type_name
+// TODO: Clean this up, think of a way to communicate back to the caller what this node
+// evaluates to
+auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
-    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
-    if (auto func = get_function(com, full_name)) {
-        node.token.error("cannot take address of a function pointer");
+    if (ct == compile_type::ptr) {
+        const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
+        if (auto func = get_function(com, full_name)) {
+            node.token.error("cannot take address of a function pointer");
+        }
+
+        return push_var_addr(com, node.token, node.name);
     }
 
-    return push_var_addr(com, node.token, node.name);
-}
-auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
-{
     const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
     if (auto func = get_function(com, full_name)) {
         const auto& info = *func;
@@ -1059,76 +998,74 @@ auto push_expr_val(compiler& com, const node_name_expr& node) -> type_name
         return type_type{type};
     }
 
-    const auto type = push_expr_ptr(com, node);
+    const auto type = push_expr(com, compile_type::ptr, node);
     node.token.assert(!type.is_type_value(), "invalid use of type expressions");
     push_value(code(com), op::load, com.types.size_of(type));
     return type;
 }
 
-auto push_expr_ptr(compiler& com, const node_field_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
-    auto type = push_expr_ptr(com, *node.expr);
-    const auto stripped_type = auto_deref_pointer(com, type); // allow for field access through a pointer
+    if (ct == compile_type::ptr) {
+        auto type = push_expr(com, compile_type::ptr, *node.expr);
+        const auto stripped_type = auto_deref_pointer(com, type); // allow for field access through a pointer
 
-    const auto field_type = push_field_offset(com, node.token, stripped_type, node.field_name);
-    push_value(code(com), op::u64_add); // modify ptr
-    if (stripped_type.is_const) return field_type.add_const(); // propagate const to fields
-    return field_type;
-}
-auto push_expr_val(compiler& com, const node_field_expr& node) -> type_name
-{
+        const auto field_type = push_field_offset(com, node.token, stripped_type, node.field_name);
+        push_value(code(com), op::u64_add); // modify ptr
+        if (stripped_type.is_const) return field_type.add_const(); // propagate const to fields
+        return field_type;
+    }
     const auto type = type_of_expr(com, *node.expr);
     node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-    const auto t = push_expr_ptr(com, node);
+    const auto t = push_expr(com, compile_type::ptr, node);
     push_value(code(com), op::load, com.types.size_of(t));
     return t;
 }
 
-auto push_expr_ptr(compiler& com, const node_deref_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> type_name
 {
-    const auto type = push_expr_val(com, *node.expr); // Push the address
-    node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
-    return type.remove_ptr();
-}
-auto push_expr_val(compiler& com, const node_deref_expr& node) -> type_name
-{
+    if (ct == compile_type::ptr) {
+        const auto type = push_expr(com, compile_type::val, *node.expr); // Push the address
+        node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
+        return type.remove_ptr();
+    }
     const auto type = type_of_expr(com, *node.expr);
     node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-    const auto t = push_expr_ptr(com, node);
+    const auto t = push_expr(com, compile_type::ptr, node);
     push_value(code(com), op::load, com.types.size_of(t));
     return t;
 }
 
-auto push_expr_ptr(compiler& com, const node_subscript_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) -> type_name
 {
-    const auto type = type_of_expr(com, *node.expr);
+    if (ct == compile_type::ptr) {
+        const auto type = type_of_expr(com, *node.expr);
 
-    const auto is_array = type.is_array();
-    const auto is_span = type.is_span();
-    node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
+        const auto is_array = type.is_array();
+        const auto is_span = type.is_span();
+        node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
-    push_expr_ptr(com, *node.expr);
+        push_expr(com, compile_type::ptr, *node.expr);
 
-    // If we are a span, we want the address that it holds rather than its own address,
-    // so switch the pointer by loading what it's pointing at.
-    if (is_span) {
-        push_value(code(com), op::load, sizeof(std::byte*));
+        // If we are a span, we want the address that it holds rather than its own address,
+        // so switch the pointer by loading what it's pointing at.
+        if (is_span) {
+            push_value(code(com), op::load, sizeof(std::byte*));
+        }
+
+        // Offset pointer by (index * size)
+        const auto inner = inner_type(type);
+        const auto index = push_expr(com, compile_type::val, *node.index);
+        node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
+        push_value(code(com), op::push_u64, com.types.size_of(inner));
+        push_value(code(com), op::u64_mul);
+        push_value(code(com), op::u64_add); // modify ptr
+        if (is_array && type.is_const) {
+            return inner.add_const(); // propagate const to elements
+        }
+        return inner;
     }
 
-    // Offset pointer by (index * size)
-    const auto inner = inner_type(type);
-    const auto index = push_expr_val(com, *node.index);
-    node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-    push_value(code(com), op::push_u64, com.types.size_of(inner));
-    push_value(code(com), op::u64_mul);
-    push_value(code(com), op::u64_add); // modify ptr
-    if (is_array && type.is_const) {
-        return inner.add_const(); // propagate const to elements
-    }
-    return inner;
-}
-auto push_expr_val(compiler& com, const node_subscript_expr& node) -> type_name
-{
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_type_value()) {
         if (!std::holds_alternative<node_literal_u64_expr>(*node.index)) {
@@ -1137,7 +1074,7 @@ auto push_expr_val(compiler& com, const node_subscript_expr& node) -> type_name
         const auto index = std::get<node_literal_u64_expr>(*node.index).value;
         return type_type{inner_type(type).add_array(index)};
     }
-    const auto t = push_expr_ptr(com, node);
+    const auto t = push_expr(com, compile_type::ptr, node);
     push_value(code(com), op::load, com.types.size_of(t));
     return t;
 }
@@ -1167,7 +1104,7 @@ void push_stmt(compiler& com, const node_while_stmt& node)
 {
     push_loop(com, [&] {
         // if !<condition> break;
-        const auto cond_type = push_expr_val(com, *node.condition);
+        const auto cond_type = push_expr(com, compile_type::val, *node.condition);
         node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
         push_value(code(com), op::bool_not);
         push_value(code(com), op::jump_if_false);
@@ -1203,7 +1140,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
     // Need to create a temporary if we're using an rvalue
     if (is_rvalue_expr(*node.iter)) {
-        push_expr_val(com, *node.iter);
+        push_expr(com, compile_type::val, *node.iter);
         declare_var(com, node.token, "#:iter", iter_type);
     }
 
@@ -1217,7 +1154,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         declare_var(com, node.token, "#:size", u64_type());
     } else {
         node.token.assert(is_lvalue_expr(*node.iter), "for-loops only supported for lvalue spans");
-        push_expr_ptr(com, *node.iter); // push pointer to span
+        push_expr(com, compile_type::ptr, *node.iter); // push pointer to span
         push_value(code(com), op::push_u64, sizeof(std::byte*));
         push_value(code(com), op::u64_add); // offset to the size value
         push_value(code(com), op::load, com.types.size_of(u64_type()));       
@@ -1240,7 +1177,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         if (is_rvalue_expr(*node.iter)) {
             push_var_addr(com, node.token, "#:iter");
         } else {
-            push_expr_ptr(com, *node.iter);
+            push_expr(com, compile_type::ptr, *node.iter);
             if (iter_type.is_span()) {
                 push_value(code(com), op::load, sizeof(std::byte*));
             }
@@ -1265,7 +1202,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
 void push_stmt(compiler& com, const node_if_stmt& node)
 {
-    const auto cond_type = push_expr_val(com, *node.condition);
+    const auto cond_type = push_expr(com, compile_type::val, *node.condition);
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
 
     push_value(code(com), op::jump_if_false);
@@ -1338,7 +1275,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     const auto lhs_type = type_of_expr(com, *node.position);
     node.token.assert(!lhs_type.is_const, "cannot assign to a const variable");
     push_copy_typechecked(com, *node.expr, lhs_type, node.token);
-    const auto lhs = push_expr_ptr(com, *node.position);
+    const auto lhs = push_expr(com, compile_type::ptr, *node.position);
     push_value(code(com), op::save, com.types.size_of(lhs));
     return;
 }
@@ -1395,14 +1332,14 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
-    const auto type = push_expr_val(com, *node.expr);
+    const auto type = push_expr(com, compile_type::val, *node.expr);
     push_value(code(com), op::pop, com.types.size_of(type));
 }
 
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
     node.token.assert(in_function(com), "can only return within functions");
-    const auto return_type = push_expr_val(com, *node.return_value);
+    const auto return_type = push_expr(com, compile_type::val, *node.return_value);
     node.token.assert_eq(
         return_type, current(com).sig.return_type, "wrong return type"
     );
@@ -1414,7 +1351,7 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 {
     const auto expr = type_of_expr(com, *node.expr);
     node.token.assert_eq(expr, bool_type(), "bad assertion expression");
-    push_expr_val(com, *node.expr);
+    push_expr(com, compile_type::val, *node.expr);
     const auto message = std::format("line {}", node.token.line);
     const auto index = insert_into_rom(com, message);
     push_value(code(com), op::assert, index, message.size());
@@ -1443,14 +1380,9 @@ void push_stmt(compiler& com, const node_print_stmt& node)
     }
 }
 
-auto push_expr_ptr(compiler& com, const node_expr& node) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_expr& expr) -> type_name
 {
-    return std::visit([&](const auto& expr) { return push_expr_ptr(com, expr); }, node);
-}
-
-auto push_expr_val(compiler& com, const node_expr& expr) -> type_name
-{
-    return std::visit([&](const auto& node) { return push_expr_val(com, node); }, expr);
+    return std::visit([&](const auto& node) { return push_expr(com, ct, node); }, expr);
 }
 
 auto push_stmt(compiler& com, const node_stmt& root) -> void
