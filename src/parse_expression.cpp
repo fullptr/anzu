@@ -202,6 +202,21 @@ auto parse_array(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
+auto parse_func_ptr(tokenstream& tokens) -> node_expr_ptr
+{
+    const auto tok = tokens.consume_only(token_type::kw_function);
+    tokens.consume_only(token_type::left_paren);
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_function_ptr_type_expr>();
+    inner.token = tok;
+    tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+        inner.params.push_back(parse_expr(tokens));
+    });
+    tokens.consume_only(token_type::arrow); // TODO: allow for this to be optional
+    inner.return_type = parse_expr(tokens);
+    return node;
+}
+
 auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto op = tokens.consume();
@@ -380,6 +395,7 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_const,            {nullptr,        parse_const,     precedence::PREC_CALL}},
     {token_type::at,                  {nullptr,        parse_at,        precedence::PREC_CALL}},
     {token_type::ampersand,           {nullptr,        parse_ampersand, precedence::PREC_CALL}},
+    {token_type::kw_function,         {parse_func_ptr, nullptr,         precedence::PREC_NONE}}
 };
 static constexpr auto default_rule = parse_rule{nullptr, nullptr, precedence::PREC_NONE};
 
@@ -393,7 +409,6 @@ auto get_rule(token_type tt) -> const parse_rule*
 
 auto parse_expr(tokenstream& tokens) -> node_expr_ptr
 {
-    //std::print("parse_expr\n");
     return parse_precedence(tokens, precedence::PREC_ASSIGNMENT);
 }
     
