@@ -39,12 +39,12 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         auto param = node_parameter{};
         param.name = parse_name(tokens);
         tokens.consume_only(token_type::colon);
-        param.type = parse_expr(tokens);
+        param.type = parse_expression(tokens);
         stmt.sig.params.push_back(param);
     });
 
     if (tokens.consume_maybe(token_type::arrow)) {
-        stmt.sig.return_type = parse_expr(tokens);
+        stmt.sig.return_type = parse_expression(tokens);
     }
     stmt.body = parse_statement(tokens);
     return node;
@@ -72,11 +72,11 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
         auto param = node_parameter{};
         param.name = parse_name(tokens);
         tokens.consume_only(token_type::colon);
-        param.type = parse_expr(tokens);
+        param.type = parse_expression(tokens);
         stmt.sig.params.push_back(param);
     });
     if (tokens.consume_maybe(token_type::arrow)) {
-        stmt.sig.return_type = parse_expr(tokens);
+        stmt.sig.return_type = parse_expression(tokens);
     }
     stmt.body = parse_statement(tokens);
     return node;
@@ -93,7 +93,7 @@ auto parse_return_stmt(tokenstream& tokens) -> node_stmt_ptr
         auto& ret_expr = stmt.return_value->emplace<node_literal_null_expr>();
         ret_expr.token = stmt.token;
     } else {
-        stmt.return_value = parse_expr(tokens);
+        stmt.return_value = parse_expression(tokens);
     }
     tokens.consume_only(token_type::semicolon);
     return node;
@@ -115,7 +115,7 @@ auto parse_while_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_while_stmt>();
 
     stmt.token = tokens.consume_only(token_type::kw_while);
-    stmt.condition = parse_expr(tokens);
+    stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
     return node;
 }
@@ -128,7 +128,7 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.token = tokens.consume_only(token_type::kw_for);
     stmt.name = parse_name(tokens);
     tokens.consume_only(token_type::kw_in);
-    stmt.iter = parse_expr(tokens);
+    stmt.iter = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
     return node;
 }
@@ -139,7 +139,7 @@ auto parse_if_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_if_stmt>();
 
     stmt.token = tokens.consume_only(token_type::kw_if);
-    stmt.condition = parse_expr(tokens);
+    stmt.condition = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
     if (tokens.consume_maybe(token_type::kw_else)) {
         stmt.else_body = parse_statement(tokens);
@@ -163,7 +163,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
             auto& f = stmt.fields.back();
             f.name = parse_name(tokens);
             tokens.consume_only(token_type::colon);
-            f.type = parse_expr(tokens);
+            f.type = parse_expression(tokens);
             tokens.consume_only(token_type::semicolon);
         }
     }
@@ -187,12 +187,12 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.name = parse_name(tokens);
     if (tokens.consume_maybe(token_type::colon)) {
-        stmt.explicit_type = parse_expr(tokens);
+        stmt.explicit_type = parse_expression(tokens);
         tokens.consume_only(token_type::equal);
     } else {
         tokens.consume_only(token_type::colon_equal);
     }
-    stmt.expr = parse_expr(tokens);
+    stmt.expr = parse_expression(tokens);
     tokens.consume_only(token_type::semicolon);
     return node;
 }
@@ -217,7 +217,7 @@ auto parse_print_stmt(tokenstream& tokens) -> node_stmt_ptr
     stmt.message = std::string{message_token.text};
     if (tokens.consume_maybe(token_type::comma)) {
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            stmt.args.push_back(parse_expr(tokens));
+            stmt.args.push_back(parse_expression(tokens));
         });
     } else {
         tokens.consume_only(token_type::right_paren);
@@ -244,7 +244,7 @@ auto parse_assert_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_assert_stmt>();
 
     stmt.token = tokens.consume_only(token_type::kw_assert);
-    stmt.expr = parse_expr(tokens);
+    stmt.expr = parse_expression(tokens);
     tokens.consume_only(token_type::semicolon);
     return node;
 }
@@ -289,12 +289,12 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
     }
 
     auto node = std::make_shared<node_stmt>();
-    auto expr = parse_expr(tokens);
+    auto expr = parse_expression(tokens);
     if (tokens.peek(token_type::equal)) {
         auto& stmt = node->emplace<node_assignment_stmt>();
         stmt.token = tokens.consume();
         stmt.position = expr;
-        stmt.expr = parse_expr(tokens);
+        stmt.expr = parse_expression(tokens);
     } else {
         auto& stmt = node->emplace<node_expression_stmt>();
         stmt.token = std::visit([](auto&& n) { return n.token; }, *expr);

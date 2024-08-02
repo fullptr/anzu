@@ -42,8 +42,7 @@ template <typename ExprType, token_type TokenType>
 auto parse_number(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(TokenType);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<ExprType>();
+    auto [node, inner] = new_node<ExprType>();
     inner.token = tok;
     auto text = tok.text;
 
@@ -84,8 +83,7 @@ auto parse_char(tokenstream& tokens) -> node_expr_ptr
 auto parse_string(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::string);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_string_expr>();
+    auto [node, inner] = new_node<node_literal_string_expr>();
     inner.token = tok;
     inner.value = tok.text;
     return node;
@@ -94,8 +92,7 @@ auto parse_string(tokenstream& tokens) -> node_expr_ptr
 auto parse_true(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::kw_true);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_bool_expr>();
+    auto [node, inner] = new_node<node_literal_bool_expr>();
     inner.token = tok;
     inner.value = true;
     return node;
@@ -104,8 +101,7 @@ auto parse_true(tokenstream& tokens) -> node_expr_ptr
 auto parse_false(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::kw_false);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_bool_expr>();
+    auto [node, inner] = new_node<node_literal_bool_expr>();
     inner.token = tok;
     inner.value = false;
     return node;
@@ -114,8 +110,7 @@ auto parse_false(tokenstream& tokens) -> node_expr_ptr
 auto parse_null(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::kw_null);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_null_expr>();
+    auto [node, inner] = new_node<node_literal_null_expr>();
     inner.token = tok;
     return node;
 }
@@ -123,8 +118,7 @@ auto parse_null(tokenstream& tokens) -> node_expr_ptr
 auto parse_nullptr(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::kw_nullptr);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_nullptr_expr>();
+    auto [node, inner] = new_node<node_literal_nullptr_expr>();
     inner.token = tok;
     return node;
 }
@@ -132,8 +126,7 @@ auto parse_nullptr(tokenstream& tokens) -> node_expr_ptr
 auto parse_name(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume();
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_name_expr>();
+    auto [node, inner] = new_node<node_name_expr>();
     inner.token = tok;
     inner.name = std::string{tok.text};
     return node;
@@ -142,7 +135,7 @@ auto parse_name(tokenstream& tokens) -> node_expr_ptr
 auto parse_grouping(tokenstream& tokens) -> node_expr_ptr
 {
     tokens.consume_only(token_type::left_paren);
-    const auto node = parse_expr(tokens);
+    const auto node = parse_expression(tokens);
     tokens.consume_only(token_type::right_paren);
     return node;
 }
@@ -150,12 +143,11 @@ auto parse_grouping(tokenstream& tokens) -> node_expr_ptr
 auto parse_unary(tokenstream& tokens) -> node_expr_ptr
 {
     const auto op = tokens.consume();
-    auto inner = parse_precedence(tokens, precedence::PREC_UNARY);
+    auto expr = parse_precedence(tokens, precedence::PREC_UNARY);
 
-    auto node = std::make_shared<node_expr>();
-    auto& unary = node->emplace<node_unary_op_expr>();
-    unary.token = op;
-    unary.expr = inner;
+    auto [node, inner] = new_node<node_unary_op_expr>();
+    inner.token = op;
+    inner.expr = expr;
     return node;
 }
 
@@ -163,10 +155,9 @@ auto parse_typeof(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::kw_typeof);
     tokens.consume_only(token_type::left_paren);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_typeof_expr>();
+    auto [node, inner] = new_node<node_typeof_expr>();
     inner.token = tok;
-    inner.expr = parse_expr(tokens);
+    inner.expr = parse_expression(tokens);
     tokens.consume_only(token_type::right_paren);
     return node;
 }
@@ -175,10 +166,9 @@ auto parse_sizeof(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::kw_sizeof);
     tokens.consume_only(token_type::left_paren);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_sizeof_expr>();
+    auto [node, inner] = new_node<node_sizeof_expr>();
     inner.token = tok;
-    inner.expr = parse_expr(tokens);
+    inner.expr = parse_expression(tokens);
     tokens.consume_only(token_type::right_paren);
     return node;
 }
@@ -186,41 +176,40 @@ auto parse_sizeof(tokenstream& tokens) -> node_expr_ptr
 auto parse_array(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::left_bracket);
-    const auto first = parse_expr(tokens);
+    const auto first = parse_expression(tokens);
 
-    auto node = std::make_shared<node_expr>();
     if (tokens.consume_maybe(token_type::semicolon)) {
-        auto& inner = node->emplace<node_repeat_array_expr>();
+        auto [node, inner] = new_node<node_repeat_array_expr>();
         inner.token = tok;
         inner.value = first;
         inner.size = std::get<node_literal_u64_expr>(*parse_u64(tokens)).value; // TODO: store the expr here
         tokens.consume_only(token_type::right_bracket);
+        return node;
     } else {
-        auto& inner = node->emplace<node_array_expr>();
+        auto [node, inner] = new_node<node_array_expr>();
         inner.token = tok;
         inner.elements.push_back(first);
         if (!tokens.consume_maybe(token_type::right_bracket)) {
             tokens.consume_only(token_type::comma);
             tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
-                inner.elements.push_back(parse_expr(tokens));
+                inner.elements.push_back(parse_expression(tokens));
             });
         }
+        return node;
     }
-    return node;
 }
 
 auto parse_func_ptr(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::kw_function);
     tokens.consume_only(token_type::left_paren);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_function_ptr_type_expr>();
+    auto [node, inner] = new_node<node_function_ptr_type_expr>();
     inner.token = tok;
     tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-        inner.params.push_back(parse_expr(tokens));
+        inner.params.push_back(parse_expression(tokens));
     });
     tokens.consume_only(token_type::arrow); // TODO: allow for this to be optional
-    inner.return_type = parse_expr(tokens);
+    inner.return_type = parse_expression(tokens);
     return node;
 }
 
@@ -230,29 +219,27 @@ auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_p
     auto rule = get_rule(op.type);
     auto right = parse_precedence(tokens, (precedence)(rule->prec + 1));
 
-    auto node = std::make_shared<node_expr>();
-    auto& binary = node->emplace<node_binary_op_expr>();
-    binary.token = op;
-    binary.lhs = left;
-    binary.rhs = right;
+    auto [node, inner] = new_node<node_binary_op_expr>();
+    inner.token = op;
+    inner.lhs = left;
+    inner.rhs = right;
     return node;
 }
 
 auto parse_call(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto node = std::make_shared<node_expr>();
-    auto& call = node->emplace<node_call_expr>();
-    call.token = tokens.curr();
-    call.expr = left;
+    auto [node, inner] = new_node<node_call_expr>();
+    inner.token = tokens.curr();
+    inner.expr = left;
     if (tokens.consume_maybe(token_type::bang)) {
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            call.template_args.push_back(parse_expr(tokens));
+            inner.template_args.push_back(parse_expression(tokens));
         });
     }
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-        call.args.push_back(parse_expr(tokens));
+        inner.args.push_back(parse_expression(tokens));
     });
     
     return node;
@@ -270,13 +257,13 @@ auto parse_subscript(tokenstream& tokens, const node_expr_ptr& left) -> node_exp
         return node;
     }
 
-    auto expr = parse_expr(tokens);
+    auto expr = parse_expression(tokens);
     if (tokens.consume_maybe(token_type::colon)) {            // x[a:b]
         auto& inner = node->emplace<node_span_expr>();
         inner.token = token;
         inner.expr = left;
         inner.lower_bound = expr;
-        inner.upper_bound = parse_expr(tokens);
+        inner.upper_bound = parse_expression(tokens);
     } else {                                                  // x[i]
         auto& inner = node->emplace<node_subscript_expr>();
         inner.token = token;
@@ -290,39 +277,38 @@ auto parse_subscript(tokenstream& tokens, const node_expr_ptr& left) -> node_exp
 
 auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto node = std::make_shared<node_expr>();
     const auto token = tokens.consume_only(token_type::dot);
     const auto name = tokens.consume_only(token_type::identifier);
 
     if (tokens.peek(token_type::left_paren) || tokens.peek(token_type::bang)) {
-        auto& inner = node->emplace<node_member_call_expr>();
+        auto [node, inner] = new_node<node_member_call_expr>();
         inner.token = token;
         inner.expr = left;
         inner.function_name = std::string{name.text};
         if (tokens.consume_maybe(token_type::bang)) {
             tokens.consume_only(token_type::left_paren);
             tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-                inner.template_args.push_back(parse_expr(tokens));
+                inner.template_args.push_back(parse_expression(tokens));
             });
         }
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            inner.other_args.push_back(parse_expr(tokens));
+            inner.other_args.push_back(parse_expression(tokens));
         });
+        return node;
     } else {
-        auto& inner = node->emplace<node_field_expr>();
+        auto [node, inner] = new_node<node_field_expr>();
         inner.token = token;
         inner.expr = left;
         inner.field_name = std::string{name.text};
+        return node;
     }
 
-    return node;
 }
 
 auto parse_const(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_const_expr>();
+    auto [node, inner] = new_node<node_const_expr>();
     inner.token = tokens.consume_only(token_type::kw_const);
     inner.expr = left;
     return node;
@@ -330,8 +316,7 @@ auto parse_const(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_pt
 
 auto parse_at(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_deref_expr>();
+    auto [node, inner] = new_node<node_deref_expr>();
     inner.token = tokens.consume_only(token_type::at);
     inner.expr = left;
     return node;
@@ -339,8 +324,7 @@ auto parse_at(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 
 auto parse_ampersand(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_addrof_expr>();
+    auto [node, inner] = new_node<node_addrof_expr>();
     inner.token = tokens.consume_only(token_type::ampersand);
     inner.expr = left;
     return node;
@@ -417,7 +401,7 @@ auto get_rule(token_type tt) -> const parse_rule*
 
 }
 
-auto parse_expr(tokenstream& tokens) -> node_expr_ptr
+auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 {
     return parse_precedence(tokens, precedence::PREC_OR);
 }

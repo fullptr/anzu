@@ -5,6 +5,6 @@
 
 namespace anzu {
 
-auto parse_expr(tokenstream& tokens) -> node_expr_ptr;
+auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 
 }
