@@ -20,6 +20,7 @@ enum precedence : int {
 
 using prefix_func = auto(*) (tokenstream&) -> node_expr_ptr;
 using midfix_func = auto(*) (tokenstream&, const node_expr_ptr&) -> node_expr_ptr;
+
 struct parse_rule
 {
     prefix_func prefix;
@@ -378,6 +379,7 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::greater_equal,       {nullptr,        parse_binary,    precedence::PREC_COMPARISON}},
     {token_type::ampersand_ampersand, {nullptr,        parse_binary,    precedence::PREC_AND}},
     {token_type::bar_bar,             {nullptr,        parse_binary,    precedence::PREC_OR}},
+    {token_type::identifier,          {parse_name,     nullptr,         precedence::PREC_NONE}},
     {token_type::kw_i32,              {parse_name,     nullptr,         precedence::PREC_NONE}},
     {token_type::kw_i64,              {parse_name,     nullptr,         precedence::PREC_NONE}},
     {token_type::kw_f64,              {parse_name,     nullptr,         precedence::PREC_NONE}},
