@@ -48,10 +48,9 @@ auto main(const int argc, const char* argv[]) -> int
     }
 
     std::print("-> Parsing\n");
-    auto ast = anzu::parse(file);
+    //auto ast = anzu::parse(file);
     if (mode == "parse") {
         const auto source_code = anzu::read_file(file);
-
         auto stream = anzu::tokenstream{*source_code};
         auto expr = anzu::parse_expr(stream);
         anzu::print_node(*expr);
@@ -59,6 +58,7 @@ auto main(const int argc, const char* argv[]) -> int
         return 0;
     }
 
+#if 0
     std::print("-> Compiling\n");
     const auto program = anzu::compile(ast);
     if (mode == "com") {
@@ -78,5 +78,6 @@ auto main(const int argc, const char* argv[]) -> int
 
     std::print("unknown mode: '{}'\n", mode);
     print_usage();
+#endif
     return 1;
 }
