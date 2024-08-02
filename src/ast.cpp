@@ -238,7 +238,7 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.expr, indent + 1);
         },
         [&](const node_function_def_stmt& node) {
-            std::print("{}Function: {}", spaces, node.name);
+            std::print("{}Function: {}\n", spaces, node.name);
             if (!node.template_types.empty()) {
                 std::print("|");
                 print_comma_separated(node.template_types, [](const auto& arg) {

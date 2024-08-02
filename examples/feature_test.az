@@ -258,9 +258,9 @@ function_ptr();
 # Arena test
 fn get(a: arena&, count: u64) -> u64[]
 {
-    var p := a.new_array|u64|(count);
+    var p := a.new_array!(u64)(count);
     var idx := 0u;
-    while (idx < p.size()) {
+    while idx < p.size() {
         p[idx] = idx;
         idx = idx + 1u;
     }
@@ -273,7 +273,7 @@ fn get(a: arena&, count: u64) -> u64[]
     print("size={} capacity={}\n", a.size(), a.capacity());
 
     var idx := 0u;
-    while (idx < z.size()) {
+    while idx < z.size() {
         print("{}\n", z[idx])
         idx = idx + 1u;
     }
@@ -305,31 +305,31 @@ print("\nsize={}\n", contents.size());
 }
 
 # template tests
-fn do|T|(x: T) -> T
+fn do!(T)(x: T) -> T
 {
     print("{} {}\n", x.x, x.y);
     return T(10, 20);
 }
 
-fn ptr|T|(x: T&) { print("{}\n", x); }
+fn ptr!(T)(x: T&) { print("{}\n", x); }
 
 struct foo
 {
     x: i64;
     y: i64;
 
-    fn bar|T|(self: foo const&, x: T)
+    fn bar!(T)(self: foo const&, x: T)
     {
         print("{}\n", x);
     }
 }
 
 let f := foo(1, 2);
-let g := do|foo|(f);
+let g := do!(foo)(f);
 print("{} {}\n", g.x, g.y);
 
 var x := 10;
-ptr|i64|(x&);
+ptr!(i64)(x&);
 
-f.bar|i64|(6);
-f.bar|f64|(10.0);
+f.bar!(i64)(6);
+f.bar!(f64)(10.0);

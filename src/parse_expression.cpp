@@ -5,7 +5,6 @@ namespace {
 
 enum precedence : int {
   PREC_NONE,
-  PREC_ASSIGNMENT,  // =
   PREC_OR,          // or
   PREC_AND,         // and
   PREC_EQUALITY,    // == !=
@@ -13,7 +12,7 @@ enum precedence : int {
   PREC_TERM,        // + -
   PREC_FACTOR,      // * /
   PREC_UNARY,       // ! -
-  PREC_CALL,        // . () [] {} @ const &
+  PREC_CALL,        // . () [] !() @ const &
   PREC_SCOPE,       // ::
   PREC_PRIMARY
 };
@@ -27,6 +26,14 @@ struct parse_rule
     midfix_func midfix;
     precedence  prec;
 };
+
+template <typename Inner>
+auto new_node() -> std::tuple<node_expr_ptr, Inner&>
+{
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<Inner>();
+    return {node, std::ref(inner)};
+}
 
 auto parse_precedence(tokenstream& tokens, precedence prec) -> node_expr_ptr;
 auto get_rule(token_type tt) -> const parse_rule*;
@@ -68,8 +75,7 @@ auto parse_f64(tokenstream& tokens) -> node_expr_ptr
 auto parse_char(tokenstream& tokens) -> node_expr_ptr
 {
     const auto tok = tokens.consume_only(token_type::character);
-    auto node = std::make_shared<node_expr>();
-    auto& inner = node->emplace<node_literal_char_expr>();
+    auto [node, inner] = new_node<node_literal_char_expr>();
     inner.token = tok;
     inner.value = tok.text.front();
     return node;
@@ -238,8 +244,9 @@ auto parse_call(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
     auto& call = node->emplace<node_call_expr>();
     call.token = tokens.curr();
     call.expr = left;
-    if (tokens.consume_maybe(token_type::left_brace)) {
-        tokens.consume_comma_separated_list(token_type::right_brace, [&] {
+    if (tokens.consume_maybe(token_type::bang)) {
+        tokens.consume_only(token_type::left_paren);
+        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             call.template_args.push_back(parse_expr(tokens));
         });
     }
@@ -287,15 +294,16 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
     const auto token = tokens.consume_only(token_type::dot);
     const auto name = tokens.consume_only(token_type::identifier);
 
-    if (tokens.consume_maybe(token_type::left_paren)) {
+    if (tokens.peek(token_type::left_paren) || tokens.peek(token_type::bang)) {
         auto& inner = node->emplace<node_member_call_expr>();
         inner.token = token;
         inner.expr = left;
         inner.function_name = std::string{name.text};
-        if (tokens.consume_maybe(token_type::left_brace)) {
-        tokens.consume_comma_separated_list(token_type::right_brace, [&] {
-            inner.template_args.push_back(parse_expr(tokens));
-        });
+        if (tokens.consume_maybe(token_type::bang)) {
+            tokens.consume_only(token_type::left_paren);
+            tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+                inner.template_args.push_back(parse_expr(tokens));
+            });
         }
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
@@ -356,12 +364,12 @@ auto parse_precedence(tokenstream& tokens, precedence prec) -> node_expr_ptr
 static const auto rules = std::unordered_map<token_type, parse_rule>
 {
     {token_type::left_paren,          {parse_grouping, parse_call,      precedence::PREC_CALL}},
-    {token_type::left_brace,          {nullptr,        parse_call,      precedence::PREC_CALL}},
-    {token_type::bang,                {parse_unary,    nullptr,         precedence::PREC_NONE}},
+    {token_type::bang,                {parse_unary,    parse_call,      precedence::PREC_CALL}},
     {token_type::minus,               {parse_unary,    parse_binary,    precedence::PREC_TERM}},
     {token_type::plus,                {nullptr,        parse_binary,    precedence::PREC_TERM}},
     {token_type::slash,               {nullptr,        parse_binary,    precedence::PREC_FACTOR}},
     {token_type::star,                {nullptr,        parse_binary,    precedence::PREC_FACTOR}},
+    {token_type::percent,             {nullptr,        parse_binary,    precedence::PREC_FACTOR}},
     {token_type::int32,               {parse_i32,      nullptr,         precedence::PREC_NONE}},
     {token_type::int64,               {parse_i64,      nullptr,         precedence::PREC_NONE}},
     {token_type::uint64,              {parse_u64,      nullptr,         precedence::PREC_NONE}},
@@ -371,6 +379,7 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_false,            {parse_false,    nullptr,         precedence::PREC_NONE}},
     {token_type::kw_null,             {parse_null,     nullptr,         precedence::PREC_NONE}},
     {token_type::kw_nullptr,          {parse_nullptr,  nullptr,         precedence::PREC_NONE}},
+    {token_type::string,              {parse_string,   nullptr,         precedence::PREC_NONE}},
     {token_type::equal_equal,         {nullptr,        parse_binary,    precedence::PREC_EQUALITY}},
     {token_type::bang_equal,          {nullptr,        parse_binary,    precedence::PREC_EQUALITY}},
     {token_type::less,                {nullptr,        parse_binary,    precedence::PREC_COMPARISON}},
@@ -389,7 +398,6 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_null,             {parse_name,     nullptr,         precedence::PREC_NONE}},
     {token_type::kw_nullptr,          {parse_name,     nullptr,         precedence::PREC_NONE}},
     {token_type::kw_arena,            {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::equal,               {nullptr,        parse_binary,    precedence::PREC_ASSIGNMENT}},
     {token_type::kw_typeof,           {parse_typeof,   nullptr,         precedence::PREC_NONE}},
     {token_type::kw_sizeof,           {parse_sizeof,   nullptr,         precedence::PREC_NONE}},
     {token_type::left_bracket,        {parse_array,    parse_subscript, precedence::PREC_CALL}},
@@ -411,7 +419,7 @@ auto get_rule(token_type tt) -> const parse_rule*
 
 auto parse_expr(tokenstream& tokens) -> node_expr_ptr
 {
-    return parse_precedence(tokens, precedence::PREC_ASSIGNMENT);
+    return parse_precedence(tokens, precedence::PREC_OR);
 }
     
 }

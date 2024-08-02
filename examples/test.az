@@ -1,1 +1,11 @@
-x&@;
+
+struct vec2
+{
+    x: i64;
+    y: i64;
+}
+
+fn print_vec2(v: vec2) -> null
+{
+    print("vec2 = ({}, {})\n", v.x, v.y);
+}
