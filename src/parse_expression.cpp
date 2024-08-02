@@ -121,6 +121,16 @@ auto parse_nullptr(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
+auto parse_name(tokenstream& tokens) -> node_expr_ptr
+{
+    const auto tok = tokens.consume_only(token_type::identifier);
+    auto node = std::make_shared<node_expr>();
+    auto& inner = node->emplace<node_name_expr>();
+    inner.token = tok;
+    inner.name = std::string{tok.text};
+    return node;
+}
+
 auto parse_grouping(tokenstream& tokens) -> node_expr_ptr
 {
     tokens.consume_only(token_type::left_paren);
@@ -194,7 +204,8 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::greater,             parse_rule{nullptr,        parse_binary, precedence::PREC_COMPARISON}},
     {token_type::greater_equal,       parse_rule{nullptr,        parse_binary, precedence::PREC_COMPARISON}},
     {token_type::ampersand_ampersand, parse_rule{nullptr,        parse_binary, precedence::PREC_AND}},
-    {token_type::bar_bar,             parse_rule{nullptr,        parse_binary, precedence::PREC_OR}}
+    {token_type::bar_bar,             parse_rule{nullptr,        parse_binary, precedence::PREC_OR}},
+    {token_type::identifier,          parse_rule{parse_name,     nullptr,      precedence::PREC_NONE}}
 };
 static constexpr auto default_rule = parse_rule{nullptr, nullptr, precedence::PREC_NONE};
 
