@@ -1,6 +1,1 @@
-fn foo|T|(ptr: T const&) 
-{
-    print("{}\n", ptr);
-}
-let x := 10;
-foo|i64|(x&);
+(3 + 4) * -5 / 7 - true;

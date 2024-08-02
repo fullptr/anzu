@@ -6,6 +6,8 @@
 #include "utility/common.hpp"
 #include "utility/memory.hpp"
 
+#include "parse_expression.hpp"
+
 #include <string>
 #include <map>
 #include <set>
@@ -48,7 +50,12 @@ auto main(const int argc, const char* argv[]) -> int
     std::print("-> Parsing\n");
     auto ast = anzu::parse(file);
     if (mode == "parse") {
-        print_node(*ast.root);
+        const auto source_code = anzu::read_file(file);
+
+        auto stream = anzu::tokenstream{*source_code};
+        auto expr = anzu::parse_expr(stream);
+        anzu::print_node(*expr);
+        //print_node(*ast.root);
         return 0;
     }
 

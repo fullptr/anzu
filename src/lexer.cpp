@@ -106,9 +106,9 @@ auto lexer::make_number() -> token
     using namespace std::string_view_literals;
     using tt = token_type;
 
-    while (std::isdigit(peek())) advance();
+    while (valid() && std::isdigit(peek())) advance();
     const auto is_float = match(".");
-    while (std::isdigit(peek())) advance(); // won't do anything if not a float
+    while (valid() && std::isdigit(peek())) advance(); // won't do anything if not a float
 
     static constexpr auto suffixes = {
         std::pair{"u64"sv, tt::uint64},

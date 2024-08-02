@@ -3,7 +3,7 @@
 namespace anzu {
 namespace {
 
-enum precedence {
+enum precedence : int {
   PREC_NONE,
   PREC_ASSIGNMENT,  // =
   PREC_OR,          // or
@@ -17,12 +17,13 @@ enum precedence {
   PREC_PRIMARY
 };
 
-using parse_func = auto(*) (tokenstream&) -> node_expr_ptr;
+using prefix_func = auto(*) (tokenstream&) -> node_expr_ptr;
+using midfix_func = auto(*) (tokenstream&, const node_expr_ptr&) -> node_expr_ptr;
 struct parse_rule
 {
-    parse_func prefix;
-    parse_func infix;
-    precedence prec;
+    prefix_func prefix;
+    midfix_func midfix;
+    precedence  prec;
 };
 
 auto parse_precedence(tokenstream& tokens, precedence prec) -> node_expr_ptr;
@@ -131,31 +132,44 @@ auto parse_grouping(tokenstream& tokens) -> node_expr_ptr
 auto parse_unary(tokenstream& tokens) -> node_expr_ptr
 {
     const auto op = tokens.consume();
-    auto node = parse_precedence(tokens, precedence::PREC_UNARY);
-    switch (op.type) {
-        case token_type::minus: {
-            auto new_node = std::make_shared<node_expr>();
-            auto& inner = new_node->emplace<node_unary_op_expr>();
-            inner.token = op;
-            inner.expr = node;
-            node = new_node;
-        } break;
-        default: break;
-    }
-    op.error("unrecognised unary op '{}'", op.type);
+    auto inner = parse_precedence(tokens, precedence::PREC_UNARY);
+
+    auto node = std::make_shared<node_expr>();
+    auto& unary = node->emplace<node_unary_op_expr>();
+    unary.token = op;
+    unary.expr = inner;
+    return node;
 }
 
-auto parse_binary(tokenstream& tokens) -> node_expr_ptr
+auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto op = tokens.consume();
     auto rule = get_rule(op.type);
-    //auto node = parse_precedence(rule->precedence + 1);
-    return nullptr;
+    auto right = parse_precedence(tokens, (precedence)(rule->prec + 1));
+
+    auto node = std::make_shared<node_expr>();
+    auto& unary = node->emplace<node_binary_op_expr>();
+    unary.token = op;
+    unary.lhs = left;
+    unary.rhs = right;
+    return node;
 }
 
 auto parse_precedence(tokenstream& tokens, precedence prec) -> node_expr_ptr
 {
-    return nullptr;
+    const auto token = tokens.curr();
+    auto rule = get_rule(token.type);
+    if (!rule->prefix) {
+        token.error("expected an expression");
+    }
+
+    auto node = rule->prefix(tokens);
+    while (prec <= get_rule(tokens.curr().type)->prec) {
+        auto rule = get_rule(tokens.curr().type);
+        if (!rule->midfix) break;
+        node = rule->midfix(tokens, node);
+    }
+    return node;
 }
 
 static const auto rules = std::unordered_map<token_type, parse_rule>
@@ -179,9 +193,9 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
 auto get_rule(token_type tt) -> const parse_rule*
 {
     if (rules.contains(tt)) return &rules.at(tt);
-    return nullptr;
+    static constexpr auto default_rule = parse_rule{nullptr, nullptr, precedence::PREC_NONE};
+    return &default_rule;
 }
-
 
 }
 
