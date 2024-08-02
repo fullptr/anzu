@@ -28,10 +28,11 @@ struct parse_rule
 };
 
 template <typename Inner>
-auto new_node() -> std::tuple<node_expr_ptr, Inner&>
+auto new_node(const token& tok) -> std::tuple<node_expr_ptr, Inner&>
 {
     auto node = std::make_shared<node_expr>();
     auto& inner = node->emplace<Inner>();
+    inner.token = tok;
     return {node, std::ref(inner)};
 }
 
@@ -41,13 +42,12 @@ auto get_rule(token_type tt) -> const parse_rule*;
 template <typename ExprType, token_type TokenType>
 auto parse_number(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(TokenType);
-    auto [node, inner] = new_node<ExprType>();
-    inner.token = tok;
-    auto text = tok.text;
+    const auto token = tokens.consume_only(TokenType);
+    auto [node, inner] = new_node<ExprType>(token);
+    auto text = token.text;
 
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    tok.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, TokenType);
+    token.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, TokenType);
     return node;
 }
 
@@ -73,62 +73,55 @@ auto parse_f64(tokenstream& tokens) -> node_expr_ptr
 
 auto parse_char(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::character);
-    auto [node, inner] = new_node<node_literal_char_expr>();
-    inner.token = tok;
-    inner.value = tok.text.front();
+    const auto token = tokens.consume_only(token_type::character);
+    auto [node, inner] = new_node<node_literal_char_expr>(token);
+    inner.value = token.text.front();
     return node;
 }
 
 auto parse_string(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::string);
-    auto [node, inner] = new_node<node_literal_string_expr>();
-    inner.token = tok;
-    inner.value = tok.text;
+    const auto token = tokens.consume_only(token_type::string);
+    auto [node, inner] = new_node<node_literal_string_expr>(token);
+    inner.value = token.text;
     return node;
 }
 
 auto parse_true(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::kw_true);
-    auto [node, inner] = new_node<node_literal_bool_expr>();
-    inner.token = tok;
+    const auto token = tokens.consume_only(token_type::kw_true);
+    auto [node, inner] = new_node<node_literal_bool_expr>(token);
     inner.value = true;
     return node;
 }
 
 auto parse_false(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::kw_false);
-    auto [node, inner] = new_node<node_literal_bool_expr>();
-    inner.token = tok;
+    const auto token = tokens.consume_only(token_type::kw_false);
+    auto [node, inner] = new_node<node_literal_bool_expr>(token);
     inner.value = false;
     return node;
 }
 
 auto parse_null(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::kw_null);
-    auto [node, inner] = new_node<node_literal_null_expr>();
-    inner.token = tok;
+    const auto token = tokens.consume_only(token_type::kw_null);
+    auto [node, inner] = new_node<node_literal_null_expr>(token);
     return node;
 }
 
 auto parse_nullptr(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::kw_nullptr);
-    auto [node, inner] = new_node<node_literal_nullptr_expr>();
-    inner.token = tok;
+    const auto token = tokens.consume_only(token_type::kw_nullptr);
+    auto [node, inner] = new_node<node_literal_nullptr_expr>(token);
     return node;
 }
 
 auto parse_name(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume();
-    auto [node, inner] = new_node<node_name_expr>();
-    inner.token = tok;
-    inner.name = std::string{tok.text};
+    const auto token = tokens.consume();
+    auto [node, inner] = new_node<node_name_expr>(token);
+    inner.name = token.text;
     return node;
 }
 
@@ -145,18 +138,16 @@ auto parse_unary(tokenstream& tokens) -> node_expr_ptr
     const auto op = tokens.consume();
     auto expr = parse_precedence(tokens, precedence::PREC_UNARY);
 
-    auto [node, inner] = new_node<node_unary_op_expr>();
-    inner.token = op;
+    auto [node, inner] = new_node<node_unary_op_expr>(op);
     inner.expr = expr;
     return node;
 }
 
 auto parse_typeof(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::kw_typeof);
+    const auto token = tokens.consume_only(token_type::kw_typeof);
     tokens.consume_only(token_type::left_paren);
-    auto [node, inner] = new_node<node_typeof_expr>();
-    inner.token = tok;
+    auto [node, inner] = new_node<node_typeof_expr>(token);
     inner.expr = parse_expression(tokens);
     tokens.consume_only(token_type::right_paren);
     return node;
@@ -164,10 +155,9 @@ auto parse_typeof(tokenstream& tokens) -> node_expr_ptr
 
 auto parse_sizeof(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::kw_sizeof);
+    const auto token = tokens.consume_only(token_type::kw_sizeof);
     tokens.consume_only(token_type::left_paren);
-    auto [node, inner] = new_node<node_sizeof_expr>();
-    inner.token = tok;
+    auto [node, inner] = new_node<node_sizeof_expr>(token);
     inner.expr = parse_expression(tokens);
     tokens.consume_only(token_type::right_paren);
     return node;
@@ -175,19 +165,17 @@ auto parse_sizeof(tokenstream& tokens) -> node_expr_ptr
 
 auto parse_array(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::left_bracket);
+    const auto token = tokens.consume_only(token_type::left_bracket);
     const auto first = parse_expression(tokens);
 
     if (tokens.consume_maybe(token_type::semicolon)) {
-        auto [node, inner] = new_node<node_repeat_array_expr>();
-        inner.token = tok;
+        auto [node, inner] = new_node<node_repeat_array_expr>(token);
         inner.value = first;
         inner.size = std::get<node_literal_u64_expr>(*parse_u64(tokens)).value; // TODO: store the expr here
         tokens.consume_only(token_type::right_bracket);
         return node;
     } else {
-        auto [node, inner] = new_node<node_array_expr>();
-        inner.token = tok;
+        auto [node, inner] = new_node<node_array_expr>(token);
         inner.elements.push_back(first);
         if (!tokens.consume_maybe(token_type::right_bracket)) {
             tokens.consume_only(token_type::comma);
@@ -201,10 +189,9 @@ auto parse_array(tokenstream& tokens) -> node_expr_ptr
 
 auto parse_func_ptr(tokenstream& tokens) -> node_expr_ptr
 {
-    const auto tok = tokens.consume_only(token_type::kw_function);
+    const auto token = tokens.consume_only(token_type::kw_function);
     tokens.consume_only(token_type::left_paren);
-    auto [node, inner] = new_node<node_function_ptr_type_expr>();
-    inner.token = tok;
+    auto [node, inner] = new_node<node_function_ptr_type_expr>(token);
     tokens.consume_comma_separated_list(token_type::right_paren, [&] {
         inner.params.push_back(parse_expression(tokens));
     });
@@ -219,8 +206,7 @@ auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_p
     auto rule = get_rule(op.type);
     auto right = parse_precedence(tokens, (precedence)(rule->prec + 1));
 
-    auto [node, inner] = new_node<node_binary_op_expr>();
-    inner.token = op;
+    auto [node, inner] = new_node<node_binary_op_expr>(op);
     inner.lhs = left;
     inner.rhs = right;
     return node;
@@ -228,8 +214,7 @@ auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_p
 
 auto parse_call(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto [node, inner] = new_node<node_call_expr>();
-    inner.token = tokens.curr();
+    auto [node, inner] = new_node<node_call_expr>(tokens.curr());
     inner.expr = left;
     if (tokens.consume_maybe(token_type::bang)) {
         tokens.consume_only(token_type::left_paren);
@@ -281,8 +266,7 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
     const auto name = tokens.consume_only(token_type::identifier);
 
     if (tokens.peek(token_type::left_paren) || tokens.peek(token_type::bang)) {
-        auto [node, inner] = new_node<node_member_call_expr>();
-        inner.token = token;
+        auto [node, inner] = new_node<node_member_call_expr>(token);
         inner.expr = left;
         inner.function_name = std::string{name.text};
         if (tokens.consume_maybe(token_type::bang)) {
@@ -297,8 +281,7 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
         });
         return node;
     } else {
-        auto [node, inner] = new_node<node_field_expr>();
-        inner.token = token;
+        auto [node, inner] = new_node<node_field_expr>(token);
         inner.expr = left;
         inner.field_name = std::string{name.text};
         return node;
@@ -308,24 +291,24 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 
 auto parse_const(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto [node, inner] = new_node<node_const_expr>();
-    inner.token = tokens.consume_only(token_type::kw_const);
+    const auto token = tokens.consume_only(token_type::kw_const);
+    auto [node, inner] = new_node<node_const_expr>(token);
     inner.expr = left;
     return node;
 }
 
 auto parse_at(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto [node, inner] = new_node<node_deref_expr>();
-    inner.token = tokens.consume_only(token_type::at);
+    const auto token = tokens.consume_only(token_type::at);
+    auto [node, inner] = new_node<node_deref_expr>(token);
     inner.expr = left;
     return node;
 }
 
 auto parse_ampersand(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
-    auto [node, inner] = new_node<node_addrof_expr>();
-    inner.token = tokens.consume_only(token_type::ampersand);
+    const auto token = tokens.consume_only(token_type::ampersand);
+    auto [node, inner] = new_node<node_addrof_expr>(token);
     inner.expr = left;
     return node;
 }
