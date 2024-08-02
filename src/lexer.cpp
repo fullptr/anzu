@@ -290,23 +290,9 @@ auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
     return consume();
 }
 
-auto tokenstream::consume_u64() -> std::uint64_t
-{
-    panic_if(!valid(), "[ERROR] (EOF) expected a uint\n");
-    if (curr().type != token_type::uint64) {
-        curr().error("expected u64, got '{}'\n", curr().type);
-    }
-    return std::stoull(std::string{consume().text}); // todo - use from_chars
-}
-
 auto tokenstream::peek(token_type tt) -> bool
 {
     return valid() && curr().type == tt;
-}
-
-auto tokenstream::peek_next(token_type tt) -> bool
-{
-    return has_next() && next().type == tt;
 }
 
 }
