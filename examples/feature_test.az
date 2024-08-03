@@ -311,7 +311,7 @@ fn do!(T)(x: T) -> T
     return T(10, 20);
 }
 
-fn ptr!(T)(x: T&) { print("{}\n", x); }
+fn ptr!(T)(x: T&) { print("{} {}\n", x, x@); }
 
 struct foo
 {
@@ -332,3 +332,7 @@ var x := 10;
 ptr!(i64)(x&);
 
 f.bar!(i64)(6);
+
+let fp := ptr!(u64);
+var arg := 60u;
+fp(arg&);
