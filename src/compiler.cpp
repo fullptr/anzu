@@ -671,7 +671,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_function_ptr()) {
         const auto& info = std::get<type_function_ptr>(type);
-        node.token.assert_eq(info.param_types.size(), node.args.size(),
+        node.token.assert_eq(node.args.size(), info.param_types.size(), 
                              "invalid number of args for function call");
 
         auto args_size = std::size_t{0};
@@ -687,7 +687,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (type.is_bound_method()) {
         const auto& info = std::get<type_bound_method>(type);
-        node.token.assert_eq(info.param_types.size(), node.args.size() + 1, // instance ptr
+        node.token.assert_eq(node.args.size(), info.param_types.size() - 1, // instance ptr
                              "invalid number of args for function call");
 
         auto args_size = std::size_t{0};
@@ -710,13 +710,26 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (type.is_bound_builtin_method()) {
         const auto& info = std::get<type_bound_builtin_method>(type);
-        node.token.assert_eq(info.param_types.size(), node.args.size() + 1, // instance ptr
+        node.token.assert_eq(node.args.size(), info.param_types.size() - 1, // instance ptr
                              "invalid number of args for function call");
 
-        if (info.param_types[0].remove_ptr().is_array() && info.function_name == "size") {
-            node.token.assert(info.param_types.size() == 1, "incorrect number of args for array size func");
-            push_value(code(com), op::push_u64, array_length(info.param_types[0].remove_ptr()));
+        const auto first = info.param_types[0].remove_ptr();
+        if (first.is_array() && info.function_name == "size") {
+            push_value(code(com), op::push_u64, array_length(first));
             return u64_type();
+        }
+        else if (first.is_span() && info.function_name == "size") {
+            push_expr(com, compile_type::val, *node.expr); // pointer to the span
+            push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add); // offset to the size value
+            push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
+            return u64_type();
+//        node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
+//        push_expr(com, compile_type::ptr, *node.expr); // push pointer to span
+//        auto_deref_pointer(com, type);  // because we pushed a T& instead of a T, this will leave a pointer on the stack
+//        push_value(code(com), op::push_u64, sizeof(std::byte*));
+//        push_value(code(com), op::u64_add); // offset to the size value
+//        push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
+//        return u64_type();
         }
     }
 
@@ -1095,7 +1108,14 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         }
     }
     else if (type.is_span()) {
-
+        if (node.field_name == "size") {
+            push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
+            return type_bound_builtin_method{
+                .param_types = { type.add_const().add_ptr() },
+                .return_type = u64_type(),
+                .function_name = "size"
+            };
+        }
     }
     else if (type.is_arena()) {
 
