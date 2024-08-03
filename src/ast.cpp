@@ -266,6 +266,7 @@ auto print_node(const node_stmt& root, int indent) -> void
                 });
                 std::print(")");
             }
+            std::print("\n");
             std::print("{}- FunctionArguments:\n", spaces);
             for (const auto& param : node.sig.params) {
                 std::print("    {}:\n", param.name);

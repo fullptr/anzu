@@ -1,7 +1,11 @@
 
-fn foo!(T)() -> null { print("hello world\n") }
+struct foo
+{
+    x: i64;
+    fn bar(self: foo const&) -> null {
+        print("hello world {}\n", self.x);
+    }
+}
 
-var f := foo!(i64);
-f();
-
-__dump_type(f);
+let f := foo(5);
+f.bar(f&);
