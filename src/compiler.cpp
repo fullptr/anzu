@@ -618,12 +618,6 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
-// push_expr should be able to return things other than types, like how type_type wraps a type
-// and indicates that the result of compiling the expression returns a type rather than pushing
-// a value to the runtime stack of a given type. Similarly, if the name in this node is a type
-// or the name of a function, the type/function information should be passed up and no bytecode
-// should be created. Then the implementation of node_call_expr does not need to specically
-// handle name expressions
 auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
@@ -1056,12 +1050,14 @@ auto push_expr(compiler& com, compile_type ct, const node_templated_name_expr& n
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
+
+    // Firstly, the field may be a member function
     const auto func_name = full_function_name(com, node.token, type, node.field_name);
     if (auto info = get_function(com, func_name); info.has_value()) {
         if (ct == compile_type::ptr) {
             node.token.error("cannot take the address of a bound method");
         }
-        if (!info->sig.params[0].remove_ptr().is_const && type.is_const) {
+        if (type.is_const && !info->sig.params[0].remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
@@ -1073,6 +1069,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         };
     }
 
+    // Otherwise, it's a data member
     if (ct == compile_type::ptr) {
         auto type = push_expr(com, compile_type::ptr, *node.expr);
         const auto stripped_type = auto_deref_pointer(com, type); // allow for field access through a pointer

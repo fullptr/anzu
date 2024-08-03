@@ -278,29 +278,10 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto token = tokens.consume_only(token_type::dot);
     const auto name = tokens.consume_only(token_type::identifier);
-
-    if (tokens.peek(token_type::left_paren) || tokens.peek(token_type::bang)) {
-        auto [node, inner] = new_node<node_member_call_expr>(token);
-        inner.expr = left;
-        inner.function_name = std::string{name.text};
-        if (tokens.consume_maybe(token_type::bang)) {
-            tokens.consume_only(token_type::left_paren);
-            tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-                inner.template_args.push_back(parse_expression(tokens));
-            });
-        }
-        tokens.consume_only(token_type::left_paren);
-        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            inner.other_args.push_back(parse_expression(tokens));
-        });
-        return node;
-    } else {
-        auto [node, inner] = new_node<node_field_expr>(token);
-        inner.expr = left;
-        inner.field_name = std::string{name.text};
-        return node;
-    }
-
+    auto [node, inner] = new_node<node_field_expr>(token);
+    inner.expr = left;
+    inner.field_name = std::string{name.text};
+    return node;
 }
 
 auto parse_const(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr

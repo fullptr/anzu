@@ -9,6 +9,6 @@ struct foo
 
 
 var f := foo(5);
-var p := f.bar;
-
-p();
+let x := f.bar;
+f.x = 200;
+x();
