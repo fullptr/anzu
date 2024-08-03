@@ -230,6 +230,13 @@ auto auto_deref_pointer(compiler& com, const type_name& type) -> type_name
     return t;
 }
 
+auto strip_pointers(const type_name& type) -> type_name
+{
+    auto t = type;
+    while (t.is_ptr()) t = t.remove_ptr();
+    return t;
+}
+
 auto const_convertable_to(const token& tok, const type_name& src, const type_name& dst) {
     if (src.is_const && !dst.is_const) {
         return false;
@@ -915,12 +922,13 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
+    const auto stripped = strip_pointers(type);
 
     // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
     const auto full_name_no_templates =
-        full_function_name(com, node.token, type, node.field_name);
+        full_function_name(com, node.token, stripped, node.field_name);
     const auto full_name =
-        full_function_name(com, node.token, type, node.field_name, node.templates);
+        full_function_name(com, node.token, stripped, node.field_name, node.templates);
     
     if (!node.templates.empty() && com.member_function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto function_ast = com.member_function_templates.at(full_name_no_templates);
@@ -939,8 +947,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
     }
 
-    std::print("full_name={}, full_name_no_templates={}\n", full_name, full_name_no_templates);
-
     // Firstly, the field may be a member function
     if (auto info = get_function(com, full_name); info.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a bound method");
@@ -948,6 +954,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             node.token.error("cannot bind a const variable to a non-const member function");
         }
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
+        auto_deref_pointer(com, type); // allow for field access through a pointer
         return type_bound_method{
             .param_types = info->sig.params,
             .return_type = info->sig.return_type,
@@ -962,6 +969,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         node.token.assert(ct == compile_type::val, "cannot take the address of a bound builtin method");
         if (node.field_name == "size") {
             push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
+            auto_deref_pointer(com, type); // allow for field access through a pointer
             return type_bound_builtin_method{ .name = "size", .type = type };
         }
     }
@@ -970,11 +978,11 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     node.token.assert(node.templates.empty(), "data members cannot be templated");
     if (ct == compile_type::ptr) {
         auto type = push_expr(com, compile_type::ptr, *node.expr);
-        const auto stripped_type = auto_deref_pointer(com, type); // allow for field access through a pointer
+        auto_deref_pointer(com, type); // allow for field access through a pointer
 
-        const auto field_type = push_field_offset(com, node.token, stripped_type, node.field_name);
+        const auto field_type = push_field_offset(com, node.token, stripped, node.field_name);
         push_value(code(com), op::u64_add); // modify ptr
-        if (stripped_type.is_const) return field_type.add_const(); // propagate const to fields
+        if (stripped.is_const) return field_type.add_const(); // propagate const to fields
         return field_type;
     }
     node.token.assert(!type.is_type_value(), "invalid use of type expressions");

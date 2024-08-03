@@ -5,11 +5,13 @@ struct vec3
     y: f64;
     z: f64;
 
-    fn length(self: vec3 const&) -> f64
+    fn length!(T)(self: vec3 const&) -> f64
     {
+        print("size of T = {}\n", sizeof(T));
         return self.x + self.y + self.z;
     }
 }
 
 var v := vec3(3.0, 4.0, 5.0);
-print("length of vec3(3.0, 4.0, 5.0): {}\n", v.length());
+var p := v&;
+print("length of vec3(3.0, 4.0, 5.0): {}\n", p.length!(u64)());
