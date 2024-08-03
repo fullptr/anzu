@@ -248,6 +248,7 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
             return const_convertable_to(tok, *l.inner_type, *r.inner_type);
         },
         [&](const type_function_ptr& l, const type_function_ptr& r) { return l == r; },
+        [&](const type_bound_method& l, const type_bound_method& r) { return l == r; },
         [&](const type_arena& l, const type_arena& r) { return true; },
         [&](const auto& l, const auto& r) {
             return false;
@@ -1030,8 +1031,16 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     const auto type = type_of_expr(com, *node.expr);
     const auto func_name = full_function_name(com, node.token, type, node.field_name);
     if (auto info = get_function(com, func_name); info.has_value()) {
-        
-
+        if (ct == compile_type::ptr) {
+            node.token.error("cannot take the address of a bound method");
+        }
+        push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
+        return type_bound_method{
+            .param_types = info->sig.params,
+            .return_type = info->sig.return_type,
+            .function_name = info->name,
+            .function_id = info->id
+        };
     }
 
     if (ct == compile_type::ptr) {
