@@ -40,6 +40,13 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_name_expr& node) {
             std::print("{}Name: {}\n", spaces, node.name);
         },
+        [&](const node_templated_name_expr& node) {
+            std::print("{}TemplatedName: {}\n", spaces, node.name);
+            std::print("{}- Args:\n", spaces);
+            for (const auto& arg : node.templates) {
+                print_node(*arg, indent + 1);
+            }
+        },
         [&](const node_field_expr& node) {
             std::print("{}Field: \n", spaces);
             std::print("{}- Expr:\n", spaces);
@@ -64,12 +71,6 @@ auto print_node(const node_expr& root, int indent) -> void
             std::print("{}Call:\n", spaces);
             std::print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
-            if (!node.template_args.empty()) {
-                std::print("{}- TemplateArgs:\n", spaces);
-                for (const auto& arg : node.template_args) {
-                    print_node(*arg, indent + 1);
-                }
-            }
             std::print("{}- Args:\n", spaces);
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
@@ -265,6 +266,7 @@ auto print_node(const node_stmt& root, int indent) -> void
                 });
                 std::print(")");
             }
+            std::print("\n");
             std::print("{}- FunctionArguments:\n", spaces);
             for (const auto& param : node.sig.params) {
                 std::print("    {}:\n", param.name);

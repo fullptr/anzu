@@ -1,12 +1,11 @@
 
-struct vec2
+struct foo
 {
     x: i64;
-    y: i64;
-
-    fn bar(self: vec2&) { print("here i am\n"); }
+    fn bar(self: foo const&) -> null {
+        print("hello world {}\n", self.x);
+    }
 }
 
-var v := vec2(1, 2);
-v.bar();
 
+let f := foo(5);

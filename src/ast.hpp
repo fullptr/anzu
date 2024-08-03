@@ -74,6 +74,14 @@ struct node_name_expr
     anzu::token token;
 };
 
+struct node_templated_name_expr
+{
+    std::string name;
+    std::vector<node_expr_ptr> templates;
+
+    anzu::token token;
+};
+
 struct node_field_expr
 {
     node_expr_ptr expr;
@@ -100,7 +108,6 @@ struct node_binary_op_expr
 struct node_call_expr
 {
     node_expr_ptr expr;
-    std::vector<node_expr_ptr> template_args;
     std::vector<node_expr_ptr> args;
 
     anzu::token token;
@@ -214,6 +221,7 @@ struct node_expr : std::variant<
     node_function_ptr_type_expr,
     node_const_expr,
     node_name_expr,
+    node_templated_name_expr,
     node_field_expr,
     node_deref_expr,
     node_subscript_expr>
