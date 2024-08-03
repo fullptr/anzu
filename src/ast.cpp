@@ -39,9 +39,6 @@ auto print_node(const node_expr& root, int indent) -> void
         },
         [&](const node_name_expr& node) {
             std::print("{}Name: {}\n", spaces, node.name);
-        },
-        [&](const node_templated_name_expr& node) {
-            std::print("{}TemplatedName: {}\n", spaces, node.name);
             std::print("{}- Args:\n", spaces);
             for (const auto& arg : node.templates) {
                 print_node(*arg, indent + 1);

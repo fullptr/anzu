@@ -838,6 +838,7 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> t
     return type_type{inner_type(type).add_const()};
 }
 
+// TODO: Reorder the lookups, variables should probably be first
 // A name can represent the following
 //  - a variable name
 //  - a function name
@@ -845,53 +846,7 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> t
 //  - a type name
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
-    const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
-
-    // Can only push pointers to variables (need to exclude other types)
-    if (ct == compile_type::ptr) {
-        if (auto func = get_function(com, full_name)) {
-            node.token.error("cannot take address of a function pointer");
-        }
-        return push_var_addr(com, node.token, node.name);
-    }
-
-    // The name might be a function
-    if (auto func = get_function(com, full_name)) {
-        const auto& info = *func;
-        push_value(code(com), op::push_u64, info.id);
-
-        // next, construct the return type.
-        const auto ptr_type = type_function_ptr{
-            .param_types = info.sig.params,
-            .return_type = make_value<type_name>(info.sig.return_type)
-        };
-        return ptr_type;
-    }
-
-    // The name might be a builtin
-    if (auto func = get_builtin(full_name)) {
-        return type_builtin{
-            .name = func->name,
-            .id = func->id,
-            .args = func->args,
-            .return_type = func->return_type
-        };
-    }
-
-    // The name may be a type
-    if (const auto type = make_type(com, node.name); com.types.contains(type)) {
-        return type_type{type};
-    }
-
-    const auto type = push_expr(com, compile_type::ptr, node);
-    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
-}
-
-auto push_expr(compiler& com, compile_type ct, const node_templated_name_expr& node) -> type_name
-{
-    // Firstly, check if the function needs compiling
+    // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
     const auto full_name_no_templates =
         full_function_name(com, node.token, global_namespace, node.name);
     const auto full_name =
@@ -914,22 +869,45 @@ auto push_expr(compiler& com, compile_type ct, const node_templated_name_expr& n
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
     }
 
-    // Because templated names only apply to (free) functions, trying to push a pointer is
-    // always an error, unlike regular name expressions which could be a variable.
-    if (ct == compile_type::ptr) {
-        node.token.error("cannot take address of a function pointer");
+    // The name might be a function
+    if (auto func = get_function(com, full_name)) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
+        const auto& info = *func;
+        push_value(code(com), op::push_u64, info.id);
+
+        return type_function_ptr{
+            .param_types = info.sig.params,
+            .return_type = make_value<type_name>(info.sig.return_type)
+        };
     }
 
-    const auto info = get_function(com, full_name);
-    node.token.assert(info.has_value(), "could not find function for templated name, bug in compiler");
-    push_value(code(com), op::push_u64, info->id);
+    // The name might be a builtin
+    if (auto func = get_builtin(full_name)) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
+        return type_builtin{
+            .name = func->name,
+            .id = func->id,
+            .args = func->args,
+            .return_type = func->return_type
+        };
+    }
 
-    // next, construct the return type.
-    const auto ptr_type = type_function_ptr{
-        .param_types = info->sig.params,
-        .return_type = make_value<type_name>(info->sig.return_type)
-    };
-    return ptr_type;
+    // The name might be a type
+    if (const auto type = make_type(com, node.name); com.types.contains(type)) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a type");
+        return type_type{type};
+    }
+
+    // Otherwise, it must be a variable
+    node.token.assert(node.templates.empty(), "variables cannot be templated");
+    if (ct == compile_type::ptr) {
+        return push_var_addr(com, node.token, node.name);
+    } else {
+        const auto type = push_expr(com, compile_type::ptr, node);
+        node.token.assert(!type.is_type_value(), "invalid use of type expressions");
+        push_value(code(com), op::load, com.types.size_of(type));
+        return type;
+    }
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name

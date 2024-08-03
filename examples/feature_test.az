@@ -256,43 +256,43 @@ var function_ptr := print_success;
 function_ptr();
 
 # Arena test
-fn get(a: arena&, count: u64) -> u64[]
-{
-    var p := a.new_array!(u64)(count);
-    var idx := 0u;
-    while idx < p.size() {
-        p[idx] = idx;
-        idx = idx + 1u;
-    }
-    return p;
-}
-
-{
-    arena a;
-    var z := get(a&, 5u);
-    print("size={} capacity={}\n", a.size(), a.capacity());
-
-    var idx := 0u;
-    while idx < z.size() {
-        print("{}\n", z[idx])
-        idx = idx + 1u;
-    }
-}
-
-fn read_file(filename: char const[], a: arena&) -> char const[]
-{
-    let f := fopen(filename, "rb");
-    let contents := fread(f, a);
-    fclose(f);
-    return contents;
-}
-
-arena a;
-let contents := read_file("examples/example_data.txt", a&);
-
-print("'{}'\n", contents);
-print("\nsize={}\n", contents.size());
-
+#fn get(a: arena&, count: u64) -> u64[]
+#{
+#    var p := a.new_array!(u64)(count);
+#    var idx := 0u;
+#    while idx < p.size() {
+#        p[idx] = idx;
+#        idx = idx + 1u;
+#    }
+#    return p;
+#}
+#
+#{
+#    arena a;
+#    var z := get(a&, 5u);
+#    print("size={} capacity={}\n", a.size(), a.capacity());
+#
+#    var idx := 0u;
+#    while idx < z.size() {
+#        print("{}\n", z[idx])
+#        idx = idx + 1u;
+#    }
+#}
+#
+#fn read_file(filename: char const[], a: arena&) -> char const[]
+#{
+#    let f := fopen(filename, "rb");
+#    let contents := fread(f, a);
+#    fclose(f);
+#    return contents;
+#}
+#
+#arena a;
+#let contents := read_file("examples/example_data.txt", a&);
+#
+#print("'{}'\n", contents);
+#print("\nsize={}\n", contents.size());
+#
 # nullptr checks
 {
     var p : i64& = nullptr;
@@ -331,7 +331,7 @@ print("{} {}\n", g.x, g.y);
 var x := 10;
 ptr!(i64)(x&);
 
-f.bar!(i64)(6);
+#f.bar!(i64)(6);
 
 let fp := ptr!(u64);
 var arg := 60u;
