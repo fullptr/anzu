@@ -88,7 +88,7 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
     return inner_type(type_expr_type);
 }
 
-auto full_function_name(
+auto fn_name(
     compiler& com,
     const token& tok,
     const type_name& struct_name,
@@ -854,19 +854,12 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> t
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
     // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
-    const auto full_name_no_templates =
-        full_function_name(com, node.token, global_namespace, node.name);
-    const auto full_name =
-        full_function_name(com, node.token, global_namespace, node.name, node.templates);
+    const auto full_name_no_templates = fn_name(com, node.token, global_namespace, node.name);
+    const auto full_name = fn_name(com, node.token, global_namespace, node.name, node.templates);
     
-    if (!node.templates.empty() && com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto function_ast = com.function_templates.at(full_name_no_templates);
-
-        if (node.templates.size() != function_ast.template_types.size()) {
-            node.token.error("mismatching number of template args, expected {}, got {}",
-                                function_ast.template_types.size(),
-                                node.templates.size());
-        }
+    if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+        const auto function_ast = com.fn_templates.at(full_name_no_templates);
+        node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of function args");
 
         auto map = template_map{};
         for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
@@ -879,13 +872,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     // The name might be a function
     if (auto func = get_function(com, full_name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
-        const auto& info = *func;
-        push_value(code(com), op::push_u64, info.id);
-
-        return type_function_ptr{
-            .param_types = info.sig.params,
-            .return_type = make_value<type_name>(info.sig.return_type)
-        };
+        push_value(code(com), op::push_u64, func->id);
+        return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
     }
 
     // The name might be a builtin
@@ -911,12 +899,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     node.token.assert(node.templates.empty(), "variables cannot be templated");
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, node.name);
-    } else {
-        const auto type = push_expr(com, compile_type::ptr, node);
-        node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-        push_value(code(com), op::load, com.types.size_of(type));
-        return type;
     }
+    const auto type = push_expr(com, compile_type::ptr, node);
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
+    push_value(code(com), op::load, com.types.size_of(type));
+    return type;
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
@@ -925,19 +912,12 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     const auto stripped = strip_pointers(type);
 
     // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
-    const auto full_name_no_templates =
-        full_function_name(com, node.token, stripped, node.field_name);
-    const auto full_name =
-        full_function_name(com, node.token, stripped, node.field_name, node.templates);
+    const auto full_name_no_templates = fn_name(com, node.token, stripped, node.field_name);
+    const auto full_name = fn_name(com, node.token, stripped, node.field_name, node.templates);
     
-    if (!node.templates.empty() && com.member_function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto function_ast = com.member_function_templates.at(full_name_no_templates);
-
-        if (node.templates.size() != function_ast.template_types.size()) {
-            node.token.error("mismatching number of template args, expected {}, got {}",
-                             function_ast.template_types.size(),
-                             node.templates.size());
-        }
+    if (com.mem_fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+        const auto function_ast = com.mem_fn_templates.at(full_name_no_templates);
+        node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of function args");
 
         auto map = template_map{};
         for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
@@ -1264,16 +1244,14 @@ void push_stmt(compiler& com, const node_member_function_def_stmt& node)
     );
 
     // We always ignore the template types here because it is either not a template function and so
-    // this is in fact the full name, or it is and we use this as the key for the function_templates
+    // this is in fact the full name, or it is and we use this as the key for the fn_templates
     // map which is just the name without the template section.
-    const auto full_name = full_function_name(com, node.token, struct_type, node.function_name);
+    const auto full_name = fn_name(com, node.token, struct_type, node.function_name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.template_types.empty()) {
-        const auto [it, success] = com.member_function_templates.emplace(full_name, node);
-        if (!success) {
-            node.token.error("function template named '{}' already defined", full_name);
-        }
+        const auto [it, success] = com.mem_fn_templates.emplace(full_name, node);
+        node.token.assert(success, "function template named '{}' already defined", full_name);
     } else {
         compile_function(com, node.token, full_name, node.sig, node.body);
     }
@@ -1287,12 +1265,10 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.template_types.empty()) {
-        const auto [it, success] = com.function_templates.emplace(node.name, node);
-        if (!success) {
-            node.token.error("function template named '{}' already defined", node.name);
-        }
+        const auto [it, success] = com.fn_templates.emplace(node.name, node);
+        node.token.assert(success, "function template named '{}' already defined", node.name);
     } else {
-        const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
+        const auto full_name = fn_name(com, node.token, global_namespace, node.name);
         compile_function(com, node.token, full_name, node.sig, node.body);
     }
 }
