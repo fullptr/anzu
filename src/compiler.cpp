@@ -674,20 +674,47 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 
     // Otherwise, the expression must be a function pointer.
     const auto type = type_of_expr(com, *node.expr);
-    node.token.assert(type.is_function_ptr(), "unable to call non-callable type {}", type);
+    if (type.is_function_ptr()) {
+        const auto& info = std::get<type_function_ptr>(type);
+        node.token.assert_eq(info.param_types.size(), node.args.size(),
+                             "invalid number of args for function call");
 
-    const auto& sig = std::get<type_function_ptr>(type);
+        auto args_size = std::size_t{0};
+        for (std::size_t i = 0; i != node.args.size(); ++i) {
+            push_copy_typechecked(com, *node.args.at(i), info.param_types[i], node.token);
+            args_size += com.types.size_of(info.param_types[i]);
+        }
 
-    auto args_size = std::size_t{0};
-    for (std::size_t i = 0; i != node.args.size(); ++i) {
-        push_copy_typechecked(com, *node.args.at(i), sig.param_types[i], node.token);
-        args_size += com.types.size_of(sig.param_types[i]);
+        // push the function pointer and call it
+        push_expr(com, compile_type::val, *node.expr);
+        push_value(code(com), op::call, args_size);
+        return *info.return_type;
+    }
+    else if (type.is_bound_method()) {
+        const auto& info = std::get<type_bound_method>(type);
+        node.token.assert_eq(info.param_types.size(), node.args.size() + 1, // instance ptr
+                             "invalid number of args for function call");
+
+        auto args_size = std::size_t{0};
+    
+        // Push the instance that the method is bound to, cannot use push_copy_typechecked
+        // because the types mismatch, but the bound method type just wraps a pointer to the
+        // instance, so this is fine
+        push_expr(com, compile_type::val, *node.expr);
+        args_size += com.types.size_of(info.param_types[0]);
+
+        for (std::size_t i = 0; i != node.args.size(); ++i) {
+            push_copy_typechecked(com, *node.args.at(i), info.param_types[i + 1], node.token);
+            args_size += com.types.size_of(info.param_types[i]);
+        }
+
+        // push the function pointer and call it
+        push_value(code(com), op::push_function_ptr, info.function_id);
+        push_value(code(com), op::call, args_size);
+        return *info.return_type;
     }
 
-    // push the function pointer and call it
-    push_expr(com, compile_type::val, *node.expr);
-    push_value(code(com), op::call, args_size);
-    return *sig.return_type;
+    node.token.error("unable to call non-callable type {}", type);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_member_call_expr& node) -> type_name

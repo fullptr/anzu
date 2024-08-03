@@ -2,14 +2,14 @@
 struct foo
 {
     x: i64;
-    fn bar(self: foo const&) -> null {
+    fn bar(self: foo&) -> null {
         print("hello world {}\n", self.x);
     }
 }
 
 
 let f := foo(5);
+f.bar();
 var p := f.bar;
-__dump_type(p);
 
 p();
