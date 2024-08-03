@@ -39,7 +39,7 @@ auto print_node(const node_expr& root, int indent) -> void
         },
         [&](const node_name_expr& node) {
             std::print("{}Name: {}\n", spaces, node.name);
-            std::print("{}- Args:\n", spaces);
+            std::print("{}- Templates:\n", spaces);
             for (const auto& arg : node.templates) {
                 print_node(*arg, indent + 1);
             }
@@ -49,6 +49,10 @@ auto print_node(const node_expr& root, int indent) -> void
             std::print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
             std::print("{}- Field: {}\n", spaces, node.field_name);
+            std::print("{}- Templates:\n", spaces);
+            for (const auto& arg : node.templates) {
+                print_node(*arg, indent + 1);
+            }
         },
         [&](const node_unary_op_expr& node) {
             std::print("{}UnaryOp: \n", spaces);

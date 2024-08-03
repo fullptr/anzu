@@ -884,6 +884,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     // The name might be a builtin
     if (auto func = get_builtin(full_name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
+        node.token.assert(node.templates.empty(), "builtins cannot be templated");
         return type_builtin{
             .name = func->name,
             .id = func->id,
@@ -895,6 +896,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     // The name might be a type
     if (const auto type = make_type(com, node.name); com.types.contains(type)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
+        node.token.assert(node.templates.empty(), "types cannot current be templated");
         return type_type{type};
     }
 
@@ -914,14 +916,34 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 {
     const auto type = type_of_expr(com, *node.expr);
 
-    // Firstly, the field may be a member function
-    const auto func_name = full_function_name(com, node.token, type, node.field_name);
-    if (auto info = get_function(com, func_name); info.has_value()) {
-        if (ct == compile_type::ptr) {
-            node.token.error("cannot take the address of a bound method");
+    // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
+    const auto full_name_no_templates =
+        full_function_name(com, node.token, type, node.field_name);
+    const auto full_name =
+        full_function_name(com, node.token, type, node.field_name, node.templates);
+    
+    if (!node.templates.empty() && com.member_function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+        const auto function_ast = com.member_function_templates.at(full_name_no_templates);
+
+        if (node.templates.size() != function_ast.template_types.size()) {
+            node.token.error("mismatching number of template args, expected {}, got {}",
+                             function_ast.template_types.size(),
+                             node.templates.size());
         }
 
-        // Otherwise, it's an actual member function of a custom type
+        auto map = template_map{};
+        for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
+            const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
+            if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
+        }
+        compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
+    }
+
+    std::print("full_name={}, full_name_no_templates={}\n", full_name, full_name_no_templates);
+
+    // Firstly, the field may be a member function
+    if (auto info = get_function(com, full_name); info.has_value()) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a bound method");
         if (type.is_const && !info->sig.params[0].remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
@@ -936,6 +958,8 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
     // Next, it could be a member function on a builtin type
     if (type.is_array() || type.is_span()) {
+        node.token.assert(node.templates.empty(), "builtin members functions cannot be templated");
+        node.token.assert(ct == compile_type::val, "cannot take the address of a bound builtin method");
         if (node.field_name == "size") {
             push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
             return type_bound_builtin_method{ .name = "size", .type = type };
@@ -943,6 +967,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
 
     // Otherwise, it's a data member
+    node.token.assert(node.templates.empty(), "data members cannot be templated");
     if (ct == compile_type::ptr) {
         auto type = push_expr(com, compile_type::ptr, *node.expr);
         const auto stripped_type = auto_deref_pointer(com, type); // allow for field access through a pointer

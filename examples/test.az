@@ -1,10 +1,15 @@
 
-struct foo
+struct vec3
 {
-    x: i64;
-    y: i64;
+    x: f64;
+    y: f64;
+    z: f64;
+
+    fn length(self: vec3 const&) -> f64
+    {
+        return self.x + self.y + self.z;
+    }
 }
 
-let f := sqrt&;
-__dump_type(f);
-print("{}\n", f(4.0));
+var v := vec3(3.0, 4.0, 5.0);
+print("length of vec3(3.0, 4.0, 5.0): {}\n", v.length());

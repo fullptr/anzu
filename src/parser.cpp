@@ -277,6 +277,12 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
     auto [node, inner] = new_node<node_field_expr>(token);
     inner.expr = left;
     inner.field_name = std::string{name.text};
+    if (tokens.consume_maybe(token_type::bang)) {
+        tokens.consume_only(token_type::left_paren);
+        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+            inner.templates.push_back(parse_expression(tokens));
+        });
+    }
     return node;
 }
 

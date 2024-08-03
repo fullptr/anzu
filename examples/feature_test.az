@@ -331,7 +331,7 @@ print("{} {}\n", g.x, g.y);
 var x := 10;
 ptr!(i64)(x&);
 
-#f.bar!(i64)(6);
+f.bar!(i64)(6);
 
 let fp := ptr!(u64);
 var arg := 60u;
