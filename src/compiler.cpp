@@ -97,14 +97,20 @@ auto full_function_name(
 )
     -> std::string
 {
-    if (template_args.empty()) {
-        return std::format("{}::{}", struct_name.remove_const(), function_name);
+    auto name = std::string{};
+    if (struct_name != global_namespace) {
+        name += std::format("{}::", struct_name.remove_const());
+    }
+    name += function_name;
+
+    if (!template_args.empty()) {
+        const auto template_args_string = format_comma_separated(
+            template_args, [&](const node_expr_ptr& n) { return resolve_type(com, tok, n); }
+        );
+        name += std::format("!({})", template_args_string);
     }
 
-    const auto template_args_string = format_comma_separated(
-        template_args, [&](const node_expr_ptr& n) { return resolve_type(com, tok, n); }
-    );
-    return std::format("{}::{}|{}|", struct_name.remove_const(), function_name, template_args_string);
+    return name;
 }
 
 auto get_function(compiler& com, const std::string& full_name) -> std::optional<function_info>
@@ -629,7 +635,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         const auto type = make_type(com, inner.name);
         if (com.types.contains(type)) {
             const auto expected_params = get_constructor_params(com, type);
-            node.token.assert(node.template_args.empty(), "no support for template structs yet");
             node.token.assert_eq(expected_params.size(), node.args.size(),
                                  "bad number of arguments to constructor call");
             for (std::size_t i = 0; i != node.args.size(); ++i) {
@@ -643,7 +648,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 
         // Hack to allow for an easy way to dump types of expressions
         if (inner.name == "__dump_type") {
-            node.token.assert(node.template_args.empty(), "__dump_type takes no template args");
             std::print("__dump_type(\n");
             for (const auto& arg : node.args) {
                 const auto dump = type_of_expr(com, *arg);
@@ -652,37 +656,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
             std::print(")\n");
             push_value(code(com), op::push_null);
             return null_type();
-        }
-
-        const auto full_name = full_function_name(com, node.token, global_namespace, inner.name, node.template_args);
-
-        // Second, this might be a template function with this being the first time we're calling it with
-        // specific types, so we need to compile that instantiation before we can call it
-        if (!node.template_args.empty() && com.function_templates.contains(inner.name) && !get_function(com, full_name)) {
-            const auto function_ast = com.function_templates.at(inner.name);
-
-            if (node.template_args.size() != function_ast.template_types.size()) {
-                node.token.error("mismatching number of template args, expected {}, got {}",
-                                 function_ast.template_types.size(),
-                                 node.template_args.size());
-            }
-
-            auto map = template_map{};
-            for (const auto& [actual, expected] : zip(node.template_args, function_ast.template_types)) {
-                const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
-                if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
-            }
-            compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
-        }
-
-        // Thirdly, if it's a function, call it
-        if (const auto func = get_function(com, full_name); func) {
-            node.token.assert_eq(node.args.size(), func->sig.params.size(), "bad number of arguments to function call");
-            for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_copy_typechecked(com, *node.args.at(i), func->sig.params[i], node.token);
-            }
-            push_function_call(com, *func);
-            return func->sig.return_type;
         }
 
         // Lastly, it might be a builtin function
@@ -1002,6 +975,62 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     // The name may be a type
     if (const auto type = make_type(com, node.name); com.types.contains(type)) {
         return type_type{type};
+    }
+
+    const auto type = push_expr(com, compile_type::ptr, node);
+    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
+    push_value(code(com), op::load, com.types.size_of(type));
+    return type;
+}
+
+auto push_expr(compiler& com, compile_type ct, const node_templated_name_expr& node) -> type_name
+{
+    // Firstly, check if the function needs compiling
+    const auto full_name_no_templates =
+        full_function_name(com, node.token, global_namespace, node.name);
+    const auto full_name =
+        full_function_name(com, node.token, global_namespace, node.name, node.templates);
+    
+    if (!node.templates.empty() && com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+        const auto function_ast = com.function_templates.at(full_name_no_templates);
+
+        if (node.templates.size() != function_ast.template_types.size()) {
+            node.token.error("mismatching number of template args, expected {}, got {}",
+                                function_ast.template_types.size(),
+                                node.templates.size());
+        }
+
+        auto map = template_map{};
+        for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
+            const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
+            if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
+        }
+        compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
+    }
+
+    if (ct == compile_type::ptr) {
+        if (auto func = get_function(com, full_name)) {
+            node.token.error("cannot take address of a function pointer");
+        }
+        return push_var_addr(com, node.token, full_name);
+    }
+
+    if (auto func = get_function(com, full_name)) {
+        const auto& info = *func;
+        push_value(code(com), op::push_u64, info.id);
+
+        // next, construct the return type.
+        const auto ptr_type = type_function_ptr{
+            .param_types = info.sig.params,
+            .return_type = make_value<type_name>(info.sig.return_type)
+        };
+        return ptr_type;
+    }
+
+    // The name may be a type
+    if (const auto type = make_type(com, full_name); com.types.contains(type)) {
+        node.token.error("templated structs not currently supported");
+        //return type_type{type};
     }
 
     const auto type = push_expr(com, compile_type::ptr, node);

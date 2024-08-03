@@ -1,12 +1,5 @@
 
-struct vec2
-{
-    x: i64;
-    y: i64;
+fn foo!(T)() -> null { print("hello world\n") }
 
-    fn bar(self: vec2&) { print("here i am\n"); }
-}
-
-var v := vec2(1, 2);
-v.bar();
-
+let f := foo!(i64);
+f();

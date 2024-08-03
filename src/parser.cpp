@@ -131,9 +131,19 @@ auto parse_nullptr(tokenstream& tokens) -> node_expr_ptr
 auto parse_name(tokenstream& tokens) -> node_expr_ptr
 {
     const auto token = tokens.consume();
-    auto [node, inner] = new_node<node_name_expr>(token);
-    inner.name = token.text;
-    return node;
+    if (tokens.consume_maybe(token_type::bang)) {
+        auto [node, inner] = new_node<node_templated_name_expr>(token);
+        inner.name = token.text;
+        tokens.consume_only(token_type::left_paren);
+        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+            inner.templates.push_back(parse_expression(tokens));
+        });
+        return node;
+    } else {
+        auto [node, inner] = new_node<node_name_expr>(token);
+        inner.name = token.text;
+        return node;
+    }
 }
 
 auto parse_grouping(tokenstream& tokens) -> node_expr_ptr
