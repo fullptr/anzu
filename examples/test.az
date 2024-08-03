@@ -1,14 +1,4 @@
 
-struct foo
-{
-    x: i64;
-    fn bar(self: foo&) -> null {
-        print("hello world {}\n", self.x);
-    }
-}
+let x := [1, 2, 3, 4, 5];
 
-
-var f := foo(5);
-let x := f.bar;
-f.x = 200;
-x();
+x.size();
