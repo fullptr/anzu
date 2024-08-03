@@ -78,6 +78,12 @@ auto make_type(compiler& com, const std::string& name) -> type_name
 auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) -> type_name
 {
     const auto type_expr_type = type_of_expr(com, *expr);
+    
+    // null and nullptr and also their own types
+    if (type_expr_type == null_type() || type_expr_type == nullptr_type()) {
+        return type_expr_type;
+    }
+    
     tok.assert(type_expr_type.is_type_value(), "expected type expression, got {}", type_expr_type);
     return inner_type(type_expr_type);
 }

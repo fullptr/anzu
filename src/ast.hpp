@@ -15,18 +15,6 @@ using node_expr_ptr = std::shared_ptr<node_expr>;
 struct node_stmt;
 using node_stmt_ptr = std::shared_ptr<node_stmt>;
 
-struct node_parameter
-{
-    std::string   name;
-    node_expr_ptr type;
-};
-
-struct node_signature
-{
-    std::vector<node_parameter> params;
-    node_expr_ptr               return_type;
-};
-
 struct node_literal_i32_expr
 {
     std::int32_t value;
@@ -230,6 +218,18 @@ struct node_expr : std::variant<
     node_deref_expr,
     node_subscript_expr>
 {
+};
+
+struct node_parameter
+{
+    std::string   name;
+    node_expr_ptr type;
+};
+
+struct node_signature
+{
+    std::vector<node_parameter> params;
+    node_expr_ptr               return_type;
 };
 
 struct node_sequence_stmt

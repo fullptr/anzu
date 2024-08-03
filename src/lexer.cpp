@@ -106,9 +106,9 @@ auto lexer::make_number() -> token
     using namespace std::string_view_literals;
     using tt = token_type;
 
-    while (std::isdigit(peek())) advance();
+    while (valid() && std::isdigit(peek())) advance();
     const auto is_float = match(".");
-    while (std::isdigit(peek())) advance(); // won't do anything if not a float
+    while (valid() && std::isdigit(peek())) advance(); // won't do anything if not a float
 
     static constexpr auto suffixes = {
         std::pair{"u64"sv, tt::uint64},
@@ -290,23 +290,9 @@ auto tokenstream::consume_only(token_type tt, std::source_location loc) -> token
     return consume();
 }
 
-auto tokenstream::consume_u64() -> std::uint64_t
-{
-    panic_if(!valid(), "[ERROR] (EOF) expected a uint\n");
-    if (curr().type != token_type::uint64) {
-        curr().error("expected u64, got '{}'\n", curr().type);
-    }
-    return std::stoull(std::string{consume().text}); // todo - use from_chars
-}
-
 auto tokenstream::peek(token_type tt) -> bool
 {
     return valid() && curr().type == tt;
-}
-
-auto tokenstream::peek_next(token_type tt) -> bool
-{
-    return has_next() && next().type == tt;
 }
 
 }

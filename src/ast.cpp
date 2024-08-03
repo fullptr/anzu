@@ -125,13 +125,14 @@ auto print_node(const node_expr& root, int indent) -> void
         },
         [&](const node_span_expr& node) {
             std::print("{}Span:\n", spaces);
+            std::print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
             if (node.lower_bound) {
-                std::print("{}LowerBound:\n", spaces);
+                std::print("{}- LowerBound:\n", spaces);
                 print_node(*node.lower_bound, indent + 1);
             }
             if (node.upper_bound) {
-                std::print("{}LowerBound:\n", spaces);
+                std::print("{}- LowerBound:\n", spaces);
                 print_node(*node.upper_bound, indent + 1);
             }
         },
@@ -237,13 +238,13 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.expr, indent + 1);
         },
         [&](const node_function_def_stmt& node) {
-            std::print("{}Function: {}", spaces, node.name);
+            std::print("{}Function: {}\n", spaces, node.name);
             if (!node.template_types.empty()) {
-                std::print("|");
+                std::print("(!");
                 print_comma_separated(node.template_types, [](const auto& arg) {
                     return arg;
                 });
-                std::print("|");
+                std::print(")");
             }
             std::print("{}- FunctionArguments:\n", spaces);
             for (const auto& param : node.sig.params) {
@@ -258,11 +259,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_member_function_def_stmt& node) {
             std::print("{}MemberFunction: {}::{}", spaces, node.struct_name, node.function_name);
             if (!node.template_types.empty()) {
-                std::print("|");
+                std::print("!(");
                 print_comma_separated(node.template_types, [](const auto& arg) {
                     return arg;
                 });
-                std::print("|");
+                std::print(")");
             }
             std::print("{}- FunctionArguments:\n", spaces);
             for (const auto& param : node.sig.params) {

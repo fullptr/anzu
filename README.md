@@ -103,8 +103,8 @@ An interpreted programming language written in C++. This started out as a stack-
 * Memory arenas for allocating dynamic memory:
     ```py
     arena a;
-    let ptr := a.new<bool>(false); # returns a pointer to a bool allocated in the arena
-    let arr := a.new_array<f64>(100); # returns a span to a f64[100] array allocated in the arena
+    let ptr := a.new!(bool)(false); # returns a pointer to a bool allocated in the arena
+    let arr := a.new_array!(f64)(100); # returns a span to a f64[100] array allocated in the arena
     ```
     Arenas are lexically scoped and deallocate all created objects when it goes out of scope. If a function needs to allocate objects that will outlive the function call, then a pointer to an arena should be passed into the function which it can use for allocations. Therefore pointers obtained from an arena must not outlive the arena itself. (Future challenge: static analysis to ensure this is the case).
 

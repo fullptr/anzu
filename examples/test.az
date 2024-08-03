@@ -1,6 +1,12 @@
-fn foo|T|(ptr: T const&) 
+
+struct vec2
 {
-    print("{}\n", ptr);
+    x: i64;
+    y: i64;
+
+    fn bar(self: vec2&) { print("here i am\n"); }
 }
-let x := 10;
-foo|i64|(x&);
+
+var v := vec2(1, 2);
+v.bar();
+
