@@ -740,6 +740,9 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
     if (type.is_type_value()) {
         return type_type{inner_type(type).add_ptr()};
     }
+    if (com.types.size_of(type) == 0) {
+        node.token.error("cannot take address of a type of size 0");
+    }
     push_expr(com, compile_type::ptr, *node.expr);
     return type.add_ptr();
 }
@@ -866,11 +869,10 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // The name might be a builtin
-    auto [func, id] = get_builtin(full_name);
-    if (func) {
+    if (auto func = get_builtin(full_name)) {
         return type_builtin{
             .name = func->name,
-            .id = id,
+            .id = func->id,
             .args = func->args,
             .return_type = func->return_type
         };

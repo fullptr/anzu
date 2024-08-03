@@ -127,9 +127,9 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
         } break;
         case op::builtin_call: {
             const auto id = read_at<std::uint64_t>(&ptr);
-            const auto& b = get_builtins()[id];
+            const auto& b = get_builtin(id);
             std::print("BUILTIN_CALL: {}({}) -> {}\n",
-                  b.name, format_comma_separated(b.args), b.return_type);
+                  b->name, format_comma_separated(b->args), b->return_type);
         } break;
         case op::assert: {
             const auto index = read_at<std::uint64_t>(&ptr);

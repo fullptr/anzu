@@ -96,35 +96,35 @@ auto construct_builtin_array() -> std::vector<builtin>
 
     auto b = std::vector<builtin>{};
 
-    b.push_back(builtin{"sqrt", builtin_sqrt, {f64_type()}, f64_type()});
+    b.push_back(builtin{"sqrt", b.size(), builtin_sqrt, {f64_type()}, f64_type()});
 
-    b.push_back(builtin{"fopen", builtin_fopen, {char_span, char_span}, u64_type()});
-    b.push_back(builtin{"fclose", builtin_fclose, {u64_type()}, null_type()});
-    b.push_back(builtin{"fputs", builtin_fputs, {u64_type(), char_span}, null_type()});
-    b.push_back(builtin{"fread", builtin_fread, {u64_type(), arena_type().add_ptr()}, char_span});
+    b.push_back(builtin{"fopen", b.size(), builtin_fopen, {char_span, char_span}, u64_type()});
+    b.push_back(builtin{"fclose", b.size(), builtin_fclose, {u64_type()}, null_type()});
+    b.push_back(builtin{"fputs", b.size(), builtin_fputs, {u64_type(), char_span}, null_type()});
+    b.push_back(builtin{"fread", b.size(), builtin_fread, {u64_type(), arena_type().add_ptr()}, char_span});
 
-    b.push_back(builtin{"span_from_ptrs", builtin_span_from_ptrs, {char_ptr, char_ptr}, char_span});
+    b.push_back(builtin{"span_from_ptrs", b.size(), builtin_span_from_ptrs, {char_ptr, char_ptr}, char_span});
 
     return b;
 }
 
 static const auto builtins = construct_builtin_array();
 
-auto get_builtins() -> std::span<const builtin>
-{
-    return builtins;
-}
-
-auto get_builtin(const std::string& name) -> std::pair<const builtin*, std::size_t>
+auto get_builtin(const std::string& name) -> const builtin*
 {
     auto index = std::size_t{0};
-    for (const auto& b : get_builtins()) {
+    for (const auto& b : builtins) {
         if (name == b.name) {
-            return {&b, index};
+            return &b;
         }
         ++index;
     }
-    return {nullptr, 0};
+    return nullptr;
+}
+
+auto get_builtin(std::size_t id) -> const builtin*
+{
+    return &builtins[id];
 }
 
 }

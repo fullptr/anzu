@@ -16,12 +16,13 @@ using builtin_function = std::function<void(bytecode_context&)>;
 struct builtin
 {
     std::string            name;
+    std::size_t            id;
     builtin_function       ptr;
     std::vector<type_name> args;
     type_name              return_type;
 };
 
-auto get_builtins() -> std::span<const builtin>;
-auto get_builtin(const std::string& name) -> std::pair<const builtin*, std::size_t>;
+auto get_builtin(const std::string& name) -> const builtin*;
+auto get_builtin(std::size_t id) -> const builtin*;
 
 }
