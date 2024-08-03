@@ -662,7 +662,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         // TODO- fix type checking
         if (const auto b = get_builtin_id(inner.name); b.has_value()) {
             const auto& builtin = get_builtin(*b);
-            node.token.assert(node.template_args.empty(), "no support for template builtins yet");
             node.token.assert_eq(node.args.size(), builtin.args.size(), "bad number of arguments to builtin call");
             for (std::size_t i = 0; i != builtin.args.size(); ++i) {
                 push_copy_typechecked(com, *node.args.at(i), builtin.args[i], node.token);

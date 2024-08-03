@@ -1,5 +1,7 @@
 
 fn foo!(T)() -> null { print("hello world\n") }
 
-let f := foo!(i64);
+var f := foo!(i64);
 f();
+
+__dump_type(f);

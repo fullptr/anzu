@@ -236,12 +236,6 @@ auto parse_call(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     auto [node, inner] = new_node<node_call_expr>(tokens.curr());
     inner.expr = left;
-    if (tokens.consume_maybe(token_type::bang)) {
-        tokens.consume_only(token_type::left_paren);
-        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            inner.template_args.push_back(parse_expression(tokens));
-        });
-    }
     tokens.consume_only(token_type::left_paren);
     tokens.consume_comma_separated_list(token_type::right_paren, [&] {
         inner.args.push_back(parse_expression(tokens));
