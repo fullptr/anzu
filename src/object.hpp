@@ -72,6 +72,7 @@ struct type_bound_method
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
+// A bit half baked, currently only used for .size() on arrays and spans
 struct type_bound_builtin_method
 {
     std::string          name;
