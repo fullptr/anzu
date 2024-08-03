@@ -106,6 +106,17 @@ auto to_string(const type_function_ptr& type) -> std::string
     );
 }
 
+auto to_string(const type_bound_method& type) -> std::string
+{
+    return std::format(
+        "<bound method: '{} {}({}) -> {}'>",
+        to_string(token_type::kw_function),
+        type.function_name,
+        format_comma_separated(type.param_types),
+        to_string_paren(*type.return_type)
+    );
+}
+
 auto to_string(const type_arena& type) -> std::string
 {
     return std::string{"arena"};
@@ -149,6 +160,15 @@ auto hash(const type_span& type) -> std::size_t
 auto hash(const type_function_ptr& type) -> std::size_t
 {
     auto val = hash(*type.return_type);
+    for (const auto& param : type.param_types) {
+        val ^= hash(param);
+    }
+    return val;
+}
+
+auto hash(const type_bound_method& type) -> std::size_t
+{
+    auto val = hash(*type.return_type) ^ std::hash<std::size_t>{}(type.function_id);
     for (const auto& param : type.param_types) {
         val ^= hash(param);
     }
@@ -259,6 +279,11 @@ auto type_name::remove_span() const -> type_name
 auto type_name::is_function_ptr() const -> bool
 {
     return std::holds_alternative<type_function_ptr>(*this);
+}
+
+auto type_name::is_bound_method() const -> bool
+{
+    return std::holds_alternative<type_bound_method>(*this);
 }
 
 auto type_name::is_arena() const -> bool
