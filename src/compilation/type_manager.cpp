@@ -15,15 +15,16 @@ auto type_manager::add(const type_name& name, const type_fields& fields) -> bool
 auto type_manager::contains(const type_name& type) const -> bool
 {
     return std::visit(overloaded{
-        [](type_fundamental)          { return true; },
-        [&](const type_struct&)       { return d_classes.contains(type); },
-        [&](const type_array& t)      { return contains(*t.inner_type); },
-        [&](const type_span& t)       { return contains(*t.inner_type); },
-        [&](const type_ptr& t)        { return contains(*t.inner_type); },
-        [&](const type_function_ptr&) { return true; },
-        [&](const type_bound_method&) { return true; },
-        [&](const type_arena&)        { return true; },
-        [&](const type_type& t)       { return contains(*t.type_val); }
+        [](type_fundamental)                  { return true; },
+        [&](const type_struct&)               { return d_classes.contains(type); },
+        [&](const type_array& t)              { return contains(*t.inner_type); },
+        [&](const type_span& t)               { return contains(*t.inner_type); },
+        [&](const type_ptr& t)                { return contains(*t.inner_type); },
+        [&](const type_function_ptr&)         { return true; },
+        [&](const type_bound_method&)         { return true; },
+        [&](const type_bound_builtin_method&) { return true; },
+        [&](const type_arena&)                { return true; },
+        [&](const type_type& t)               { return contains(*t.type_val); }
     }, type);
 }
 
@@ -71,6 +72,9 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
             return sizeof(std::byte*);
         },
         [](const type_bound_method&) {
+            return sizeof(std::byte*); // pointer to the object, first arg to the function
+        },
+        [](const type_bound_builtin_method&) {
             return sizeof(std::byte*); // pointer to the object, first arg to the function
         },
         [](const type_arena& arena) {

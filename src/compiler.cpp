@@ -249,6 +249,7 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
         },
         [&](const type_function_ptr& l, const type_function_ptr& r) { return l == r; },
         [&](const type_bound_method& l, const type_bound_method& r) { return l == r; },
+        [&](const type_bound_builtin_method& l, const type_bound_builtin_method& r) { return l == r; },
         [&](const type_arena& l, const type_arena& r) { return true; },
         [&](const auto& l, const auto& r) {
             return false;
@@ -707,6 +708,17 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         push_value(code(com), op::call, args_size);
         return *info.return_type;
     }
+    else if (type.is_bound_builtin_method()) {
+        const auto& info = std::get<type_bound_builtin_method>(type);
+        node.token.assert_eq(info.param_types.size(), node.args.size() + 1, // instance ptr
+                             "invalid number of args for function call");
+
+        if (info.param_types[0].remove_ptr().is_array() && info.function_name == "size") {
+            node.token.assert(info.param_types.size() == 1, "incorrect number of args for array size func");
+            push_value(code(com), op::push_u64, array_length(info.param_types[0].remove_ptr()));
+            return u64_type();
+        }
+    }
 
     node.token.error("unable to call non-callable type {}", type);
 }
@@ -1057,6 +1069,8 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (ct == compile_type::ptr) {
             node.token.error("cannot take the address of a bound method");
         }
+
+        // Otherwise, it's an actual member function of a custom type
         if (type.is_const && !info->sig.params[0].remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
@@ -1068,6 +1082,25 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             .function_id = info->id
         };
     }
+
+    // Next, it could be a member function on a builtin type
+    if (type.is_array()) {
+        if (node.field_name == "size") {
+            push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
+            return type_bound_builtin_method{
+                .param_types = { type.add_const().add_ptr() },
+                .return_type = u64_type(),
+                .function_name = "size"
+            };
+        }
+    }
+    else if (type.is_span()) {
+
+    }
+    else if (type.is_arena()) {
+
+    }
+
 
     // Otherwise, it's a data member
     if (ct == compile_type::ptr) {
