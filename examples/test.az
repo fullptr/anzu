@@ -5,5 +5,6 @@ struct foo
     y: i64;
 }
 
-let f := foo(1, 2);
-print("{} {}\n", f.x, f.y);
+let f := sqrt;
+__dump_type(f);
+print("{}\n", f(4.0));

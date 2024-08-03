@@ -171,7 +171,7 @@ auto apply_op(bytecode_context& ctx) -> bool
         } break;
         case op::builtin_call: {
             const auto id = read_advance<std::uint64_t>(ctx);
-            get_builtin(id).ptr(ctx);
+            get_builtins()[id].ptr(ctx);
         } break;
         case op::assert: {
             const auto index = read_advance<std::uint64_t>(ctx);

@@ -115,9 +115,16 @@ auto get_builtins() -> std::span<const builtin>
     return builtins;
 }
 
-auto get_builtin(std::size_t id) -> const builtin&
+auto get_builtin(const std::string& name) -> std::pair<const builtin*, std::size_t>
 {
-    return builtins[id];
+    auto index = std::size_t{0};
+    for (const auto& b : get_builtins()) {
+        if (name == b.name) {
+            return {&b, index};
+        }
+        ++index;
+    }
+    return {nullptr, 0};
 }
 
 }

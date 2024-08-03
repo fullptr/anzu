@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <span>
+#include <utility>
 #include <optional>
 
 namespace anzu {
@@ -21,6 +22,6 @@ struct builtin
 };
 
 auto get_builtins() -> std::span<const builtin>;
-auto get_builtin(std::size_t id) -> const builtin&;
+auto get_builtin(const std::string& name) -> std::pair<const builtin*, std::size_t>;
 
 }

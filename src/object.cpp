@@ -106,6 +106,17 @@ auto to_string(const type_function_ptr& type) -> std::string
     );
 }
 
+auto to_string(const type_builtin& type) -> std::string
+{
+    return std::format(
+        "<builtin: '{} {}({}) -> {}'>",
+        to_string(token_type::kw_function),
+        type.name,
+        format_comma_separated(type.args),
+        to_string_paren(*type.return_type)
+    );
+}
+
 auto to_string(const type_bound_method& type) -> std::string
 {
     return std::format(
@@ -166,6 +177,15 @@ auto hash(const type_function_ptr& type) -> std::size_t
 {
     auto val = hash(*type.return_type);
     for (const auto& param : type.param_types) {
+        val ^= hash(param);
+    }
+    return val;
+}
+
+auto hash(const type_builtin& type) -> std::size_t
+{
+    auto val = hash(*type.return_type) ^ std::hash<std::string>{}(type.name);
+    for (const auto& param : type.args) {
         val ^= hash(param);
     }
     return val;
@@ -290,6 +310,12 @@ auto type_name::is_function_ptr() const -> bool
 {
     return std::holds_alternative<type_function_ptr>(*this);
 }
+
+auto type_name::is_builtin() const -> bool
+{
+    return std::holds_alternative<type_builtin>(*this);
+}
+
 
 auto type_name::is_bound_method() const -> bool
 {

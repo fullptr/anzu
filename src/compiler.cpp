@@ -248,6 +248,7 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
             return const_convertable_to(tok, *l.inner_type, *r.inner_type);
         },
         [&](const type_function_ptr& l, const type_function_ptr& r) { return l == r; },
+        [&](const type_builtin& l, const type_builtin& r) { return l == r; },
         [&](const type_bound_method& l, const type_bound_method& r) { return l == r; },
         [&](const type_bound_builtin_method& l, const type_bound_builtin_method& r) { return l == r; },
         [&](const type_arena& l, const type_arena& r) { return true; },
@@ -281,18 +282,6 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     } else {
         tok.error("Cannot convert '{}' to '{}'", actual, expected);
     }
-}
-
-auto get_builtin_id(const std::string& name) -> std::optional<std::size_t>
-{
-    auto index = std::size_t{0};
-    for (const auto& b : get_builtins()) {
-        if (name == b.name) {
-            return index;
-        }
-        ++index;
-    }
-    return std::nullopt;
 }
 
 void push_break(compiler& com, const token& tok)
@@ -623,12 +612,9 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
 
-    // First, handle the cases where the thing we are trying to call is a name.
+    // Hack to allow for an easy way to dump types of expressions
     if (std::holds_alternative<node_name_expr>(*node.expr)) {
-        auto& inner = std::get<node_name_expr>(*node.expr);
-
-        // Hack to allow for an easy way to dump types of expressions
-        if (inner.name == "__dump_type") {
+        if (std::get<node_name_expr>(*node.expr).name == "__dump_type") {
             std::print("__dump_type(\n");
             for (const auto& arg : node.args) {
                 const auto dump = type_of_expr(com, *arg);
@@ -637,18 +623,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
             std::print(")\n");
             push_value(code(com), op::push_null);
             return null_type();
-        }
-
-        // Lastly, it might be a builtin function
-        // TODO- fix type checking
-        if (const auto b = get_builtin_id(inner.name); b.has_value()) {
-            const auto& builtin = get_builtin(*b);
-            node.token.assert_eq(node.args.size(), builtin.args.size(), "bad number of arguments to builtin call");
-            for (std::size_t i = 0; i != builtin.args.size(); ++i) {
-                push_copy_typechecked(com, *node.args.at(i), builtin.args[i], node.token);
-            }
-            push_value(code(com), op::builtin_call, *b);
-            return get_builtin(*b).return_type;
         }
     }
 
@@ -681,6 +655,15 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         // push the function pointer and call it
         push_expr(com, compile_type::val, *node.expr);
         push_value(code(com), op::call, args_size);
+        return *info.return_type;
+    }
+    else if (type.is_builtin()) {
+        const auto& info = std::get<type_builtin>(type);
+        node.token.assert_eq(node.args.size(), info.args.size(), "bad number of arguments to builtin call");
+        for (std::size_t i = 0; i != info.args.size(); ++i) {
+            push_copy_typechecked(com, *node.args.at(i), info.args[i], node.token);
+        }
+        push_value(code(com), op::builtin_call, info.id);
         return *info.return_type;
     }
     else if (type.is_bound_method()) {
@@ -860,6 +843,8 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> t
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
     const auto full_name = full_function_name(com, node.token, global_namespace, node.name);
+
+    // Can only push pointers to variables (need to exclude other types)
     if (ct == compile_type::ptr) {
         if (auto func = get_function(com, full_name)) {
             node.token.error("cannot take address of a function pointer");
@@ -867,6 +852,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         return push_var_addr(com, node.token, node.name);
     }
 
+    // The name might be a function
     if (auto func = get_function(com, full_name)) {
         const auto& info = *func;
         push_value(code(com), op::push_u64, info.id);
@@ -877,6 +863,17 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
             .return_type = make_value<type_name>(info.sig.return_type)
         };
         return ptr_type;
+    }
+
+    // The name might be a builtin
+    auto [func, id] = get_builtin(full_name);
+    if (func) {
+        return type_builtin{
+            .name = func->name,
+            .id = id,
+            .args = func->args,
+            .return_type = func->return_type
+        };
     }
 
     // The name may be a type
