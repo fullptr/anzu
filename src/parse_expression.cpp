@@ -3,18 +3,18 @@
 namespace anzu {
 namespace {
 
-enum precedence : int {
-  PREC_NONE,
-  PREC_OR,          // or
-  PREC_AND,         // and
-  PREC_EQUALITY,    // == !=
-  PREC_COMPARISON,  // < > <= >=
-  PREC_TERM,        // + -
-  PREC_FACTOR,      // * /
-  PREC_UNARY,       // ! -
-  PREC_CALL,        // . () [] !() @ const &
-  PREC_SCOPE,       // ::
-  PREC_PRIMARY
+enum class precedence {
+  none,
+  logical_or,  // or
+  logical_and, // and
+  equality,    // == !=
+  comparison,  // < > <= >=
+  term,        // + -
+  factor,      // * /
+  unary,       // ! -
+  call,        // . () [] !() @ const &
+  scope,       // ::
+  primary
 };
 
 using prefix_func = auto(*) (tokenstream&) -> node_expr_ptr;
@@ -136,8 +136,7 @@ auto parse_grouping(tokenstream& tokens) -> node_expr_ptr
 auto parse_unary(tokenstream& tokens) -> node_expr_ptr
 {
     const auto op = tokens.consume();
-    auto expr = parse_precedence(tokens, precedence::PREC_UNARY);
-
+    auto expr = parse_precedence(tokens, precedence::unary);
     auto [node, inner] = new_node<node_unary_op_expr>(op);
     inner.expr = expr;
     return node;
@@ -204,7 +203,7 @@ auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_p
 {
     const auto op = tokens.consume();
     auto rule = get_rule(op.type);
-    auto right = parse_precedence(tokens, (precedence)(rule->prec + 1));
+    auto right = parse_precedence(tokens, precedence{std::to_underlying(rule->prec) + 1});
 
     auto [node, inner] = new_node<node_binary_op_expr>(op);
     inner.lhs = left;
@@ -321,63 +320,61 @@ auto parse_precedence(tokenstream& tokens, precedence prec) -> node_expr_ptr
 
     auto node = rule->prefix(tokens);
     while (prec <= get_rule(tokens.curr().type)->prec) {
-        auto midfix = get_rule(tokens.curr().type)->midfix;
-        node = midfix(tokens, node);
+        node = get_rule(tokens.curr().type)->midfix(tokens, node);
     }
-
     return node;
 }
 
 static const auto rules = std::unordered_map<token_type, parse_rule>
 {
-    {token_type::left_paren,          {parse_grouping, parse_call,      precedence::PREC_CALL}},
-    {token_type::bang,                {parse_unary,    parse_call,      precedence::PREC_CALL}},
-    {token_type::minus,               {parse_unary,    parse_binary,    precedence::PREC_TERM}},
-    {token_type::plus,                {nullptr,        parse_binary,    precedence::PREC_TERM}},
-    {token_type::slash,               {nullptr,        parse_binary,    precedence::PREC_FACTOR}},
-    {token_type::star,                {nullptr,        parse_binary,    precedence::PREC_FACTOR}},
-    {token_type::percent,             {nullptr,        parse_binary,    precedence::PREC_FACTOR}},
-    {token_type::int32,               {parse_i32,      nullptr,         precedence::PREC_NONE}},
-    {token_type::int64,               {parse_i64,      nullptr,         precedence::PREC_NONE}},
-    {token_type::uint64,              {parse_u64,      nullptr,         precedence::PREC_NONE}},
-    {token_type::float64,             {parse_f64,      nullptr,         precedence::PREC_NONE}},
-    {token_type::character,           {parse_char,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_true,             {parse_true,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_false,            {parse_false,    nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_null,             {parse_null,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_nullptr,          {parse_nullptr,  nullptr,         precedence::PREC_NONE}},
-    {token_type::string,              {parse_string,   nullptr,         precedence::PREC_NONE}},
-    {token_type::equal_equal,         {nullptr,        parse_binary,    precedence::PREC_EQUALITY}},
-    {token_type::bang_equal,          {nullptr,        parse_binary,    precedence::PREC_EQUALITY}},
-    {token_type::less,                {nullptr,        parse_binary,    precedence::PREC_COMPARISON}},
-    {token_type::less_equal,          {nullptr,        parse_binary,    precedence::PREC_COMPARISON}},
-    {token_type::greater,             {nullptr,        parse_binary,    precedence::PREC_COMPARISON}},
-    {token_type::greater_equal,       {nullptr,        parse_binary,    precedence::PREC_COMPARISON}},
-    {token_type::ampersand_ampersand, {nullptr,        parse_binary,    precedence::PREC_AND}},
-    {token_type::bar_bar,             {nullptr,        parse_binary,    precedence::PREC_OR}},
-    {token_type::identifier,          {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_i32,              {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_i64,              {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_f64,              {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_u64,              {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_char,             {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_bool,             {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_null,             {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_nullptr,          {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_arena,            {parse_name,     nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_typeof,           {parse_typeof,   nullptr,         precedence::PREC_NONE}},
-    {token_type::kw_sizeof,           {parse_sizeof,   nullptr,         precedence::PREC_NONE}},
-    {token_type::left_bracket,        {parse_array,    parse_subscript, precedence::PREC_CALL}},
-    {token_type::dot,                 {nullptr,        parse_dot,       precedence::PREC_CALL}},
-    {token_type::kw_const,            {nullptr,        parse_const,     precedence::PREC_CALL}},
-    {token_type::at,                  {nullptr,        parse_at,        precedence::PREC_CALL}},
-    {token_type::ampersand,           {nullptr,        parse_ampersand, precedence::PREC_CALL}},
-    {token_type::kw_function,         {parse_func_ptr, nullptr,         precedence::PREC_NONE}}
+    {token_type::left_paren,          {parse_grouping, parse_call,      precedence::call}},
+    {token_type::bang,                {parse_unary,    parse_call,      precedence::call}},
+    {token_type::minus,               {parse_unary,    parse_binary,    precedence::term}},
+    {token_type::plus,                {nullptr,        parse_binary,    precedence::term}},
+    {token_type::slash,               {nullptr,        parse_binary,    precedence::factor}},
+    {token_type::star,                {nullptr,        parse_binary,    precedence::factor}},
+    {token_type::percent,             {nullptr,        parse_binary,    precedence::factor}},
+    {token_type::int32,               {parse_i32,      nullptr,         precedence::none}},
+    {token_type::int64,               {parse_i64,      nullptr,         precedence::none}},
+    {token_type::uint64,              {parse_u64,      nullptr,         precedence::none}},
+    {token_type::float64,             {parse_f64,      nullptr,         precedence::none}},
+    {token_type::character,           {parse_char,     nullptr,         precedence::none}},
+    {token_type::kw_true,             {parse_true,     nullptr,         precedence::none}},
+    {token_type::kw_false,            {parse_false,    nullptr,         precedence::none}},
+    {token_type::kw_null,             {parse_null,     nullptr,         precedence::none}},
+    {token_type::kw_nullptr,          {parse_nullptr,  nullptr,         precedence::none}},
+    {token_type::string,              {parse_string,   nullptr,         precedence::none}},
+    {token_type::equal_equal,         {nullptr,        parse_binary,    precedence::equality}},
+    {token_type::bang_equal,          {nullptr,        parse_binary,    precedence::equality}},
+    {token_type::less,                {nullptr,        parse_binary,    precedence::comparison}},
+    {token_type::less_equal,          {nullptr,        parse_binary,    precedence::comparison}},
+    {token_type::greater,             {nullptr,        parse_binary,    precedence::comparison}},
+    {token_type::greater_equal,       {nullptr,        parse_binary,    precedence::comparison}},
+    {token_type::ampersand_ampersand, {nullptr,        parse_binary,    precedence::logical_and}},
+    {token_type::bar_bar,             {nullptr,        parse_binary,    precedence::logical_or}},
+    {token_type::identifier,          {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_i32,              {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_i64,              {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_f64,              {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_u64,              {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_char,             {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_bool,             {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_null,             {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_nullptr,          {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_arena,            {parse_name,     nullptr,         precedence::none}},
+    {token_type::kw_typeof,           {parse_typeof,   nullptr,         precedence::none}},
+    {token_type::kw_sizeof,           {parse_sizeof,   nullptr,         precedence::none}},
+    {token_type::left_bracket,        {parse_array,    parse_subscript, precedence::call}},
+    {token_type::dot,                 {nullptr,        parse_dot,       precedence::call}},
+    {token_type::kw_const,            {nullptr,        parse_const,     precedence::call}},
+    {token_type::at,                  {nullptr,        parse_at,        precedence::call}},
+    {token_type::ampersand,           {nullptr,        parse_ampersand, precedence::call}},
+    {token_type::kw_function,         {parse_func_ptr, nullptr,         precedence::none}}
 };
-static constexpr auto default_rule = parse_rule{nullptr, nullptr, precedence::PREC_NONE};
 
 auto get_rule(token_type tt) -> const parse_rule*
 {
+    static constexpr auto default_rule = parse_rule{nullptr, nullptr, precedence::none};
     if (rules.contains(tt)) return &rules.at(tt);
     return &default_rule;
 }
@@ -386,7 +383,7 @@ auto get_rule(token_type tt) -> const parse_rule*
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 {
-    return parse_precedence(tokens, precedence::PREC_OR);
+    return parse_precedence(tokens, precedence::logical_or);
 }
     
 }
