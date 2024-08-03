@@ -119,13 +119,7 @@ auto to_string(const type_bound_method& type) -> std::string
 
 auto to_string(const type_bound_builtin_method& type) -> std::string
 {
-    return std::format(
-        "<bound builtin method: '{} {}({}) -> {}'>",
-        to_string(token_type::kw_function),
-        type.function_name,
-        format_comma_separated(type.param_types),
-        to_string_paren(*type.return_type)
-    );
+    return std::format("<bound builtin method: {}::{}>", type.name, *type.type);
 }
 
 auto to_string(const type_arena& type) -> std::string
@@ -188,11 +182,7 @@ auto hash(const type_bound_method& type) -> std::size_t
 
 auto hash(const type_bound_builtin_method& type) -> std::size_t
 {
-    auto val = hash(*type.return_type) ^ std::hash<std::string>{}(type.function_name);
-    for (const auto& param : type.param_types) {
-        val ^= hash(param);
-    }
-    return val;
+    return hash(*type.type) ^ std::hash<std::string>{}(type.name);
 }
 
 auto hash(const type_arena& type) -> std::size_t

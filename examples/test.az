@@ -1,6 +1,6 @@
 
-let x := [1, 2, 3, 4, 5];
-let span := x[];
-let p := span.size;
-__dump_type(p);
-print("{}\n", p());
+let x := [1, 2, 3, 4];
+let p := x[];
+let a := x.size;
+let b := p.size;
+print("{} {} {} {}\n", x.size(), p.size(), a(), b());

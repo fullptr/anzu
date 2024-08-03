@@ -710,63 +710,22 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (type.is_bound_builtin_method()) {
         const auto& info = std::get<type_bound_builtin_method>(type);
-        node.token.assert_eq(node.args.size(), info.param_types.size() - 1, // instance ptr
-                             "invalid number of args for function call");
-
-        const auto first = info.param_types[0].remove_ptr();
-        if (first.is_array() && info.function_name == "size") {
-            push_value(code(com), op::push_u64, array_length(first));
+        if (info.type->is_array() && info.name == "size") {
+            push_value(code(com), op::push_u64, array_length(*info.type));
             return u64_type();
         }
-        else if (first.is_span() && info.function_name == "size") {
+        else if (info.type->is_span() && info.name == "size") {
             push_expr(com, compile_type::val, *node.expr); // pointer to the span
             push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add); // offset to the size value
             push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
             return u64_type();
-//        node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
-//        push_expr(com, compile_type::ptr, *node.expr); // push pointer to span
-//        auto_deref_pointer(com, type);  // because we pushed a T& instead of a T, this will leave a pointer on the stack
-//        push_value(code(com), op::push_u64, sizeof(std::byte*));
-//        push_value(code(com), op::u64_add); // offset to the size value
-//        push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
-//        return u64_type();
         }
     }
 
     node.token.error("unable to call non-callable type {}", type);
 }
 
-//auto push_expr(compiler& com, compile_type ct, const node_member_call_expr& node) -> type_name
-//{
-//    node.token.assert(ct == compile_type::val, "cannot take the address of a member call expression");
-//    const auto type = type_of_expr(com, *node.expr);
-//    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-//
-//    const auto struct_type = [&] {
-//        auto t = type;
-//        while (t.is_ptr()) { t = t.remove_ptr(); }
-//        return t;
-//    }();
-//
-//    // Handle .size() calls on arrays
-//    if (struct_type.is_array() && node.function_name == "size") {
-//        node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
-//        push_value(code(com), op::push_u64, array_length(struct_type));
-//        return u64_type();
-//    }
-//
-//    // Handle .size() calls on spans
-//    if (struct_type.is_span() && node.function_name == "size") {
-//        node.token.assert(node.other_args.empty(), "{}.size() takes no extra arguments", type);
-//        push_expr(com, compile_type::ptr, *node.expr); // push pointer to span
-//        auto_deref_pointer(com, type);  // because we pushed a T& instead of a T, this will leave a pointer on the stack
-//        push_value(code(com), op::push_u64, sizeof(std::byte*));
-//        push_value(code(com), op::u64_add); // offset to the size value
-//        push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
-//        return u64_type();
-//    }
-//
-//    // Handle arena functions
+
 //    if (struct_type.is_arena()) {
 //        if (node.function_name == "new") {
 //            if (node.template_args.size() != 1) node.token.error("calls to arena 'new' must have a single template type");
@@ -1097,30 +1056,12 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
 
     // Next, it could be a member function on a builtin type
-    if (type.is_array()) {
+    if (type.is_array() || type.is_span()) {
         if (node.field_name == "size") {
             push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
-            return type_bound_builtin_method{
-                .param_types = { type.add_const().add_ptr() },
-                .return_type = u64_type(),
-                .function_name = "size"
-            };
+            return type_bound_builtin_method{ .name = "size", .type = type };
         }
     }
-    else if (type.is_span()) {
-        if (node.field_name == "size") {
-            push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
-            return type_bound_builtin_method{
-                .param_types = { type.add_const().add_ptr() },
-                .return_type = u64_type(),
-                .function_name = "size"
-            };
-        }
-    }
-    else if (type.is_arena()) {
-
-    }
-
 
     // Otherwise, it's a data member
     if (ct == compile_type::ptr) {

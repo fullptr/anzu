@@ -74,9 +74,8 @@ struct type_bound_method
 
 struct type_bound_builtin_method
 {
-    std::vector<type_name> param_types;
-    value_ptr<type_name>   return_type;
-    std::string            function_name; // for printing only
+    std::string          name;
+    value_ptr<type_name> type;
     auto operator==(const type_bound_builtin_method&) const -> bool = default;
 };
 
