@@ -240,11 +240,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_function_def_stmt& node) {
             std::print("{}Function: {}\n", spaces, node.name);
             if (!node.template_types.empty()) {
-                std::print("|");
+                std::print("(!");
                 print_comma_separated(node.template_types, [](const auto& arg) {
                     return arg;
                 });
-                std::print("|");
+                std::print(")");
             }
             std::print("{}- FunctionArguments:\n", spaces);
             for (const auto& param : node.sig.params) {
@@ -259,11 +259,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_member_function_def_stmt& node) {
             std::print("{}MemberFunction: {}::{}", spaces, node.struct_name, node.function_name);
             if (!node.template_types.empty()) {
-                std::print("|");
+                std::print("!(");
                 print_comma_separated(node.template_types, [](const auto& arg) {
                     return arg;
                 });
-                std::print("|");
+                std::print(")");
             }
             std::print("{}- FunctionArguments:\n", spaces);
             for (const auto& param : node.sig.params) {
