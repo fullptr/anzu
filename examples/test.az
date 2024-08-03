@@ -8,8 +8,7 @@ struct foo
 }
 
 
-let f := foo(5);
-f.bar();
+var f := foo(5);
 var p := f.bar;
 
 p();

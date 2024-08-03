@@ -1061,6 +1061,9 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (ct == compile_type::ptr) {
             node.token.error("cannot take the address of a bound method");
         }
+        if (!info->sig.params[0].remove_ptr().is_const && type.is_const) {
+            node.token.error("cannot bind a const variable to a non-const member function");
+        }
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
         return type_bound_method{
             .param_types = info->sig.params,
