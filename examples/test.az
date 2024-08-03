@@ -1,6 +1,9 @@
 
-let x := [1, 2, 3, 4];
-let p := x[];
-let a := x.size;
-let b := p.size;
-print("{} {} {} {}\n", x.size(), p.size(), a(), b());
+struct foo
+{
+    x: i64;
+    y: i64;
+}
+
+let f := foo(1, 2);
+print("{} {}\n", f.x, f.y);

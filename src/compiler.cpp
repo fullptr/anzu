@@ -627,21 +627,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     if (std::holds_alternative<node_name_expr>(*node.expr)) {
         auto& inner = std::get<node_name_expr>(*node.expr);
 
-        // First, it might be a constructor call
-        const auto type = make_type(com, inner.name);
-        if (com.types.contains(type)) {
-            const auto expected_params = get_constructor_params(com, type);
-            node.token.assert_eq(expected_params.size(), node.args.size(),
-                                 "bad number of arguments to constructor call");
-            for (std::size_t i = 0; i != node.args.size(); ++i) {
-                push_copy_typechecked(com, *node.args.at(i), expected_params[i], node.token);
-            }
-            if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
-                push_value(code(com), op::push_null);
-            }
-            return type;
-        }
-
         // Hack to allow for an easy way to dump types of expressions
         if (inner.name == "__dump_type") {
             std::print("__dump_type(\n");
@@ -667,9 +652,22 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         }
     }
 
-    // Otherwise, the expression must be a function pointer.
+    // The expression must be a callable
     const auto type = type_of_expr(com, *node.expr);
-    if (type.is_function_ptr()) {
+    if (type.is_type_value()) {
+        const auto obj_type = inner_type(type);
+        const auto expected_params = get_constructor_params(com, obj_type);
+        node.token.assert_eq(node.args.size(), expected_params.size(), 
+                             "bad number of arguments to constructor call");
+        for (std::size_t i = 0; i != node.args.size(); ++i) {
+            push_copy_typechecked(com, *node.args.at(i), expected_params[i], node.token);
+        }
+        if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
+            push_value(code(com), op::push_null);
+        }
+        return obj_type;
+    }
+    else if (type.is_function_ptr()) {
         const auto& info = std::get<type_function_ptr>(type);
         node.token.assert_eq(node.args.size(), info.param_types.size(), 
                              "invalid number of args for function call");
