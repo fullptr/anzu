@@ -98,7 +98,7 @@ An interpreted programming language written in C++. This started out as a stack-
         }
     }
     ```
-* All the common arithmetic, comparison and logical operators. More will be implemented.
+* All the common arithmetic, comparison and logical operators.
 * Builtin functions.
 * Memory arenas for allocating dynamic memory:
     ```py
@@ -107,6 +107,16 @@ An interpreted programming language written in C++. This started out as a stack-
     let arr := new(a, 100) 0u; # returns a span to a f64[100] array allocated in the arena
     ```
     Arenas are lexically scoped and deallocate all created objects when it goes out of scope. If a function needs to allocate objects that will outlive the function call, then a pointer to an arena should be passed into the function which it can use for allocations. Therefore pointers obtained from an arena must not outlive the arena itself. (Future challenge: static analysis to ensure this is the case).
+
+* Templates Functions:
+    ```py
+    fn foo!(T)(x: T, y: T) -> T { ... }
+
+    let x := foo!(i64)(2, 3);
+    ```
+    * C++ and D style templates using D style syntax. The syntax is a bit odd and I would have preferred `foo<i64>` or `foo|i64|`, but those add a lot of complexity to the parser. the `!` token is needed to keep parsing simple.
+    * Member functions can also be templated.
+
 
 ## The Pipeline
 The way this langauage is processed and ran is similar to other langages. The lexer, parser, compiler and runtime modules are completely separate, and act as a pipeline by each one outputting a representation that the next one can understand. Below is a diagram showing how everything fits together.
@@ -135,14 +145,8 @@ Runtime  -- runtime.hpp   : Functionality to run a program
 ```
 
 # Next Features
-* Complete modules
-    - Namespacing
-    - No transitive includes
+* Modules
 * Complete spans
     - Create spans from other spans.
-* Filesystem Support
-    - reading/readlines
+* Templated Structs
 * Variants
-
-# Known Issues
-* If trying to call a builtin function with an unknown type, it doesn't say that it couldn't find the function; it instead tries to lookup the function name as a variable, and reports that it couldn't find it.
