@@ -290,6 +290,7 @@ auto run(const bytecode_program& prog) -> void
     while (true) {
         if constexpr (Debug) {
             print_op(ctx.rom, ctx.frames.back().code, ctx.frames.back().ip);
+            ctx.stack.print();
         }
         if (!apply_op(ctx)) break;
     }
@@ -324,22 +325,30 @@ auto vm_stack::push(const std::byte* src, std::size_t count) -> void
 auto vm_stack::pop_and_save(std::byte* dst, std::size_t count) -> void
 {
     save(dst, count);
-    if (d_current_size < count) {
-        std::print("Stack underflow\n");
-        std::exit(28);
-    }
     d_current_size -= count;
 }
 
 auto vm_stack::save(std::byte* dst, std::size_t count) -> void
 {
-    std::memcpy(dst, &d_data[d_current_size], count);
+    if (d_current_size < count) {
+        std::print("Stack underflow\n");
+        std::exit(28);
+    }
+    std::memcpy(dst, &d_data[d_current_size - count], count);
 }
 
 auto vm_stack::size() const -> std::size_t { return d_current_size; }
 auto vm_stack::at(std::size_t index) -> std::byte& { return d_data[index]; }
 auto vm_stack::resize(std::size_t size) -> void { d_current_size = size; }
 auto vm_stack::pop_n(std::size_t size) -> void { d_current_size -= size; }
+
+auto vm_stack::print() const -> void
+{
+    for (std::size_t idx = 0; idx != 100; ++idx) {
+        std::print("{} ", d_data[idx]);
+    }
+    std::print("\n");
+}
 
 auto run_program(const bytecode_program& prog) -> void
 {

@@ -33,6 +33,7 @@ public:
     auto at(std::size_t index) -> std::byte&;
     auto resize(std::size_t size) -> void;
     auto pop_n(std::size_t count) -> void;
+    auto print() const -> void;
 
     template <typename T>
     auto push(const T& obj) -> void
