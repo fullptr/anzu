@@ -849,12 +849,21 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a new expression");
     const auto type = push_expr(com, compile_type::val, *node.expr); // first push new object to stack
-    const auto size = com.types.size_of(type);
-    const auto arena = push_expr(com, compile_type::val, *node.arena);
-    const auto arena_stripped = auto_deref_pointer(com, arena); // can pass by value or pointer
-    node.token.assert(arena_stripped.is_arena(), "new expression requires an arena");
-    push_value(code(com), op::arena_alloc, size);
-    return type.add_ptr();
+    const auto type_size = com.types.size_of(type);
+    if (node.count) { // we are allocating a span
+        const auto count = push_expr(com, compile_type::val, *node.count);
+        node.token.assert_eq(count, u64_type(), "wrong type for span size when allocating");
+        const auto arena = push_expr(com, compile_type::val, *node.arena);
+        const auto arena_stripped = auto_deref_pointer(com, arena); // can pass by value or pointer
+        push_value(code(com), op::arena_alloc_array, type_size);
+        return type.add_span();
+    }
+    else {
+        const auto arena = push_expr(com, compile_type::val, *node.arena);
+        const auto arena_stripped = auto_deref_pointer(com, arena); // can pass by value or pointer
+        push_value(code(com), op::arena_alloc, type_size);
+        return type.add_ptr();
+    }
 }
 
 // TODO: Reorder the lookups, variables should probably be first

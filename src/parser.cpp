@@ -224,9 +224,6 @@ auto parse_new(tokenstream& tokens) -> node_expr_ptr
     inner.arena = parse_expression(tokens);
     if (tokens.consume_maybe(token_type::comma)) {
         inner.count = parse_expression(tokens);
-    } else {
-        inner.count = std::make_shared<node_expr>();
-        inner.count->emplace<node_literal_u64_expr>(std::size_t{1}, token);
     }
     tokens.consume_only(token_type::right_paren);
     inner.expr = parse_expression(tokens);

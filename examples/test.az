@@ -1,4 +1,6 @@
 
 
-let x := new(a, 100) vec2(0.0, 0.0);
 
+var idx := 0u;
+idx = idx + 1u;
+print("{}\n", idx);
