@@ -407,9 +407,10 @@ auto parse_identifier(tokenstream& tokens) -> std::string
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
-    auto& stmt = node->emplace<node_function_def_stmt>();
+    auto& stmt = node->emplace<node_member_function_def_stmt>();
     stmt.token = tokens.consume_only(token_type::kw_function);
-    stmt.name = parse_identifier(tokens);
+    stmt.struct_name = "";
+    stmt.function_name = parse_identifier(tokens);
 
     if (tokens.consume_maybe(token_type::bang)) {
         tokens.consume_only(token_type::left_paren);

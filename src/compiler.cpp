@@ -878,8 +878,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto full_name_no_templates = fn_name(com, node.token, global_namespace, node.name);
     const auto full_name = fn_name(com, node.token, global_namespace, node.name, node.templates);
     
-    if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto function_ast = com.fn_templates.at(full_name_no_templates);
+    if (com.mem_fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+        const auto function_ast = com.mem_fn_templates.at(full_name_no_templates);
         node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of function args");
 
         auto map = template_map{};
@@ -1250,19 +1250,22 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 
 void push_stmt(compiler& com, const node_member_function_def_stmt& node)
 {
-    const auto struct_type = make_type(com, node.struct_name);
+    const auto struct_type = node.struct_name.empty() ? global_namespace : make_type(com, node.struct_name);
 
-    // First argument must be a pointer to an instance of the class
-    node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
-    const auto actual = resolve_type(com, node.token, node.sig.params[0].type);
-    const auto expected = struct_type.add_const().add_ptr().add_const();
-    
-    node.token.assert(
-        const_convertable_to(node.token, actual, expected),
-        "first parameter to a struct member function must be a pointer to '{}', got '{}'",
-        struct_type,
-        actual
-    );
+    // member function - so do some checks
+    if (!node.struct_name.empty()) {
+        // First argument must be a pointer to an instance of the class
+        node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
+        const auto actual = resolve_type(com, node.token, node.sig.params[0].type);
+        const auto expected = struct_type.add_const().add_ptr().add_const();
+        
+        node.token.assert(
+            const_convertable_to(node.token, actual, expected),
+            "first parameter to a struct member function must be a pointer to '{}', got '{}'",
+            struct_type,
+            actual
+        );
+    }
 
     // We always ignore the template types here because it is either not a template function and so
     // this is in fact the full name, or it is and we use this as the key for the fn_templates
