@@ -216,6 +216,23 @@ auto parse_func_ptr(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
+auto parse_new(tokenstream& tokens) -> node_expr_ptr
+{
+    const auto token = tokens.consume_only(token_type::kw_new);
+    tokens.consume_only(token_type::left_paren);
+    auto [node, inner] = new_node<node_new_expr>(token);
+    inner.arena = parse_expression(tokens);
+    if (tokens.consume_maybe(token_type::comma)) {
+        inner.count = parse_expression(tokens);
+    } else {
+        inner.count = std::make_shared<node_expr>();
+        inner.count->emplace<node_literal_u64_expr>(std::size_t{1}, token);
+    }
+    tokens.consume_only(token_type::right_paren);
+    inner.expr = parse_expression(tokens);
+    return node;
+}
+
 auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto op = tokens.consume();
@@ -367,7 +384,8 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_const,            {nullptr,        parse_const,     precedence::call}},
     {token_type::at,                  {nullptr,        parse_at,        precedence::call}},
     {token_type::ampersand,           {nullptr,        parse_ampersand, precedence::call}},
-    {token_type::kw_function,         {parse_func_ptr, nullptr,         precedence::none}}
+    {token_type::kw_function,         {parse_func_ptr, nullptr,         precedence::none}},
+    {token_type::kw_new,              {parse_new,      nullptr,         precedence::none}}
 };
 
 auto get_rule(token_type tt) -> const parse_rule*

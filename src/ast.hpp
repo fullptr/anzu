@@ -182,6 +182,15 @@ struct node_const_expr
     anzu::token   token;
 };
 
+struct node_new_expr
+{
+    node_expr_ptr arena;
+    node_expr_ptr count;
+    node_expr_ptr expr;
+
+    anzu::token   token;
+};
+
 struct node_expr : std::variant<
     node_literal_i32_expr,
     node_literal_i64_expr,
@@ -206,7 +215,8 @@ struct node_expr : std::variant<
     node_name_expr,
     node_field_expr,
     node_deref_expr,
-    node_subscript_expr>
+    node_subscript_expr,
+    node_new_expr>
 {
 };
 

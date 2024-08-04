@@ -138,6 +138,15 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_const_expr& node) {
             std::print("{}Const:\n", spaces);
             print_node(*node.expr, indent + 1);
+        },
+        [&](const node_new_expr& node) {
+            std::print("{}New:\n", spaces);
+            std::print("{}- Arena:\n", spaces);
+            print_node(*node.arena);
+            std::print("{}- Count:\n", spaces);
+            print_node(*node.count);
+            std::print("{}- Expr:\n", spaces);
+            print_node(*node.expr);
         }
     }, root);
 }

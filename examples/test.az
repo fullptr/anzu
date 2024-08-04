@@ -1,19 +1,4 @@
 
-struct vec3
-{
-    x: f64;
-    y: f64;
-    z: f64;
 
-    fn length(self: vec3 const&) -> f64
-    {
-        return self.x + self.y + self.z;
-    }
-}
-
-var v := vec3(3.0, 4.0, 5.0);
-var p := v&;
-print("length of vec3(3.0, 4.0, 5.0): {}\n", p.length());
-
-let p := new(a) i64(1);
+let x := new(a, 100) vec2(0.0, 0.0);
 

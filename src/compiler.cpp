@@ -845,6 +845,18 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> t
     return type_type{inner_type(type).add_const()};
 }
 
+auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> type_name
+{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a new expression");
+    const auto type = push_expr(com, compile_type::val, *node.expr); // first push new object to stack
+    const auto size = com.types.size_of(type);
+    const auto arena = push_expr(com, compile_type::val, *node.arena);
+    const auto arena_stripped = auto_deref_pointer(com, arena); // can pass by value or pointer
+    node.token.assert(arena_stripped.is_arena(), "new expression requires an arena");
+    push_value(code(com), op::arena_alloc, size);
+    return type.add_ptr();
+}
+
 // TODO: Reorder the lookups, variables should probably be first
 // A name can represent the following
 //  - a variable name
