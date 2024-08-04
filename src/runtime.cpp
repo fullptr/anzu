@@ -131,7 +131,7 @@ auto apply_op(bytecode_context& ctx) -> bool
             }
             const auto data = &arena->data[arena->next];
             for (size_t i = 0; i != count; ++i) {
-                ctx.stack.save(data + i * type_size, size);
+                ctx.stack.save(data + i * type_size, type_size);
             }
             ctx.stack.pop_n(type_size);
             arena->next += size;
