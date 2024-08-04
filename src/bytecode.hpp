@@ -44,7 +44,6 @@ enum class op : std::uint8_t
     arena_alloc,
     arena_alloc_array,
     arena_size,
-    arena_capacity,
     
     load,
     save,

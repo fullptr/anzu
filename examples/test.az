@@ -5,6 +5,4 @@ struct foo { x: i64; y: i64; }
 arena a;
 let s := new(a, 10u) foo(10, 20);
 
-for p in s {
-    print("{} {}\n", p.x, p.y);
-}
+print("{}\n", a.size());

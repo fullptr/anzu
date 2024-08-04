@@ -142,10 +142,6 @@ auto apply_op(bytecode_context& ctx) -> bool
             auto arena = ctx.stack.pop<memory_arena*>();
             ctx.stack.push(arena->next);
         } break;
-        case op::arena_capacity: {
-            auto arena = ctx.stack.pop<memory_arena*>();
-            ctx.stack.push(arena->data.size());
-        } break;
         case op::jump: {
             const auto jump = read_advance<std::uint64_t>(ctx);
             frame.ip = &frame.code[jump];

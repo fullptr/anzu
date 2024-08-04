@@ -708,6 +708,13 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
             push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
             return u64_type();
         }
+        else if (info.type->is_arena() && info.name == "size") {
+            const auto type = push_expr(com, compile_type::val, *node.expr);
+            auto_deref_pointer(com, type);
+            push_value(code(com), op::load, com.types.size_of(u64_type())); // load the arena
+            push_value(code(com), op::arena_size);
+            return u64_type();
+        }
     }
 
     node.token.error("unable to call non-callable type {}", type);
@@ -965,7 +972,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
 
     // Next, it could be a member function on a builtin type
-    if (type.is_array() || type.is_span()) {
+    if (type.is_array() || type.is_span() || type.is_arena()) {
         node.token.assert(node.templates.empty(), "builtin members functions cannot be templated");
         node.token.assert(ct == compile_type::val, "cannot take the address of a bound builtin method");
         if (node.field_name == "size") {

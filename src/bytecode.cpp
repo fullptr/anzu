@@ -94,9 +94,6 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
         case op::arena_size: {
             std::print("ARENA_SIZE\n");
         } break;
-        case op::arena_capacity: {
-            std::print("ARENA_CAPACITY\n");
-        } break;
         case op::load: {
             const auto size = read_at<std::uint64_t>(&ptr);
             std::print("LOAD: {}\n", size);
