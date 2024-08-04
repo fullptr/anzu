@@ -131,19 +131,15 @@ auto parse_nullptr(tokenstream& tokens) -> node_expr_ptr
 auto parse_name(tokenstream& tokens) -> node_expr_ptr
 {
     const auto token = tokens.consume();
+    auto [node, inner] = new_node<node_name_expr>(token);
+    inner.name = token.text;
     if (tokens.consume_maybe(token_type::bang)) {
-        auto [node, inner] = new_node<node_templated_name_expr>(token);
-        inner.name = token.text;
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
             inner.templates.push_back(parse_expression(tokens));
         });
-        return node;
-    } else {
-        auto [node, inner] = new_node<node_name_expr>(token);
-        inner.name = token.text;
-        return node;
     }
+    return node;
 }
 
 auto parse_grouping(tokenstream& tokens) -> node_expr_ptr
@@ -220,6 +216,20 @@ auto parse_func_ptr(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
+auto parse_new(tokenstream& tokens) -> node_expr_ptr
+{
+    const auto token = tokens.consume_only(token_type::kw_new);
+    tokens.consume_only(token_type::left_paren);
+    auto [node, inner] = new_node<node_new_expr>(token);
+    inner.arena = parse_expression(tokens);
+    if (tokens.consume_maybe(token_type::comma)) {
+        inner.count = parse_expression(tokens);
+    }
+    tokens.consume_only(token_type::right_paren);
+    inner.expr = parse_expression(tokens);
+    return node;
+}
+
 auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto op = tokens.consume();
@@ -278,29 +288,16 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto token = tokens.consume_only(token_type::dot);
     const auto name = tokens.consume_only(token_type::identifier);
-
-    if (tokens.peek(token_type::left_paren) || tokens.peek(token_type::bang)) {
-        auto [node, inner] = new_node<node_member_call_expr>(token);
-        inner.expr = left;
-        inner.function_name = std::string{name.text};
-        if (tokens.consume_maybe(token_type::bang)) {
-            tokens.consume_only(token_type::left_paren);
-            tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-                inner.template_args.push_back(parse_expression(tokens));
-            });
-        }
+    auto [node, inner] = new_node<node_field_expr>(token);
+    inner.expr = left;
+    inner.field_name = std::string{name.text};
+    if (tokens.consume_maybe(token_type::bang)) {
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            inner.other_args.push_back(parse_expression(tokens));
+            inner.templates.push_back(parse_expression(tokens));
         });
-        return node;
-    } else {
-        auto [node, inner] = new_node<node_field_expr>(token);
-        inner.expr = left;
-        inner.field_name = std::string{name.text};
-        return node;
     }
-
+    return node;
 }
 
 auto parse_const(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
@@ -384,7 +381,8 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_const,            {nullptr,        parse_const,     precedence::call}},
     {token_type::at,                  {nullptr,        parse_at,        precedence::call}},
     {token_type::ampersand,           {nullptr,        parse_ampersand, precedence::call}},
-    {token_type::kw_function,         {parse_func_ptr, nullptr,         precedence::none}}
+    {token_type::kw_function,         {parse_func_ptr, nullptr,         precedence::none}},
+    {token_type::kw_new,              {parse_new,      nullptr,         precedence::none}}
 };
 
 auto get_rule(token_type tt) -> const parse_rule*
@@ -411,7 +409,8 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto node = std::make_shared<node_stmt>();
     auto& stmt = node->emplace<node_function_def_stmt>();
     stmt.token = tokens.consume_only(token_type::kw_function);
-    stmt.name = parse_identifier(tokens);
+    stmt.struct_name = "";
+    stmt.function_name = parse_identifier(tokens);
 
     if (tokens.consume_maybe(token_type::bang)) {
         tokens.consume_only(token_type::left_paren);
@@ -440,7 +439,7 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
     -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
-    auto& stmt = node->emplace<node_member_function_def_stmt>();
+    auto& stmt = node->emplace<node_function_def_stmt>();
 
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.struct_name = struct_name;

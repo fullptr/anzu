@@ -130,7 +130,10 @@ auto apply_op(bytecode_context& ctx) -> bool
                 runtime_error("arena overflow");
             }
             const auto data = &arena->data[arena->next];
-            std::memset(data, 0, size); // TODO- Allow for passing a value to init with on stack
+            for (size_t i = 0; i != count; ++i) {
+                ctx.stack.save(data + i * type_size, type_size);
+            }
+            ctx.stack.pop_n(type_size);
             arena->next += size;
             ctx.stack.push(data); // push the span (ptr + count)
             ctx.stack.push(count);
@@ -138,10 +141,6 @@ auto apply_op(bytecode_context& ctx) -> bool
         case op::arena_size: {
             auto arena = ctx.stack.pop<memory_arena*>();
             ctx.stack.push(arena->next);
-        } break;
-        case op::arena_capacity: {
-            auto arena = ctx.stack.pop<memory_arena*>();
-            ctx.stack.push(arena->data.size());
         } break;
         case op::jump: {
             const auto jump = read_advance<std::uint64_t>(ctx);
@@ -171,7 +170,7 @@ auto apply_op(bytecode_context& ctx) -> bool
         } break;
         case op::builtin_call: {
             const auto id = read_advance<std::uint64_t>(ctx);
-            get_builtin(id).ptr(ctx);
+            get_builtin(id)->ptr(ctx);
         } break;
         case op::assert: {
             const auto index = read_advance<std::uint64_t>(ctx);
@@ -287,6 +286,7 @@ auto run(const bytecode_program& prog) -> void
     while (true) {
         if constexpr (Debug) {
             print_op(ctx.rom, ctx.frames.back().code, ctx.frames.back().ip);
+            ctx.stack.print();
         }
         if (!apply_op(ctx)) break;
     }
@@ -311,7 +311,7 @@ vm_stack::vm_stack(std::size_t size)
 auto vm_stack::push(const std::byte* src, std::size_t count) -> void
 {
     if (d_current_size + count > d_max_size) {
-        std::print("Stack overflow\n");
+        std::print("Stack overflow (current_size={}, count={}, max_size={}\n", d_current_size, count, d_max_size);
         std::exit(27);
     }
     std::memcpy(&d_data[d_current_size], src, count);
@@ -320,17 +320,31 @@ auto vm_stack::push(const std::byte* src, std::size_t count) -> void
 
 auto vm_stack::pop_and_save(std::byte* dst, std::size_t count) -> void
 {
+    save(dst, count);
+    d_current_size -= count;
+}
+
+auto vm_stack::save(std::byte* dst, std::size_t count) -> void
+{
     if (d_current_size < count) {
         std::print("Stack underflow\n");
         std::exit(28);
     }
-    d_current_size -= count;
-    std::memcpy(dst, &d_data[d_current_size], count);
+    std::memcpy(dst, &d_data[d_current_size - count], count);
 }
 
 auto vm_stack::size() const -> std::size_t { return d_current_size; }
 auto vm_stack::at(std::size_t index) -> std::byte& { return d_data[index]; }
 auto vm_stack::resize(std::size_t size) -> void { d_current_size = size; }
+auto vm_stack::pop_n(std::size_t size) -> void { d_current_size -= size; }
+
+auto vm_stack::print() const -> void
+{
+    for (std::size_t idx = 0; idx != 100; ++idx) {
+        std::print("{} ", d_data[idx]);
+    }
+    std::print("\n");
+}
 
 auto run_program(const bytecode_program& prog) -> void
 {

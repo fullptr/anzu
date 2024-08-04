@@ -28,9 +28,12 @@ public:
     vm_stack(std::size_t size = 1024 * 1024 * 20);
     auto push(const std::byte* src, std::size_t count) -> void;
     auto pop_and_save(std::byte* dst, std::size_t count) -> void;
+    auto save(std::byte* dst, std::size_t count) -> void;
     auto size() const -> std::size_t;
     auto at(std::size_t index) -> std::byte&;
     auto resize(std::size_t size) -> void;
+    auto pop_n(std::size_t count) -> void;
+    auto print() const -> void;
 
     template <typename T>
     auto push(const T& obj) -> void

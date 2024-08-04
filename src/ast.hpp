@@ -69,14 +69,7 @@ struct node_literal_string_expr
 
 struct node_name_expr
 {
-    std::string name;
-
-    anzu::token token;
-};
-
-struct node_templated_name_expr
-{
-    std::string name;
+    std::string                name;
     std::vector<node_expr_ptr> templates;
 
     anzu::token token;
@@ -84,8 +77,9 @@ struct node_templated_name_expr
 
 struct node_field_expr
 {
-    node_expr_ptr expr;
-    std::string   field_name;
+    node_expr_ptr              expr;
+    std::string                field_name;
+    std::vector<node_expr_ptr> templates;
 
     anzu::token token;
 };
@@ -109,16 +103,6 @@ struct node_call_expr
 {
     node_expr_ptr expr;
     std::vector<node_expr_ptr> args;
-
-    anzu::token token;
-};
-
-struct node_member_call_expr
-{
-    node_expr_ptr              expr;
-    std::string                function_name;
-    std::vector<node_expr_ptr> template_args;
-    std::vector<node_expr_ptr> other_args;
 
     anzu::token token;
 };
@@ -198,6 +182,15 @@ struct node_const_expr
     anzu::token   token;
 };
 
+struct node_new_expr
+{
+    node_expr_ptr arena;
+    node_expr_ptr count;
+    node_expr_ptr expr;
+
+    anzu::token   token;
+};
+
 struct node_expr : std::variant<
     node_literal_i32_expr,
     node_literal_i64_expr,
@@ -211,7 +204,6 @@ struct node_expr : std::variant<
     node_unary_op_expr,
     node_binary_op_expr,
     node_call_expr,
-    node_member_call_expr,
     node_array_expr,
     node_repeat_array_expr,
     node_addrof_expr,
@@ -221,10 +213,10 @@ struct node_expr : std::variant<
     node_function_ptr_type_expr,
     node_const_expr,
     node_name_expr,
-    node_templated_name_expr,
     node_field_expr,
     node_deref_expr,
-    node_subscript_expr>
+    node_subscript_expr,
+    node_new_expr>
 {
 };
 
@@ -325,16 +317,6 @@ struct node_assignment_stmt
 
 struct node_function_def_stmt
 {
-    std::string              name;
-    std::vector<std::string> template_types;
-    node_signature           sig;
-    node_stmt_ptr            body;
-
-    anzu::token token;
-};
-
-struct node_member_function_def_stmt
-{
     std::string              struct_name;
     std::string              function_name;
     std::vector<std::string> template_types;
@@ -393,7 +375,6 @@ struct node_stmt : std::variant<
     node_declaration_stmt,
     node_arena_declaration_stmt,
     node_assignment_stmt,
-    node_member_function_def_stmt,
     node_function_def_stmt,
     node_expression_stmt,
     node_return_stmt,

@@ -258,7 +258,7 @@ function_ptr();
 # Arena test
 fn get(a: arena&, count: u64) -> u64[]
 {
-    var p := a.new_array!(u64)(count);
+    var p := new(a, count) 0u;
     var idx := 0u;
     while idx < p.size() {
         p[idx] = idx;
@@ -270,7 +270,7 @@ fn get(a: arena&, count: u64) -> u64[]
 {
     arena a;
     var z := get(a&, 5u);
-    print("size={} capacity={}\n", a.size(), a.capacity());
+    print("size={}\n", a.size());
 
     var idx := 0u;
     while idx < z.size() {
