@@ -407,7 +407,7 @@ auto parse_identifier(tokenstream& tokens) -> std::string
 auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
-    auto& stmt = node->emplace<node_function_def_stmt>();
+    auto& stmt = node->emplace<node_function_stmt>();
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.struct_name = "";
     stmt.function_name = parse_identifier(tokens);
@@ -415,7 +415,7 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
     if (tokens.consume_maybe(token_type::bang)) {
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&]{
-            stmt.template_types.push_back(parse_identifier(tokens));
+            stmt.templates.push_back(parse_identifier(tokens));
         });
     }
 
@@ -439,7 +439,7 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
     -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
-    auto& stmt = node->emplace<node_function_def_stmt>();
+    auto& stmt = node->emplace<node_function_stmt>();
 
     stmt.token = tokens.consume_only(token_type::kw_function);
     stmt.struct_name = struct_name;
@@ -448,7 +448,7 @@ auto parse_member_function_def_stmt(const std::string& struct_name, tokenstream&
     if (tokens.consume_maybe(token_type::bang)) {
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&]{
-            stmt.template_types.push_back(parse_identifier(tokens));
+            stmt.templates.push_back(parse_identifier(tokens));
         });
     }
 
