@@ -1016,7 +1016,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             actual
         );
         com.struct_template_types.reset();
-        
+
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
     }
 
@@ -1331,9 +1331,20 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
 {
     const auto struct_type = node.struct_name.empty() ? global_namespace : make_type(com, node.struct_name);
 
-    // member function - so do some checks
+    // We always ignore the template types here because it is either not a template function and so
+    // this is in fact the full name, or it is and we use this as the key for the fn_templates
+    // map which is just the name without the template section.
+    const auto function_name = fn_name(com, node.token, struct_type, node.function_name);
+
+    // Template functions only get compiled at the call site, so we just stash the ast
+    if (!node.template_types.empty()) {
+        const auto [it, success] = com.fn_templates.emplace(function_name, node);
+        node.token.assert(success, "function template named '{}' already defined", function_name);
+        return;
+    } 
+
+    // member function - so check first argument is a pointer to an instance of the class
     if (!node.struct_name.empty()) {
-        // First argument must be a pointer to an instance of the class
         node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
         const auto actual = resolve_type(com, node.token, node.sig.params[0].type);
         const auto expected = struct_type.add_const().add_ptr().add_const();
@@ -1346,18 +1357,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
         );
     }
 
-    // We always ignore the template types here because it is either not a template function and so
-    // this is in fact the full name, or it is and we use this as the key for the fn_templates
-    // map which is just the name without the template section.
-    const auto full_name = fn_name(com, node.token, struct_type, node.function_name);
-
-    // Template functions only get compiled at the call site, so we just stash the ast
-    if (!node.template_types.empty()) {
-        const auto [it, success] = com.fn_templates.emplace(full_name, node);
-        node.token.assert(success, "function template named '{}' already defined", full_name);
-    } else {
-        compile_function(com, node.token, full_name, node.sig, node.body);
-    }
+    compile_function(com, node.token, function_name, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
