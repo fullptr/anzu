@@ -316,11 +316,11 @@ struct node_assignment_stmt
     anzu::token token;
 };
 
-struct node_function_def_stmt
+struct node_function_def
 {
     std::string              struct_name;
     std::string              function_name;
-    std::vector<std::string> template_types;
+    std::vector<std::string> templates;
     node_signature           sig;
     node_stmt_ptr            body;
 
@@ -376,7 +376,7 @@ struct node_stmt : std::variant<
     node_declaration_stmt,
     node_arena_declaration_stmt,
     node_assignment_stmt,
-    node_function_def_stmt,
+    node_function_def,
     node_expression_stmt,
     node_return_stmt,
     node_assert_stmt,

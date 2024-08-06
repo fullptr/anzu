@@ -41,9 +41,9 @@ struct compiler
     std::unordered_map<std::string, std::size_t>        functions_by_name;
     std::vector<std::size_t>                            current_compiling;
     
-    std::unordered_map<std::string, node_function_def_stmt> fn_templates;
-    std::unordered_map<std::string, node_struct_stmt>   struct_templates;
-    std::optional<template_map>                         struct_template_types;
+    std::unordered_map<std::string, node_function_def> fn_templates;
+    std::unordered_map<std::string, node_struct_stmt>  struct_templates;
+    std::optional<template_map>                        struct_template_types;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

@@ -906,10 +906,10 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto function_ast = com.fn_templates.at(full_name_no_templates);
-        node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of template args");
+        node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of template args");
 
         auto map = template_map{};
-        for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
+        for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             node.token.assert(success, "duplicate template name {} for function {}", expected, full_name);
         }
@@ -936,7 +936,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         com.struct_template_types.reset();
 
         for (const auto& func : struct_ast.functions) {
-            const auto& stmt = std::get<node_function_def_stmt>(*func);
+            const auto& stmt = std::get<node_function_def>(*func);
             const auto func_name = fn_name(com, node.token, name, stmt.function_name);
 
             // Template functions only get compiled at the call site, so we just stash the ast
@@ -993,11 +993,11 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto function_ast = com.fn_templates.at(full_name_no_templates);
-        node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of function args");
+        node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of function args");
 
         // The class itself may be templated, so the template map is built from that first
         auto map = com.types.templates_of(stripped);
-        for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
+        for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
@@ -1327,7 +1327,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     return;
 }
 
-void push_stmt(compiler& com, const node_function_def_stmt& node)
+void push_stmt(compiler& com, const node_function_def& node)
 {
     const auto struct_type = node.struct_name.empty() ? global_namespace : make_type(com, node.struct_name);
 
@@ -1337,7 +1337,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
     const auto function_name = fn_name(com, node.token, struct_type, node.function_name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
-    if (!node.template_types.empty()) {
+    if (!node.templates.empty()) {
         const auto [it, success] = com.fn_templates.emplace(function_name, node);
         node.token.assert(success, "function template named '{}' already defined", function_name);
         return;
