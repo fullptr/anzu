@@ -324,15 +324,35 @@ struct foo
     }
 }
 
-let f := foo(1, 2);
-let g := do!(foo)(f);
-print("{} {}\n", g.x, g.y);
+{
+    let f := foo(1, 2);
+    let g := do!(foo)(f);
+    print("{} {}\n", g.x, g.y);
 
-var x := 10;
-ptr!(i64)(x&);
+    var x := 10;
+    ptr!(i64)(x&);
 
-f.bar!(i64)(6);
+    f.bar!(i64)(6);
 
-let fp := ptr!(u64);
-var arg := 60u;
-fp(arg&);
+    let fp := ptr!(u64);
+    var arg := 60u;
+    fp(arg&);
+}
+
+struct pair!(T)
+{
+    x: T;
+    y: T;
+
+    fn print_struct!(U)(self: pair!(T) const&, u: U) -> null
+    {
+        print("{} {} {}\n", self.x, self.y, u);
+    }
+}
+
+{
+    var f := pair!(i64)(1, 2);
+    var g := pair!(f64)(12.3, 45.6);
+    f.print_struct!(u64)(70u);
+    g.print_struct!(u64)(70u);
+}

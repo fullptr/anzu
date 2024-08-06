@@ -906,10 +906,10 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto function_ast = com.fn_templates.at(full_name_no_templates);
-        node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of template args");
+        node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of template args");
 
         auto map = template_map{};
-        for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
+        for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             node.token.assert(success, "duplicate template name {} for function {}", expected, full_name);
         }
@@ -935,15 +935,19 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         }
         com.struct_template_types.reset();
 
-        for (const auto& fn : struct_ast.functions) {
-            // This assert is redundant since the parser ensures these are all functions,
-            // maybe the node should hold function stmts directly.
-            node.token.assert(std::holds_alternative<node_function_def_stmt>(*fn), "invalid statement for member function");
-            const auto& fn_info = std::get<node_function_def_stmt>(*fn);
-            const auto fn_name = std::format("{}::{}", name, fn_info.function_name);
-            const auto [it, success] = com.fn_templates.emplace(fn_name, fn_info);
-            node.token.assert(success, "duplicate function found: {}", fn_name);
+        for (const auto& func : struct_ast.functions) {
+            const auto& stmt = std::get<node_function_def_stmt>(*func);
+            const auto func_name = fn_name(com, node.token, name, stmt.function_name);
+
+            // Template functions only get compiled at the call site, so we just stash the ast
+            if (!stmt.template_types.empty()) {
+                const auto [it, success] = com.fn_templates.emplace(func_name, stmt);
+                node.token.assert(success, "function template named '{}' already defined", func_name);
+            } else {
+                compile_function(com, node.token, full_name, stmt.sig, stmt.body);
+            }
         }
+
 
         com.types.add(name, fields, map);
         return type_type{name};
@@ -993,11 +997,11 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto function_ast = com.fn_templates.at(full_name_no_templates);
-        node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of function args");
+        node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of function args");
 
         // The class itself may be templated, so the template map is built from that first
         auto map = com.types.templates_of(stripped);
-        for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
+        for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
@@ -1336,7 +1340,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
     const auto full_name = fn_name(com, node.token, struct_type, node.function_name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
-    if (!node.templates.empty()) {
+    if (!node.template_types.empty()) {
         const auto [it, success] = com.fn_templates.emplace(full_name, node);
         node.token.assert(success, "function template named '{}' already defined", full_name);
     } else {

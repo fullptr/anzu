@@ -241,8 +241,8 @@ auto print_node(const node_stmt& root, int indent) -> void
             } else {
                 std::print("{}FunctionDef: {}::{}", spaces, node.struct_name, node.function_name);
             }
-            if (!node.templates.empty()) {
-                std::print("!({})", format_comma_separated(node.templates));
+            if (!node.template_types.empty()) {
+                std::print("!({})", format_comma_separated(node.template_types));
             }
             std::print("\n");
             std::print("{}- FunctionArguments:\n", spaces);
