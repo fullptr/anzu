@@ -5,7 +5,7 @@ struct pair!(T)
     x: T;
     y: T;
 
-    fn print_struct!(U)(self: pair!(T) const&, u: U) -> null
+    fn print_struct!(U)(self: const&, u: U) -> null
     {
         print("{} {} {}\n", self.x, self.y, u);
     }

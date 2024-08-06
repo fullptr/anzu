@@ -95,6 +95,20 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
     return inner_type(type_expr_type);
 }
 
+auto struct_name(
+    compiler& com, const token& tok, const std::string& name, const std::vector<node_expr_ptr>& templates = {}
+)
+    -> type_name
+{
+    if (templates.empty()) {
+        return make_type(com, name);
+    }
+    const auto template_str = format_comma_separated(
+        templates, [&](const node_expr_ptr& n) { return resolve_type(com, tok, n); }
+    );
+    return make_type(com, std::format("{}!({})", name, template_str));
+}
+
 auto fn_name(
     compiler& com,
     const token& tok,
@@ -897,20 +911,14 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         auto map = template_map{};
         for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
-            if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
+            node.token.assert(success, "duplicate template name {} for function {}", expected, full_name);
         }
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
     }
 
-    // TODO: CLean up when working
-    // Next check if it's a struct template
-    const auto template_args_string = format_comma_separated(
-        node.templates, [&](const node_expr_ptr& n) { return resolve_type(com, node.token, n); }
-    );
-    const auto full_struct_name = node.templates.empty() ? node.name : std::format("{}!({})", node.name, template_args_string);
-    const auto struct_name = make_type(com, full_struct_name);
-    if (com.struct_templates.contains(node.name) && !com.types.contains(struct_name)) {
-        std::print("compiling {}\n", full_struct_name);
+    // Next, it might be a template type
+    const auto name = struct_name(com, node.token, node.name, node.templates);
+    if (com.struct_templates.contains(node.name) && !com.types.contains(name)) {
         const auto& struct_ast = com.struct_templates.at(node.name);
         node.token.assert_eq(node.templates.size(), struct_ast.templates.size(), "bad number of template args");
         
@@ -930,14 +938,15 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         for (const auto& fn : struct_ast.functions) {
             // This assert is redundant since the parser ensures these are all functions,
             // maybe the node should hold function stmts directly.
-            node.token.assert(std::holds_alternative<node_function_stmt>(*fn), "invalid statement for member function");
-            const auto& fn_info = std::get<node_function_stmt>(*fn);
-            const auto fn_name = std::format("{}::{}", full_struct_name, fn_info.function_name);
+            node.token.assert(std::holds_alternative<node_function_def_stmt>(*fn), "invalid statement for member function");
+            const auto& fn_info = std::get<node_function_def_stmt>(*fn);
+            const auto fn_name = std::format("{}::{}", name, fn_info.function_name);
             const auto [it, success] = com.fn_templates.emplace(fn_name, fn_info);
+            node.token.assert(success, "duplicate function found: {}", fn_name);
         }
 
-        com.types.add(struct_name, fields, map);
-        return type_type{struct_name};
+        com.types.add(name, fields, map);
+        return type_type{name};
     }
 
     // The name might be a function
@@ -957,9 +966,9 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // The name might be a type
-    if (com.types.contains(struct_name)) {
+    if (com.types.contains(name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        return type_type{struct_name};
+        return type_type{name};
     }
 
     // Otherwise, it must be a variable
@@ -1302,7 +1311,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     return;
 }
 
-void push_stmt(compiler& com, const node_function_stmt& node)
+void push_stmt(compiler& com, const node_function_def_stmt& node)
 {
     const auto struct_type = node.struct_name.empty() ? global_namespace : make_type(com, node.struct_name);
 
