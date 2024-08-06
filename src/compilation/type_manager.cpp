@@ -3,12 +3,15 @@
 
 namespace anzu {
 
-auto type_manager::add(const type_name& name, const type_fields& fields) -> bool
+auto type_manager::add(
+    const type_name& name,
+    const type_fields& fields,
+    const template_map& templates) -> bool
 {
     if (d_classes.contains(name)) {
         return false;
     }
-    d_classes.emplace(name, fields);
+    d_classes.emplace(name, type_info{fields, templates});
     return true;
 }
 
@@ -94,7 +97,15 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
 auto type_manager::fields_of(const type_name& t) const -> type_fields
 {
     if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
-        return it->second;
+        return it->second.fields;
+    }
+    return {};
+}
+
+auto type_manager::templates_of(const type_name& t) const -> template_map
+{
+    if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
+        return it->second.templates;
     }
     return {};
 }

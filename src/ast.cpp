@@ -194,6 +194,9 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_struct_stmt& node) {
             std::print("{}Struct:\n", spaces);
             std::print("{}- Name: {}\n", spaces, node.name);
+            if (!node.templates.empty()) {
+                std::print("!({})", format_comma_separated(node.templates));
+            }
             std::print("{}- Fields:\n", spaces);
             for (const auto& field : node.fields) {
                 std::print("    {}:\n", field.name);
@@ -232,18 +235,14 @@ auto print_node(const node_stmt& root, int indent) -> void
             std::print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
-        [&](const node_function_def_stmt& node) {
+        [&](const node_function_def& node) {
             if (node.struct_name.empty()) {
                 std::print("{}FunctionDef {}", spaces, node.function_name);
             } else {
                 std::print("{}FunctionDef: {}::{}", spaces, node.struct_name, node.function_name);
             }
-            if (!node.template_types.empty()) {
-                std::print("!(");
-                print_comma_separated(node.template_types, [](const auto& arg) {
-                    return arg;
-                });
-                std::print(")");
+            if (!node.templates.empty()) {
+                std::print("!({})", format_comma_separated(node.templates));
             }
             std::print("\n");
             std::print("{}- FunctionArguments:\n", spaces);

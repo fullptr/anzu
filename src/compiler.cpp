@@ -59,6 +59,13 @@ auto compile_function(
 
 auto make_type(compiler& com, const std::string& name) -> type_name
 {
+    // When instantiating a struct, it's template types are made available
+    // so that data members can be worked out correctly.
+    if (com.struct_template_types.has_value()) {
+        const auto& map = *com.struct_template_types;
+        if (auto it = map.find(name); it != map.end()) return it->second;
+    }
+
     const auto& map = current(com).template_types;
     if (auto it = map.find(name); it != map.end()) return it->second;
     if (name == "null") return type_name(type_fundamental::null_type);
@@ -86,6 +93,20 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
     
     tok.assert(type_expr_type.is_type_value(), "expected type expression, got {}", type_expr_type);
     return inner_type(type_expr_type);
+}
+
+auto struct_name(
+    compiler& com, const token& tok, const std::string& name, const std::vector<node_expr_ptr>& templates = {}
+)
+    -> type_name
+{
+    if (templates.empty()) {
+        return make_type(com, name);
+    }
+    const auto template_str = format_comma_separated(
+        templates, [&](const node_expr_ptr& n) { return resolve_type(com, tok, n); }
+    );
+    return make_type(com, std::format("{}!({})", name, template_str));
 }
 
 auto fn_name(
@@ -406,11 +427,9 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
     variables(com).new_loop_scope();
     
     const auto begin_pos = code(com).size();
-    {
-        variables(com).new_scope();
-        body();
-        variables(com).pop_scope(code(com));
-    }
+    variables(com).new_scope();
+    body();
+    variables(com).pop_scope(code(com));
     push_value(code(com), op::jump, begin_pos);
 
     // Fix up the breaks and continues
@@ -877,7 +896,7 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 // A name can represent the following
 //  - a variable name
 //  - a function name
-//  - a builtin funciton name
+//  - a builtin function name
 //  - a type name
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
@@ -887,14 +906,47 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto function_ast = com.fn_templates.at(full_name_no_templates);
-        node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of function args");
+        node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of template args");
 
         auto map = template_map{};
-        for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
+        for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
+            const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
+            node.token.assert(success, "duplicate template name {} for function {}", expected, full_name);
+        }
+        compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
+    }
+
+    // Next, it might be a template type
+    const auto name = struct_name(com, node.token, node.name, node.templates);
+    if (com.struct_templates.contains(node.name) && !com.types.contains(name)) {
+        const auto& struct_ast = com.struct_templates.at(node.name);
+        node.token.assert_eq(node.templates.size(), struct_ast.templates.size(), "bad number of template args");
+        
+        auto map = template_map{};
+        for (const auto& [actual, expected] : zip(node.templates, struct_ast.templates)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
-        compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
+
+        com.struct_template_types = map;
+        auto fields = std::vector<type_field>{};
+        for (const auto& p : struct_ast.fields) {
+            fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
+        }
+        com.struct_template_types.reset();
+
+        for (const auto& func : struct_ast.functions) {
+            const auto& stmt = std::get<node_function_def>(*func);
+            const auto func_name = fn_name(com, node.token, name, stmt.function_name);
+
+            // Template functions only get compiled at the call site, so we just stash the ast
+            const auto [it, success] = com.fn_templates.emplace(func_name, stmt);
+            node.token.assert(success, "function template named '{}' already defined", func_name);
+        }
+
+
+        com.types.add(name, fields, map);
+        return type_type{name};
     }
 
     // The name might be a function
@@ -909,22 +961,18 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
         node.token.assert(node.templates.empty(), "builtins cannot be templated");
         return type_builtin{
-            .name = func->name,
-            .id = func->id,
-            .args = func->args,
-            .return_type = func->return_type
+            .name = func->name, .id = func->id, .args = func->args, .return_type = func->return_type
         };
     }
 
     // The name might be a type
-    if (const auto type = make_type(com, node.name); com.types.contains(type)) {
+    if (com.types.contains(name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        node.token.assert(node.templates.empty(), "types cannot current be templated");
-        return type_type{type};
+        return type_type{name};
     }
 
     // Otherwise, it must be a variable
-    node.token.assert(node.templates.empty(), "variables cannot be templated");
+    node.token.assert(node.templates.empty(), "variables cannot be templated ({})", node.name);
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, node.name);
     }
@@ -945,13 +993,30 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto function_ast = com.fn_templates.at(full_name_no_templates);
-        node.token.assert_eq(node.templates.size(), function_ast.template_types.size(), "bad number of function args");
+        node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of function args");
 
-        auto map = template_map{};
-        for (const auto& [actual, expected] : zip(node.templates, function_ast.template_types)) {
+        // The class itself may be templated, so the template map is built from that first
+        auto map = com.types.templates_of(stripped);
+        for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
+
+        // member function - so do some checks
+        // First argument must be a pointer to an instance of the class
+        com.struct_template_types = map;
+        node.token.assert(function_ast.sig.params.size() > 0, "member functions must have at least one arg");
+        const auto actual = resolve_type(com, node.token, function_ast.sig.params[0].type);
+        const auto expected = stripped.add_const().add_ptr().add_const();
+        
+        node.token.assert(
+            const_convertable_to(node.token, actual, expected),
+            "first parameter to a struct member function must be a pointer to '{}', got '{}'",
+            stripped,
+            actual
+        );
+        com.struct_template_types.reset();
+
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
     }
 
@@ -1199,6 +1264,13 @@ void push_stmt(compiler& com, const node_if_stmt& node)
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     const auto message = std::format("type '{}' already defined", node.name);
+
+    if (!node.templates.empty()) {
+        const auto [it, success] = com.struct_templates.emplace(node.name, node);
+        node.token.assert(success, "struct template named '{}' already defined", node.name);
+        return;
+    }
+
     node.token.assert(!com.types.contains(make_type(com, node.name)), "{}", message);
     node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);
 
@@ -1255,13 +1327,24 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     return;
 }
 
-void push_stmt(compiler& com, const node_function_def_stmt& node)
+void push_stmt(compiler& com, const node_function_def& node)
 {
     const auto struct_type = node.struct_name.empty() ? global_namespace : make_type(com, node.struct_name);
 
-    // member function - so do some checks
+    // We always ignore the template types here because it is either not a template function and so
+    // this is in fact the full name, or it is and we use this as the key for the fn_templates
+    // map which is just the name without the template section.
+    const auto function_name = fn_name(com, node.token, struct_type, node.function_name);
+
+    // Template functions only get compiled at the call site, so we just stash the ast
+    if (!node.templates.empty()) {
+        const auto [it, success] = com.fn_templates.emplace(function_name, node);
+        node.token.assert(success, "function template named '{}' already defined", function_name);
+        return;
+    } 
+
+    // member function - so check first argument is a pointer to an instance of the class
     if (!node.struct_name.empty()) {
-        // First argument must be a pointer to an instance of the class
         node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
         const auto actual = resolve_type(com, node.token, node.sig.params[0].type);
         const auto expected = struct_type.add_const().add_ptr().add_const();
@@ -1274,18 +1357,7 @@ void push_stmt(compiler& com, const node_function_def_stmt& node)
         );
     }
 
-    // We always ignore the template types here because it is either not a template function and so
-    // this is in fact the full name, or it is and we use this as the key for the fn_templates
-    // map which is just the name without the template section.
-    const auto full_name = fn_name(com, node.token, struct_type, node.function_name);
-
-    // Template functions only get compiled at the call site, so we just stash the ast
-    if (!node.template_types.empty()) {
-        const auto [it, success] = com.fn_templates.emplace(full_name, node);
-        node.token.assert(success, "function template named '{}' already defined", full_name);
-    } else {
-        compile_function(com, node.token, full_name, node.sig, node.body);
-    }
+    compile_function(com, node.token, function_name, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
