@@ -6,4 +6,8 @@ struct pair!(T)
     y: T;
 }
 
-let f := pair!(i64)(1, 2);
+var f := pair!(i64)(1, 2);
+var g := pair!(f64)(12.3, 45.6);
+print("{} {}\n", f.x, f.y);
+print("{} {}\n", g.x, g.y);
+__dump_type(f, g, f.x, g.x);

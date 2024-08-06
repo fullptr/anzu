@@ -907,9 +907,10 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto template_args_string = format_comma_separated(
         node.templates, [&](const node_expr_ptr& n) { return resolve_type(com, node.token, n); }
     );
-    const auto full_struct_name = std::format("{}!({})", node.name, template_args_string);
+    const auto full_struct_name = node.templates.empty() ? node.name : std::format("{}!({})", node.name, template_args_string);
     const auto struct_name = make_type(com, full_struct_name);
     if (com.struct_templates.contains(node.name) && !com.types.contains(struct_name)) {
+        std::print("compiling {}\n", full_struct_name);
         const auto& struct_ast = com.struct_templates.at(node.name);
         node.token.assert_eq(node.templates.size(), struct_ast.templates.size(), "bad number of template args");
         
@@ -956,10 +957,9 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // The name might be a type
-    if (const auto type = make_type(com, node.name); com.types.contains(type)) {
+    if (com.types.contains(struct_name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        node.token.assert(node.templates.empty(), "types cannot current be templated");
-        return type_type{type};
+        return type_type{struct_name};
     }
 
     // Otherwise, it must be a variable
