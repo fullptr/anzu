@@ -4,10 +4,14 @@ struct pair!(T)
 {
     x: T;
     y: T;
+
+    fn print_struct!(U)(self: pair!(T) const&, u: U) -> null
+    {
+        print("{} {} {}\n", self.x, self.y, u);
+    }
 }
 
 var f := pair!(i64)(1, 2);
 var g := pair!(f64)(12.3, 45.6);
-print("{} {}\n", f.x, f.y);
-print("{} {}\n", g.x, g.y);
+f.print_struct!(u64)(70u);
 __dump_type(f, g, f.x, g.x);
