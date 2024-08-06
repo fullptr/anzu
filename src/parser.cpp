@@ -539,6 +539,12 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.token = tokens.consume_only(token_type::kw_struct);
     stmt.name = parse_identifier(tokens);
+    if (tokens.consume_maybe(token_type::bang)) {
+        tokens.consume_only(token_type::left_paren);
+        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+            stmt.templates.push_back(parse_identifier(tokens));
+        });
+    }
     tokens.consume_only(token_type::left_brace);
     while (!tokens.consume_maybe(token_type::right_brace)) {
         if (tokens.peek(token_type::kw_function)) {

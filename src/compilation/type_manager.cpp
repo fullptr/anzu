@@ -6,7 +6,7 @@ namespace anzu {
 auto type_manager::add(
     const type_name& name,
     const type_fields& fields,
-    const type_templates& templates) -> bool
+    const template_map& templates) -> bool
 {
     if (d_classes.contains(name)) {
         return false;
@@ -102,7 +102,7 @@ auto type_manager::fields_of(const type_name& t) const -> type_fields
     return {};
 }
 
-auto type_manager::templates_of(const type_name& t) const -> type_templates
+auto type_manager::templates_of(const type_name& t) const -> template_map
 {
     if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
         return it->second.templates;
