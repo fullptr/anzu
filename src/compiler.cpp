@@ -940,12 +940,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
             const auto func_name = fn_name(com, node.token, name, stmt.function_name);
 
             // Template functions only get compiled at the call site, so we just stash the ast
-            if (!stmt.template_types.empty()) {
-                const auto [it, success] = com.fn_templates.emplace(func_name, stmt);
-                node.token.assert(success, "function template named '{}' already defined", func_name);
-            } else {
-                compile_function(com, node.token, full_name, stmt.sig, stmt.body);
-            }
+            const auto [it, success] = com.fn_templates.emplace(func_name, stmt);
+            node.token.assert(success, "function template named '{}' already defined", func_name);
         }
 
 
@@ -1005,6 +1001,22 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
+
+        // member function - so do some checks
+        // First argument must be a pointer to an instance of the class
+        com.struct_template_types = map;
+        node.token.assert(function_ast.sig.params.size() > 0, "member functions must have at least one arg");
+        const auto actual = resolve_type(com, node.token, function_ast.sig.params[0].type);
+        const auto expected = stripped.add_const().add_ptr().add_const();
+        
+        node.token.assert(
+            const_convertable_to(node.token, actual, expected),
+            "first parameter to a struct member function must be a pointer to '{}', got '{}'",
+            stripped,
+            actual
+        );
+        com.struct_template_types.reset();
+        
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body, map);
     }
 
