@@ -31,6 +31,12 @@ struct function_info
     signature              sig  = {};
 };
 
+struct struct_info
+{
+    type_name    name;
+    template_map templates;
+};
+
 struct compiler
 {
     std::vector<function_info> functions;
@@ -42,8 +48,8 @@ struct compiler
     std::vector<std::size_t>                            current_compiling;
     
     std::unordered_map<std::string, node_function_stmt> fn_templates;
-    std::unordered_map<std::string, node_struct_stmt>  struct_templates;
-    std::optional<template_map>                        struct_template_types;
+    std::unordered_map<std::string, node_struct_stmt>   struct_templates;
+    std::optional<struct_info>                          current_struct;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;
