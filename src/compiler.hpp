@@ -30,12 +30,6 @@ struct function_info
     signature              sig  = {};
 };
 
-struct func_info
-{
-    std::string  name;
-    template_map templates;
-};
-
 struct struct_info
 {
     type_name    name;
@@ -55,8 +49,8 @@ struct compiler
     std::unordered_map<std::string, node_function_stmt> fn_templates;
     std::unordered_map<std::string, node_struct_stmt>   struct_templates;
 
-    std::vector<struct_info> current_struct;
-    std::vector<func_info>   current_func;
+    std::vector<struct_info>  curr_struct_templates;
+    std::vector<template_map> curr_func_templates;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;
