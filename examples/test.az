@@ -1,5 +1,33 @@
 
-let x := 10;
-var p := x&;
+struct vector!(T)
+{
+    arr: arena&;
+    data: T[];
+    size: u64;
 
-print("__dump_type", x, p);
+    fn capacity(self: vector!(T) const&) -> u64
+    {
+        return self.data.size();
+    }
+
+    fn push(self: vector!(T) const&, value: T) -> null
+    {
+        if self.size <= self.capacity() {
+            var new_cap := 8u;
+            if self.capacity() > 0 {
+                new_cap = self.capacity() * 2;
+            }
+            var new_buf = new(self.arr, new_cap) T();
+        }
+    }
+}
+
+fn new_vector!(T)(arr: arena&) -> vector!(T)
+{
+    return vector!(T)(arr, nullptr, 0u);
+}
+
+
+arena a;
+var v := new_vector!(i64)(a&);
+print("{}\n", v.capacity());

@@ -282,6 +282,12 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
         return;
     }
 
+    // Allow for a span to be constructed from a nullptr, which results in a null span.
+    if (actual == nullptr_type() && expected.is_span()) {
+        push_value(code(com), op::push_u64, std::size_t{0}); // push the size
+        return;
+    }
+
     if (actual.is_arena() || expected.is_arena()) {
         tok.error("arenas can not be copied or assigned");
     }
