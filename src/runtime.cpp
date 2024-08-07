@@ -97,6 +97,10 @@ auto apply_op(bytecode_context& ctx) -> bool
             const auto ptr = ctx.stack.pop<std::byte*>();
             ctx.stack.pop_and_save(ptr, size);
         } break;
+        case op::push: {
+            const auto size = read_advance<std::uint64_t>(ctx);
+            ctx.stack.resize(ctx.stack.size() + size);
+        } break;
         case op::pop: {
             const auto size = read_advance<std::uint64_t>(ctx);
             ctx.stack.resize(ctx.stack.size() - size);

@@ -12,12 +12,13 @@ struct vector!(T)
 
     fn push(self: vector!(T) const&, value: T) -> null
     {
-        if self.size <= self.capacity() {
+        let cap := self.capacity();
+        if self.size <= cap {
             var new_cap := 8u;
-            if self.capacity() > 0 {
-                new_cap = self.capacity() * 2;
+            if cap > 0u {
+                new_cap = cap * 2u;
             }
-            var new_buf = new(self.arr, new_cap) T();
+            var new_buf := new(self.arr, new_cap) T();
         }
     }
 }
@@ -30,4 +31,5 @@ fn new_vector!(T)(arr: arena&) -> vector!(T)
 
 arena a;
 var v := new_vector!(i64)(a&);
+v.push(10);
 print("{}\n", v.capacity());
