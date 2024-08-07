@@ -339,6 +339,23 @@ auto ends_in_return(const node_stmt& node) -> bool
     }, node);
 }
 
+auto build_template_map(
+    compiler& com,
+    const token& tok,
+    const std::vector<std::string>& names,
+    const std::vector<node_expr_ptr>& types
+)
+    -> template_map
+{
+    tok.assert_eq(types.size(), names.size(), "bad number of template args");
+    auto map = template_map{};
+    for (const auto& [actual, expected] : zip(types, names)) {
+        const auto [it, success] = map.emplace(expected, resolve_type(com, tok, actual));
+        if (!success) { tok.error("duplicate template name {}", expected); }
+    }
+    return map;
+}
+
 auto compile_function(
     compiler& com,
     const token& tok,
@@ -924,37 +941,28 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto full_name = fn_name(com, node.token, global_namespace, node.name, node.templates);
     
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto function_ast = com.fn_templates.at(full_name_no_templates);
-        node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of template args");
-        auto& map = com.curr_func_templates.emplace_back();
-        for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
-            const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
-            node.token.assert(success, "duplicate template name {} for function {}", expected, full_name);
-        }
-        compile_function(com, node.token, full_name, function_ast.sig, function_ast.body);
+        const auto& ast = com.fn_templates.at(full_name_no_templates);
+        const auto map = build_template_map(com, node.token, ast.templates, node.templates);
+        
+        com.curr_func_templates.emplace_back(map);
+        compile_function(com, node.token, full_name, ast.sig, ast.body);
         com.curr_func_templates.pop_back();
     }
 
     // Next, it might be a template type
     const auto name = struct_name(com, node.token, node.name, node.templates);
     if (com.struct_templates.contains(node.name) && !com.types.contains(name)) {
-        const auto& struct_ast = com.struct_templates.at(node.name);
-        node.token.assert_eq(node.templates.size(), struct_ast.templates.size(), "bad number of template args");
-        
-        auto map = template_map{};
-        for (const auto& [actual, expected] : zip(node.templates, struct_ast.templates)) {
-            const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
-            if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
-        }
+        const auto& ast = com.struct_templates.at(node.name);
 
+        auto map = build_template_map(com, node.token, ast.templates, node.templates);
         com.curr_struct_templates.emplace_back(name, map);
         auto fields = std::vector<type_field>{};
-        for (const auto& p : struct_ast.fields) {
+        for (const auto& p : ast.fields) {
             fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
         }
         com.types.add(name, fields, map);
 
-        for (const auto& func : struct_ast.functions) {
+        for (const auto& func : ast.functions) {
             const auto& stmt = std::get<node_function_stmt>(*func);
             const auto func_name = fn_name(com, node.token, name, stmt.function_name);
 
@@ -1010,17 +1018,13 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     const auto full_name = fn_name(com, node.token, stripped, node.field_name, node.templates);
     
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto function_ast = com.fn_templates.at(full_name_no_templates);
-        node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of function args");
+        const auto ast = com.fn_templates.at(full_name_no_templates);
 
         com.curr_struct_templates.emplace_back(stripped, com.types.templates_of(stripped));
-        auto& map = com.curr_func_templates.emplace_back();
-        for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
-            const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
-            if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
-        }
+        const auto map = build_template_map(com, node.token, ast.templates, node.templates);
+        com.curr_func_templates.emplace_back(map);
 
-        compile_function(com, node.token, full_name, function_ast.sig, function_ast.body);
+        compile_function(com, node.token, full_name, ast.sig, ast.body);
         com.curr_func_templates.pop_back();
         com.curr_struct_templates.pop_back();
     }
