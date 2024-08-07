@@ -275,21 +275,18 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     // Remove top-level const since we are making a copy, ie- you should be able to pass a
     // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
     // for a 'u64 const&' is fine)
-    const auto actual = type_of_expr(com, expr).remove_const();
+    const auto actual = push_expr(com, compile_type::val, expr).remove_const();
     const auto expected = expected_raw.remove_const();
+
+    if (actual == nullptr_type() && expected.is_ptr()) {
+        return;
+    }
 
     if (actual.is_arena() || expected.is_arena()) {
         tok.error("arenas can not be copied or assigned");
     }
 
-    if (actual == nullptr_type() && expected.is_ptr()) {
-        push_expr(com, compile_type::val, expr);
-        return;
-    }
-
-    if (const_convertable_to(tok, actual, expected)) {
-        push_expr(com, compile_type::val, expr);
-    } else {
+    if (!const_convertable_to(tok, actual, expected)) {
         tok.error("Cannot convert '{}' to '{}'", actual, expected);
     }
 }
@@ -1338,9 +1335,8 @@ void push_stmt(compiler& com, const node_return_stmt& node)
 
 void push_stmt(compiler& com, const node_assert_stmt& node)
 {
-    const auto expr = type_of_expr(com, *node.expr);
+    const auto expr = push_expr(com, compile_type::val, *node.expr);
     node.token.assert_eq(expr, bool_type(), "bad assertion expression");
-    push_expr(com, compile_type::val, *node.expr);
     const auto message = std::format("line {}", node.token.line);
     const auto index = insert_into_rom(com, message);
     push_value(code(com), op::assert, index, message.size());
