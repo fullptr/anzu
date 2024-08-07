@@ -318,7 +318,7 @@ struct node_assignment_stmt
 
 struct node_function_stmt
 {
-    std::string              function_name;
+    std::string              name;
     std::vector<std::string> templates;
     node_signature           sig;
     node_stmt_ptr            body;

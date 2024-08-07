@@ -937,7 +937,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 
         for (const auto& func : ast.functions) {
             const auto& stmt = std::get<node_function_stmt>(*func);
-            const auto func_name = fn_name(com, node.token, name, stmt.function_name);
+            const auto func_name = fn_name(com, node.token, name, stmt.name);
 
             // Template functions only get compiled at the call site, so we just stash the ast
             const auto [it, success] = com.function_templates.emplace(func_name, stmt);
@@ -1310,12 +1310,11 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 
 void push_stmt(compiler& com, const node_function_stmt& node)
 {
-    const auto struct_name = com.current_struct.back().name;
-
     // We always ignore the template types here because it is either not a template function and so
     // this is in fact the full name, or it is and we use this as the key for the function_templates
     // map which is just the name without the template section.
-    const auto function_name = fn_name(com, node.token, struct_name, node.function_name);
+    const auto struct_name = com.current_struct.back().name;
+    const auto function_name = fn_name(com, node.token, struct_name, node.name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
