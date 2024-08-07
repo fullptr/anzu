@@ -20,30 +20,42 @@ struct signature
     type_name              return_type;
 };
 
-struct function_info
+struct function
 {
     std::string      name;
     std::size_t      id;
     variable_manager variables;
-    template_map     template_types;
     
     std::vector<std::byte> code = {};
     signature              sig  = {};
 };
 
+struct func_info
+{
+    std::size_t  id;
+    template_map templates;
+};
+
+struct struct_info
+{
+    type_name    name;
+    template_map templates;
+};
+
 struct compiler
 {
-    std::vector<function_info> functions;
-    std::string                rom;
+    std::vector<function> functions;
+    std::string           rom;
 
     type_manager types;
 
-    std::unordered_map<std::string, std::size_t>        functions_by_name;
-    std::vector<std::size_t>                            current_compiling;
+    std::unordered_map<std::string, std::size_t> functions_by_name;
     
-    std::unordered_map<std::string, node_function_def> fn_templates;
-    std::unordered_map<std::string, node_struct_stmt>  struct_templates;
-    std::optional<template_map>                        struct_template_types;
+    std::unordered_map<std::string, node_function_stmt> function_templates;
+    std::unordered_map<std::string, node_struct_stmt>   struct_templates;
+
+    std::vector<struct_info> current_struct;
+    std::vector<func_info>   current_function;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

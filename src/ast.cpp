@@ -235,12 +235,8 @@ auto print_node(const node_stmt& root, int indent) -> void
             std::print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
-        [&](const node_function_def& node) {
-            if (node.struct_name.empty()) {
-                std::print("{}FunctionDef {}", spaces, node.function_name);
-            } else {
-                std::print("{}FunctionDef: {}::{}", spaces, node.struct_name, node.function_name);
-            }
+        [&](const node_function_stmt& node) {
+            std::print("{}FunctionDef {}", spaces, node.name);
             if (!node.templates.empty()) {
                 std::print("!({})", format_comma_separated(node.templates));
             }
