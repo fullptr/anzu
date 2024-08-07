@@ -49,13 +49,13 @@ struct compiler
 
     type_manager types;
 
-    std::unordered_map<std::string, std::size_t>        functions_by_name;
+    std::unordered_map<std::string, std::size_t> functions_by_name;
     
-    std::unordered_map<std::string, node_function_stmt> fn_templates;
+    std::unordered_map<std::string, node_function_stmt> function_templates;
     std::unordered_map<std::string, node_struct_stmt>   struct_templates;
 
-    std::vector<struct_info> curr_struct;
-    std::vector<func_info>   curr_func;
+    std::vector<struct_info> current_struct;
+    std::vector<func_info>   current_function;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

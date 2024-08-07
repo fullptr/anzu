@@ -21,10 +21,7 @@ namespace {
 
 // Returns the current function
 auto current(compiler& com) -> function& {
-    if (com.curr_func.empty()) {
-        return com.functions[0]; // global state
-    }
-    return com.functions[com.curr_func.back().id];
+    return com.functions[com.current_function.back().id];
 }
 
 // Returns the bytecode that we are currently writing to
@@ -33,7 +30,7 @@ auto code(compiler& com) -> std::vector<std::byte>& {
 }
 
 auto in_function(compiler& com) -> bool {
-    return !com.curr_func.empty();
+    return com.current_function.size() > 1;
 }
 
 // Access local variables if in a function, otherwise the globals
@@ -54,17 +51,13 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 
 auto make_type(compiler& com, const std::string& name) -> type_name
 {
-    // Check the current functions templates first
-    if (!com.curr_func.empty()) {
-        const auto& map = com.curr_func.back().templates;
-        if (auto it = map.find(name); it != map.end()) return it->second;
-    }
+    // First check the current function templates
+    const auto& map1 = com.current_function.back().templates;
+    if (auto it = map1.find(name); it != map1.end()) return it->second;
 
-    // Second, the struct, if we are within one
-    if (!com.curr_struct.empty()) {
-        const auto& map = com.curr_struct.back().templates;
-        if (auto it = map.find(name); it != map.end()) return it->second;
-    }
+    // Then check the current struct templates
+    const auto& map2 = com.current_struct.back().templates;
+    if (auto it = map2.find(name); it != map2.end()) return it->second;
 
     if (name == "null") return type_name(type_fundamental::null_type);
     if (name == "bool") return type_name(type_fundamental::bool_type);
@@ -353,25 +346,20 @@ auto compile_function(
 )
     -> void
 {
-    const auto struct_name = !com.curr_struct.empty()
-                           ? com.curr_struct.back().name
-                           : global_namespace;
+    const auto struct_name = com.current_struct.back().name;
+
     // member function - so check first argument is a pointer to an instance of the class
     if (struct_name != global_namespace) {
         tok.assert(node_sig.params.size() > 0, "member functions must have at least one arg");
         const auto actual = resolve_type(com, tok, node_sig.params[0].type);
         const auto expected = struct_name.add_const().add_ptr().add_const();
         
-        tok.assert(
-            const_convertable_to(tok, actual, expected),
-            "first parameter to a struct member function must be a pointer to '{}', got '{}'",
-            struct_name,
-            actual
-        );
+        const auto message = "first parameter to a struct member function must be a pointer to '{}', got '{}'";
+        tok.assert(const_convertable_to(tok, actual, expected), message, struct_name, actual);
     }
 
     const auto id = com.functions.size();
-    com.curr_func.emplace_back(id, map);
+    com.current_function.emplace_back(id, map);
     com.functions.emplace_back(full_name, id, variable_manager{true});
     const auto [it, success] = com.functions_by_name.emplace(full_name, id);
     tok.assert(success, "a function with the name '{}' already exists", full_name);
@@ -395,7 +383,7 @@ auto compile_function(
     }
 
     variables(com).pop_scope(code(com));
-    com.curr_func.pop_back();
+    com.current_function.pop_back();
 }
 
 // Temp: remove this for a more efficient function
@@ -928,8 +916,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto full_name_no_templates = fn_name(com, node.token, global_namespace, node.name);
     const auto full_name = fn_name(com, node.token, global_namespace, node.name, node.templates);
     
-    if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto& ast = com.fn_templates.at(full_name_no_templates);
+    if (com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+        const auto& ast = com.function_templates.at(full_name_no_templates);
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
         compile_function(com, node.token, full_name, ast.sig, ast.body, map);
     }
@@ -940,7 +928,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         const auto& ast = com.struct_templates.at(node.name);
 
         auto map = build_template_map(com, node.token, ast.templates, node.templates);
-        com.curr_struct.emplace_back(name, map);
+        com.current_struct.emplace_back(name, map);
         auto fields = std::vector<type_field>{};
         for (const auto& p : ast.fields) {
             fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
@@ -952,11 +940,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
             const auto func_name = fn_name(com, node.token, name, stmt.function_name);
 
             // Template functions only get compiled at the call site, so we just stash the ast
-            const auto [it, success] = com.fn_templates.emplace(func_name, stmt);
+            const auto [it, success] = com.function_templates.emplace(func_name, stmt);
             node.token.assert(success, "function template named '{}' already defined", func_name);
         }
 
-        com.curr_struct.pop_back();
+        com.current_struct.pop_back();
         return type_type{name};
     }
 
@@ -1002,13 +990,13 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     const auto full_name_no_templates = fn_name(com, node.token, stripped, node.field_name);
     const auto full_name = fn_name(com, node.token, stripped, node.field_name, node.templates);
     
-    if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto ast = com.fn_templates.at(full_name_no_templates);
+    if (com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+        const auto ast = com.function_templates.at(full_name_no_templates);
 
-        com.curr_struct.emplace_back(stripped, com.types.templates_of(stripped));
+        com.current_struct.emplace_back(stripped, com.types.templates_of(stripped));
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
         compile_function(com, node.token, full_name, ast.sig, ast.body, map);
-        com.curr_struct.pop_back();
+        com.current_struct.pop_back();
     }
 
     // Firstly, the field may be a member function
@@ -1265,7 +1253,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     node.token.assert(!com.types.contains(struct_name), "{}", message);
     node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);
 
-    com.curr_struct.emplace_back(struct_name, template_map{});
+    com.current_struct.emplace_back(struct_name, template_map{});
     auto fields = std::vector<type_field>{};
     for (const auto& p : node.fields) {
         fields.emplace_back(p.name, resolve_type(com, node.token, p.type));
@@ -1275,7 +1263,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     for (const auto& function : node.functions) {
         push_stmt(com, *function);
     }
-    com.curr_struct.pop_back();
+    com.current_struct.pop_back();
 }
 
 void push_stmt(compiler& com, const node_break_stmt& node)
@@ -1322,18 +1310,16 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 
 void push_stmt(compiler& com, const node_function_stmt& node)
 {
-    const auto struct_name = !com.curr_struct.empty()
-                           ? com.curr_struct.back().name
-                           : global_namespace;
+    const auto struct_name = com.current_struct.back().name;
 
     // We always ignore the template types here because it is either not a template function and so
-    // this is in fact the full name, or it is and we use this as the key for the fn_templates
+    // this is in fact the full name, or it is and we use this as the key for the function_templates
     // map which is just the name without the template section.
     const auto function_name = fn_name(com, node.token, struct_name, node.function_name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
-        const auto [it, success] = com.fn_templates.emplace(function_name, node);
+        const auto [it, success] = com.function_templates.emplace(function_name, node);
         node.token.assert(success, "function template named '{}' already defined", function_name);
         return;
     }
@@ -1407,10 +1393,16 @@ auto compile(const anzu_module& ast) -> bytecode_program
 {
     auto com = compiler{};
     com.functions.emplace_back("$main", 0, variable_manager{false});
+
+    com.current_function.emplace_back(0, template_map{});
+    com.current_struct.emplace_back(global_namespace, template_map{});
     variables(com).new_scope();
     push_stmt(com, *ast.root);
     variables(com).pop_scope(code(com));
-    push_value(code(com), op::end_program);
+    com.current_struct.pop_back();
+    com.current_function.pop_back();
+
+    push_value(com.functions[0].code, op::end_program);
 
     auto program = bytecode_program{};
     program.rom = com.rom;
