@@ -517,8 +517,7 @@ auto parse_struct_stmt(tokenstream& tokens) -> node_stmt_ptr
         if (tokens.peek(token_type::kw_function)) {
             stmt.functions.emplace_back(parse_function_def_stmt(tokens));
         } else {
-            stmt.fields.emplace_back();
-            auto& f = stmt.fields.back();
+            auto& f = stmt.fields.emplace_back();
             f.name = parse_identifier(tokens);
             tokens.consume_only(token_type::colon);
             f.type = parse_expression(tokens);
