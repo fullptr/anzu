@@ -1002,11 +1002,11 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     // Firstly, the field may be a member function
     if (auto info = get_function(com, full_name); info.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a bound method");
-        if (type.is_const && !info->sig.params[0].remove_ptr().is_const) {
+        push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
+        const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
+        if (stripped.is_const && !info->sig.params[0].remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
-        push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
-        auto_deref_pointer(com, type); // allow for field access through a pointer
         return type_bound_method{
             .param_types = info->sig.params,
             .return_type = info->sig.return_type,

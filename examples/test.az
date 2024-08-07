@@ -1,17 +1,14 @@
-struct pair!(T)
-{
-    x: T;
-    y: T;
 
-    fn print_struct(self: pair!(T) const&) -> null
-    {
-        print("{} {}\n", self.x, self.y);
-    }
+struct bar {
+    x: i64;
+    fn foo(self: bar&) { self.x = 10; print("foo\n"); }
+
 }
 
-{
-    var f := pair!(i64)(1, 2);
-    var g := pair!(f64)(12.3, 45.6);
-    f.print_struct();
-    g.print_struct();
-}
+let f := bar(5);
+var p := f&;
+
+var q := p.foo;
+
+q.foo();
+print("{}\n", f.x);
