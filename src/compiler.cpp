@@ -645,24 +645,9 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
-
-    // Hack to allow for an easy way to dump types of expressions
-    if (std::holds_alternative<node_name_expr>(*node.expr)) {
-        if (std::get<node_name_expr>(*node.expr).name == "__dump_type") {
-            std::print("__dump_type(\n");
-            for (const auto& arg : node.args) {
-                const auto dump = type_of_expr(com, *arg);
-                std::print("    {},\n", dump);
-            }
-            std::print(")\n");
-            push_value(code(com), op::push_null);
-            return null_type();
-        }
-    }
-
-    // The expression must be a callable
     const auto type = type_of_expr(com, *node.expr);
-    if (type.is_type_value()) {
+
+    if (type.is_type_value()) { // constructor
         const auto obj_type = inner_type(type);
         const auto expected_params = get_constructor_params(com, obj_type);
         node.token.assert_eq(node.args.size(), expected_params.size(), 
@@ -675,7 +660,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         }
         return obj_type;
     }
-    else if (type.is_function_ptr()) {
+    else if (type.is_function_ptr()) { // function call
         const auto& info = std::get<type_function_ptr>(type);
         node.token.assert_eq(node.args.size(), info.param_types.size(), 
                              "invalid number of args for function call");
@@ -691,7 +676,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         push_value(code(com), op::call, args_size);
         return *info.return_type;
     }
-    else if (type.is_builtin()) {
+    else if (type.is_builtin()) { // builtin call
         const auto& info = std::get<type_builtin>(type);
         node.token.assert_eq(node.args.size(), info.args.size(), "bad number of arguments to builtin call");
         for (std::size_t i = 0; i != info.args.size(); ++i) {
@@ -700,16 +685,15 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         push_value(code(com), op::builtin_call, info.id);
         return *info.return_type;
     }
-    else if (type.is_bound_method()) {
+    else if (type.is_bound_method()) { // member function call
         const auto& info = std::get<type_bound_method>(type);
         node.token.assert_eq(node.args.size(), info.param_types.size() - 1, // instance ptr
                              "invalid number of args for function call");
 
         auto args_size = std::size_t{0};
     
-        // Push the instance that the method is bound to, cannot use push_copy_typechecked
-        // because the types mismatch, but the bound method type just wraps a pointer to the
-        // instance, so this is fine
+        // cannot use push_copy_typechecked because the types mismatch, but the bound method
+        // type just wraps a pointer to the instance, so this is fine
         push_expr(com, compile_type::val, *node.expr);
         args_size += com.types.size_of(info.param_types[0]);
 
@@ -718,12 +702,10 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
             args_size += com.types.size_of(info.param_types[i]);
         }
 
-        // push the function pointer and call it
-        push_value(code(com), op::push_function_ptr, info.function_id);
-        push_value(code(com), op::call, args_size);
+        push_value(code(com), op::push_function_ptr, info.function_id, op::call, args_size);
         return *info.return_type;
     }
-    else if (type.is_bound_builtin_method()) {
+    else if (type.is_bound_builtin_method()) { // member builtin call
         const auto& info = std::get<type_bound_builtin_method>(type);
         if (info.type->is_array() && info.name == "size") {
             push_value(code(com), op::push_u64, array_length(*info.type));
@@ -1344,6 +1326,15 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 
 void push_stmt(compiler& com, const node_print_stmt& node)
 {
+    if (node.message == "__dump_type") { // Hack to allow for an easy way to dump types of expressions
+        std::print("__dump_type(\n");
+        for (const auto& arg : node.args) {
+            std::print("    {},\n", type_of_expr(com, *arg));
+        }
+        std::print(")\n");
+        return;
+    }
+
     const auto parts = string_split(string_replace(node.message, "\\n", "\n"), "{}");
     if (parts.size() != node.args.size() + 1) {
         node.token.error("Not enough args to fill all placeholders");

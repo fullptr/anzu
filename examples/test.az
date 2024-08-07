@@ -1,4 +1,5 @@
 
 let x := 10;
 var p := x&;
-p@ = 15;
+
+print("__dump_type", x, p);
