@@ -936,7 +936,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         com.struct_template_types.reset();
 
         for (const auto& func : struct_ast.functions) {
-            const auto& stmt = std::get<node_function_def>(*func);
+            const auto& stmt = std::get<node_function_stmt>(*func);
             const auto func_name = fn_name(com, node.token, name, stmt.function_name);
 
             // Template functions only get compiled at the call site, so we just stash the ast
@@ -1327,7 +1327,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     return;
 }
 
-void push_stmt(compiler& com, const node_function_def& node)
+void push_stmt(compiler& com, const node_function_stmt& node)
 {
     const auto struct_type = node.struct_name.empty() ? global_namespace : make_type(com, node.struct_name);
 

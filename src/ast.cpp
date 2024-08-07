@@ -235,7 +235,7 @@ auto print_node(const node_stmt& root, int indent) -> void
             std::print("{}- Value:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
-        [&](const node_function_def& node) {
+        [&](const node_function_stmt& node) {
             if (node.struct_name.empty()) {
                 std::print("{}FunctionDef {}", spaces, node.function_name);
             } else {
