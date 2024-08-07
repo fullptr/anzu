@@ -20,7 +20,7 @@ struct signature
     type_name              return_type;
 };
 
-struct function_info
+struct function
 {
     std::string      name;
     std::size_t      id;
@@ -44,8 +44,8 @@ struct struct_info
 
 struct compiler
 {
-    std::vector<function_info> functions;
-    std::string                rom;
+    std::vector<function> functions;
+    std::string           rom;
 
     type_manager types;
 

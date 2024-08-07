@@ -20,7 +20,7 @@ namespace anzu {
 namespace {
 
 // Returns the current function
-auto current(compiler& com) -> function_info& {
+auto current(compiler& com) -> function& {
     if (com.curr_func.empty()) {
         return com.functions[0]; // global state
     }
@@ -132,21 +132,12 @@ auto fn_name(
     return name;
 }
 
-auto get_function(compiler& com, const std::string& full_name) -> std::optional<function_info>
+auto get_function(compiler& com, const std::string& full_name) -> std::optional<function>
 {
     if (const auto it = com.functions_by_name.find(full_name); it != com.functions_by_name.end()) {
         return com.functions[it->second];
     }
     return std::nullopt;
-}
-
-auto push_function_call(compiler& com, const function_info& function) -> void
-{
-    auto args_size = std::size_t{0};
-    for (const auto& param : function.sig.params) {
-        args_size += com.types.size_of(param);
-    }
-    push_value(code(com), op::push_u64, function.id, op::call, args_size);
 }
 
 // Registers the given name in the current scope
@@ -1416,12 +1407,10 @@ auto compile(const anzu_module& ast) -> bytecode_program
 {
     auto com = compiler{};
     com.functions.emplace_back("$main", 0, variable_manager{false});
-    com.curr_func.emplace_back();
     variables(com).new_scope();
     push_stmt(com, *ast.root);
     variables(com).pop_scope(code(com));
     push_value(code(com), op::end_program);
-    com.curr_func.pop_back();
 
     auto program = bytecode_program{};
     program.rom = com.rom;
