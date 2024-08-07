@@ -984,15 +984,15 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
+    node.token.assert(!type.is_type_value(), "fields of objects cannot currently by types");
+    
     const auto stripped = strip_pointers(type);
 
-    // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
+    // Check if it is a function that needs compiling
     const auto full_name_no_templates = fn_name(com, node.token, stripped, node.field_name);
     const auto full_name = fn_name(com, node.token, stripped, node.field_name, node.templates);
-    
     if (com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto ast = com.function_templates.at(full_name_no_templates);
-
         com.current_struct.emplace_back(stripped, com.types.templates_of(stripped));
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
         compile_function(com, node.token, full_name, ast.sig, ast.body, map);
@@ -1028,33 +1028,26 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
     // Otherwise, it's a data member
     node.token.assert(node.templates.empty(), "data members cannot be templated");
-    if (ct == compile_type::ptr) {
-        auto type = push_expr(com, compile_type::ptr, *node.expr);
-        auto_deref_pointer(com, type); // allow for field access through a pointer
-
-        const auto field_type = push_field_offset(com, node.token, stripped, node.field_name);
-        push_value(code(com), op::u64_add); // modify ptr
-        if (stripped.is_const) return field_type.add_const(); // propagate const to fields
-        return field_type;
+    push_expr(com, compile_type::ptr, *node.expr);
+    auto_deref_pointer(com, type); // allow for field access through a pointer
+    auto field_type = push_field_offset(com, node.token, stripped, node.field_name);
+    push_value(code(com), op::u64_add); // modify ptr
+    if (ct == compile_type::val) {
+        push_value(code(com), op::load, com.types.size_of(field_type));
     }
-    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-    const auto t = push_expr(com, compile_type::ptr, node);
-    push_value(code(com), op::load, com.types.size_of(t));
-    return t;
+    
+    if (stripped.is_const) field_type.is_const = true; // propagate const to fields
+    return field_type;
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> type_name
 {
-    if (ct == compile_type::ptr) {
-        const auto type = push_expr(com, compile_type::val, *node.expr); // Push the address
-        node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
-        return type.remove_ptr();
+    const auto type = push_expr(com, compile_type::val, *node.expr); // Push the address
+    node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
+    if (ct == compile_type::val) {
+        push_value(code(com), op::load, com.types.size_of(type));
     }
-    const auto type = type_of_expr(com, *node.expr);
-    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-    const auto t = push_expr(com, compile_type::ptr, node);
-    push_value(code(com), op::load, com.types.size_of(t));
-    return t;
+    return type.remove_ptr();
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) -> type_name

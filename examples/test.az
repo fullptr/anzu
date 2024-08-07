@@ -1,14 +1,5 @@
 
-struct bar {
-    x: i64;
-    fn foo(self: bar&) { self.x = 10; print("foo\n"); }
-
-}
-
-let f := bar(5);
-var p := f&;
-
-var q := p.foo;
-
-q.foo();
-print("{}\n", f.x);
+var x := 10;
+var p := x&;
+p@ = 15;
+print("{}\n", x);
