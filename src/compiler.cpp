@@ -348,7 +348,23 @@ auto compile_function(
 )
     -> void
 {
-    
+    const auto struct_name = !com.curr_struct_templates.empty()
+                           ? com.curr_struct_templates.back().name
+                           : global_namespace;
+    // member function - so check first argument is a pointer to an instance of the class
+    if (struct_name != global_namespace) {
+        tok.assert(node_sig.params.size() > 0, "member functions must have at least one arg");
+        const auto actual = resolve_type(com, tok, node_sig.params[0].type);
+        const auto expected = struct_name.add_const().add_ptr().add_const();
+        
+        tok.assert(
+            const_convertable_to(tok, actual, expected),
+            "first parameter to a struct member function must be a pointer to '{}', got '{}'",
+            struct_name,
+            actual
+        );
+    }
+
     const auto id = com.functions.size();
     com.functions.emplace_back(full_name, id, variable_manager{true});
     const auto [it, success] = com.functions_by_name.emplace(full_name, id);
@@ -900,6 +916,7 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 //  - a function name
 //  - a builtin function name
 //  - a type name
+void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
     // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
@@ -909,13 +926,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     if (com.fn_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto function_ast = com.fn_templates.at(full_name_no_templates);
         node.token.assert_eq(node.templates.size(), function_ast.templates.size(), "bad number of template args");
-
         auto& map = com.curr_func_templates.emplace_back();
         for (const auto& [actual, expected] : zip(node.templates, function_ast.templates)) {
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             node.token.assert(success, "duplicate template name {} for function {}", expected, full_name);
         }
-
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body);
         com.curr_func_templates.pop_back();
     }
@@ -1004,19 +1019,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             const auto [it, success] = map.emplace(expected, resolve_type(com, node.token, actual));
             if (!success) { node.token.error("duplicate template name {} for function {}", expected, full_name); }
         }
-
-        // member function - so do some checks
-        // First argument must be a pointer to an instance of the class
-        node.token.assert(function_ast.sig.params.size() > 0, "member functions must have at least one arg");
-        const auto actual = resolve_type(com, node.token, function_ast.sig.params[0].type);
-        const auto expected = stripped.add_const().add_ptr().add_const();
-        
-        node.token.assert(
-            const_convertable_to(node.token, actual, expected),
-            "first parameter to a struct member function must be a pointer to '{}', got '{}'",
-            stripped,
-            actual
-        );
 
         compile_function(com, node.token, full_name, function_ast.sig, function_ast.body);
         com.curr_func_templates.pop_back();
@@ -1348,20 +1350,6 @@ void push_stmt(compiler& com, const node_function_stmt& node)
         const auto [it, success] = com.fn_templates.emplace(function_name, node);
         node.token.assert(success, "function template named '{}' already defined", function_name);
         return;
-    } 
-
-    // member function - so check first argument is a pointer to an instance of the class
-    if (struct_name != global_namespace) {
-        node.token.assert(node.sig.params.size() > 0, "member functions must have at least one arg");
-        const auto actual = resolve_type(com, node.token, node.sig.params[0].type);
-        const auto expected = struct_name.add_const().add_ptr().add_const();
-        
-        node.token.assert(
-            const_convertable_to(node.token, actual, expected),
-            "first parameter to a struct member function must be a pointer to '{}', got '{}'",
-            struct_name,
-            actual
-        );
     }
 
     compile_function(com, node.token, function_name, node.sig, node.body);
