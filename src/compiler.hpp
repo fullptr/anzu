@@ -25,10 +25,15 @@ struct function_info
     std::string      name;
     std::size_t      id;
     variable_manager variables;
-    template_map     template_types;
     
     std::vector<std::byte> code = {};
     signature              sig  = {};
+};
+
+struct func_info
+{
+    std::string  name;
+    template_map templates;
 };
 
 struct struct_info
@@ -45,11 +50,13 @@ struct compiler
     type_manager types;
 
     std::unordered_map<std::string, std::size_t>        functions_by_name;
-    std::vector<std::size_t>                            current_compiling;
+    std::vector<std::size_t>                            current_function;
     
     std::unordered_map<std::string, node_function_stmt> fn_templates;
     std::unordered_map<std::string, node_struct_stmt>   struct_templates;
-    std::optional<struct_info>                          current_struct;
+
+    std::vector<struct_info> current_struct;
+    std::vector<func_info>   current_func;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

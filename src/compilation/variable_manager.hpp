@@ -49,7 +49,7 @@ class variable_manager
     bool d_local;
 
 public:
-    variable_manager(bool local) : d_local{local} {}
+    variable_manager(bool local = true) : d_local{local} {}
     auto declare(const std::string& name, const type_name& type, std::size_t size) -> bool;
     auto find(const std::string& name) const -> std::optional<variable>;
     auto scopes() const -> std::span<const scope> { return d_scopes; }
