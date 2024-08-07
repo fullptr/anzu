@@ -1364,9 +1364,7 @@ void push_stmt(compiler& com, const node_function_stmt& node)
         );
     }
 
-    com.curr_func_templates.emplace_back();
     compile_function(com, node.token, function_name, node.sig, node.body);
-    com.curr_func_templates.pop_back();
 }
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
