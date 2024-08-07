@@ -21,7 +21,10 @@ namespace {
 
 // Returns the current function
 auto current(compiler& com) -> function_info& {
-    return com.functions[com.current_function.back()];
+    if (com.curr_func.empty()) {
+        return com.functions[0]; // global state
+    }
+    return com.functions[com.curr_func.back().id];
 }
 
 // Returns the bytecode that we are currently writing to
@@ -30,7 +33,7 @@ auto code(compiler& com) -> std::vector<std::byte>& {
 }
 
 auto in_function(compiler& com) -> bool {
-    return com.current_function.size() > 1;
+    return !com.curr_func.empty();
 }
 
 // Access local variables if in a function, otherwise the globals
@@ -382,7 +385,6 @@ auto compile_function(
     const auto [it, success] = com.functions_by_name.emplace(full_name, id);
     tok.assert(success, "a function with the name '{}' already exists", full_name);
     
-    com.current_function.push_back(id);
     variables(com).new_scope();
 
     auto& sig = current(com).sig;
@@ -403,7 +405,6 @@ auto compile_function(
 
     variables(com).pop_scope(code(com));
     com.curr_func.pop_back();
-    com.current_function.pop_back();
 }
 
 // Temp: remove this for a more efficient function
@@ -1415,14 +1416,12 @@ auto compile(const anzu_module& ast) -> bytecode_program
 {
     auto com = compiler{};
     com.functions.emplace_back("$main", 0, variable_manager{false});
-    com.current_function.push_back(0);
     com.curr_func.emplace_back();
     variables(com).new_scope();
     push_stmt(com, *ast.root);
     variables(com).pop_scope(code(com));
     push_value(code(com), op::end_program);
     com.curr_func.pop_back();
-    com.current_function.pop_back();
 
     auto program = bytecode_program{};
     program.rom = com.rom;

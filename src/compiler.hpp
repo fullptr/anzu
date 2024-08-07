@@ -50,7 +50,6 @@ struct compiler
     type_manager types;
 
     std::unordered_map<std::string, std::size_t>        functions_by_name;
-    std::vector<std::size_t>                            current_function;
     
     std::unordered_map<std::string, node_function_stmt> fn_templates;
     std::unordered_map<std::string, node_struct_stmt>   struct_templates;
