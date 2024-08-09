@@ -844,10 +844,18 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
         push_value(code(com), op::push_u64, array_length(type));
     }
 
-    if (type.is_const && type.is_array()) {
-        return type.remove_array().add_const().add_span(); // propagate const into the span
+    if (type.is_array()) {
+        if (type.is_const) {
+            return type.remove_array().add_const().add_span();
+        }
+        return type.remove_array().add_span();
     }
-    return type.remove_array().add_span();
+    else {  // is span
+        if (type.is_const) {
+            return type.remove_span().add_const().add_span();
+        }
+        return type;
+    }
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_typeof_expr& node) -> type_name
