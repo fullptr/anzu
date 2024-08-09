@@ -102,6 +102,10 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto size = read_at<std::uint64_t>(&ptr);
             std::print("SAVE: {}\n", size);
         } break;
+        case op::push: {
+            const auto size = read_at<std::uint64_t>(&ptr);
+            std::print("PUSH: {}\n", size);
+        } break;
         case op::pop: {
             const auto size = read_at<std::uint64_t>(&ptr);
             std::print("POP: {}\n", size);

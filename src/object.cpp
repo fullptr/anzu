@@ -72,7 +72,7 @@ auto to_string(type_fundamental t) -> std::string
         case type_fundamental::u64_type:     return "u64";
         case type_fundamental::f64_type:     return "f64";
         case type_fundamental::nullptr_type: return "nullptr";
-        default: return "UNKNOWN";
+        default: return "UNKNOWN FUNDAMENTAL";
     }
 }
 

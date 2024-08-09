@@ -47,6 +47,7 @@ enum class op : std::uint8_t
     
     load,
     save,
+    push,
     pop,
     jump,
     jump_if_false,

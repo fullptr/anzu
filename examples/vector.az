@@ -1,0 +1,80 @@
+
+struct vector!(T)
+{
+    _arr: arena&;
+    _data: T[];
+    _size: u64;
+
+    fn to_span(self: vector!(T)&) -> T const[]
+    {
+        return self._data[0u : self._size];
+    }
+
+    fn reserve(self: vector!(T)&, size: u64) -> null
+    {
+        let cap := self.capacity();
+        if cap < size {
+            var new_buf := new(self._arr, size) T();
+            
+            # Copy existing values over
+            {
+                var idx := 0u;
+                while idx < self._size {
+                    new_buf[idx] = self._data[idx];
+                    idx = idx + 1u;
+                }
+            }
+            self._data = new_buf;
+        }
+    }
+
+    fn capacity(self: vector!(T) const&) -> u64
+    {
+        return self._data.size();
+    }
+
+    fn size(self: vector!(T) const&) -> u64
+    {
+        return self._size;
+    }
+
+    fn at(self: vector!(T) const&, index: u64) -> T
+    {
+        return self._data[index];
+    }
+
+    fn push(self: vector!(T)&, value: T) -> null
+    {
+        let cap := self.capacity();
+        if self._size == cap {
+            var new_cap := 8u;
+            if cap > 0u {
+                new_cap = cap * 2u;
+            }
+            self.reserve(new_cap);
+        }
+        self._data[self._size] = value;
+        self._size = self._size + 1u;
+    }
+}
+
+fn new_vector!(T)(arr: arena&) -> vector!(T)
+{
+    return vector!(T)(arr, nullptr, 0u);
+}
+
+
+arena a;
+var v := new_vector!(i64)(a&);
+v.reserve(25u);
+var idx := 0;
+while idx < 20 {
+    v.push(idx);
+    idx = idx + 1;
+}
+
+let range := v.to_span();
+for a in range {
+    print("{}\n", a@);
+}
+print("{} {} {}\n", v.capacity(), v.size(), a.size());

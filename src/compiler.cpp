@@ -282,6 +282,12 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
         return;
     }
 
+    // Allow for a span to be constructed from a nullptr, which results in a null span.
+    if (actual == nullptr_type() && expected.is_span()) {
+        push_value(code(com), op::push_u64, std::size_t{0}); // push the size
+        return;
+    }
+
     if (actual.is_arena() || expected.is_arena()) {
         tok.error("arenas can not be copied or assigned");
     }
@@ -363,19 +369,24 @@ auto compile_function(
     
     variables(com).new_scope();
 
-    auto& sig = current(com).sig;
+    auto sig = signature{};
     for (const auto& arg : node_sig.params) {
         const auto type = resolve_type(com, tok, arg.type);
         declare_var(com, tok, arg.name, type);
         sig.params.push_back(type);
     }
     sig.return_type = node_sig.return_type ? resolve_type(com, tok, node_sig.return_type) : null_type();
+    current(com).sig = sig;
 
+    // this can cause other template functions to be compiled so any references to function
+    // info above may be invalidated!
     push_stmt(com, *body);
 
     if (!ends_in_return(*body)) {
         // Functions returning null don't need a final return, since we can just add it
-        tok.assert(sig.return_type == null_type(), "fn '{}' does not end in a return", full_name);
+        if (sig.return_type != null_type()) {
+            tok.error("fn '{}' does not end in a return (needs {})", full_name, sig.return_type);
+        }
         push_value(code(com), op::push_null, op::ret, std::uint64_t{1});
     }
 
@@ -649,6 +660,10 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 
     if (type.is_type_value()) { // constructor
         const auto obj_type = inner_type(type);
+        if (node.args.empty()) { // default constructor
+            push_value(code(com), op::push, com.types.size_of(obj_type));
+            return obj_type;
+        }
         const auto expected_params = get_constructor_params(com, obj_type);
         node.token.assert_eq(node.args.size(), expected_params.size(), 
                              "bad number of arguments to constructor call");
@@ -829,10 +844,18 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
         push_value(code(com), op::push_u64, array_length(type));
     }
 
-    if (type.is_const && type.is_array()) {
-        return type.remove_array().add_const().add_span(); // propagate const into the span
+    if (type.is_array()) {
+        if (type.is_const) {
+            return type.remove_array().add_const().add_span();
+        }
+        return type.remove_array().add_span();
     }
-    return type.remove_array().add_span();
+    else {  // is span
+        if (type.is_const) {
+            return type.remove_span().add_const().add_span();
+        }
+        return type;
+    }
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_typeof_expr& node) -> type_name

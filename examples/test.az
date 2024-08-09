@@ -1,5 +1,0 @@
-
-let x := 10;
-var p := x&;
-
-print("__dump_type", x, p);
