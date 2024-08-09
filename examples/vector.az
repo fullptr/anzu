@@ -5,7 +5,7 @@ struct vector!(T)
     _data: T[];
     _size: u64;
 
-    fn to_span(self: vector!(T)&) -> T[]
+    fn to_span(self: vector!(T)&) -> T const[]
     {
         return self._data[0u : self._size];
     }
@@ -31,6 +31,11 @@ struct vector!(T)
     fn capacity(self: vector!(T) const&) -> u64
     {
         return self._data.size();
+    }
+
+    fn size(self: vector!(T) const&) -> u64
+    {
+        return self._size;
     }
 
     fn at(self: vector!(T) const&, index: u64) -> T
@@ -69,7 +74,8 @@ while idx < 20 {
 }
 
 let range := v.to_span();
-for a in v.to_span() {
+for a in range {
+    print("__dump_type", a);
     print("{}\n", a@);
 }
-print("{} {} {}\n", v.capacity(), v.size, a.size());
+print("{} {} {}\n", v.capacity(), v.size(), a.size());
