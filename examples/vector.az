@@ -75,7 +75,6 @@ while idx < 20 {
 
 let range := v.to_span();
 for a in range {
-    print("__dump_type", a);
     print("{}\n", a@);
 }
 print("{} {} {}\n", v.capacity(), v.size(), a.size());
