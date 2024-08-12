@@ -1,4 +1,6 @@
-var a := [1, 2, 3, 4];
-var s := a const[];
-var b := 6 const;
-print("__dump_type", s, b);
+
+
+
+let c := "c";
+var p := c&;
+print("{}\n", p@);

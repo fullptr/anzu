@@ -73,8 +73,7 @@ while idx < 20 {
     idx = idx + 1;
 }
 
-let range := v.to_span();
-for a in range {
+for a in v.to_span() {
     print("{}\n", a@);
 }
 print("{} {} {}\n", v.capacity(), v.size(), a.size());

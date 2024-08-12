@@ -1151,56 +1151,42 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
     const auto iter_type = push_expr(com, compile_type::val, *node.iter);
     node.token.assert(iter_type.is_span(), "can only iterate spans, got {}", iter_type);
-    declare_var(com, node.token, "#:iter", iter_type);
+    declare_var(com, node.token, "$iter", iter_type);
 
-    // idx := 0u;
+    // var idx := 0u;
     push_value(code(com), op::push_u64, std::uint64_t{0});
-    declare_var(com, node.token, "#:idx", u64_type());
+    declare_var(com, node.token, "__idx", u64_type());
 
-    // size := length of iter;
-    if (iter_type.is_array()) {
-        push_value(code(com), op::push_u64, array_length(iter_type));
-        declare_var(com, node.token, "#:size", u64_type());
-    } else {
-        node.token.assert(is_lvalue_expr(*node.iter), "for-loops only supported for lvalue spans");
-        push_expr(com, compile_type::ptr, *node.iter); // push pointer to span
-        push_value(code(com), op::push_u64, sizeof(std::byte*));
-        push_value(code(com), op::u64_add); // offset to the size value
-        push_value(code(com), op::load, com.types.size_of(u64_type()));       
-        declare_var(com, node.token, "#:size", u64_type());
-    }
+    // var size := length of iter;
+    push_var_addr(com, node.token, "$iter"); // push pointer to span
+    push_value(code(com), op::push_u64, sizeof(std::byte*));
+    push_value(code(com), op::u64_add); // offset to the size value
+    push_value(code(com), op::load, com.types.size_of(u64_type()));       
+    declare_var(com, node.token, "$size", u64_type());
 
     push_loop(com, [&] {
         // if idx == size break;
-        load_variable(com, node.token, "#:idx");
-        load_variable(com, node.token, "#:size");
-        push_value(code(com), op::u64_eq);
-        push_value(code(com), op::jump_if_false);
+        load_variable(com, node.token, "__idx");
+        load_variable(com, node.token, "$size");
+        push_value(code(com), op::u64_eq, op::jump_if_false);
         const auto jump_pos = push_value(code(com), std::uint64_t{0});
         push_break(com, node.token);
         write_value(code(com), jump_pos, code(com).size());
 
-        // name := iter[idx]~;
-        const auto iter_type = type_of_expr(com, *node.iter);
+        // var name := iter[idx]&;
         const auto inner = inner_type(iter_type);
-        if (is_rvalue_expr(*node.iter)) {
-            push_var_addr(com, node.token, "#:iter");
-        } else {
-            push_expr(com, compile_type::ptr, *node.iter);
-            if (iter_type.is_span()) {
-                push_value(code(com), op::load, sizeof(std::byte*));
-            }
-        }
-        load_variable(com, node.token, "#:idx");
+        push_var_addr(com, node.token, "$iter");
+        push_value(code(com), op::load, sizeof(std::byte*));  
+        load_variable(com, node.token, "__idx");
         push_value(code(com), op::push_u64, com.types.size_of(inner));
         push_value(code(com), op::u64_mul);
         push_value(code(com), op::u64_add);
         declare_var(com, node.token, node.name, inner.add_ptr());
 
         // idx = idx + 1;
-        load_variable(com, node.token, "#:idx");
+        load_variable(com, node.token, "__idx");
         push_value(code(com), op::push_u64, std::uint64_t{1}, op::u64_add);
-        save_variable(com, node.token, "#:idx");
+        save_variable(com, node.token, "__idx");
 
         // main body
         push_stmt(com, *node.body);
