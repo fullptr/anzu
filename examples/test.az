@@ -1,0 +1,4 @@
+
+for c in "hello world" {
+    print("{}\n", c@);
+}

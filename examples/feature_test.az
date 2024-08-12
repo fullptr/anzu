@@ -201,12 +201,8 @@ struct vec3
 # for loops
 # rvalue
 {
-    for v in [vec2(1, 2), vec2(3, 4), vec2(5, 6)] {
-        print("({}, {})\n", v.x, v.y);
-    }
-
     var arr := [vec2(1, 2), vec2(3, 4), vec2(5, 6)];
-    for v in arr {
+    for v in arr[] {
         print("({}, {})\n", v.x, v.y);
     }
 }
