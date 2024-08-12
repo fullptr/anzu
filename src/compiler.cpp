@@ -878,10 +878,13 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
 
 auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> type_name
 {
-    node.token.assert(ct == compile_type::val, "cannot take the address of a const expression");
     const auto type = type_of_expr(com, *node.expr);
-    node.token.assert(type.is_type_value(), "invalid use of a const-expr");
-    return type_type{inner_type(type).add_const()};
+    if (type.is_type_value()) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a const type-expression");
+        return type_type{inner_type(type).add_const()};
+    }
+
+    return push_expr(com, ct, *node.expr).add_const();
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> type_name
@@ -1132,12 +1135,12 @@ void push_stmt(compiler& com, const node_while_stmt& node)
 }
 
 //{
-//    <<create temporary var if iter is an rvalue>>
-//    idx = 0u;
-//    size := <<length of iter>>;
+//    var obj := <container>;
+//    var idx = 0u;
+//    var size := <<length of iter>>;
 //    loop {
 //        if idx == size break;
-//        name := iter[idx]~;
+//        var name := iter[idx]&;
 //        idx = idx + 1u;
 //        <body>
 //    }
@@ -1146,17 +1149,9 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 {
     variables(com).new_scope();
 
-    const auto iter_type = type_of_expr(com, *node.iter);
-
-    const auto is_array = iter_type.is_array();
-    const auto is_lvalue_span = iter_type.is_span() && is_lvalue_expr(*node.iter);
-    node.token.assert(is_array || is_lvalue_span, "for-loops only supported for arrays and lvalue spans");
-
-    // Need to create a temporary if we're using an rvalue
-    if (is_rvalue_expr(*node.iter)) {
-        push_expr(com, compile_type::val, *node.iter);
-        declare_var(com, node.token, "#:iter", iter_type);
-    }
+    const auto iter_type = push_expr(com, compile_type::val, *node.iter);
+    node.token.assert(iter_type.is_span(), "can only iterate spans, got {}", iter_type);
+    declare_var(com, node.token, "#:iter", iter_type);
 
     // idx := 0u;
     push_value(code(com), op::push_u64, std::uint64_t{0});
