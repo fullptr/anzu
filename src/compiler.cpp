@@ -1155,7 +1155,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
     // var idx := 0u;
     push_value(code(com), op::push_u64, std::uint64_t{0});
-    declare_var(com, node.token, "__idx", u64_type());
+    declare_var(com, node.token, "$idx", u64_type());
 
     // var size := length of iter;
     push_var_addr(com, node.token, "$iter"); // push pointer to span
@@ -1166,7 +1166,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
     push_loop(com, [&] {
         // if idx == size break;
-        load_variable(com, node.token, "__idx");
+        load_variable(com, node.token, "$idx");
         load_variable(com, node.token, "$size");
         push_value(code(com), op::u64_eq, op::jump_if_false);
         const auto jump_pos = push_value(code(com), std::uint64_t{0});
@@ -1177,16 +1177,15 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         const auto inner = inner_type(iter_type);
         push_var_addr(com, node.token, "$iter");
         push_value(code(com), op::load, sizeof(std::byte*));  
-        load_variable(com, node.token, "__idx");
+        load_variable(com, node.token, "$idx");
         push_value(code(com), op::push_u64, com.types.size_of(inner));
-        push_value(code(com), op::u64_mul);
-        push_value(code(com), op::u64_add);
+        push_value(code(com), op::u64_mul, op::u64_add);
         declare_var(com, node.token, node.name, inner.add_ptr());
 
         // idx = idx + 1;
-        load_variable(com, node.token, "__idx");
+        load_variable(com, node.token, "$idx");
         push_value(code(com), op::push_u64, std::uint64_t{1}, op::u64_add);
-        save_variable(com, node.token, "__idx");
+        save_variable(com, node.token, "$idx");
 
         // main body
         push_stmt(com, *node.body);
