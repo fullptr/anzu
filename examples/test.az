@@ -1,6 +1,4 @@
 
-
-
-let c := "c";
-var p := c&;
-print("{}\n", p@);
+for c in "hello world" {
+    print("{}\n", c@);
+}

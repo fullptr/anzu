@@ -2,14 +2,12 @@ var data := "()()(()()()(()()((()((()))((()((((()()((((()))()((((())(((((((()(((
 
 var count := 0;
 for c in data {
-    print("__dump_type", c);
-    print("{}\n", __idx);
     if c@ == '(' {
-        #count = count + 1;
+        count = count + 1;
     }
-    #else if c@ == ')' {
-    #    count = count - 1;
-    #}
+    else if c@ == ')' {
+        count = count - 1;
+    }
 }
 
-#print("{}", count);
+print("{}", count);

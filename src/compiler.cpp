@@ -1050,7 +1050,7 @@ auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> t
     const auto type = push_expr(com, compile_type::val, *node.expr); // Push the address
     node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
     if (ct == compile_type::val) {
-        push_value(code(com), op::load, com.types.size_of(type));
+        push_value(code(com), op::load, com.types.size_of(type.remove_ptr()));
     }
     return type.remove_ptr();
 }
