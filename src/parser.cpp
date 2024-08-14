@@ -308,6 +308,14 @@ auto parse_const(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_pt
     return node;
 }
 
+auto parse_const_pre(tokenstream& tokens) -> node_expr_ptr
+{
+    const auto token = tokens.consume_only(token_type::kw_const);
+    auto [node, inner] = new_node<node_const_expr>(token);
+    inner.expr = nullptr;
+    return node;
+}
+
 auto parse_at(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto token = tokens.consume_only(token_type::at);
@@ -321,6 +329,14 @@ auto parse_ampersand(tokenstream& tokens, const node_expr_ptr& left) -> node_exp
     const auto token = tokens.consume_only(token_type::ampersand);
     auto [node, inner] = new_node<node_addrof_expr>(token);
     inner.expr = left;
+    return node;
+}
+
+auto parse_ampersand_pre(tokenstream& tokens) -> node_expr_ptr
+{
+    const auto token = tokens.consume_only(token_type::ampersand);
+    auto [node, inner] = new_node<node_addrof_expr>(token);
+    inner.expr = nullptr;
     return node;
 }
 
@@ -378,9 +394,9 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_sizeof,           {parse_sizeof,   nullptr,         precedence::none}},
     {token_type::left_bracket,        {parse_array,    parse_subscript, precedence::call}},
     {token_type::dot,                 {nullptr,        parse_dot,       precedence::call}},
-    {token_type::kw_const,            {nullptr,        parse_const,     precedence::call}},
+    {token_type::kw_const,            {parse_const_pre, parse_const,     precedence::call}},
     {token_type::at,                  {nullptr,        parse_at,        precedence::call}},
-    {token_type::ampersand,           {nullptr,        parse_ampersand, precedence::call}},
+    {token_type::ampersand,           {parse_ampersand_pre, parse_ampersand, precedence::call}},
     {token_type::kw_function,         {parse_func_ptr, nullptr,         precedence::none}},
     {token_type::kw_new,              {parse_new,      nullptr,         precedence::none}}
 };
