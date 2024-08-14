@@ -338,6 +338,17 @@ auto parse_ampersand_pre(tokenstream& tokens) -> node_expr_ptr
     return parse_ampersand(tokens, nullptr);
 }
 
+auto parse_ternary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
+{
+    const auto token = tokens.consume_only(token_type::question);
+    auto [node, inner] = new_node<node_ternary_expr>(token);
+    inner.condition = left;
+    inner.true_case = parse_expression(tokens);
+    tokens.consume_only(token_type::colon);
+    inner.false_case = parse_expression(tokens);
+    return node;
+}
+
 auto parse_precedence(tokenstream& tokens, precedence prec) -> node_expr_ptr
 {
     const auto token = tokens.curr();
@@ -396,7 +407,8 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::at,                  {nullptr,             parse_at,        precedence::call}},
     {token_type::ampersand,           {parse_ampersand_pre, parse_ampersand, precedence::call}},
     {token_type::kw_function,         {parse_func_ptr,      nullptr,         precedence::none}},
-    {token_type::kw_new,              {parse_new,           nullptr,         precedence::none}}
+    {token_type::kw_new,              {parse_new,           nullptr,         precedence::none}},
+    {token_type::question,            {nullptr,             parse_ternary,   precedence::ternary}}
 };
 
 auto get_rule(token_type tt) -> const parse_rule*
@@ -408,7 +420,7 @@ auto get_rule(token_type tt) -> const parse_rule*
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 {
-    return parse_precedence(tokens, precedence::logical_or);
+    return parse_precedence(tokens, precedence::ternary);
 }
 
 auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;

@@ -35,10 +35,7 @@ struct vector!(T)
     {
         let cap := self.capacity();
         if self._size == cap {
-            var new_cap := 8u;
-            if cap > 0u {
-                new_cap = cap * 2u;
-            }
+            let new_cap := cap > 0u ? cap * 2u : 8u;
             self.reserve(new_cap);
         }
         self._data[self._size] = value;

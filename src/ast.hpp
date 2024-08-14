@@ -192,6 +192,15 @@ struct node_new_expr
     anzu::token   token;
 };
 
+struct node_ternary_expr
+{
+    node_expr_ptr condition;
+    node_expr_ptr true_case;
+    node_expr_ptr false_case;
+
+    anzu::token   token;
+};
+
 struct node_expr : std::variant<
     node_literal_i32_expr,
     node_literal_i64_expr,
@@ -217,7 +226,8 @@ struct node_expr : std::variant<
     node_field_expr,
     node_deref_expr,
     node_subscript_expr,
-    node_new_expr>
+    node_new_expr,
+    node_ternary_expr>
 {
 };
 
