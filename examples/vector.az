@@ -28,7 +28,7 @@ struct vector!(T)
         }
     }
 
-    fn capacity(self: const&) -> u64
+    fn capacity(self: &) -> u64
     {
         return self._data.size();
     }
