@@ -80,7 +80,8 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::less:                return "<";        
         case token_type::minus:               return "-";        
         case token_type::percent:             return "%";        
-        case token_type::plus:                return "+";        
+        case token_type::plus:                return "+";
+        case token_type::question:            return "?";      
         case token_type::right_brace:         return "}";        
         case token_type::right_bracket:       return "]";        
         case token_type::right_paren:         return ")";        

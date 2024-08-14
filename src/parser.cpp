@@ -16,6 +16,7 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
 
 enum class precedence {
   none,
+  ternary,     // ?:
   logical_or,  // or
   logical_and, // and
   equality,    // == !=
