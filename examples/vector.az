@@ -51,7 +51,6 @@ fn new_vector!(T)(arr: arena&) -> vector!(T)
 
 arena a;
 var v := new_vector!(i64)(a&);
-v.reserve(25u);
 var idx := 0;
 while idx < 20 {
     v.push(idx);
