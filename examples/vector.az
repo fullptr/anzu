@@ -12,9 +12,8 @@ struct vector!(T)
 
     fn reserve(self: &, size: u64) -> null
     {
-        let cap := self.capacity();
-        if cap < size {
-            self._data := new(self._arr, size, self._data) T();
+        if size > self.capacity() {
+            self._data = new(self._arr, size, self._data) T();
         }
     }
 

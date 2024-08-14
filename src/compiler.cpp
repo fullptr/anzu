@@ -900,7 +900,18 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
     node.token.assert(ct == compile_type::val, "cannot take the address of a new expression");
     const auto type = push_expr(com, compile_type::val, *node.expr); // first push new object to stack
     const auto type_size = com.types.size_of(type);
-    if (node.count) { // we are allocating a span
+    if (node.original) { // we are reallocating a span
+        const auto count = push_expr(com, compile_type::val, *node.count);
+        node.token.assert_eq(count, u64_type(), "wrong type for span size when allocating");
+        const auto arena = push_expr(com, compile_type::val, *node.arena);
+        const auto arena_stripped = auto_deref_pointer(com, arena); // can pass by value or pointer
+        const auto orig = push_expr(com, compile_type::val, *node.original);
+        node.token.assert(orig.is_span(), "original must be a span");
+        node.token.assert_eq(orig.remove_span(), type, "original array and new array type mismatch");
+        push_value(code(com), op::arena_realloc_array, type_size);
+        return type.add_span();
+    }
+    else if (node.count) { // we are allocating a span
         const auto count = push_expr(com, compile_type::val, *node.count);
         node.token.assert_eq(count, u64_type(), "wrong type for span size when allocating");
         const auto arena = push_expr(com, compile_type::val, *node.arena);
