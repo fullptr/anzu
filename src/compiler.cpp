@@ -670,9 +670,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         for (std::size_t i = 0; i != node.args.size(); ++i) {
             push_copy_typechecked(com, *node.args.at(i), expected_params[i], node.token);
         }
-        if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
-            push_value(code(com), op::push_null);
-        }
         return obj_type;
     }
     else if (type.is_function_ptr()) { // function call
