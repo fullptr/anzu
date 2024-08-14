@@ -924,7 +924,9 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     if (com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
         const auto& ast = com.function_templates.at(full_name_no_templates);
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
+        com.current_struct.emplace_back(global_namespace, template_map{});
         compile_function(com, node.token, full_name, ast.sig, ast.body, map);
+        com.current_struct.pop_back();
     }
 
     // Next, it might be a template type
