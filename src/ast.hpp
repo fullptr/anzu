@@ -186,6 +186,7 @@ struct node_new_expr
 {
     node_expr_ptr arena;
     node_expr_ptr count;
+    node_expr_ptr original;
     node_expr_ptr expr;
 
     anzu::token   token;

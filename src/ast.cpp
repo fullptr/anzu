@@ -145,6 +145,10 @@ auto print_node(const node_expr& root, int indent) -> void
             print_node(*node.arena);
             std::print("{}- Count:\n", spaces);
             print_node(*node.count);
+            if (node.original) {
+                std::print("{}- Original:\n", spaces);
+                print_node(*node.expr);
+            }
             std::print("{}- Expr:\n", spaces);
             print_node(*node.expr);
         }

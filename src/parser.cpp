@@ -225,6 +225,9 @@ auto parse_new(tokenstream& tokens) -> node_expr_ptr
     if (tokens.consume_maybe(token_type::comma)) {
         inner.count = parse_expression(tokens);
     }
+    if (tokens.consume_maybe(token_type::comma)) {
+        inner.original = parse_expression(tokens);
+    }
     tokens.consume_only(token_type::right_paren);
     inner.expr = parse_expression(tokens);
     return node;

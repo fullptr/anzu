@@ -14,17 +14,7 @@ struct vector!(T)
     {
         let cap := self.capacity();
         if cap < size {
-            var new_buf := new(self._arr, size) T();
-            
-            # Copy existing values over
-            {
-                var idx := 0u;
-                while idx < self._size {
-                    new_buf[idx] = self._data[idx];
-                    idx = idx + 1u;
-                }
-            }
-            self._data = new_buf;
+            self._data := new(self._arr, size, self._data) T();
         }
     }
 
