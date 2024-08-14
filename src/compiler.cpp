@@ -1119,7 +1119,28 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
 
 auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) -> type_name
 {
-    return null_type();
+    node.token.assert(ct == compile_type::val, "cannot take the address of a ternary expression");
+
+    const auto type = type_of_expr(com, *node.true_case);
+    node.token.assert_eq(type_of_expr(com, *node.false_case), type, "mismatched types in ternary");
+
+    const auto cond_type = push_expr(com, compile_type::val, *node.condition);
+    node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
+
+    push_value(code(com), op::jump_if_false);
+    const auto jump_pos = push_value(code(com), std::uint64_t{0});
+    push_expr(com, ct, *node.true_case);
+
+    if (node.false_case) {
+        push_value(code(com), op::jump);
+        const auto else_pos = push_value(code(com), std::uint64_t{0});
+        const auto in_else_pos = code(com).size();
+        push_expr(com, ct, *node.false_case);
+        write_value(code(com), jump_pos, in_else_pos); // Jump into the else block if false
+        write_value(code(com), else_pos, code(com).size()); // Jump past the end if false
+    }
+
+    return type;
 }
 
 
