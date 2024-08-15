@@ -670,9 +670,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         for (std::size_t i = 0; i != node.args.size(); ++i) {
             push_copy_typechecked(com, *node.args.at(i), expected_params[i], node.token);
         }
-        if (node.args.size() == 0) { // if the class has no data, it needs to be size 1
-            push_value(code(com), op::push_null);
-        }
         return obj_type;
     }
     else if (type.is_function_ptr()) { // function call
@@ -900,7 +897,18 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
     node.token.assert(ct == compile_type::val, "cannot take the address of a new expression");
     const auto type = push_expr(com, compile_type::val, *node.expr); // first push new object to stack
     const auto type_size = com.types.size_of(type);
-    if (node.count) { // we are allocating a span
+    if (node.original) { // we are reallocating a span
+        const auto count = push_expr(com, compile_type::val, *node.count);
+        node.token.assert_eq(count, u64_type(), "wrong type for span size when allocating");
+        const auto arena = push_expr(com, compile_type::val, *node.arena);
+        const auto arena_stripped = auto_deref_pointer(com, arena); // can pass by value or pointer
+        const auto orig = push_expr(com, compile_type::val, *node.original);
+        node.token.assert(orig.is_span(), "original must be a span");
+        node.token.assert_eq(orig.remove_span(), type, "original array and new array type mismatch");
+        push_value(code(com), op::arena_realloc_array, type_size);
+        return type.add_span();
+    }
+    else if (node.count) { // we are allocating a span
         const auto count = push_expr(com, compile_type::val, *node.count);
         node.token.assert_eq(count, u64_type(), "wrong type for span size when allocating");
         const auto arena = push_expr(com, compile_type::val, *node.arena);
@@ -1104,6 +1112,28 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
     const auto t = push_expr(com, compile_type::ptr, node);
     push_value(code(com), op::load, com.types.size_of(t));
     return t;
+}
+
+auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) -> type_name
+{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a ternary expression");
+
+    const auto type = type_of_expr(com, *node.true_case);
+    node.token.assert_eq(type_of_expr(com, *node.false_case), type, "mismatched types in ternary");
+
+    const auto cond_type = push_expr(com, compile_type::val, *node.condition);
+    node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
+
+    push_value(code(com), op::jump_if_false);
+    const auto jump_pos = push_value(code(com), std::uint64_t{0});
+    push_expr(com, ct, *node.true_case);
+    push_value(code(com), op::jump);
+    const auto else_pos = push_value(code(com), std::uint64_t{0});
+    const auto in_else_pos = code(com).size();
+    push_expr(com, ct, *node.false_case);
+    write_value(code(com), jump_pos, in_else_pos); // Jump into the else block if false
+    write_value(code(com), else_pos, code(com).size()); // Jump past the end if false
+    return type;
 }
 
 

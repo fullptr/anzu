@@ -77,19 +77,22 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             std::print("PUSH_FUNCTION_PTR: id={}\n", id);
         } break;
         case op::arena_new: {
-            std::print("NEW_ARENA\n");
+            std::print("ARENA_NEW\n");
         } break;
         case op::arena_delete: {
-            std::print("DELETE_ARENA\n");
+            std::print("ARENA_DELETE\n");
         } break;
         case op::arena_alloc: {
             const auto size = read_at<std::uint64_t>(&ptr);
-            std::print("ALLOCATE: size={}\n", size);
+            std::print("ARENA_ALLOC: size={}\n", size);
         } break;
         case op::arena_alloc_array: {
             const auto size = read_at<std::uint64_t>(&ptr);
-            const auto count = read_at<std::uint64_t>(&ptr);
-            std::print("ALLOCATE: size={} count={}\n", size, count);
+            std::print("ARENA_ALLOC_ARRAY: size={}\n", size);
+        } break;
+        case op::arena_realloc_array: {
+            const auto size = read_at<std::uint64_t>(&ptr);
+            std::print("ARENA_REALLOC_ARRAY: size={}\n", size);
         } break;
         case op::arena_size: {
             std::print("ARENA_SIZE\n");

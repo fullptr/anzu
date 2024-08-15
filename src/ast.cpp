@@ -142,11 +142,24 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_new_expr& node) {
             std::print("{}New:\n", spaces);
             std::print("{}- Arena:\n", spaces);
-            print_node(*node.arena);
+            print_node(*node.arena, indent + 1);
             std::print("{}- Count:\n", spaces);
-            print_node(*node.count);
+            print_node(*node.count, indent + 1);
+            if (node.original) {
+                std::print("{}- Original:\n", spaces);
+                print_node(*node.expr, indent + 1);
+            }
             std::print("{}- Expr:\n", spaces);
-            print_node(*node.expr);
+            print_node(*node.expr, indent + 1);
+        },
+        [&](const node_ternary_expr& node) {
+            std::print("{}Ternary:\n", spaces);
+            std::print("{}- Condition:\n", spaces);
+            print_node(*node.condition, indent + 1);
+            std::print("{}- TrueCase:\n", spaces);
+            print_node(*node.true_case, indent + 1);
+            std::print("{}- FalseCase:\n", spaces);
+            print_node(*node.false_case, indent + 1);
         }
     }, root);
 }

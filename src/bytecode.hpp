@@ -43,6 +43,7 @@ enum class op : std::uint8_t
     arena_delete,
     arena_alloc,
     arena_alloc_array,
+    arena_realloc_array,
     arena_size,
     
     load,

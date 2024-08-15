@@ -228,6 +228,7 @@ auto lexer::get_token() -> token
         case ';': return make_token(token_type::semicolon);
         case ',': return make_token(token_type::comma);
         case '.': return make_token(token_type::dot);
+        case '?': return make_token(token_type::question);
         case '-': return make_token(
             match(">") ? token_type::arrow : token_type::minus);
         case '+': return make_token(token_type::plus);

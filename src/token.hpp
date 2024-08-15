@@ -69,6 +69,7 @@ enum class token_type
     minus,
     percent,
     plus,
+    question,
     right_brace,
     right_bracket,
     right_paren,

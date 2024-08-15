@@ -186,7 +186,17 @@ struct node_new_expr
 {
     node_expr_ptr arena;
     node_expr_ptr count;
+    node_expr_ptr original;
     node_expr_ptr expr;
+
+    anzu::token   token;
+};
+
+struct node_ternary_expr
+{
+    node_expr_ptr condition;
+    node_expr_ptr true_case;
+    node_expr_ptr false_case;
 
     anzu::token   token;
 };
@@ -216,7 +226,8 @@ struct node_expr : std::variant<
     node_field_expr,
     node_deref_expr,
     node_subscript_expr,
-    node_new_expr>
+    node_new_expr,
+    node_ternary_expr>
 {
 };
 

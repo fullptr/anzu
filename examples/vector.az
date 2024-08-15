@@ -12,20 +12,8 @@ struct vector!(T)
 
     fn reserve(self: &, size: u64) -> null
     {
-        let cap := self.capacity();
-        if cap < size {
-            var new_buf := new(self._arr, size) T();
-            
-            # Copy existing values over
-            {
-                var idx := 0u;
-                while idx < self._size {
-                    new_buf[idx] = self._data[idx];
-                    idx = idx + 1u;
-                }
-            }
-            self._data = new_buf;
-        }
+        assert(size > self.capacity());
+        self._data = new(self._arr, size, self._data) T();
     }
 
     fn capacity(self: &) -> u64
@@ -47,10 +35,7 @@ struct vector!(T)
     {
         let cap := self.capacity();
         if self._size == cap {
-            var new_cap := 8u;
-            if cap > 0u {
-                new_cap = cap * 2u;
-            }
+            let new_cap := cap > 0u ? cap * 2u : 8u;
             self.reserve(new_cap);
         }
         self._data[self._size] = value;
@@ -66,7 +51,6 @@ fn new_vector!(T)(arr: arena&) -> vector!(T)
 
 arena a;
 var v := new_vector!(i64)(a&);
-v.reserve(25u);
 var idx := 0;
 while idx < 20 {
     v.push(idx);

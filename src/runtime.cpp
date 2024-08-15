@@ -142,6 +142,29 @@ auto apply_op(bytecode_context& ctx) -> bool
             ctx.stack.push(data); // push the span (ptr + count)
             ctx.stack.push(count);
         } break;
+        case op::arena_realloc_array: {
+            const auto type_size = read_advance<std::uint64_t>(ctx);
+            const auto old_count = ctx.stack.pop<std::uint64_t>(); // this is the 
+            const auto old_data = ctx.stack.pop<std::byte*>();     // pushed span
+            auto arena = ctx.stack.pop<memory_arena*>();
+            const auto new_count = ctx.stack.pop<std::uint64_t>();
+            const auto size = type_size * new_count;
+            if (new_count <= old_count) {
+                runtime_error("invalid use of new, can only realloc to grow, old={} new={}", old_count, new_count);
+            }
+            if (arena->next + size > arena->data.size()) {
+                runtime_error("arena overflow");
+            }
+            const auto new_data = &arena->data[arena->next];
+            std::memcpy(new_data, old_data, type_size * old_count);
+            for (size_t i = old_count; i != new_count; ++i) {
+                ctx.stack.save(new_data + i * type_size, type_size);
+            }
+            ctx.stack.pop_n(type_size);
+            arena->next += size;
+            ctx.stack.push(new_data); // push the span (ptr + count)
+            ctx.stack.push(new_count);
+        } break;
         case op::arena_size: {
             auto arena = ctx.stack.pop<memory_arena*>();
             ctx.stack.push(arena->next);
