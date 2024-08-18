@@ -349,18 +349,6 @@ auto compile_function(
 )
     -> void
 {
-    const auto struct_name = com.current_struct.back().name;
-
-    // member function - so check first argument is a pointer to an instance of the class
-    if (struct_name != global_namespace) {
-        tok.assert(node_sig.params.size() > 0, "member functions must have at least one arg");
-        const auto actual = resolve_type(com, tok, node_sig.params[0].type);
-        const auto expected = struct_name.add_const().add_ptr().add_const();
-        
-        const auto message = "first parameter to a struct member function must be a pointer to '{}', got '{}'";
-        tok.assert(const_convertable_to(tok, actual, expected), message, struct_name, actual);
-    }
-
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
     com.functions.emplace_back(full_name, id, variable_manager{true});
@@ -1007,7 +995,19 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
-    node.token.assert(!type.is_type_value(), "fields of objects cannot currently by types");
+    
+    // If the expression is a type, allow for accessing the functions
+    if (type.is_type_value()) {
+        const auto full_name = fn_name(com, node.token, inner_type(type), node.field_name);
+        if (auto info = get_function(com, full_name); info.has_value()) {
+            node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
+            push_value(code(com), op::push_u64, info->id);
+            return type_function_ptr{ .param_types = info->sig.params, .return_type = info->sig.return_type };   
+        }
+        else {
+            node.token.error("can only access member functions from structs");
+        }
+    }
     
     const auto stripped = strip_pointers(type);
 
@@ -1030,6 +1030,14 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (stripped.is_const && !info->sig.params[0].remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
+
+        // check first argument is a pointer to an instance of the class
+        node.token.assert(info->sig.params.size() > 0, "member functions must have at least one arg");
+        const auto actual = info->sig.params[0];
+        const auto expected = stripped.add_const().add_ptr().add_const();
+        const auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped);
+        
         return type_bound_method{
             .param_types = info->sig.params,
             .return_type = info->sig.return_type,
