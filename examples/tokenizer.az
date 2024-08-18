@@ -1,0 +1,50 @@
+
+struct tokenizer
+{
+    string: char const[];
+    delim: char;
+    start: u64;
+    curr: u64;
+
+    fn advance(self: &) -> null
+    {
+        # we are at the last word, so "advance" just invalidates the tokenizer
+        if self.curr == self.string.size() {
+            self.start = self.curr;
+            return;
+        }
+
+        # if we are not at the first word, we need to update the start location
+        if self.curr > 0u {
+            self.curr = self.curr + 1u;
+            self.start = self.curr;
+        }
+
+        while self.curr < self.string.size() && self.string[self.curr] != self.delim {
+            self.curr = self.curr + 1u;
+        }
+    }
+
+    fn valid(self: const&) -> bool
+    {
+        return self.start != self.string.size();
+    }
+
+    fn current(self: const&) -> char const[]
+    {
+        return self.string[self.start : self.curr];
+    }
+}
+
+fn new_tokenizer(input: char const[], delim: char) -> tokenizer
+{
+    return tokenizer(input, delim, 0u, 0u);
+}
+
+let input := "my test string has six words";
+var tok := new_tokenizer(input, ' ');
+while true {
+    tok.advance();
+    if !tok.valid() break;
+    print("{}\n", tok.current());
+}
