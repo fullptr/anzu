@@ -998,7 +998,17 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     // If the expression is a type, allow for accessing the functions
     if (type.is_type_value()) {
-        const auto full_name = fn_name(com, node.token, inner_type(type), node.field_name);
+        // Check if it is a function that needs compiling
+        const auto full_name_no_templates = fn_name(com, node.token, inner_type(type), node.field_name);
+        const auto full_name = fn_name(com, node.token, inner_type(type), node.field_name, node.templates);
+        if (com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
+            const auto ast = com.function_templates.at(full_name_no_templates);
+            com.current_struct.emplace_back(inner_type(type), com.types.templates_of(inner_type(type)));
+            const auto map = build_template_map(com, node.token, ast.templates, node.templates);
+            compile_function(com, node.token, full_name, ast.sig, ast.body, map);
+            com.current_struct.pop_back();
+        }
+
         if (auto info = get_function(com, full_name); info.has_value()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
             push_value(code(com), op::push_u64, info->id);
