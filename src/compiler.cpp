@@ -1009,14 +1009,11 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             com.current_struct.pop_back();
         }
 
-        if (auto info = get_function(com, full_name); info.has_value()) {
-            node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
-            push_value(code(com), op::push_u64, info->id);
-            return type_function_ptr{ .param_types = info->sig.params, .return_type = info->sig.return_type };   
-        }
-        else {
-            node.token.error("can only access member functions from structs");
-        }
+        node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
+        auto info = get_function(com, full_name);
+        node.token.assert(info.has_value(), "can only access member functions from structs");
+        push_value(code(com), op::push_u64, info->id);
+        return type_function_ptr{ .param_types = info->sig.params, .return_type = info->sig.return_type };   
     }
     
     const auto stripped = strip_pointers(type);

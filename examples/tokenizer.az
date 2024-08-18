@@ -47,8 +47,7 @@ struct tokenizer
 let input := "my test string has six words";
 
 var tok := tokenizer.create(input, ' ');
-let x := tokenizer.current;
 while tok.valid() {
-    print("{}\n", x(tok&));
+    print("{}\n", tok.current());
     tok.advance();
 }
