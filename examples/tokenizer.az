@@ -34,18 +34,19 @@ struct tokenizer
     {
         return self._string[self._start : self._curr];
     }
+
+    fn create(input: char const[], delim: char) -> tokenizer
+    {
+        var t := tokenizer(input, delim, 0u, 0u);
+        t.advance(); # prime the tokenizer at the first word
+        return t;
+    }
 }
 
-fn new_tokenizer(input: char const[], delim: char) -> tokenizer
-{
-    var t := tokenizer(input, delim, 0u, 0u);
-    t.advance(); # prime the tokenizer at the first word
-    return t;
-}
 
 let input := "my test string has six words";
 
-var tok := new_tokenizer(input, ' ');
+var tok := tokenizer.create(input, ' ');
 while tok.valid() {
     print("{}\n", tok.current());
     tok.advance();

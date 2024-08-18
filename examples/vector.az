@@ -41,16 +41,17 @@ struct vector!(T)
         self._data[self._size] = value;
         self._size = self._size + 1u;
     }
+
+    fn create(arr: arena&) -> vector!(T)
+    {
+        return vector!(T)(arr, nullptr, 0u);
+    }
 }
 
-fn new_vector!(T)(arr: arena&) -> vector!(T)
-{
-    return vector!(T)(arr, nullptr, 0u);
-}
 
 
 arena a;
-var v := new_vector!(i64)(a&);
+var v := vector!(i64).create(a&);
 var idx := 0;
 while idx < 20 {
     v.push(idx);
