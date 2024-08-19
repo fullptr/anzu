@@ -1348,27 +1348,8 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
     const auto path = std::filesystem::absolute(node.filepath);
     std::print("compiling {}\n", path.string());
     const auto mod = parse(path);
-
-    // Third, compile it just like all the other modules
-    // TODO: Check how globals in other modules are handled; we will call the modules
-    // $main function like any other function, but it should act specially like the 
-    // entry $main function
-    const auto module_main = std::format("<{}>.$main", path.string());
-    const auto module_id = com.functions.size();
-    com.functions.emplace_back(module_main, module_id, variable_manager{false});
-
-    com.current_function.emplace_back(module_id, template_map{});
-    com.current_struct.emplace_back(global_namespace, template_map{});
-    com.current_module.emplace_back("");
-    variables(com).new_scope();
+    
     push_stmt(com, *mod.root);
-    variables(com).pop_scope(code(com));
-    com.current_module.pop_back();
-    com.current_struct.pop_back();
-    com.current_function.pop_back();
-
-    // Lastly, call the modules $main to set up any global variables and run any logic
-    push_value(code(com), op::push_function_ptr, module_id, op::call, std::size_t{0});
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)

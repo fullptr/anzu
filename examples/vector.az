@@ -47,18 +47,3 @@ struct vector!(T)
         return vector!(T)(arr, nullptr, 0u);
     }
 }
-
-
-
-arena a;
-var v := vector!(i64).create(a&);
-var idx := 0;
-while idx < 20 {
-    v.push(idx);
-    idx = idx + 1;
-}
-
-for a in v.to_span() {
-    print("{}\n", a@);
-}
-print("{} {} {}\n", v.capacity(), v.size(), a.size());
