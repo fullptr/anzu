@@ -1339,7 +1339,7 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
     // First, check for circuluar dependencies; we should not already be in the process of
     // compiling this module
     for (const auto& m : com.current_module) {
-        if (m == node.name) {
+        if (m == node.filepath) {
             node.token.error("circular dependencey detected");
         }
     }
@@ -1348,8 +1348,10 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
     const auto path = std::filesystem::absolute(node.filepath);
     std::print("compiling {}\n", path.string());
     const auto mod = parse(path);
-    
+
+    com.current_module.push_back(node.filepath);
     push_stmt(com, *mod.root);
+    com.current_module.pop_back();
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
