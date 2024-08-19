@@ -1,13 +1,11 @@
 
 
-module vec := "lib/vector.az";
+module vec := "lib/tokenizer.az";
 
-arena a;
+let input := "my test string has six words";
 
-var v := vec.vector!(i64).create(a&);
-var idx := 0;
-while idx < 10 {
-    v.push(idx);
-    idx = idx + 1;
+var tok := tokenizer.create(input, ' ');
+while tok.valid() {
+    print("{}\n", tok.current());
+    tok.advance();
 }
-print("here size={} capacity={}\n", v.size(), v.capacity());
