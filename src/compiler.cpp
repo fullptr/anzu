@@ -1339,16 +1339,16 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
     // First, check for circuluar dependencies; we should not already be in the process of
     // compiling this module
     for (const auto& m : com.current_module) {
-        if (m == node.filepath) {
-            node.token.error("circular dependencey detected");
-        }
+        node.token.assert(m.filepath != node.filepath, "circular dependencey detected");
     }
 
     // Second, parse the module into its AST
     const auto path = std::filesystem::absolute(node.filepath);
     const auto mod = parse(path);
 
-    com.current_module.push_back(node.filepath);
+    com.current_module.back().imports[node.name] = node.filepath;
+
+    com.current_module.emplace_back(node.filepath, module_map{});
     push_stmt(com, *mod.root);
     com.current_module.pop_back();
 }
@@ -1458,7 +1458,7 @@ auto compile(const anzu_module& ast) -> bytecode_program
 
     com.current_function.emplace_back(0, template_map{});
     com.current_struct.emplace_back(global_namespace, template_map{});
-    com.current_module.emplace_back("");
+    com.current_module.emplace_back("__main__", module_map{});
     variables(com).new_scope();
     push_stmt(com, *ast.root);
     variables(com).pop_scope(code(com));

@@ -111,6 +111,8 @@
         "typeindex": "cpp",
         "valarray": "cpp",
         "semaphore": "cpp",
-        "resumable": "cpp"
+        "resumable": "cpp",
+        "stacktrace": "cpp",
+        "stdfloat": "cpp"
     }
 }
