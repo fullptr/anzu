@@ -1,7 +1,7 @@
 # tests all language features, here is a comment
 
 # importing a module
-module io := "std/io.az"; # for "read_file"
+module io := "lib/io.az"; # for "read_file"
 
 # declaring immutable variables
 {
