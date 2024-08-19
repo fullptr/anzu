@@ -1,0 +1,7 @@
+fn read_file(filename: char const[], a: arena&) -> char const[]
+{
+    let f := fopen(filename, "rb");
+    let contents := fread(f, a);
+    fclose(f);
+    return contents;
+}

@@ -1,6 +1,6 @@
 
 
-module vec := "examples/vector.az";
+module vec := "std/vector.az";
 
 arena a;
 

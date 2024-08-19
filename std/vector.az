@@ -1,4 +1,3 @@
-
 struct vector!(T)
 {
     _arr: arena&;
