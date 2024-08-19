@@ -238,8 +238,10 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.expr, indent + 1);
         },
         [&](const node_arena_declaration_stmt& node) {
-            std::print("{}ArenaDeclaration:\n", spaces);
-            std::print("{}- Name: {}\n", spaces, node.name);
+            std::print("{}ArenaDeclaration: {}\n", spaces, node.name);
+        },
+        [&](const node_module_declaration_stmt& node) {
+            std::print("{}ModuleDeclaration: {}\n", spaces, node.name);
         },
         [&](const node_assignment_stmt& node) {
             std::print("{}Assignment:\n", spaces);

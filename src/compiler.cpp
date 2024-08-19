@@ -1333,6 +1333,11 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
     declare_var(com, node.token, node.name, type);
 }
 
+auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
+{
+    // TODO: implement
+}
+
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto lhs_type = type_of_expr(com, *node.position);
