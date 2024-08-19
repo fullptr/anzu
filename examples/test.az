@@ -1,1 +1,3 @@
-module std := "examples/vector.az";
+
+
+module vec := "examples/vector.az";
