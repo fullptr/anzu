@@ -1,2 +1,3 @@
+let std := module("examples/vector.az");
 
 let x := module.type.func(10);
