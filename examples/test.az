@@ -1,3 +1,2 @@
 
-let x := 2 + 2 == 4 ? "hello" : "world";
-print("{}\n", x);
+let x := module.type.func(10);

@@ -101,6 +101,12 @@ struct type_type
     auto operator==(const type_type&) const -> bool = default;
 };
 
+struct type_module
+{
+    std::string name;
+    auto operator==(const type_module&) const -> bool = default;
+};
+
 
 struct type_name : public std::variant<
     type_fundamental,
@@ -113,7 +119,8 @@ struct type_name : public std::variant<
     type_bound_method,
     type_bound_builtin_method,
     type_arena,
-    type_type>
+    type_type,
+    type_module>
 {
     using variant::variant;
     
@@ -143,6 +150,7 @@ struct type_name : public std::variant<
     [[nodiscard]] auto is_arena() const -> bool;
 
     [[nodiscard]] auto is_type_value() const -> bool;
+    [[nodiscard]] auto is_module_value() const -> bool;
 };
 
 auto hash(const type_name& type) -> std::size_t;
@@ -157,6 +165,7 @@ auto hash(const type_bound_method& type) -> std::size_t;
 auto hash(const type_bound_builtin_method& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_type& type) -> std::size_t;
+auto hash(const type_module& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
 using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
 
@@ -193,6 +202,7 @@ auto to_string(const type_bound_method& type) -> std::string;
 auto to_string(const type_bound_builtin_method& type) -> std::string;
 auto to_string(const type_arena& type) -> std::string;
 auto to_string(const type_type& type) -> std::string;
+auto to_string(const type_module& type) -> std::string;
 
 }
 

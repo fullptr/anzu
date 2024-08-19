@@ -130,18 +130,24 @@ auto to_string(const type_bound_method& type) -> std::string
 
 auto to_string(const type_bound_builtin_method& type) -> std::string
 {
-    return std::format("<bound builtin method: {}::{}>", type.name, *type.type);
+    return std::format("<bound builtin method: {}.{}>", type.name, *type.type);
 }
 
 auto to_string(const type_arena& type) -> std::string
 {
-    return std::string{"arena"};
+    return std::string{"<arena>"};
 }
 
 auto to_string(const type_type& type) -> std::string
 {
-    return std::format("type-expression ({})", *type.type_val);
+    return std::format("<type-expression: {}>", *type.type_val);
 }
+
+auto to_string(const type_module& type) -> std::string
+{
+    return std::format("<module: {}>", type.name);
+}
+
 
 auto hash(const type_name& type) -> std::size_t
 {
@@ -213,6 +219,11 @@ auto hash(const type_arena& type) -> std::size_t
 auto hash(const type_type& type) -> std::size_t
 {
     return hash(*type.type_val) ^ std::hash<std::string_view>{}("type_type");
+}
+
+auto hash(const type_module& type) -> std::size_t
+{
+    return std::hash<std::string>{}(type.name) ^ std::hash<std::string_view>{}("type_module");
 }
 
 auto hash(std::span<const type_name> types) -> std::size_t
@@ -336,6 +347,11 @@ auto type_name::is_arena() const -> bool
 auto type_name::is_type_value() const -> bool
 {
     return std::holds_alternative<type_type>(*this);
+}
+
+auto type_name::is_module_value() const -> bool
+{
+    return std::holds_alternative<type_module>(*this);
 }
 
 auto inner_type(const type_name& t) -> type_name

@@ -768,7 +768,7 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
         return type_type{inner_type(type).add_ptr()};
     }
     if (com.types.size_of(type) == 0) {
-        node.token.error("cannot take address of a type of size 0");
+        node.token.error("cannot take address of a type of size 0 (type={})", type);
     }
     push_expr(com, compile_type::ptr, *node.expr);
     return type.add_ptr();

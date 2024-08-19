@@ -28,7 +28,8 @@ auto type_manager::contains(const type_name& type) const -> bool
         [&](const type_bound_method&)         { return true; },
         [&](const type_bound_builtin_method&) { return true; },
         [&](const type_arena&)                { return true; },
-        [&](const type_type& t)               { return contains(*t.type_val); }
+        [&](const type_type& t)               { return contains(*t.type_val); },
+        [&](const type_module&)               { return true; }
     }, type);
 }
 
@@ -87,9 +88,11 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         [](const type_arena& arena) {
             return sizeof(std::byte*); // the runtime will store the arena separately
         },
-        [&](const type_type&) {
-            panic("tried to get the size of type: {}", type);
-            return sizeof(void*);
+        [](const type_type&) {
+            return std::size_t{0}; 
+        },
+        [](const type_module&) {
+            return std::size_t{0}; 
         }
     }, type);
 }
