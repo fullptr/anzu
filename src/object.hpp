@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <span>
+#include <filesystem>
 #include <utility>
 
 #include "utility/common.hpp"
@@ -103,7 +104,7 @@ struct type_type
 
 struct type_module
 {
-    std::string name;
+    std::filesystem::path filepath;
     auto operator==(const type_module&) const -> bool = default;
 };
 

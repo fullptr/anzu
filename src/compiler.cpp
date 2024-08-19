@@ -923,8 +923,8 @@ void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
     // Firstly, it may be a module
-    if (com.modules.contains(node.name)) {
-        return type_module{node.name};
+    if (com.current_module.back().imports.contains(node.name)) {
+        return type_module{com.current_module.back().imports[node.name]};
     }
 
     // Next, check if it is a function that needs compiling (does val/ptr matter?)
@@ -1001,6 +1001,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
+
+    // If the expression is a module, allow for accessing global variables, functions and structs
+    if (type.is_module_value()) {
+        node.token.error("cannot access fields on {}", type);
+    }
     
     // If the expression is a type, allow for accessing the functions
     if (type.is_type_value()) {

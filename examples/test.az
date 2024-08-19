@@ -1,10 +1,10 @@
 
 
-module vec := "std/vector.az";
+module vec := "lib/vector.az";
 
 arena a;
 
-var v := vector!(i64).create(a&);
+var v := vec.vector!(i64).create(a&);
 var idx := 0;
 while idx < 10 {
     v.push(idx);

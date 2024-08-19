@@ -145,7 +145,7 @@ auto to_string(const type_type& type) -> std::string
 
 auto to_string(const type_module& type) -> std::string
 {
-    return std::format("<module: {}>", type.name);
+    return std::format("<module: {}>", type.filepath.string());
 }
 
 
@@ -223,7 +223,7 @@ auto hash(const type_type& type) -> std::size_t
 
 auto hash(const type_module& type) -> std::size_t
 {
-    return std::hash<std::string>{}(type.name) ^ std::hash<std::string_view>{}("type_module");
+    return std::hash<std::string>{}(type.filepath.string()) ^ std::hash<std::string_view>{}("type_module");
 }
 
 auto hash(std::span<const type_name> types) -> std::size_t
