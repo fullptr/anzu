@@ -679,7 +679,6 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::kw_let:
         case token_type::kw_var:      return parse_declaration_stmt(tokens);
         case token_type::kw_arena:    return parse_arena_declaration_stmt(tokens);
-        case token_type::kw_module:   return parse_module_declaration_stmt(tokens);
         case token_type::kw_print:    return parse_print_stmt(tokens);
     }
 
@@ -710,6 +709,7 @@ auto parse_top_level_statement(tokenstream& tokens) -> node_stmt_ptr
     switch (curr.type) {
         case token_type::kw_function: return parse_function_def_stmt(tokens);
         case token_type::kw_struct:   return parse_struct_stmt(tokens);
+        case token_type::kw_module:   return parse_module_declaration_stmt(tokens);
         default:                      return parse_statement(tokens);
     }
 }

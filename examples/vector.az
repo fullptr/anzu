@@ -1,4 +1,4 @@
-module vec := "examples/test.az";
+
 struct vector!(T)
 {
     _arr: arena&;
