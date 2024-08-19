@@ -59,6 +59,7 @@ struct compiler
 
     std::vector<struct_info> current_struct;
     std::vector<func_info>   current_function;
+    std::vector<std::string> current_module;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

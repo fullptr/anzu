@@ -914,6 +914,7 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 
 // TODO: Reorder the lookups, variables should probably be first
 // A name can represent the following
+//  - a module name
 //  - a variable name
 //  - a function name
 //  - a builtin function name
@@ -1335,7 +1336,7 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 
 auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
 {
-    // TODO: implement
+    com.current_module.emplace_back(node.name);
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
@@ -1443,9 +1444,11 @@ auto compile(const anzu_module& ast) -> bytecode_program
 
     com.current_function.emplace_back(0, template_map{});
     com.current_struct.emplace_back(global_namespace, template_map{});
+    com.current_module.emplace_back("");
     variables(com).new_scope();
     push_stmt(com, *ast.root);
     variables(com).pop_scope(code(com));
+    com.current_module.pop_back();
     com.current_struct.pop_back();
     com.current_function.pop_back();
 
