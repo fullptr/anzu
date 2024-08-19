@@ -589,6 +589,17 @@ auto parse_arena_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     return node;
 }
 
+auto parse_module_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
+{
+    auto node = std::make_shared<node_stmt>();
+    auto& stmt = node->emplace<node_module_declaration_stmt>();
+    stmt.token = tokens.consume();
+    stmt.name = parse_identifier(tokens);
+    tokens.consume_only(token_type::colon_equal);
+    stmt.filepath = tokens.consume_only(token_type::string).text;
+    return node;
+}
+
 auto parse_print_stmt(tokenstream& tokens) -> node_stmt_ptr
 {
     auto node = std::make_shared<node_stmt>();
@@ -668,6 +679,7 @@ auto parse_statement(tokenstream& tokens) -> node_stmt_ptr
         case token_type::kw_let:
         case token_type::kw_var:      return parse_declaration_stmt(tokens);
         case token_type::kw_arena:    return parse_arena_declaration_stmt(tokens);
+        case token_type::kw_module:   return parse_module_declaration_stmt(tokens);
         case token_type::kw_print:    return parse_print_stmt(tokens);
     }
 

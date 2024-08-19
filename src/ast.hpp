@@ -322,6 +322,7 @@ struct node_arena_declaration_stmt
 struct node_module_declaration_stmt
 {
     std::string name;
+    std::string filepath;
     anzu::token token;
 };
 

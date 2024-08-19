@@ -241,7 +241,9 @@ auto print_node(const node_stmt& root, int indent) -> void
             std::print("{}ArenaDeclaration: {}\n", spaces, node.name);
         },
         [&](const node_module_declaration_stmt& node) {
-            std::print("{}ModuleDeclaration: {}\n", spaces, node.name);
+            std::print("{}ModuleDeclaration:\n", spaces);
+            std::print("{}- Name: {}\n", spaces, node.name);
+            std::print("{}- File: {}\n", spaces, node.filepath);
         },
         [&](const node_assignment_stmt& node) {
             std::print("{}Assignment:\n", spaces);
