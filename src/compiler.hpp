@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace anzu {
 
@@ -48,6 +49,8 @@ struct compiler
     std::string           rom;
 
     type_manager types;
+
+    std::unordered_set<std::string> modules;
 
     std::unordered_map<std::string, std::size_t> functions_by_name;
     

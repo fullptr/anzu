@@ -921,7 +921,12 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
-    // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
+    // Firstly, it may be a module
+    if (com.modules.contains(node.name)) {
+        return type_module{node.name};
+    }
+
+    // Next, check if it is a function that needs compiling (does val/ptr matter?)
     const auto full_name_no_templates = fn_name(com, node.token, global_namespace, node.name);
     const auto full_name = fn_name(com, node.token, global_namespace, node.name, node.templates);
     
