@@ -47,7 +47,7 @@ auto curr_module(compiler& com) -> const std::filesystem::path&
     return com.current_module.back().filepath;
 }
 
-static const auto global_namespace = type_name{type_struct{""}};
+static const auto no_struct = type_name{type_struct{""}};
 enum class compile_type { val, ptr };
 
 auto push_expr(compiler& com, compile_type ct, const node_expr& node) -> type_name;
@@ -116,7 +116,7 @@ auto fn_name(
     -> std::string
 {
     auto name = std::string{};
-    if (struct_name != global_namespace) {
+    if (struct_name != no_struct) {
         name += std::format("{}.", struct_name.remove_const());
     }
     name += function_name;
@@ -766,7 +766,7 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of an addrof expression");
     if (!node.expr) {
-        node.token.assert(com.current_struct.back().name != global_namespace, "TODO: add message");
+        node.token.assert(com.current_struct.back().name != no_struct, "TODO: add message");
         return type_type{com.current_struct.back().name.add_ptr()};
     }
     const auto type = type_of_expr(com, *node.expr);
@@ -874,7 +874,7 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
 auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> type_name
 {
     if (!node.expr) {
-        node.token.assert(com.current_struct.back().name != global_namespace, "TODO: add message");
+        node.token.assert(com.current_struct.back().name != no_struct, "TODO: add message");
         return type_type{com.current_struct.back().name.add_const()};
     }
     const auto type = type_of_expr(com, *node.expr);
@@ -928,19 +928,25 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
+    print_node(node_expr{node});
     // Firstly, it may be a module
     if (com.current_module.back().imports.contains(node.name)) {
         return type_module{com.current_module.back().imports[node.name]};
     }
 
     // Next, check if it is a function that needs compiling (does val/ptr matter?)
-    const auto full_name_no_templates = fn_name(com, node.token, global_namespace, node.name);
-    const auto full_name = fn_name(com, node.token, global_namespace, node.name, node.templates);
+    const auto full_name_no_templates = fn_name(com, node.token, no_struct, node.name);
+    const auto full_name = fn_name(com, node.token, no_struct, node.name, node.templates);
     
-    if (com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto& ast = com.function_templates.at(full_name_no_templates);
+    const auto fkey = template_function_type{
+        .name = node.name,
+        .module = curr_module(com),
+        .struct_name = no_struct
+    };
+    if (com.function_templates.contains(fkey) && !get_function(com, full_name)) {
+        const auto& ast = com.function_templates.at(fkey);
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
-        com.current_struct.emplace_back(global_namespace, template_map{});
+        com.current_struct.emplace_back(no_struct, template_map{});
         compile_function(com, node.token, full_name, ast.sig, ast.body, map);
         com.current_struct.pop_back();
     }
@@ -1007,7 +1013,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Otherwise, it must be a variable
-    node.token.assert(node.templates.empty(), "variables cannot be templated ({})", node.name);
+    node.token.assert(node.templates.empty(), "variables cannot be templated ({}) {}", node.name, struct_type);
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, node.name);
     }
@@ -1030,8 +1036,10 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto struct_type = type_name{type_struct{
             .name=node.field_name, .module=info.filepath, .templates=templates
         }};
-        const auto key = template_struct_type{node.field_name,info.filepath};
+        const auto key = template_struct_type{node.field_name, info.filepath};
+
         if (com.struct_templates.contains(key) && !com.types.contains(struct_type)) {
+            com.current_module.emplace_back(info.filepath);
             const auto& ast = com.struct_templates.at(key);
 
             auto map = build_template_map(com, node.token, ast.templates, node.templates);
@@ -1052,6 +1060,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             }
 
             com.current_struct.pop_back();
+            com.current_module.pop_back();
             return type_type{struct_type};
         }
         if (com.types.contains(struct_type)) {
@@ -1063,11 +1072,17 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     // If the expression is a type, allow for accessing the functions
     if (type.is_type_value()) {
+        const auto& inner = inner_type(type);
         // Check if it is a function that needs compiling
         const auto full_name_no_templates = fn_name(com, node.token, inner_type(type), node.field_name);
         const auto full_name = fn_name(com, node.token, inner_type(type), node.field_name, node.templates);
-        if (com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-            const auto ast = com.function_templates.at(full_name_no_templates);
+        const auto fkey = template_function_type{
+            .name=node.field_name,
+            .module=curr_module(com),
+            .struct_name = inner
+        };
+        if (com.function_templates.contains(fkey) && !get_function(com, full_name)) {
+            const auto ast = com.function_templates.at(fkey);
             com.current_struct.emplace_back(inner_type(type), com.types.templates_of(inner_type(type)));
             const auto map = build_template_map(com, node.token, ast.templates, node.templates);
             compile_function(com, node.token, full_name, ast.sig, ast.body, map);
@@ -1086,8 +1101,13 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     // Check if it is a function that needs compiling
     const auto full_name_no_templates = fn_name(com, node.token, stripped, node.field_name);
     const auto full_name = fn_name(com, node.token, stripped, node.field_name, node.templates);
-    if (com.function_templates.contains(full_name_no_templates) && !get_function(com, full_name)) {
-        const auto ast = com.function_templates.at(full_name_no_templates);
+    const auto fkey = template_function_type{
+        .name=node.field_name,
+        .module=curr_module(com),
+        .struct_name = stripped
+    };
+    if (com.function_templates.contains(fkey) && !get_function(com, full_name)) {
+        const auto ast = com.function_templates.at(fkey);
         com.current_struct.emplace_back(stripped, com.types.templates_of(stripped));
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
         compile_function(com, node.token, full_name, ast.sig, ast.body, map);
@@ -1338,8 +1358,10 @@ void push_stmt(compiler& com, const node_if_stmt& node)
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     if (!node.templates.empty()) {
-        const auto [it, success] = com.struct_templates.emplace(node.name, node);
-        node.token.assert(success, "struct template named '{}' already defined", node.name);
+        const auto key = template_struct_type{node.name, curr_module(com)};
+        const auto [it, success] = com.struct_templates.emplace(key, node);
+        node.token.assert(success, "struct template named '<{}>.{}' already defined", curr_module(com).string(), node.name);
+        std::print("stashed away ast for '<{}>.{}'\n", curr_module(com).string(), node.name);
         return;
     }
 
@@ -1416,12 +1438,14 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
 
     // We must unwrap the sequence statement like this since we do no want to introduce a new
     // scope while compiling this, otherwise all the variables will get popped after.
+    std::print("compiling {}\n", node.filepath);
     node.token.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");
     for (const auto& node : std::get<node_sequence_stmt>(*mod.root).sequence) {
         push_stmt(com, *node);
     }
     com.current_module.pop_back();
     com.modules.emplace(node.filepath);
+    std::print("finished compiling {}\n", node.filepath);
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
@@ -1528,7 +1552,7 @@ auto compile(const anzu_module& ast) -> bytecode_program
     com.functions.emplace_back("$main", 0, variable_manager{false});
 
     com.current_function.emplace_back(0, template_map{});
-    com.current_struct.emplace_back(global_namespace, template_map{});
+    com.current_struct.emplace_back(no_struct, template_map{});
     com.current_module.emplace_back("__main__", module_map{});
     variables(com).new_scope();
     push_stmt(com, *ast.root);

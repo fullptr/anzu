@@ -50,7 +50,6 @@ struct module_info
     module_map            imports;
 };
 
-// Represents a struct template
 struct template_struct_type
 {
     std::string name;
@@ -59,6 +58,18 @@ struct template_struct_type
 };
 using template_struct_type_hash = decltype([](const template_struct_type& x) {
     return std::hash<std::string>{}(x.name) ^ std::hash<std::string>{}(x.module.string());
+});
+
+struct template_function_type
+{
+    std::string name;
+    std::filesystem::path module;
+    type_name struct_name;
+    auto operator==(const template_function_type&) const -> bool = default;
+};
+using template_function_type_hash = decltype([](const template_function_type& x) {
+    return std::hash<std::string>{}(x.name) ^ std::hash<std::string>{}(x.module.string())
+        ^ anzu::hash(x.struct_name);
 });
 
 struct compiler
@@ -72,7 +83,7 @@ struct compiler
 
     std::unordered_map<std::string, std::size_t> functions_by_name;
     
-    std::unordered_map<std::string, node_function_stmt> function_templates;
+    std::unordered_map<template_function_type, node_function_stmt, template_function_type_hash> function_templates;
     std::unordered_map<template_struct_type, node_struct_stmt, template_struct_type_hash> struct_templates;
 
     std::vector<struct_info> current_struct;
