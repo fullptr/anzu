@@ -78,7 +78,7 @@ auto to_string(type_fundamental t) -> std::string
 
 auto to_string(const type_struct& type) -> std::string
 {
-    return type.name;
+    return std::format("<{}>.{}", type.module.string(), type.name);
 }
 
 auto to_string(const type_array& type) -> std::string

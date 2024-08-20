@@ -68,7 +68,8 @@ auto make_type(compiler& com, const std::string& name) -> type_name
     if (name == "f64") return  type_name(type_fundamental::f64_type);
     if (name == "nullptr") return type_name(type_fundamental::nullptr_type);
     if (name == "arena") return type_name(type_arena{});
-    return type_struct{ .name=name };
+    return type_struct{ .name=name, .module=com.current_module.back().filepath };
+    //return type_struct{ .name=name };
 }
 
 // If the given expression results in a type expression, return the inner type.
@@ -1004,6 +1005,11 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
     // If the expression is a module, allow for accessing global variables, functions and structs
     if (type.is_module_value()) {
+        const auto& info = std::get<type_module>(type);
+        const auto struct_name = type_name{type_struct{ .name = node.field_name, .module = info.filepath }};
+        if (com.types.contains(struct_name)) {
+            return type_type{struct_name};
+        }
         node.token.error("cannot access fields on {}", type);
     }
     
@@ -1290,6 +1296,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     }
 
     const auto struct_name = make_type(com, node.name);
+    std::print("created {}\n", struct_name);
     const auto message = std::format("type '{}' already defined", node.name);
     node.token.assert(!com.types.contains(struct_name), "{}", message);
     node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);

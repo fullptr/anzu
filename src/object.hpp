@@ -34,7 +34,8 @@ enum class type_fundamental : std::uint8_t
 
 struct type_struct
 {
-    std::string name;
+    std::string           name;
+    std::filesystem::path module;
     auto operator==(const type_struct&) const -> bool = default;
 };
 
