@@ -1,6 +1,6 @@
-module tk := "lib/tokenizer.az";
+module tk    := "lib/tokenizer.az";
+module vec   := "lib/vector.az";
 module other := "examples/module.az";
-module vec := "lib/vector.az";
 
 let input := "my test string has six words";
 var tok := tk.tokenizer.create(input, ' ');

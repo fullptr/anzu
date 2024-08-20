@@ -78,7 +78,11 @@ auto to_string(type_fundamental t) -> std::string
 
 auto to_string(const type_struct& type) -> std::string
 {
-    return std::format("<{}>.{}", type.module.string(), type.name);
+    if (!type.templates.empty()) {
+        return std::format("<{}>.{}!({})", type.module.string(), type.name, format_comma_separated(type.templates));
+    } else {
+        return std::format("<{}>.{}", type.module.string(), type.name);
+    }
 }
 
 auto to_string(const type_array& type) -> std::string

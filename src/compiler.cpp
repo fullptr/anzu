@@ -42,6 +42,11 @@ auto globals(compiler& com) -> variable_manager& {
     return com.functions.front().variables;
 }
 
+auto curr_module(compiler& com) -> const std::filesystem::path&
+{
+    return com.current_module.back().filepath;
+}
+
 static const auto global_namespace = type_name{type_struct{""}};
 enum class compile_type { val, ptr };
 
@@ -68,7 +73,7 @@ auto make_type(compiler& com, const std::string& name) -> type_name
     if (name == "f64") return  type_name(type_fundamental::f64_type);
     if (name == "nullptr") return type_name(type_fundamental::nullptr_type);
     if (name == "arena") return type_name(type_arena{});
-    return type_struct{ .name=name, .module=com.current_module.back().filepath };
+    return type_struct{ .name=name, .module=curr_module(com) };
     //return type_struct{ .name=name };
 }
 
@@ -941,21 +946,28 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Next, it might be a template type
-    const auto name = struct_name(com, node.token, node.name, node.templates);
-    if (com.struct_templates.contains(node.name) && !com.types.contains(name)) {
-        const auto& ast = com.struct_templates.at(node.name);
+    auto templates = std::vector<type_name>{};
+    for (const auto& expr : node.templates) {
+        templates.push_back(resolve_type(com, node.token, expr));
+    }
+    const auto struct_type = type_name{type_struct{
+        .name=node.name, .module=curr_module(com), .templates=templates
+    }};
+    const auto key = template_struct_type{node.name, curr_module(com)};
+    if (com.struct_templates.contains(key) && !com.types.contains(struct_type)) {
+        const auto& ast = com.struct_templates.at(key);
 
         auto map = build_template_map(com, node.token, ast.templates, node.templates);
-        com.current_struct.emplace_back(name, map);
+        com.current_struct.emplace_back(struct_type, map);
         auto fields = std::vector<type_field>{};
         for (const auto& p : ast.fields) {
             fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
         }
-        com.types.add(name, fields, map);
+        com.types.add(struct_type, fields, map);
 
         for (const auto& func : ast.functions) {
             const auto& stmt = std::get<node_function_stmt>(*func);
-            const auto func_name = fn_name(com, node.token, name, stmt.name);
+            const auto func_name = fn_name(com, node.token, struct_type, stmt.name);
 
             // Template functions only get compiled at the call site, so we just stash the ast
             const auto [it, success] = com.function_templates.emplace(func_name, stmt);
@@ -963,7 +975,19 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         }
 
         com.current_struct.pop_back();
-        return type_type{name};
+        return type_type{struct_type};
+    }
+
+    // The name might be a struct type
+    if (com.types.contains(struct_type)) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a type");
+        return type_type{struct_type};
+    }
+
+    // It might be a fundamental type
+    if (com.types.contains(make_type(com, node.name))) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a type");
+        return type_type{make_type(com, node.name)};
     }
 
     // The name might be a function
@@ -980,12 +1004,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         return type_builtin{
             .name = func->name, .id = func->id, .args = func->args, .return_type = func->return_type
         };
-    }
-
-    // The name might be a type
-    if (com.types.contains(name)) {
-        node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        return type_type{name};
     }
 
     // Otherwise, it must be a variable
@@ -1006,11 +1024,41 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     // If the expression is a module, allow for accessing global variables, functions and structs
     if (type.is_module_value()) {
         const auto& info = std::get<type_module>(type);
-        const auto struct_name = type_name{type_struct{ .name = node.field_name, .module = info.filepath }};
-        if (com.types.contains(struct_name)) {
-            return type_type{struct_name};
+
+        auto templates = std::vector<type_name>{};
+        for (const auto& expr : node.templates) { templates.push_back(resolve_type(com, node.token, expr)); }
+        const auto struct_type = type_name{type_struct{
+            .name=node.field_name, .module=info.filepath, .templates=templates
+        }};
+        const auto key = template_struct_type{node.field_name,info.filepath};
+        if (com.struct_templates.contains(key) && !com.types.contains(struct_type)) {
+            const auto& ast = com.struct_templates.at(key);
+
+            auto map = build_template_map(com, node.token, ast.templates, node.templates);
+            com.current_struct.emplace_back(struct_type, map);
+            auto fields = std::vector<type_field>{};
+            for (const auto& p : ast.fields) {
+                fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
+            }
+            com.types.add(struct_type, fields, map);
+
+            for (const auto& func : ast.functions) {
+                const auto& stmt = std::get<node_function_stmt>(*func);
+                const auto func_name = fn_name(com, node.token, struct_type, stmt.name);
+
+                // Template functions only get compiled at the call site, so we just stash the ast
+                const auto [it, success] = com.function_templates.emplace(func_name, stmt);
+                node.token.assert(success, "function template named '{}' already defined", func_name);
+            }
+
+            com.current_struct.pop_back();
+            return type_type{struct_type};
         }
-        node.token.error("cannot access fields on {}", type);
+        if (com.types.contains(struct_type)) {
+            return type_type{struct_type};
+        }
+        std::print("types does not contain {}\n", struct_type);
+        node.token.error("cannot access field {} on {}", node.field_name, type);
     }
     
     // If the expression is a type, allow for accessing the functions
@@ -1307,7 +1355,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
         fields.emplace_back(p.name, resolve_type(com, node.token, p.type));
     }
 
-    com.types.add(make_type(com, node.name), fields);
+    com.types.add(struct_name, fields);
     for (const auto& function : node.functions) {
         push_stmt(com, *function);
     }
