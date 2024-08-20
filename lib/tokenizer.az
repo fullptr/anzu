@@ -1,4 +1,3 @@
-
 struct tokenizer
 {
     _string: char const[];
@@ -41,13 +40,4 @@ struct tokenizer
         t.advance(); # prime the tokenizer at the first word
         return t;
     }
-}
-
-
-let input := "my test string has six words";
-
-var tok := tokenizer.create(input, ' ');
-while tok.valid() {
-    print("{}\n", tok.current());
-    tok.advance();
 }

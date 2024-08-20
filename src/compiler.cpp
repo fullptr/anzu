@@ -111,7 +111,7 @@ auto fn_name(
 {
     auto name = std::string{};
     if (struct_name != global_namespace) {
-        name += std::format("{}::", struct_name.remove_const());
+        name += std::format("{}.", struct_name.remove_const());
     }
     name += function_name;
 
@@ -768,7 +768,7 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
         return type_type{inner_type(type).add_ptr()};
     }
     if (com.types.size_of(type) == 0) {
-        node.token.error("cannot take address of a type of size 0");
+        node.token.error("cannot take address of a type of size 0 (type={})", type);
     }
     push_expr(com, compile_type::ptr, *node.expr);
     return type.add_ptr();
@@ -914,6 +914,7 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 
 // TODO: Reorder the lookups, variables should probably be first
 // A name can represent the following
+//  - a module name
 //  - a variable name
 //  - a function name
 //  - a builtin function name
@@ -921,7 +922,12 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
-    // Firstly, check if it is a function that needs compiling (does val/ptr matter?)
+    // Firstly, it may be a module
+    if (com.current_module.back().imports.contains(node.name)) {
+        return type_module{com.current_module.back().imports[node.name]};
+    }
+
+    // Next, check if it is a function that needs compiling (does val/ptr matter?)
     const auto full_name_no_templates = fn_name(com, node.token, global_namespace, node.name);
     const auto full_name = fn_name(com, node.token, global_namespace, node.name, node.templates);
     
@@ -995,6 +1001,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
     const auto type = type_of_expr(com, *node.expr);
+
+    // If the expression is a module, allow for accessing global variables, functions and structs
+    if (type.is_module_value()) {
+        node.token.error("cannot access fields on {}", type);
+    }
     
     // If the expression is a type, allow for accessing the functions
     if (type.is_type_value()) {
@@ -1328,6 +1339,30 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
     declare_var(com, node.token, node.name, type);
 }
 
+auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
+{
+    if (com.modules.contains(node.filepath)) {
+        return; // already compiled, can skip
+    }
+    
+    // First, check for circuluar dependencies; we should not already be in the process of
+    // compiling this module
+    for (const auto& m : com.current_module) {
+        node.token.assert(m.filepath != node.filepath, "circular dependencey detected");
+    }
+
+    // Second, parse the module into its AST
+    const auto path = std::filesystem::absolute(node.filepath);
+    const auto mod = parse(path);
+
+    com.current_module.back().imports[node.name] = node.filepath;
+
+    com.current_module.emplace_back(node.filepath, module_map{});
+    push_stmt(com, *mod.root);
+    com.current_module.pop_back();
+    com.modules.emplace(node.filepath);
+}
+
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
     const auto lhs_type = type_of_expr(com, *node.position);
@@ -1433,9 +1468,11 @@ auto compile(const anzu_module& ast) -> bytecode_program
 
     com.current_function.emplace_back(0, template_map{});
     com.current_struct.emplace_back(global_namespace, template_map{});
+    com.current_module.emplace_back("__main__", module_map{});
     variables(com).new_scope();
     push_stmt(com, *ast.root);
     variables(com).pop_scope(code(com));
+    com.current_module.pop_back();
     com.current_struct.pop_back();
     com.current_function.pop_back();
 
