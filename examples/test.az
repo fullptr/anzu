@@ -4,9 +4,10 @@ module vec := "lib/vector.az";
 arena a;
 var v := vec.vector!(i64).create(a&);
 
-let x := 0;
+var x := 0;
 while x < 10 {
     v.push(x);
+    x = x + 1;
 }
 
 for val in v.to_span() {

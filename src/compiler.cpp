@@ -363,6 +363,7 @@ auto compile_function(
 )
     -> void
 {
+    std::print("compiling {}\n", full_name);
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
     com.functions.emplace_back(full_name, id, variable_manager{true});
@@ -1119,22 +1120,26 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
     
     const auto stripped = strip_pointers(type);
+    std::print("stripped = {}\n", stripped);
     const auto struct_name = std::holds_alternative<type_struct>(stripped)
                            ? std::get<type_struct>(stripped)
                            : no_struct;
+
 
     // Check if it is a function that needs compiling
     const auto full_name = fn_name(com, node.token, struct_name.module, struct_name, node.field_name, node.templates);
     const auto fkey = template_function_type{
         .name=node.field_name,
-        .module=curr_module(com),
+        .module=struct_name.module,
         .struct_name = stripped
     };
     if (com.function_templates.contains(fkey) && !get_function(com, full_name)) {
         const auto ast = com.function_templates.at(fkey);
         com.current_struct.emplace_back(stripped, com.types.templates_of(stripped));
+        com.current_module.emplace_back(struct_name.module);
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
         compile_function(com, node.token, full_name, ast.sig, ast.body, map);
+        com.current_module.pop_back();
         com.current_struct.pop_back();
     }
 
