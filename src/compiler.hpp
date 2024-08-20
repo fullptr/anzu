@@ -72,6 +72,11 @@ using template_function_type_hash = decltype([](const template_function_type& x)
         ^ anzu::hash(x.struct_name);
 });
 
+struct function_key
+{
+    type_struct struct_type;
+};
+
 struct compiler
 {
     std::vector<function> functions;

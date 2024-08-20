@@ -47,7 +47,7 @@ auto curr_module(compiler& com) -> const std::filesystem::path&
     return com.current_module.back().filepath;
 }
 
-static const auto no_struct = type_name{type_struct{""}};
+static const auto no_struct = type_struct{""};
 enum class compile_type { val, ptr };
 
 auto push_expr(compiler& com, compile_type ct, const node_expr& node) -> type_name;
@@ -109,15 +109,24 @@ auto struct_name(
 auto fn_name(
     compiler& com,
     const token& tok,
-    const std::filesystem::path& module_name, 
-    const std::string& struct_name,
+    const std::filesystem::path& module,
+    const type_struct& struct_info,
     const std::string& function_name,
     const std::vector<node_expr_ptr>& template_args = {}
 )
     -> std::string
 {
-    auto name = std::format("<{}>.{}.{}", module_name.string(), struct_name, function_name);
-
+    if (struct_info != no_struct) {
+        tok.assert_eq(module.string(), struct_info.module.string(), "mismatched module and struct type");
+    }
+    auto name = std::format("<{}>", module.string());
+    if (struct_info != no_struct) {
+        name += std::format(".{}", struct_info.name);
+        if (!struct_info.templates.empty()) {
+            name += std::format("!({})", format_comma_separated(struct_info.templates));
+        }
+    }
+    name += std::format(".{}", function_name);
     if (!template_args.empty()) {
         const auto template_args_string = format_comma_separated(
             template_args, [&](const node_expr_ptr& n) { return resolve_type(com, tok, n); }
@@ -763,7 +772,7 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of an addrof expression");
     if (!node.expr) {
-        node.token.assert(com.current_struct.back().name != no_struct, "TODO: add message");
+        node.token.assert(com.current_struct.back().name != type_name{no_struct}, "TODO: add message");
         return type_type{com.current_struct.back().name.add_ptr()};
     }
     const auto type = type_of_expr(com, *node.expr);
@@ -871,7 +880,7 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
 auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> type_name
 {
     if (!node.expr) {
-        node.token.assert(com.current_struct.back().name != no_struct, "TODO: add message");
+        node.token.assert(com.current_struct.back().name != type_name{no_struct}, "TODO: add message");
         return type_type{com.current_struct.back().name.add_const()};
     }
     const auto type = type_of_expr(com, *node.expr);
@@ -931,8 +940,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Next, check if it is a function that needs compiling (does val/ptr matter?)
-    const auto full_name_no_templates = fn_name(com, node.token, curr_module(com), "", node.name);
-    const auto full_name = fn_name(com, node.token, curr_module(com), "", node.name, node.templates);
+    const auto full_name_no_templates = fn_name(com, node.token, curr_module(com), no_struct, node.name);
+    const auto full_name = fn_name(com, node.token, curr_module(com), no_struct, node.name, node.templates);
     
     const auto fkey = template_function_type{
         .name = node.name,
@@ -969,7 +978,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 
         for (const auto& func : ast.functions) {
             const auto& stmt = std::get<node_function_stmt>(*func);
-            const auto func_name = fn_name(com, node.token, curr_module(com), node.name, stmt.name);
+            const auto func_name = fn_name(com, node.token, curr_module(com), std::get<type_struct>(struct_type), stmt.name);
 
             const auto fkey = template_function_type{
                 .name=stmt.name,
@@ -1053,7 +1062,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
             for (const auto& func : ast.functions) {
                 const auto& stmt = std::get<node_function_stmt>(*func);
-                const auto func_name = fn_name(com, node.token, info.filepath, node.field_name, stmt.name);
+                const auto func_name = fn_name(com, node.token, info.filepath, std::get<type_struct>(struct_type), stmt.name);
 
                 const auto fkey = template_function_type{
                     .name=stmt.name,
@@ -1083,7 +1092,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto& struct_info = std::get<type_struct>(inner);
          
         // Check if it is a function that needs compiling
-        const auto full_name = fn_name(com, node.token, struct_info.module, struct_info.name, node.field_name, node.templates);
+        const auto full_name = fn_name(com, node.token, struct_info.module, struct_info, node.field_name, node.templates);
         const auto fkey = template_function_type{
             .name=node.field_name,
             .module= struct_info.module,
@@ -1106,17 +1115,12 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
     
     const auto stripped = strip_pointers(type);
-    const auto struct_name_str = std::holds_alternative<type_struct>(stripped)
-                               ? std::get<type_struct>(stripped).name
-                               : std::string{};
-
-    // TODO; is this needed?
-    const auto struct_module_str = std::holds_alternative<type_struct>(stripped)
-                                 ? std::get<type_struct>(stripped).module
-                                 : curr_module(com);
+    const auto struct_name = std::holds_alternative<type_struct>(stripped)
+                           ? std::get<type_struct>(stripped)
+                           : no_struct;
 
     // Check if it is a function that needs compiling
-    const auto full_name = fn_name(com, node.token, curr_module(com), struct_name_str, node.field_name, node.templates);
+    const auto full_name = fn_name(com, node.token, struct_name.module, struct_name, node.field_name, node.templates);
     const auto fkey = template_function_type{
         .name=node.field_name,
         .module=curr_module(com),
@@ -1482,7 +1486,7 @@ void push_stmt(compiler& com, const node_function_stmt& node)
     const auto struct_name = com.current_struct.back().name;
     node.token.assert(std::holds_alternative<type_struct>(struct_name), "expected a struct, got {}\n", struct_name);
     const auto& info = std::get<type_struct>(struct_name);
-    const auto function_name = fn_name(com, node.token, info.module, info.name, node.name);
+    const auto function_name = fn_name(com, node.token, info.module, info, node.name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
