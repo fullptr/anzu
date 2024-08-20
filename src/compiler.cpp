@@ -109,17 +109,14 @@ auto struct_name(
 auto fn_name(
     compiler& com,
     const token& tok,
-    const type_name& struct_name,
+    const std::filesystem::path& module_name, 
+    const std::string& struct_name,
     const std::string& function_name,
     const std::vector<node_expr_ptr>& template_args = {}
 )
     -> std::string
 {
-    auto name = std::string{};
-    if (struct_name != no_struct) {
-        name += std::format("{}.", struct_name.remove_const());
-    }
-    name += function_name;
+    auto name = std::format("<{}>.{}.{}", module_name.string(), struct_name, function_name);
 
     if (!template_args.empty()) {
         const auto template_args_string = format_comma_separated(
@@ -928,15 +925,14 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
-    print_node(node_expr{node});
     // Firstly, it may be a module
     if (com.current_module.back().imports.contains(node.name)) {
         return type_module{com.current_module.back().imports[node.name]};
     }
 
     // Next, check if it is a function that needs compiling (does val/ptr matter?)
-    const auto full_name_no_templates = fn_name(com, node.token, no_struct, node.name);
-    const auto full_name = fn_name(com, node.token, no_struct, node.name, node.templates);
+    const auto full_name_no_templates = fn_name(com, node.token, curr_module(com), "", node.name);
+    const auto full_name = fn_name(com, node.token, curr_module(com), "", node.name, node.templates);
     
     const auto fkey = template_function_type{
         .name = node.name,
@@ -973,10 +969,15 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 
         for (const auto& func : ast.functions) {
             const auto& stmt = std::get<node_function_stmt>(*func);
-            const auto func_name = fn_name(com, node.token, struct_type, stmt.name);
+            const auto func_name = fn_name(com, node.token, curr_module(com), node.name, stmt.name);
 
+            const auto fkey = template_function_type{
+                .name=stmt.name,
+                .module=curr_module(com),
+                .struct_name=struct_type
+            };
             // Template functions only get compiled at the call site, so we just stash the ast
-            const auto [it, success] = com.function_templates.emplace(func_name, stmt);
+            const auto [it, success] = com.function_templates.emplace(fkey, stmt);
             node.token.assert(success, "function template named '{}' already defined", func_name);
         }
 
@@ -1052,10 +1053,16 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
             for (const auto& func : ast.functions) {
                 const auto& stmt = std::get<node_function_stmt>(*func);
-                const auto func_name = fn_name(com, node.token, struct_type, stmt.name);
+                const auto func_name = fn_name(com, node.token, info.filepath, node.field_name, stmt.name);
+
+                const auto fkey = template_function_type{
+                    .name=stmt.name,
+                    .module=info.filepath,
+                    .struct_name=struct_type
+                };
 
                 // Template functions only get compiled at the call site, so we just stash the ast
-                const auto [it, success] = com.function_templates.emplace(func_name, stmt);
+                const auto [it, success] = com.function_templates.emplace(fkey, stmt);
                 node.token.assert(success, "function template named '{}' already defined", func_name);
             }
 
@@ -1070,18 +1077,20 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         node.token.error("cannot access field {} on {}", node.field_name, type);
     }
     
-    // If the expression is a type, allow for accessing the functions
-    if (type.is_type_value()) {
+    // If the expression is a type, allow for accessing the functions (only makes sense on structs)
+    if (type.is_type_value() && std::holds_alternative<type_struct>(inner_type(type))) {
         const auto& inner = inner_type(type);
+        const auto& struct_info = std::get<type_struct>(inner);
+         
         // Check if it is a function that needs compiling
-        const auto full_name_no_templates = fn_name(com, node.token, inner_type(type), node.field_name);
-        const auto full_name = fn_name(com, node.token, inner_type(type), node.field_name, node.templates);
+        const auto full_name = fn_name(com, node.token, struct_info.module, struct_info.name, node.field_name, node.templates);
         const auto fkey = template_function_type{
             .name=node.field_name,
-            .module=curr_module(com),
+            .module= struct_info.module,
             .struct_name = inner
         };
         if (com.function_templates.contains(fkey) && !get_function(com, full_name)) {
+            std::print("compiling {} {} {}\n", struct_info.module.string(), node.field_name, inner);
             const auto ast = com.function_templates.at(fkey);
             com.current_struct.emplace_back(inner_type(type), com.types.templates_of(inner_type(type)));
             const auto map = build_template_map(com, node.token, ast.templates, node.templates);
@@ -1091,16 +1100,23 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
         node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
         auto info = get_function(com, full_name);
-        node.token.assert(info.has_value(), "can only access member functions from structs");
+        node.token.assert(info.has_value(), "can only access member functions from structs {} {} {}", struct_info.module.string(), node.field_name, inner);
         push_value(code(com), op::push_u64, info->id);
         return type_function_ptr{ .param_types = info->sig.params, .return_type = info->sig.return_type };   
     }
     
     const auto stripped = strip_pointers(type);
+    const auto struct_name_str = std::holds_alternative<type_struct>(stripped)
+                               ? std::get<type_struct>(stripped).name
+                               : std::string{};
+
+    // TODO; is this needed?
+    const auto struct_module_str = std::holds_alternative<type_struct>(stripped)
+                                 ? std::get<type_struct>(stripped).module
+                                 : curr_module(com);
 
     // Check if it is a function that needs compiling
-    const auto full_name_no_templates = fn_name(com, node.token, stripped, node.field_name);
-    const auto full_name = fn_name(com, node.token, stripped, node.field_name, node.templates);
+    const auto full_name = fn_name(com, node.token, curr_module(com), struct_name_str, node.field_name, node.templates);
     const auto fkey = template_function_type{
         .name=node.field_name,
         .module=curr_module(com),
@@ -1464,11 +1480,19 @@ void push_stmt(compiler& com, const node_function_stmt& node)
     // this is in fact the full name, or it is and we use this as the key for the function_templates
     // map which is just the name without the template section.
     const auto struct_name = com.current_struct.back().name;
-    const auto function_name = fn_name(com, node.token, struct_name, node.name);
+    node.token.assert(std::holds_alternative<type_struct>(struct_name), "expected a struct, got {}\n", struct_name);
+    const auto& info = std::get<type_struct>(struct_name);
+    const auto function_name = fn_name(com, node.token, info.module, info.name, node.name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
-        const auto [it, success] = com.function_templates.emplace(function_name, node);
+        const auto key = template_function_type{
+            .name = node.name,
+            .module = curr_module(com),
+            .struct_name = struct_name
+        };
+        std::print("stashing ast for {} {} {}\n", node.name, struct_name, curr_module(com).string());
+        const auto [it, success] = com.function_templates.emplace(key, node);
         node.token.assert(success, "function template named '{}' already defined", function_name);
         return;
     }
