@@ -8,3 +8,5 @@ while tok.valid() {
     print("{}\n", tok.current());
     tok.advance();
 }
+
+print("{}\n", global);

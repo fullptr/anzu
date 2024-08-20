@@ -1,2 +1,2 @@
-print("in module\n");
+
 var y := 10;

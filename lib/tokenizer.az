@@ -41,3 +41,5 @@ struct tokenizer
         return t;
     }
 }
+
+var global := 10;

@@ -1358,7 +1358,13 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
     com.current_module.back().imports[node.name] = node.filepath;
 
     com.current_module.emplace_back(node.filepath, module_map{});
-    push_stmt(com, *mod.root);
+
+    // We must unwrap the sequence statement like this since we do no want to introduce a new
+    // scope while compiling this, otherwise all the variables will get popped after.
+    node.token.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");
+    for (const auto& node : std::get<node_sequence_stmt>(*mod.root).sequence) {
+        push_stmt(com, *node);
+    }
     com.current_module.pop_back();
     com.modules.emplace(node.filepath);
 }
