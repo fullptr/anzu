@@ -1341,6 +1341,10 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 
 auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
 {
+    if (com.modules.contains(node.filepath)) {
+        return; // already compiled, can skip
+    }
+    
     // First, check for circuluar dependencies; we should not already be in the process of
     // compiling this module
     for (const auto& m : com.current_module) {
@@ -1356,6 +1360,7 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
     com.current_module.emplace_back(node.filepath, module_map{});
     push_stmt(com, *mod.root);
     com.current_module.pop_back();
+    com.modules.emplace(node.filepath);
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)

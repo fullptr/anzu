@@ -57,7 +57,7 @@ struct compiler
 
     type_manager types;
 
-    std::unordered_set<std::string> modules;
+    std::unordered_set<std::filesystem::path> modules;
 
     std::unordered_map<std::string, std::size_t> functions_by_name;
     
