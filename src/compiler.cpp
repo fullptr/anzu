@@ -363,7 +363,6 @@ auto compile_function(
 )
     -> void
 {
-    std::print("compiling {}\n", full_name);
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
     com.functions.emplace_back(full_name, id, variable_manager{true});
@@ -1120,7 +1119,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
     
     const auto stripped = strip_pointers(type);
-    std::print("stripped = {}\n", stripped);
     const auto struct_name = std::holds_alternative<type_struct>(stripped)
                            ? std::get<type_struct>(stripped)
                            : no_struct;

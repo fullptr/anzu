@@ -2,14 +2,21 @@
 module vec := "lib/vector.az";
 
 arena a;
-var v := vec.vector!(i64).create(a&);
+var v1 := vec.vector!(i64).create(a&);
+var v2 := vec.vector!(f64).create(a&);
 
 var x := 0;
+var y := 0.3;
 while x < 10 {
-    v.push(x);
+    v1.push(x);
+    v2.push(y);
     x = x + 1;
+    y = y + 1.0;
 }
 
-for val in v.to_span() {
+for val in v1.to_span() {
+    print("{}\n", val@);
+}
+for val in v2.to_span() {
     print("{}\n", val@);
 }
