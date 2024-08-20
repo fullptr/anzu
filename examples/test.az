@@ -1,4 +1,7 @@
 module tk := "lib/tokenizer.az";
+module other := "examples/module.az";
+module vec := "lib/vector.az";
+
 let input := "my test string has six words";
 var tok := tk.tokenizer.create(input, ' ');
 while tok.valid() {
@@ -6,3 +9,9 @@ while tok.valid() {
     tok.advance();
 }
 print("__dump_type", tok);
+
+print("{}\n", y);
+foo();
+
+arena a;
+var v := vec.vector!(i64).create(a&);
