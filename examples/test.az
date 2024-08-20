@@ -1,5 +1,3 @@
-
-
 module vec := "lib/tokenizer.az";
 
 let input := "my test string has six words";
