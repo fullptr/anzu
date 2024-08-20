@@ -3,3 +3,12 @@ module vec := "lib/vector.az";
 
 arena a;
 var v := vec.vector!(i64).create(a&);
+
+let x := 0;
+while x < 10 {
+    v.push(x);
+}
+
+for val in v.to_span() {
+    print("{}\n", val@);
+}

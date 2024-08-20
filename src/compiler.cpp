@@ -15,6 +15,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <source_location>
 
 namespace anzu {
 namespace {
@@ -112,7 +113,8 @@ auto fn_name(
     const std::filesystem::path& module,
     const type_struct& struct_info,
     const std::string& function_name,
-    const std::vector<node_expr_ptr>& template_args = {}
+    const std::vector<node_expr_ptr>& template_args = {},
+    const std::source_location loc = std::source_location::current()
 )
     -> std::string
 {
@@ -1023,6 +1025,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Otherwise, it must be a variable
+    const auto test = make_type(com, node.name);
     node.token.assert(node.templates.empty(), "variables cannot be templated ({}) {}", node.name, struct_type);
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, node.name);
@@ -1099,11 +1102,12 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             .struct_name = inner
         };
         if (com.function_templates.contains(fkey) && !get_function(com, full_name)) {
-            std::print("compiling {} {} {}\n", struct_info.module.string(), node.field_name, inner);
             const auto ast = com.function_templates.at(fkey);
             com.current_struct.emplace_back(inner_type(type), com.types.templates_of(inner_type(type)));
+            com.current_module.emplace_back(struct_info.module);
             const auto map = build_template_map(com, node.token, ast.templates, node.templates);
             compile_function(com, node.token, full_name, ast.sig, ast.body, map);
+            com.current_module.pop_back();
             com.current_struct.pop_back();
         }
 
@@ -1381,7 +1385,6 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
         const auto key = template_struct_type{node.name, curr_module(com)};
         const auto [it, success] = com.struct_templates.emplace(key, node);
         node.token.assert(success, "struct template named '<{}>.{}' already defined", curr_module(com).string(), node.name);
-        std::print("stashed away ast for '<{}>.{}'\n", curr_module(com).string(), node.name);
         return;
     }
 
@@ -1458,14 +1461,12 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
 
     // We must unwrap the sequence statement like this since we do no want to introduce a new
     // scope while compiling this, otherwise all the variables will get popped after.
-    std::print("compiling {}\n", node.filepath);
     node.token.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");
     for (const auto& node : std::get<node_sequence_stmt>(*mod.root).sequence) {
         push_stmt(com, *node);
     }
     com.current_module.pop_back();
     com.modules.emplace(node.filepath);
-    std::print("finished compiling {}\n", node.filepath);
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
