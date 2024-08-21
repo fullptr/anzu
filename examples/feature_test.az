@@ -347,3 +347,13 @@ struct pair!(T)
     f.print_struct!(u64)(70u);
     g.print_struct!(u64)(70u);
 }
+
+module util := "lib/utility.az";
+
+struct double {
+    x: util.pair!(i64, f64);
+    y: util.pair!(u64, bool);
+}
+
+let d := double(util.pair!(i64, f64)(1, 2.0), util.pair!(u64, bool)(3u, false));
+print("{} {} {} {}\n", d.x.first, d.x.second, d.y.first, d.y.second);
