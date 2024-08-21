@@ -24,7 +24,7 @@ struct signature
 
 struct function
 {
-    std::string      name;
+    function_name    name;
     std::size_t      id;
     variable_manager variables;
     

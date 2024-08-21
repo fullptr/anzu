@@ -79,8 +79,8 @@ struct type_bound_method
 {
     std::vector<type_name> param_types;
     value_ptr<type_name>   return_type;
-    std::string            function_name; // for printing only
-    std::size_t            function_id;
+    std::string            name; // for printing only
+    std::size_t            id;
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 

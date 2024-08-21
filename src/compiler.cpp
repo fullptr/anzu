@@ -308,12 +308,11 @@ auto compile_function(
 )
     -> void
 {
-    const auto full_name = name.to_string();
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
-    com.functions.emplace_back(full_name, id, variable_manager{true});
+    com.functions.emplace_back(name, id, variable_manager{true});
     const auto [it, success] = com.functions_by_name.emplace(name, id);
-    tok.assert(success, "a function with the name '{}' already exists", full_name);
+    tok.assert(success, "a function with the name '{}' already exists", name);
     
     variables(com).new_scope();
 
@@ -333,7 +332,7 @@ auto compile_function(
     if (!ends_in_return(*body)) {
         // Functions returning null don't need a final return, since we can just add it
         if (sig.return_type != null_type()) {
-            tok.error("fn '{}' does not end in a return (needs {})", full_name, sig.return_type);
+            tok.error("fn '{}' does not end in a return (needs {})", name, sig.return_type);
         }
         push_value(code(com), op::push_null, op::ret, std::uint64_t{1});
     }
@@ -662,7 +661,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
             args_size += com.types.size_of(info.param_types[i]);
         }
 
-        push_value(code(com), op::push_function_ptr, info.function_id, op::call, args_size);
+        push_value(code(com), op::push_function_ptr, info.id, op::call, args_size);
         return *info.return_type;
     }
     else if (type.is_bound_builtin_method()) { // member builtin call
@@ -1170,8 +1169,8 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         return type_bound_method{
             .param_types = info->sig.params,
             .return_type = info->sig.return_type,
-            .function_name = info->name,
-            .function_id = info->id
+            .name = info->name.to_string(),
+            .id = info->id
         };
     }
 
@@ -1506,7 +1505,7 @@ void push_stmt(compiler& com, const node_function_stmt& node)
             .name = node.name
         };
         const auto [it, success] = com.function_templates.emplace(key, node);
-        node.token.assert(success, "function template named '{}' already defined", key.to_string());
+        node.token.assert(success, "function template named '{}' already defined", key);
         return;
     }
 
@@ -1591,11 +1590,12 @@ auto push_stmt(compiler& com, const node_stmt& root) -> void
 auto compile(const anzu_module& ast) -> bytecode_program
 {
     auto com = compiler{};
-    com.functions.emplace_back("$main", 0, variable_manager{false});
+    const auto fname = function_name{"__main__", no_struct, "$main"};
+    com.functions.emplace_back(fname, 0, variable_manager{false});
 
     com.current_function.emplace_back(0, template_map{});
-    com.current_struct.emplace_back(no_struct, template_map{});
-    com.current_module.emplace_back("__main__");
+    com.current_struct.emplace_back(fname.struct_name);
+    com.current_module.emplace_back(fname.module);
     variables(com).new_scope();
     push_stmt(com, *ast.root);
     variables(com).pop_scope(code(com));
@@ -1608,7 +1608,7 @@ auto compile(const anzu_module& ast) -> bytecode_program
     auto program = bytecode_program{};
     program.rom = com.rom;
     for (const auto& function : com.functions) {
-        program.functions.push_back(bytecode_function{function.name, function.id, function.code});
+        program.functions.push_back(bytecode_function{function.name.to_string(), function.id, function.code});
     }
     return program;
 }
