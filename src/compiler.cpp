@@ -84,6 +84,14 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
     return inner_type(type_expr_type);
 }
 
+auto resolve_types(compiler& com, const token& tok, const std::vector<node_expr_ptr>& exprs)
+    -> std::vector<type_name>
+{
+    auto templates = std::vector<type_name>{};
+    for (const auto& expr : exprs) { templates.push_back(resolve_type(com, tok, expr)); }
+    return templates;
+}
+
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
@@ -938,14 +946,11 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
+    const auto templates = resolve_types(com, node.token, node.templates);
+
     // Firstly, it may be a module
     if (com.current_module.back().imports.contains(node.name)) {
         return type_module{com.current_module.back().imports[node.name]};
-    }
-
-    auto templates = std::vector<type_name>{};
-    for (const auto& expr : node.templates) {
-        templates.push_back(resolve_type(com, node.token, expr));
     }
 
     // Next, check if it is a function
@@ -985,9 +990,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     if (auto func = get_builtin(node.name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
         node.token.assert(node.templates.empty(), "builtins cannot be templated");
-        return type_builtin{
-            .name = func->name, .id = func->id, .args = func->args, .return_type = func->return_type
-        };
+        return type_builtin{func->name, func->id, func->args, func->return_type};
     }
 
     // Otherwise, it must be a variable
@@ -1003,10 +1006,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
+    const auto templates = resolve_types(com, node.token, node.templates);
     const auto type = type_of_expr(com, *node.expr);
-
-    auto templates = std::vector<type_name>{};
-    for (const auto& expr : node.templates) { templates.push_back(resolve_type(com, node.token, expr)); }
 
     // If the expression is a module, allow for accessing global variables, functions and structs
     if (type.is_module_value()) {
