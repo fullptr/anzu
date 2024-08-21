@@ -1060,8 +1060,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
                            ? std::get<type_struct>(stripped)
                            : no_struct;
 
-
-    // Check if it is a function that needs compiling
+    // It might be a member function
     const auto fname = function_name{struct_name.module, struct_name, node.field_name, templates};
     if (auto info = get_function(com, node.token, fname); info.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a bound method");
