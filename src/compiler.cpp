@@ -69,19 +69,6 @@ auto get_builtin_type(const std::string& name) -> std::optional<type_name>
     return {};
 }
 
-auto make_type(compiler& com, const std::string& name) -> type_name
-{
-    // First check the current function templates
-    const auto& map1 = com.current_function.back().templates;
-    if (auto it = map1.find(name); it != map1.end()) return it->second;
-
-    // Then check the current struct templates
-    const auto& map2 = com.current_struct.back().templates;
-    if (auto it = map2.find(name); it != map2.end()) return it->second;
-
-    return type_struct{ .name=name, .module=curr_module(com) };
-}
-
 // If the given expression results in a type expression, return the inner type.
 // Otherwise program is ill-formed.
 auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) -> type_name
@@ -998,9 +985,16 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         return type_type{*t};
     }
 
-    if (const auto t = make_type(com, node.name); com.types.contains(t)) {
-        node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        return type_type{t};
+    // It might be one of the current functions template aliases
+    const auto& map1 = com.current_function.back().templates;
+    if (auto it = map1.find(node.name); it != map1.end()) {
+        return type_type{it->second};
+    }
+
+    // It might be one of the current structs template aliases
+    const auto& map2 = com.current_struct.back().templates;
+    if (auto it = map2.find(node.name); it != map2.end()) {
+        return type_type{it->second};
     }
 
     // The name might be a function
