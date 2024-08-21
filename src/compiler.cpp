@@ -1088,7 +1088,20 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         }
 
         // Time to look for functions then
+        // Firstly, might be a template
         const auto fn = fn_name(com, node.token, info.filepath, no_struct, node.field_name, node.templates);
+        const auto fkey = template_function_type{
+            .name = node.field_name,
+            .module = info.filepath,
+            .struct_name = no_struct
+        };
+        if (com.function_templates.contains(fkey) && !get_function(com, fn)) {
+            const auto& ast = com.function_templates.at(fkey);
+            const auto map = build_template_map(com, node.token, ast.templates, node.templates);
+            com.current_struct.emplace_back(no_struct, template_map{});
+            compile_function(com, node.token, fn, ast.sig, ast.body, map);
+            com.current_struct.pop_back();
+        }
         if (auto func = get_function(com, fn)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
             push_value(code(com), op::push_u64, func->id);
