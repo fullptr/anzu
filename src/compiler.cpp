@@ -277,23 +277,6 @@ auto build_template_map(
     compiler& com,
     const token& tok,
     const std::vector<std::string>& names,
-    const std::vector<node_expr_ptr>& types
-)
-    -> template_map
-{
-    tok.assert_eq(types.size(), names.size(), "bad number of template args");
-    auto map = template_map{};
-    for (const auto& [actual, expected] : zip(types, names)) {
-        const auto [it, success] = map.emplace(expected, resolve_type(com, tok, actual));
-        if (!success) { tok.error("duplicate template name {}", expected); }
-    }
-    return map;
-}
-
-auto build_template_map2(
-    compiler& com,
-    const token& tok,
-    const std::vector<std::string>& names,
     const std::vector<type_name>& types
 )
     -> template_map
@@ -429,7 +412,7 @@ auto get_function(compiler& com, const token& tok, const function_name& name)
     // If the function doesn't exist, it may still be a template, if it is then compile it
     if (com.function_templates.contains(name.as_template())) {
         const auto& ast = com.function_templates.at(name.as_template());
-        const auto map = build_template_map2(com, tok, ast.templates, name.templates);
+        const auto map = build_template_map(com, tok, ast.templates, name.templates);
 
         com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
         com.current_module.emplace_back(name.module);
@@ -449,7 +432,7 @@ auto get_struct(compiler& com, const token& tok, const type_struct& name)
     if (com.struct_templates.contains(key) && !com.types.contains(name)) {
         const auto& ast = com.struct_templates.at(key);
 
-        auto map = build_template_map2(com, tok, ast.templates, name.templates);
+        auto map = build_template_map(com, tok, ast.templates, name.templates);
         com.current_struct.emplace_back(name, map);
         com.current_module.emplace_back(name.module);
         auto fields = std::vector<type_field>{};
