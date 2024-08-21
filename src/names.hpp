@@ -15,16 +15,6 @@ struct template_struct_name
     auto operator==(const template_struct_name&) const -> bool = default;
 };
 
-struct struct_name
-{
-    std::filesystem::path  module;
-    std::string            name;
-    std::vector<type_name> templates;
-
-    auto as_template() const -> template_struct_name;
-    auto operator==(const struct_name&) const -> bool = default;
-};
-
 struct template_function_name
 {
     std::filesystem::path module;

@@ -1,11 +1,6 @@
 #include "names.hpp"
 
 namespace anzu {
- 
-auto struct_name::as_template() const -> template_struct_name
-{
-    return template_struct_name{module, name};
-}
 
 auto template_function_name::to_string() const -> std::string
 {
