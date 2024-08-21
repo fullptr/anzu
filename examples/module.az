@@ -1,6 +1,6 @@
 
-var y := 10;
-
-fn foo() { print("in foo\n"); }
-
-fn bar!(T)(t: T) { print("in bar {}\n", t); }
+struct pair
+{
+    x: i64;
+    y: i64;
+}

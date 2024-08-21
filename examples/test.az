@@ -1,4 +1,10 @@
 module m := "examples/module.az";
+module i := "lib/io.az";
 
-let y := 100;
-print("{}\n", m.y);
+struct double {
+    x: m.pair;
+    y: m.pair;
+}
+
+let d := double(m.pair(1, 2), m.pair(3, 4));
+print("{} {} {} {}\n", d.x.x, d.x.y, d.y.x, d.y.y);

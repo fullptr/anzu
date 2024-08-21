@@ -5,3 +5,9 @@ fn read_file(filename: char const[], a: arena&) -> char const[]
     fclose(f);
     return contents;
 }
+
+struct pair
+{
+    a: i64;
+    b: i64;
+}
