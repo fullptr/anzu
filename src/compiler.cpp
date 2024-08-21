@@ -55,6 +55,20 @@ auto push_expr(compiler& com, compile_type ct, const node_expr& node) -> type_na
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
 auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
 
+auto get_builtin_type(const std::string& name) -> std::optional<type_name>
+{
+    if (name == "null")    return type_name(type_fundamental::null_type);
+    if (name == "bool")    return type_name(type_fundamental::bool_type);
+    if (name == "char")    return type_name(type_fundamental::char_type);
+    if (name == "i32")     return type_name(type_fundamental::i32_type);
+    if (name == "i64")     return type_name(type_fundamental::i64_type);
+    if (name == "u64")     return type_name(type_fundamental::u64_type);
+    if (name == "f64")     return type_name(type_fundamental::f64_type);
+    if (name == "nullptr") return type_name(type_fundamental::nullptr_type);
+    if (name == "arena")   return type_name(type_arena{});
+    return {};
+}
+
 auto make_type(compiler& com, const std::string& name) -> type_name
 {
     // First check the current function templates
@@ -65,17 +79,7 @@ auto make_type(compiler& com, const std::string& name) -> type_name
     const auto& map2 = com.current_struct.back().templates;
     if (auto it = map2.find(name); it != map2.end()) return it->second;
 
-    if (name == "null") return type_name(type_fundamental::null_type);
-    if (name == "bool") return type_name(type_fundamental::bool_type);
-    if (name == "char") return type_name(type_fundamental::char_type);
-    if (name == "i32") return  type_name(type_fundamental::i32_type);
-    if (name == "i64") return  type_name(type_fundamental::i64_type);
-    if (name == "u64") return  type_name(type_fundamental::u64_type);
-    if (name == "f64") return  type_name(type_fundamental::f64_type);
-    if (name == "nullptr") return type_name(type_fundamental::nullptr_type);
-    if (name == "arena") return type_name(type_arena{});
     return type_struct{ .name=name, .module=curr_module(com) };
-    //return type_struct{ .name=name };
 }
 
 // If the given expression results in a type expression, return the inner type.
@@ -989,6 +993,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // It might be a fundamental type
+    if (const auto t = get_builtin_type(node.name); t.has_value()) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a type");
+        return type_type{*t};
+    }
+
     if (const auto t = make_type(com, node.name); com.types.contains(t)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
         return type_type{t};
