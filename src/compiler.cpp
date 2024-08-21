@@ -1472,24 +1472,22 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 
 auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
 {
-    if (com.modules.contains(node.filepath)) {
-        return; // already compiled, can skip
-    }
-    
-    // First, check for circuluar dependencies; we should not already be in the process of
-    // compiling this module
+    // Add as an available module to the current module, and check for circular deps
+    com.current_module.back().imports[node.name] = node.filepath;
     for (const auto& m : com.current_module) {
         node.token.assert(m.filepath != node.filepath, "circular dependencey detected");
+    }
+
+    // Already compiled, nothing more to do
+    if (com.modules.contains(node.filepath)) {
+        return; 
     }
 
     // Second, parse the module into its AST
     const auto path = std::filesystem::absolute(node.filepath);
     const auto mod = parse(path);
 
-    com.current_module.back().imports[node.name] = node.filepath;
-
     com.current_module.emplace_back(node.filepath, module_map{});
-
     // We must unwrap the sequence statement like this since we do no want to introduce a new
     // scope while compiling this, otherwise all the variables will get popped after.
     node.token.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");

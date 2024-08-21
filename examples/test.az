@@ -1,7 +1,7 @@
 module m := "examples/module.az";
-
+module io := "lib/io.az";
 arena a;
-let contents := m.io.read_file("examples/example_data.txt", a&);
+let contents := io.read_file("examples/example_data.txt", a&);
 
 print("'{}'\n", contents);
 print("\nsize={}\n", contents.size());
