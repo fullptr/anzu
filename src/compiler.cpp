@@ -150,35 +150,35 @@ auto get_function(compiler& com, const std::string& full_name) -> std::optional<
 // Registers the given name in the current scope
 void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
 {
-    if (!current(com).variables.declare(name, type, com.types.size_of(type))) {
+    if (!current(com).variables.declare(curr_module(com), name, type, com.types.size_of(type))) {
         tok.error("name already in use: '{}'", name);
     }
 }
 
-auto push_var_addr(compiler& com, const token& tok, const std::string& name) -> type_name
+auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> type_name
 {
     if (in_function(com)) {
-        if (const auto var = variables(com).find(name); var.has_value()) {
+        if (const auto var = variables(com).find(module, name); var.has_value()) {
             push_value(code(com), op::push_ptr_local, var->location);
             return var->type;
         }
     }
 
-    const auto var = globals(com).find(name);
+    const auto var = globals(com).find(module, name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
     push_value(code(com), op::push_ptr_global, var->location);
     return var->type;
 }
 
-auto load_variable(compiler& com, const token& tok, const std::string& name) -> void
+auto load_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
 {
-    const auto type = push_var_addr(com, tok, name);
+    const auto type = push_var_addr(com, tok, module, name);
     push_value(code(com), op::load, com.types.size_of(type));
 }
 
-auto save_variable(compiler& com, const token& tok, const std::string& name) -> void
+auto save_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
 {
-    const auto type = push_var_addr(com, tok, name);
+    const auto type = push_var_addr(com, tok, module, name);
     push_value(code(com), op::save, com.types.size_of(type));
 }
 
@@ -1028,7 +1028,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto test = make_type(com, node.name);
     node.token.assert(node.templates.empty(), "variables cannot be templated ({}) {}", node.name, struct_type);
     if (ct == compile_type::ptr) {
-        return push_var_addr(com, node.token, node.name);
+        return push_var_addr(com, node.token, curr_module(com), node.name);
     }
     const auto type = push_expr(com, compile_type::ptr, node);
     node.token.assert(!type.is_type_value(), "invalid use of type expressions");
@@ -1347,7 +1347,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     declare_var(com, node.token, "$idx", u64_type());
 
     // var size := length of iter;
-    push_var_addr(com, node.token, "$iter"); // push pointer to span
+    push_var_addr(com, node.token, curr_module(com), "$iter"); // push pointer to span
     push_value(code(com), op::push_u64, sizeof(std::byte*));
     push_value(code(com), op::u64_add); // offset to the size value
     push_value(code(com), op::load, com.types.size_of(u64_type()));       
@@ -1355,8 +1355,8 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
     push_loop(com, [&] {
         // if idx == size break;
-        load_variable(com, node.token, "$idx");
-        load_variable(com, node.token, "$size");
+        load_variable(com, node.token, curr_module(com), "$idx");
+        load_variable(com, node.token, curr_module(com), "$size");
         push_value(code(com), op::u64_eq, op::jump_if_false);
         const auto jump_pos = push_value(code(com), std::uint64_t{0});
         push_break(com, node.token);
@@ -1364,17 +1364,17 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
         // var name := iter[idx]&;
         const auto inner = inner_type(iter_type);
-        push_var_addr(com, node.token, "$iter");
+        push_var_addr(com, node.token, curr_module(com), "$iter");
         push_value(code(com), op::load, sizeof(std::byte*));  
-        load_variable(com, node.token, "$idx");
+        load_variable(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::push_u64, com.types.size_of(inner));
         push_value(code(com), op::u64_mul, op::u64_add);
         declare_var(com, node.token, node.name, inner.add_ptr());
 
         // idx = idx + 1;
-        load_variable(com, node.token, "$idx");
+        load_variable(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::push_u64, std::uint64_t{1}, op::u64_add);
-        save_variable(com, node.token, "$idx");
+        save_variable(com, node.token, curr_module(com), "$idx");
 
         // main body
         push_stmt(com, *node.body);

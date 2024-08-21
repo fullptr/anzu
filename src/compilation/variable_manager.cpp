@@ -30,23 +30,23 @@ void variable_manager::new_loop_scope()
 }
 
 auto variable_manager::declare(
-    const std::string& name, const type_name& type, std::size_t size
+    const std::filesystem::path& module, const std::string& name, const type_name& type, std::size_t size
 ) -> bool
 {
     auto& scope = d_scopes.back();
     for (const auto& var : scope.variables) {
         if (var.name == name) return false;
     }
-    scope.variables.emplace_back(name, type, scope.next, size);
+    scope.variables.emplace_back(module, name, type, scope.next, size);
     scope.next += size;
     return true;
 }
 
-auto variable_manager::find(const std::string& name) const -> std::optional<variable>
+auto variable_manager::find(const std::filesystem::path& module, const std::string& name) const -> std::optional<variable>
 {
     for (const auto& scope : d_scopes | std::views::reverse) {
         for (const auto& var : scope.variables) { // no need to reverse here, var names are unique per scope
-            if (var.name == name) return var;
+            if (var.name == name && var.module == module) return var;
         }
     }
     return std::nullopt;

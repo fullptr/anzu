@@ -9,6 +9,7 @@
 #include <span>
 #include <variant>
 #include <ranges>
+#include <filesystem>
 
 namespace anzu {
 
@@ -17,10 +18,11 @@ class compiler;
 
 struct variable
 {
-    std::string name;
-    type_name   type;
-    std::size_t location;
-    std::size_t size;
+    std::filesystem::path module;
+    std::string           name;
+    type_name             type;
+    std::size_t           location;
+    std::size_t           size;
 };
 
 struct simple_scope
@@ -50,8 +52,8 @@ class variable_manager
 
 public:
     variable_manager(bool local = true) : d_local{local} {}
-    auto declare(const std::string& name, const type_name& type, std::size_t size) -> bool;
-    auto find(const std::string& name) const -> std::optional<variable>;
+    auto declare(const std::filesystem::path& module, const std::string& name, const type_name& type, std::size_t size) -> bool;
+    auto find(const std::filesystem::path& module, const std::string& name) const -> std::optional<variable>;
     auto scopes() const -> std::span<const scope> { return d_scopes; }
 
     auto in_loop() const -> bool;
