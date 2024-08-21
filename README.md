@@ -117,6 +117,14 @@ An interpreted programming language written in C++. This started out as a stack-
     * C++ and D style templates using D style syntax. The syntax is a bit odd and I would have preferred `foo<i64>` or `foo|i64|`, but those add a lot of complexity to the parser. the `!` token is needed to keep parsing simple.
     * Member functions can also be templated.
 
+* Modules
+    ```py
+    module vec := "lib/vector.az";
+    var my_vec := vec.vector!(u64).create(alloc&);
+    ```
+    * Import other files and access their contents via the defined module object.
+    * Global variables, structs and functions are made available.
+
 
 ## The Pipeline
 The way this langauage is processed and ran is similar to other langages. The lexer, parser, compiler and runtime modules are completely separate, and act as a pipeline by each one outputting a representation that the next one can understand. Below is a diagram showing how everything fits together.
