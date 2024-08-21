@@ -43,9 +43,14 @@ auto globals(compiler& com) -> variable_manager& {
     return com.functions.front().variables;
 }
 
-auto curr_module(compiler& com) -> const std::filesystem::path&
+auto curr_module(const compiler& com) -> const std::filesystem::path&
 {
     return com.current_module.back().filepath;
+}
+
+auto curr_struct(const compiler& com) -> const type_struct&
+{
+    return com.current_struct.back().name;
 }
 
 static const auto no_struct = type_struct{""};
@@ -777,8 +782,8 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of an addrof expression");
     if (!node.expr) {
-        node.token.assert(com.current_struct.back().name != no_struct, "TODO: add message");
-        return type_type{type_name{com.current_struct.back().name}.add_ptr()};
+        node.token.assert(curr_struct(com) != no_struct, "TODO: add message");
+        return type_type{type_name{curr_struct(com)}.add_ptr()};
     }
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_type_value()) {
@@ -885,8 +890,8 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
 auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> type_name
 {
     if (!node.expr) {
-        node.token.assert(com.current_struct.back().name != no_struct, "TODO: add message");
-        return type_type{type_name{com.current_struct.back().name}.add_const()};
+        node.token.assert(curr_struct(com) != no_struct, "TODO: add message");
+        return type_type{type_name{curr_struct(com)}.add_const()};
     }
     const auto type = type_of_expr(com, *node.expr);
     if (type.is_type_value()) {
@@ -1300,8 +1305,18 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     }
 }
 
+auto check_duplicate_name(compiler& com, const token& tok, const std::string& name)
+{
+    const auto sname = type_struct{ .name=name, .module=curr_module(com) };
+    const auto fname = function_name{curr_module(com), no_struct, name};
+    const auto message = std::format("type '{}' already defined", name);
+    tok.assert(!com.types.contains(sname), "{}", message);
+    tok.assert(!com.functions_by_name.contains(fname), "{}", message);
+}
+
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
+    check_duplicate_name(com, node.token, node.name);
     if (!node.templates.empty()) {
         const auto key = template_struct_name{curr_module(com), node.name};
         const auto [it, success] = com.struct_templates.emplace(key, node);
@@ -1309,19 +1324,14 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
         return;
     }
 
-    const auto struct_name = type_struct{ .name=node.name, .module=curr_module(com) };
-    const auto fname = function_name{curr_module(com), no_struct, node.name};
-    const auto message = std::format("type '{}' already defined", node.name);
-    node.token.assert(!com.types.contains(struct_name), "{}", message);
-    node.token.assert(!com.functions_by_name.contains(fname), "{}", message);
-
-    com.current_struct.emplace_back(struct_name, template_map{});
+    const auto sname = type_struct{ .name=node.name, .module=curr_module(com) };
+    com.current_struct.emplace_back(sname, template_map{});
     auto fields = std::vector<type_field>{};
     for (const auto& p : node.fields) {
         fields.emplace_back(p.name, resolve_type(com, node.token, p.type));
     }
 
-    com.types.add(type_name{struct_name}, fields);
+    com.types.add(sname, fields);
     for (const auto& function : node.functions) {
         push_stmt(com, *function);
     }
@@ -1400,25 +1410,17 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 
 void push_stmt(compiler& com, const node_function_stmt& node)
 {
-    // We always ignore the template types here because it is either not a template function and so
-    // this is in fact the full name, or it is and we use this as the key for the function_templates
-    // map which is just the name without the template section.
-    const auto& module_name = curr_module(com);
-    const auto& struct_name = com.current_struct.back().name;
+    check_duplicate_name(com, node.token, node.name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
-        const auto key = template_function_name{curr_module(com), struct_name, node.name};
+        const auto key = template_function_name{curr_module(com), curr_struct(com), node.name};
         const auto [it, success] = com.function_templates.emplace(key, node);
         node.token.assert(success, "function template named '{}' already defined", key);
         return;
     }
 
-    const auto fname = function_name{
-        .module = curr_module(com),
-        .struct_name = struct_name,
-        .name = node.name
-    };
+    const auto fname = function_name{curr_module(com), curr_struct(com), node.name};
     compile_function(com, node.token, fname, node.sig, node.body);
 }
 
