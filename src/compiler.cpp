@@ -1043,9 +1043,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
     if (type.is_type_value() && std::holds_alternative<type_struct>(inner_type(type))) {
-        
-        const auto& inner = inner_type(type);
-        const auto& struct_info = std::get<type_struct>(inner);
+        const auto struct_info = std::get<type_struct>(inner_type(type));
          
         const auto fname = function_name{struct_info.module, struct_info, node.field_name, templates};
         if (auto func = get_function(com, node.token, fname); func.has_value()) {
