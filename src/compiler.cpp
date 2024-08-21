@@ -1015,8 +1015,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
     }
 
-    // The name might be a builtin
-    if (auto func = get_builtin(full_name)) {
+    // The name might be a builtin (no module, struct or templates, so just the name);
+    if (auto func = get_builtin(node.name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
         node.token.assert(node.templates.empty(), "builtins cannot be templated");
         return type_builtin{
@@ -1414,7 +1414,6 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     }
 
     const auto struct_name = make_type(com, node.name);
-    std::print("created {}\n", struct_name);
     const auto message = std::format("type '{}' already defined", node.name);
     node.token.assert(!com.types.contains(struct_name), "{}", message);
     node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);

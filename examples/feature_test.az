@@ -279,7 +279,7 @@ fn get(a: arena&, count: u64) -> u64[]
 }
 
 arena a;
-let contents := read_file("examples/example_data.txt", a&);
+let contents := io.read_file("examples/example_data.txt", a&);
 
 print("'{}'\n", contents);
 print("\nsize={}\n", contents.size());
