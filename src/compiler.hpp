@@ -62,9 +62,9 @@ using template_struct_type_hash = decltype([](const template_struct_type& x) {
 
 struct template_function_type
 {
-    std::string name;
     std::filesystem::path module;
-    type_name struct_name;
+    type_struct           struct_name;
+    std::string           name;
     auto operator==(const template_function_type&) const -> bool = default;
 };
 using template_function_type_hash = decltype([](const template_function_type& x) {
