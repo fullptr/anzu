@@ -279,7 +279,7 @@ fn get(a: arena&, count: u64) -> u64[]
 }
 
 arena a;
-let contents := read_file("examples/example_data.txt", a&);
+let contents := io.read_file("examples/example_data.txt", a&);
 
 print("'{}'\n", contents);
 print("\nsize={}\n", contents.size());
@@ -347,3 +347,25 @@ struct pair!(T)
     f.print_struct!(u64)(70u);
     g.print_struct!(u64)(70u);
 }
+
+module util := "lib/utility.az";
+
+struct double {
+    x: util.pair!(i64, f64);
+    y: util.pair!(u64, bool);
+}
+
+let d := double(util.pair!(i64, f64)(1, 2.0), util.pair!(u64, bool)(3u, false));
+print("{} {} {} {}\n", d.x.first, d.x.second, d.y.first, d.y.second);
+
+module vec := "lib/vector.az";
+arena v;
+var my_vec := vec.vector!(i64).create(v&);
+my_vec.push(2);
+my_vec.push(3);
+my_vec.push(4);
+print("{}\n", my_vec.size());
+for x in my_vec.to_span() {
+    print("{} ", x@);
+}
+print("\n");

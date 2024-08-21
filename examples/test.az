@@ -1,8 +1,7 @@
-module vec := "lib/tokenizer.az";
+module m := "examples/module.az";
+module io := "lib/io.az";
+arena a;
+let contents := io.read_file("examples/example_data.txt", a&);
 
-let input := "my test string has six words";
-var tok := tokenizer.create(input, ' ');
-while tok.valid() {
-    print("{}\n", tok.current());
-    tok.advance();
-}
+print("'{}'\n", contents);
+print("\nsize={}\n", contents.size());

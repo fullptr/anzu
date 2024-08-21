@@ -2,6 +2,7 @@
 #include "ast.hpp"
 #include "parser.hpp"
 #include "bytecode.hpp"
+#include "names.hpp"
 
 #include "compilation/type_manager.hpp"
 #include "compilation/variable_manager.hpp"
@@ -23,7 +24,7 @@ struct signature
 
 struct function
 {
-    std::string      name;
+    function_name    name;
     std::size_t      id;
     variable_manager variables;
     
@@ -31,23 +32,22 @@ struct function
     signature              sig  = {};
 };
 
-struct func_info
+struct module_info
 {
-    std::size_t  id;
-    template_map templates;
+    std::filesystem::path                                  filepath;
+    std::unordered_map<std::string, std::filesystem::path> imports;
 };
 
 struct struct_info
 {
-    type_name    name;
+    type_struct  name;
     template_map templates;
 };
 
-using module_map = std::unordered_map<std::string, std::filesystem::path>;
-struct module_info
+struct func_info
 {
-    std::filesystem::path filepath;
-    module_map            imports;
+    std::size_t  id;
+    template_map templates;
 };
 
 struct compiler
@@ -59,14 +59,14 @@ struct compiler
 
     std::unordered_set<std::filesystem::path> modules;
 
-    std::unordered_map<std::string, std::size_t> functions_by_name;
+    std::unordered_map<function_name, std::size_t> functions_by_name;
     
-    std::unordered_map<std::string, node_function_stmt> function_templates;
-    std::unordered_map<std::string, node_struct_stmt>   struct_templates;
+    std::unordered_map<template_function_name, node_function_stmt> function_templates;
+    std::unordered_map<template_struct_name, node_struct_stmt>     struct_templates;
 
+    std::vector<module_info> current_module;
     std::vector<struct_info> current_struct;
     std::vector<func_info>   current_function;
-    std::vector<module_info> current_module;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

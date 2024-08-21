@@ -22,7 +22,7 @@ struct type_info
 
 class type_manager
 {
-    std::unordered_map<type_name, type_info, type_hash> d_classes;
+    std::unordered_map<type_name, type_info> d_classes;
 
 public:
     auto add(const type_name& name, const type_fields& fields, const template_map& templates = {}) -> bool;

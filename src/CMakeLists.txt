@@ -16,6 +16,7 @@ add_executable(
     functions.cpp
     bytecode.cpp
     runtime.cpp
+    names.cpp
 
     compilation/type_manager.cpp
     compilation/variable_manager.cpp
