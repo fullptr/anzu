@@ -35,7 +35,7 @@ auto variable_manager::declare(
 {
     auto& scope = d_scopes.back();
     for (const auto& var : scope.variables) {
-        if (var.name == name) return false;
+        if (var.name == name && var.module == module) return false;
     }
     scope.variables.emplace_back(module, name, type, scope.next, size);
     scope.next += size;
