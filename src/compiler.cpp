@@ -85,7 +85,6 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
 }
 
 auto resolve_types(compiler& com, const token& tok, const std::vector<node_expr_ptr>& exprs)
-    -> std::vector<type_name>
 {
     auto templates = std::vector<type_name>{};
     for (const auto& expr : exprs) { templates.push_back(resolve_type(com, tok, expr)); }
@@ -439,8 +438,8 @@ auto get_struct(compiler& com, const token& tok, const type_struct& name)
     const auto key = template_struct_name{name.module, name.name};
     if (com.struct_templates.contains(key) && !com.types.contains(name)) {
         const auto& ast = com.struct_templates.at(key);
+        const auto map = build_template_map(com, tok, ast.templates, name.templates);
 
-        auto map = build_template_map(com, tok, ast.templates, name.templates);
         com.current_struct.emplace_back(name, map);
         com.current_module.emplace_back(name.module);
         auto fields = std::vector<type_field>{};
@@ -448,18 +447,17 @@ auto get_struct(compiler& com, const token& tok, const type_struct& name)
             fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, tok, p.type) });
         }
         com.types.add(name, fields, map);
+        com.current_struct.pop_back();
+        com.current_module.pop_back();
 
+        // Template functions only get compiled at the call site, so we just stash the ast
         for (const auto& func : ast.functions) {
             const auto& stmt = std::get<node_function_stmt>(*func);
-
-            // Template functions only get compiled at the call site, so we just stash the ast
-            const auto fkey = template_function_name{curr_module(com), name, stmt.name};
+            const auto fkey = template_function_name{name.module, name, stmt.name};
             const auto [it, success] = com.function_templates.emplace(fkey, stmt);
             tok.assert(success, "function template named '{}' already defined", fkey);
         }
 
-        com.current_struct.pop_back();
-        com.current_module.pop_back();
         return type_type{type_name{name}};
     }
 
