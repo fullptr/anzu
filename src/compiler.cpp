@@ -84,9 +84,9 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
     return inner_type(type_expr_type);
 }
 
-auto get_function(compiler& com, const std::string& full_name) -> std::optional<function>
+auto get_function(compiler& com, const function_name& name) -> std::optional<function>
 {
-    if (const auto it = com.functions_by_name.find(full_name); it != com.functions_by_name.end()) {
+    if (const auto it = com.functions_by_name.find(name.to_string()); it != com.functions_by_name.end()) {
         return com.functions[it->second];
     }
     return std::nullopt;
@@ -908,7 +908,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         .name = node.name,
         .templates = templates
     };
-    if (com.function_templates.contains(fkey) && !get_function(com, fname.to_string())) {
+    if (com.function_templates.contains(fkey) && !get_function(com, fname)) {
         const auto& ast = com.function_templates.at(fkey);
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
         com.current_struct.emplace_back(no_struct, template_map{});
@@ -942,7 +942,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
             };
             // Template functions only get compiled at the call site, so we just stash the ast
             const auto [it, success] = com.function_templates.emplace(fkey, stmt);
-            node.token.assert(success, "function template named '{}' already defined", fkey.to_string());
+            node.token.assert(success, "function template named '{}' already defined", fkey);
         }
 
         com.current_struct.pop_back();
@@ -974,7 +974,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // The name might be a function
-    if (auto func = get_function(com, fname.to_string())) {
+    if (auto func = get_function(com, fname)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
         push_value(code(com), op::push_u64, func->id);
         return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
@@ -1040,7 +1040,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
                 // Template functions only get compiled at the call site, so we just stash the ast
                 const auto [it, success] = com.function_templates.emplace(fkey, stmt);
-                node.token.assert(success, "function template named '{}' already defined", fkey.to_string());
+                node.token.assert(success, "function template named '{}' already defined", fkey);
             }
 
             com.current_struct.pop_back();
@@ -1064,14 +1064,14 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             .name = node.field_name,
             .templates = templates
         };
-        if (com.function_templates.contains(fkey) && !get_function(com, fname.to_string())) {
+        if (com.function_templates.contains(fkey) && !get_function(com, fname)) {
             const auto& ast = com.function_templates.at(fkey);
             const auto map = build_template_map(com, node.token, ast.templates, node.templates);
             com.current_struct.emplace_back(no_struct, template_map{});
             compile_function(com, node.token, fname.to_string(), ast.sig, ast.body, map);
             com.current_struct.pop_back();
         }
-        if (auto func = get_function(com, fname.to_string())) {
+        if (auto func = get_function(com, fname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
             push_value(code(com), op::push_u64, func->id);
             return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
@@ -1105,7 +1105,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             .name=node.field_name,
             .templates = templates
         };
-        if (com.function_templates.contains(fkey) && !get_function(com, fname.to_string())) {
+        if (com.function_templates.contains(fkey) && !get_function(com, fname)) {
             const auto ast = com.function_templates.at(fkey);
             com.current_struct.emplace_back(struct_info, com.types.templates_of(inner_type(type)));
             com.current_module.emplace_back(struct_info.module);
@@ -1116,7 +1116,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         }
 
         node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
-        auto info = get_function(com, fname.to_string());
+        auto info = get_function(com, fname);
         node.token.assert(info.has_value(), "can only access member functions from structs {} {} {}", struct_info.module.string(), node.field_name, inner);
         push_value(code(com), op::push_u64, info->id);
         return type_function_ptr{ .param_types = info->sig.params, .return_type = info->sig.return_type };   
@@ -1140,7 +1140,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         .name=node.field_name,
         .templates = templates
     };
-    if (com.function_templates.contains(fkey) && !get_function(com, fname.to_string())) {
+    if (com.function_templates.contains(fkey) && !get_function(com, fname)) {
         const auto ast = com.function_templates.at(fkey);
         com.current_struct.emplace_back(struct_name, com.types.templates_of(stripped));
         com.current_module.emplace_back(struct_name.module);
@@ -1151,7 +1151,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
 
     // Firstly, the field may be a member function
-    if (auto info = get_function(com, fname.to_string()); info.has_value()) {
+    if (auto info = get_function(com, fname); info.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a bound method");
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
         const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer

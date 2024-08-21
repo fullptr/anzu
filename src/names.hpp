@@ -62,6 +62,22 @@ struct function_name
 
 }
 
+template <>
+struct std::formatter<anzu::template_function_name> : std::formatter<std::string>
+{
+    auto format(const anzu::template_function_name& type, auto& ctx) const {
+        return std::formatter<std::string>::format(type.to_string(), ctx);
+    }
+};
+
+template <>
+struct std::formatter<anzu::function_name> : std::formatter<std::string>
+{
+    auto format(const anzu::function_name& type, auto& ctx) const {
+        return std::formatter<std::string>::format(type.to_string(), ctx);
+    }
+};
+
 template<>
 struct std::hash<anzu::template_struct_name>
 {
