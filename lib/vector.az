@@ -41,6 +41,11 @@ struct vector!(T)
         self._size = self._size + 1u;
     }
 
+    fn test!(U)(self: &, u: U) -> null
+    {
+        print("{}\n", u);
+    }
+
     fn create(arr: arena&) -> vector!(T)
     {
         return vector!(T)(arr, nullptr, 0u);

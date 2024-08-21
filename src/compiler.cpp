@@ -1044,6 +1044,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     if (type.is_module_value()) {
         const auto& info = std::get<type_module>(type);
 
+        // Deal with structs first
         auto templates = std::vector<type_name>{};
         for (const auto& expr : node.templates) { templates.push_back(resolve_type(com, node.token, expr)); }
         const auto struct_type = type_name{type_struct{
@@ -1085,7 +1086,15 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (com.types.contains(struct_type)) {
             return type_type{struct_type};
         }
-        std::print("types does not contain {}\n", struct_type);
+
+        // Time to look for functions then
+        const auto fn = fn_name(com, node.token, info.filepath, no_struct, node.field_name, node.templates);
+        if (auto func = get_function(com, fn)) {
+            node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
+            push_value(code(com), op::push_u64, func->id);
+            return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
+        }
+
         node.token.error("cannot access field {} on {}", node.field_name, type);
     }
     
@@ -1487,10 +1496,11 @@ void push_stmt(compiler& com, const node_function_stmt& node)
     // We always ignore the template types here because it is either not a template function and so
     // this is in fact the full name, or it is and we use this as the key for the function_templates
     // map which is just the name without the template section.
+    const auto module_name = curr_module(com);
     const auto struct_name = com.current_struct.back().name;
     node.token.assert(std::holds_alternative<type_struct>(struct_name), "expected a struct, got {}\n", struct_name);
     const auto& info = std::get<type_struct>(struct_name);
-    const auto function_name = fn_name(com, node.token, info.module, info, node.name);
+    const auto function_name = fn_name(com, node.token, module_name, info, node.name);
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
@@ -1499,7 +1509,6 @@ void push_stmt(compiler& com, const node_function_stmt& node)
             .module = curr_module(com),
             .struct_name = struct_name
         };
-        std::print("stashing ast for {} {} {}\n", node.name, struct_name, curr_module(com).string());
         const auto [it, success] = com.function_templates.emplace(key, node);
         node.token.assert(success, "function template named '{}' already defined", function_name);
         return;
