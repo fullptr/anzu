@@ -451,6 +451,7 @@ auto get_struct(compiler& com, const token& tok, const type_struct& name)
 
         auto map = build_template_map2(com, tok, ast.templates, name.templates);
         com.current_struct.emplace_back(name, map);
+        com.current_module.emplace_back(name.module);
         auto fields = std::vector<type_field>{};
         for (const auto& p : ast.fields) {
             fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, tok, p.type) });
@@ -467,6 +468,7 @@ auto get_struct(compiler& com, const token& tok, const type_struct& name)
         }
 
         com.current_struct.pop_back();
+        com.current_module.pop_back();
         return type_type{type_name{name}};
     }
 
@@ -972,8 +974,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Next, it might be a struct
-    const auto struct_type = type_struct{node.name, curr_module(com), templates};
-    if (auto it = get_struct(com, node.token, struct_type); it.has_value()) {
+    const auto sname = type_struct{node.name, curr_module(com), templates};
+    if (auto it = get_struct(com, node.token, sname); it.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a struct type");
         return *it;
     }
@@ -1006,7 +1008,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Otherwise, it must be a variable
-    node.token.assert(node.templates.empty(), "variables cannot be templated ({}) {}", node.name, type_name{struct_type});
+    node.token.assert(node.templates.empty(), "variables cannot be templated {}", node.name);
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, curr_module(com), node.name);
     }
@@ -1027,39 +1029,10 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     if (type.is_module_value()) {
         const auto& info = std::get<type_module>(type);
 
-        // Deal with structs first
-        const auto struct_type = type_struct{
-            .name=node.field_name, .module=info.filepath, .templates=templates
-        };
-        const auto key = template_struct_name{info.filepath, node.field_name};
-
-        if (com.struct_templates.contains(key) && !com.types.contains(struct_type)) {
-            com.current_module.emplace_back(info.filepath);
-            const auto& ast = com.struct_templates.at(key);
-
-            auto map = build_template_map(com, node.token, ast.templates, node.templates);
-            com.current_struct.emplace_back(struct_type, map);
-            auto fields = std::vector<type_field>{};
-            for (const auto& p : ast.fields) {
-                fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
-            }
-            com.types.add(struct_type, fields, map);
-
-            for (const auto& func : ast.functions) {
-                const auto& stmt = std::get<node_function_stmt>(*func);
-
-                // Template functions only get compiled at the call site, so we just stash the ast
-                const auto fkey = template_function_name{info.filepath, struct_type, stmt.name};
-                const auto [it, success] = com.function_templates.emplace(fkey, stmt);
-                node.token.assert(success, "function template named '{}' already defined", fkey);
-            }
-
-            com.current_struct.pop_back();
-            com.current_module.pop_back();
-            return type_type{type_name{struct_type}};
-        }
-        if (com.types.contains(struct_type)) {
-            return type_type{type_name{struct_type}};
+        // It might be a struct
+        const auto sname = type_struct{node.field_name, info.filepath, templates};
+        if (auto it = get_struct(com, node.token, sname); it.has_value()) {
+            return *it;
         }
 
         // It might be a function
@@ -1071,7 +1044,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         }
 
         // Otherwise, it must be a variable
-        node.token.assert(node.templates.empty(), "variables cannot be templated ({}) {}", node.field_name, type_name{struct_type});
+        node.token.assert(node.templates.empty(), "variables cannot be templated {}", node.field_name);
         if (ct == compile_type::ptr) {
             return push_var_addr(com, node.token, info.filepath, node.field_name);
         }
