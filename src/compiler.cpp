@@ -86,7 +86,7 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
 
 auto get_function(compiler& com, const function_name& name) -> std::optional<function>
 {
-    if (const auto it = com.functions_by_name.find(name.to_string()); it != com.functions_by_name.end()) {
+    if (const auto it = com.functions_by_name.find(name); it != com.functions_by_name.end()) {
         return com.functions[it->second];
     }
     return std::nullopt;
@@ -312,7 +312,7 @@ auto compile_function(
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
     com.functions.emplace_back(full_name, id, variable_manager{true});
-    const auto [it, success] = com.functions_by_name.emplace(full_name, id);
+    const auto [it, success] = com.functions_by_name.emplace(name, id);
     tok.assert(success, "a function with the name '{}' already exists", full_name);
     
     variables(com).new_scope();
@@ -1402,9 +1402,10 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     }
 
     const auto struct_name = type_struct{ .name=node.name, .module=curr_module(com) };
+    const auto fname = function_name{curr_module(com), no_struct, node.name};
     const auto message = std::format("type '{}' already defined", node.name);
     node.token.assert(!com.types.contains(struct_name), "{}", message);
-    node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);
+    node.token.assert(!com.functions_by_name.contains(fname), "{}", message);
 
     com.current_struct.emplace_back(struct_name, template_map{});
     auto fields = std::vector<type_field>{};

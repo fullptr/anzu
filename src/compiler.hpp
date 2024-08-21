@@ -59,7 +59,7 @@ struct compiler
 
     std::unordered_set<std::filesystem::path> modules;
 
-    std::unordered_map<std::string, std::size_t> functions_by_name;
+    std::unordered_map<function_name, std::size_t> functions_by_name;
     
     std::unordered_map<template_function_name, node_function_stmt> function_templates;
     std::unordered_map<template_struct_name, node_struct_stmt>     struct_templates;
