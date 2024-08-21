@@ -9,9 +9,20 @@ namespace anzu {
 
 struct template_struct_name
 {
-    std::string name;
     std::filesystem::path module;
+    std::string           name;
+
     auto operator==(const template_struct_name&) const -> bool = default;
+};
+
+struct struct_name
+{
+    std::filesystem::path  module;
+    std::string            name;
+    std::vector<type_name> templates;
+
+    auto as_template() const -> template_struct_name;
+    auto operator==(const struct_name&) const -> bool = default;
 };
 
 struct template_function_name
@@ -19,19 +30,9 @@ struct template_function_name
     std::filesystem::path module;
     type_struct           struct_name;
     std::string           name;
+
+    auto to_string() const -> std::string;
     auto operator==(const template_function_name&) const -> bool = default;
-    auto to_string() const -> std::string
-    {
-        auto ret = std::format("<{}>", module.string());
-        if (struct_name != type_struct{""}) {
-            ret += std::format(".{}", struct_name.name);
-            if (!struct_name.templates.empty()) {
-                ret += std::format("!({})", format_comma_separated(struct_name.templates));
-            }
-        }
-        ret += std::format(".{}", name);
-        return ret;
-    }
 };
 
 struct function_name
@@ -40,30 +41,10 @@ struct function_name
     type_struct            struct_name;
     std::string            name;
     std::vector<type_name> templates;
+
+    auto as_template() const -> template_function_name;
+    auto to_string() const -> std::string;
     auto operator==(const function_name&) const -> bool = default;
-    
-    auto as_template() const -> template_function_name
-    {
-        return template_function_name{module, struct_name, name};
-    }
-
-    auto to_string() const -> std::string
-    {
-        auto ret = std::format("<{}>", module.string());
-        if (struct_name != type_struct{""}) {
-            ret += std::format(".{}", struct_name.name);
-            if (!struct_name.templates.empty()) {
-                ret += std::format("!({})", format_comma_separated(struct_name.templates));
-            }
-        }
-        ret += std::format(".{}", name);
-        if (!templates.empty()) {
-            const auto template_args_string = format_comma_separated(templates);
-            ret += std::format("!({})", template_args_string);
-        }
-
-        return ret;
-    }
 };
 
 }

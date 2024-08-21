@@ -915,7 +915,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto struct_type = type_struct{
         .name=node.name, .module=curr_module(com), .templates=templates
     };
-    const auto key = template_struct_name{node.name, curr_module(com)};
+    const auto key = template_struct_name{curr_module(com), node.name};
     if (com.struct_templates.contains(key) && !com.types.contains(struct_type)) {
         const auto& ast = com.struct_templates.at(key);
 
@@ -1006,7 +1006,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto struct_type = type_struct{
             .name=node.field_name, .module=info.filepath, .templates=templates
         };
-        const auto key = template_struct_name{node.field_name, info.filepath};
+        const auto key = template_struct_name{info.filepath, node.field_name};
 
         if (com.struct_templates.contains(key) && !com.types.contains(struct_type)) {
             com.current_module.emplace_back(info.filepath);
@@ -1365,7 +1365,7 @@ void push_stmt(compiler& com, const node_if_stmt& node)
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     if (!node.templates.empty()) {
-        const auto key = template_struct_name{node.name, curr_module(com)};
+        const auto key = template_struct_name{curr_module(com), node.name};
         const auto [it, success] = com.struct_templates.emplace(key, node);
         node.token.assert(success, "struct template named '<{}>.{}' already defined", curr_module(com).string(), node.name);
         return;
