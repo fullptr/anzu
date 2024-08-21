@@ -93,20 +93,6 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
     return inner_type(type_expr_type);
 }
 
-auto struct_name(
-    compiler& com, const token& tok, const std::string& name, const std::vector<node_expr_ptr>& templates = {}
-)
-    -> type_name
-{
-    if (templates.empty()) {
-        return make_type(com, name);
-    }
-    const auto template_str = format_comma_separated(
-        templates, [&](const node_expr_ptr& n) { return resolve_type(com, tok, n); }
-    );
-    return make_type(com, std::format("{}!({})", name, template_str));
-}
-
 auto fn_name(
     compiler& com,
     const token& tok,
@@ -1003,9 +989,9 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // It might be a fundamental type
-    if (com.types.contains(make_type(com, node.name))) {
+    if (const auto t = make_type(com, node.name); com.types.contains(t)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        return type_type{make_type(com, node.name)};
+        return type_type{t};
     }
 
     // The name might be a function
@@ -1420,7 +1406,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
         return;
     }
 
-    const auto struct_name = make_type(com, node.name);
+    const auto struct_name = type_name{type_struct{ .name=node.name, .module=curr_module(com) }};
     const auto message = std::format("type '{}' already defined", node.name);
     node.token.assert(!com.types.contains(struct_name), "{}", message);
     node.token.assert(!com.functions_by_name.contains(node.name), "{}", message);
