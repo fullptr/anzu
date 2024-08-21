@@ -919,7 +919,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Next, check if it is a function that needs compiling (does val/ptr matter?)
-    const auto full_name_no_templates = fn_name(com, node.token, curr_module(com), no_struct, node.name);
     const auto full_name = fn_name(com, node.token, curr_module(com), no_struct, node.name, node.templates);
     
     const auto fkey = template_function_type{
