@@ -1025,7 +1025,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Otherwise, it must be a variable
-    const auto test = make_type(com, node.name);
     node.token.assert(node.templates.empty(), "variables cannot be templated ({}) {}", node.name, struct_type);
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, curr_module(com), node.name);
@@ -1108,7 +1107,15 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
         }
 
-        node.token.error("cannot access field {} on {}", node.field_name, type);
+        // Otherwise, it must be a variable
+        node.token.assert(node.templates.empty(), "variables cannot be templated ({}) {}", node.field_name, struct_type);
+        if (ct == compile_type::ptr) {
+            return push_var_addr(com, node.token, info.filepath, node.field_name);
+        }
+        const auto type = push_expr(com, compile_type::ptr, node);
+        node.token.assert(!type.is_type_value(), "invalid use of type expressions");
+        push_value(code(com), op::load, com.types.size_of(type));
+        return type;
     }
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
