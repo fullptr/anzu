@@ -170,7 +170,6 @@ auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_type& type) -> std::size_t;
 auto hash(const type_module& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
-using type_hash = decltype([](const type_name& t) { return anzu::hash(t); });
 
 // Used for resolving template types. In the future could also be used for type aliases
 using template_map = std::unordered_map<std::string, type_name>;
@@ -223,5 +222,14 @@ struct std::formatter<anzu::type_name> : std::formatter<std::string>
 {
     auto format(const anzu::type_name& type, auto& ctx) const {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
+    }
+};
+
+template<>
+struct std::hash<anzu::type_name>
+{
+    auto operator()(const anzu::type_name& name) const -> std::size_t
+    {
+        return anzu::hash(name);
     }
 };
