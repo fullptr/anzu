@@ -301,13 +301,14 @@ auto build_template_map(
 auto compile_function(
     compiler& com,
     const token& tok,
-    const std::string& full_name,
+    const function_name& name,
     const node_signature& node_sig,
     const node_stmt_ptr& body,
     const template_map& map = {}
 )
     -> void
 {
+    const auto full_name = name.to_string();
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
     com.functions.emplace_back(full_name, id, variable_manager{true});
@@ -912,7 +913,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         const auto& ast = com.function_templates.at(fkey);
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
         com.current_struct.emplace_back(no_struct, template_map{});
-        compile_function(com, node.token, fname.to_string(), ast.sig, ast.body, map);
+        compile_function(com, node.token, fname, ast.sig, ast.body, map);
         com.current_struct.pop_back();
     }
 
@@ -1068,7 +1069,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             const auto& ast = com.function_templates.at(fkey);
             const auto map = build_template_map(com, node.token, ast.templates, node.templates);
             com.current_struct.emplace_back(no_struct, template_map{});
-            compile_function(com, node.token, fname.to_string(), ast.sig, ast.body, map);
+            compile_function(com, node.token, fname, ast.sig, ast.body, map);
             com.current_struct.pop_back();
         }
         if (auto func = get_function(com, fname)) {
@@ -1110,7 +1111,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             com.current_struct.emplace_back(struct_info, com.types.templates_of(inner_type(type)));
             com.current_module.emplace_back(struct_info.module);
             const auto map = build_template_map(com, node.token, ast.templates, node.templates);
-            compile_function(com, node.token, fname.to_string(), ast.sig, ast.body, map);
+            compile_function(com, node.token, fname, ast.sig, ast.body, map);
             com.current_module.pop_back();
             com.current_struct.pop_back();
         }
@@ -1145,7 +1146,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         com.current_struct.emplace_back(struct_name, com.types.templates_of(stripped));
         com.current_module.emplace_back(struct_name.module);
         const auto map = build_template_map(com, node.token, ast.templates, node.templates);
-        compile_function(com, node.token, fname.to_string(), ast.sig, ast.body, map);
+        compile_function(com, node.token, fname, ast.sig, ast.body, map);
         com.current_module.pop_back();
         com.current_struct.pop_back();
     }
@@ -1508,12 +1509,12 @@ void push_stmt(compiler& com, const node_function_stmt& node)
         return;
     }
 
-    const auto key = function_name{
+    const auto fname = function_name{
         .module = curr_module(com),
         .struct_name = struct_name,
         .name = node.name
     };
-    compile_function(com, node.token, key.to_string(), node.sig, node.body);
+    compile_function(com, node.token, fname, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
