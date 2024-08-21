@@ -1,10 +1,7 @@
 module m := "examples/module.az";
-module i := "lib/io.az";
 
-struct double {
-    x: m.pair;
-    y: m.pair;
-}
+arena a;
+let contents := m.io.read_file("examples/example_data.txt", a&);
 
-let d := double(m.pair(1, 2), m.pair(3, 4));
-print("{} {} {} {}\n", d.x.x, d.x.y, d.y.x, d.y.y);
+print("'{}'\n", contents);
+print("\nsize={}\n", contents.size());

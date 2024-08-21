@@ -1,6 +1,2 @@
 
-struct pair
-{
-    x: i64;
-    y: i64;
-}
+module io := "lib/io.az";
