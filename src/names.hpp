@@ -41,6 +41,12 @@ struct function_name
     std::string            name;
     std::vector<type_name> templates;
     auto operator==(const function_name&) const -> bool = default;
+    
+    auto as_template() const -> template_function_name
+    {
+        return template_function_name{module, struct_name, name};
+    }
+
     auto to_string() const -> std::string
     {
         auto ret = std::format("<{}>", module.string());
