@@ -39,7 +39,7 @@ struct func_info
 
 struct struct_info
 {
-    type_name    name;
+    type_struct  name;
     template_map templates;
 };
 
