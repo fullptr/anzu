@@ -442,6 +442,41 @@ auto get_function(compiler& com, const token& tok, const function_name& name)
     return std::nullopt;
 }
 
+auto get_struct(compiler& com, const token& tok, const type_struct& name)
+    -> std::optional<type_type>
+{
+    const auto key = template_struct_name{name.module, name.name};
+    if (com.struct_templates.contains(key) && !com.types.contains(name)) {
+        const auto& ast = com.struct_templates.at(key);
+
+        auto map = build_template_map2(com, tok, ast.templates, name.templates);
+        com.current_struct.emplace_back(name, map);
+        auto fields = std::vector<type_field>{};
+        for (const auto& p : ast.fields) {
+            fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, tok, p.type) });
+        }
+        com.types.add(name, fields, map);
+
+        for (const auto& func : ast.functions) {
+            const auto& stmt = std::get<node_function_stmt>(*func);
+
+            // Template functions only get compiled at the call site, so we just stash the ast
+            const auto fkey = template_function_name{curr_module(com), name, stmt.name};
+            const auto [it, success] = com.function_templates.emplace(fkey, stmt);
+            tok.assert(success, "function template named '{}' already defined", fkey);
+        }
+
+        com.current_struct.pop_back();
+        return type_type{type_name{name}};
+    }
+
+    // The name might be a struct type
+    if (com.types.contains(name)) {
+        return type_type{type_name{name}};
+    }
+
+    return std::nullopt;
+}
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> type_name
 {
@@ -928,7 +963,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         templates.push_back(resolve_type(com, node.token, expr));
     }
 
-    // Next, check if it is a function that needs compiling (does val/ptr matter?)
+    // Next, check if it is a function
     const auto fname = function_name{curr_module(com), no_struct, node.name, templates};
     if (auto func = get_function(com, node.token, fname)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
@@ -936,39 +971,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
     }
 
-    // Next, it might be a template type
-    const auto struct_type = type_struct{
-        .name=node.name, .module=curr_module(com), .templates=templates
-    };
-    const auto key = template_struct_name{curr_module(com), node.name};
-    if (com.struct_templates.contains(key) && !com.types.contains(struct_type)) {
-        const auto& ast = com.struct_templates.at(key);
-
-        auto map = build_template_map(com, node.token, ast.templates, node.templates);
-        com.current_struct.emplace_back(struct_type, map);
-        auto fields = std::vector<type_field>{};
-        for (const auto& p : ast.fields) {
-            fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
-        }
-        com.types.add(struct_type, fields, map);
-
-        for (const auto& func : ast.functions) {
-            const auto& stmt = std::get<node_function_stmt>(*func);
-
-            // Template functions only get compiled at the call site, so we just stash the ast
-            const auto fkey = template_function_name{curr_module(com), struct_type, stmt.name};
-            const auto [it, success] = com.function_templates.emplace(fkey, stmt);
-            node.token.assert(success, "function template named '{}' already defined", fkey);
-        }
-
-        com.current_struct.pop_back();
-        return type_type{type_name{struct_type}};
-    }
-
-    // The name might be a struct type
-    if (com.types.contains(struct_type)) {
-        node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        return type_type{type_name{struct_type}};
+    // Next, it might be a struct
+    const auto struct_type = type_struct{node.name, curr_module(com), templates};
+    if (auto it = get_struct(com, node.token, struct_type); it.has_value()) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a struct type");
+        return *it;
     }
 
     // It might be a fundamental type
