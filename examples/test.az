@@ -1,2 +1,7 @@
 let x := [1, 2, 3, 4, 6, 10];
-print("{}\n", len(x));
+let p := x[];
+print("{}\n", len(p));
+
+arena a;
+let y := new(a, 100u) 56;
+print("{}\n", len(a));

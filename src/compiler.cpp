@@ -826,6 +826,17 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
     if (type.is_array()) {
         push_value(code(com), op::push_u64, array_length(type));
     }
+    else if (type.is_span()) {
+        push_expr(com, compile_type::ptr, *node.expr); // pointer to the span
+        push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add); // offset to the size value
+        push_load(com, com.types.size_of(u64_type())); // load the size
+    }
+    else if (type.is_arena()) {
+        const auto type = push_expr(com, compile_type::ptr, *node.expr);
+        push_load(com, com.types.size_of(u64_type())); // load the arena
+        push_value(code(com), op::arena_size);
+        return u64_type();
+    }
     return u64_type();
 }
 
