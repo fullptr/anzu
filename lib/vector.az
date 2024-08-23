@@ -17,7 +17,7 @@ struct vector!(T)
 
     fn capacity(self: &) -> u64
     {
-        return self._data.size();
+        return len(self._data);
     }
 
     fn size(self: const&) -> u64

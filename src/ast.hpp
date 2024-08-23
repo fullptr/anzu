@@ -143,6 +143,13 @@ struct node_sizeof_expr
     anzu::token token;
 };
 
+struct node_len_expr
+{
+    node_expr_ptr expr;
+
+    anzu::token token;
+};
+
 struct node_subscript_expr
 {
     node_expr_ptr expr;
@@ -218,6 +225,7 @@ struct node_expr : std::variant<
     node_repeat_array_expr,
     node_addrof_expr,
     node_sizeof_expr,
+    node_len_expr,
     node_span_expr,
     node_typeof_expr,
     node_function_ptr_type_expr,

@@ -1,7 +1,12 @@
-module m := "examples/module.az";
-module io := "lib/io.az";
-arena a;
-let contents := io.read_file("examples/example_data.txt", a&);
+struct fake_array
+{
+    size: u64;
 
-print("'{}'\n", contents);
-print("\nsize={}\n", contents.size());
+    fn length(self: &) -> u64
+    {
+        return self.size;
+    }
+}
+
+let fa := fake_array(12u);
+print("{}\n", len(fa));
