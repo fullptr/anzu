@@ -71,6 +71,7 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "if")       return token_type::kw_if;
     if (token == "import")   return token_type::kw_import;
     if (token == "in")       return token_type::kw_in;
+    if (token == "len")      return token_type::kw_len;
     if (token == "let")      return token_type::kw_let;
     if (token == "loop")     return token_type::kw_loop;
     if (token == "module")   return token_type::kw_module;

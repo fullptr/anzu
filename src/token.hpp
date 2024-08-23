@@ -47,6 +47,7 @@ enum class token_type
     kw_if,
     kw_import,
     kw_in,
+    kw_len,
     kw_let,
     kw_loop,
     kw_module,
