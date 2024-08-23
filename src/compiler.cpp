@@ -821,6 +821,11 @@ auto push_expr(compiler& com, compile_type ct, const node_sizeof_expr& node) -> 
 
 auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> type_name
 {
+    node.token.assert(ct == compile_type::val, "cannot take the address of a len expression");
+    const auto type = type_of_expr(com, *node.expr);
+    if (type.is_array()) {
+        push_value(code(com), op::push_u64, array_length(type));
+    }
     return u64_type();
 }
 
