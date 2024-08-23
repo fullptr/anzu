@@ -333,6 +333,17 @@ auto type_name::is_arena() const -> bool
     return std::holds_alternative<type_arena>(*this);
 }
 
+auto type_name::is_struct() const -> bool
+{
+    return std::holds_alternative<type_struct>(*this);
+}
+
+auto type_name::as_struct() const -> const type_struct&
+{
+    return std::get<type_struct>(*this);
+}
+
+
 auto type_name::is_type_value() const -> bool
 {
     return std::holds_alternative<type_type>(*this);

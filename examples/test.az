@@ -1,7 +1,12 @@
-let x := [1, 2, 3, 4, 6, 10];
-let p := x[];
-print("{}\n", len(p));
+struct fake_array
+{
+    size: u64;
 
-arena a;
-let y := new(a, 100u) 56;
-print("{}\n", len(a));
+    fn length(self: &) -> u64
+    {
+        return self.size;
+    }
+}
+
+let fa := fake_array(12u);
+print("{}\n", len(fa));

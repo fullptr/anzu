@@ -816,6 +816,20 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
         push_value(code(com), op::arena_size);
         return u64_type();
     }
+    else if (type.is_struct()) {
+        const auto& info = type.as_struct();
+        const auto name = function_name{.module=info.module, .struct_name=info, .name="length"};
+        const auto func = get_function(com, node.token, name);
+        node.token.assert(func.has_value(), "cannot call 'len' on an object of type {}", type);
+        node.token.assert_eq(func->sig.params.size(), 1, "{}.length() must only take one argument", type);
+        node.token.assert_eq(func->sig.params[0], type.add_ptr(), "{}.length() must only take a pointer to the object", type);
+        node.token.assert_eq(func->sig.return_type, u64_type(), "{}.length() must return a u64", type);
+        push_expr(com, compile_type::ptr, *node.expr);
+        push_value(code(com), op::push_function_ptr, func->id, op::call, sizeof(std::byte*));
+    }
+    else {
+        node.token.error("cannot call 'len' on an object of type {}", type);
+    }
     return u64_type();
 }
 

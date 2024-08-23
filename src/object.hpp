@@ -142,6 +142,9 @@ struct type_name : public std::variant<
     [[nodiscard]] auto is_bound_method() const -> bool;
     [[nodiscard]] auto is_arena() const -> bool;
 
+    [[nodiscard]] auto is_struct() const -> bool;
+    [[nodiscard]] auto as_struct() const -> const type_struct&;
+
     [[nodiscard]] auto is_type_value() const -> bool;
     [[nodiscard]] auto is_module_value() const -> bool;
 };
