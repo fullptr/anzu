@@ -132,11 +132,6 @@ auto to_string(const type_bound_method& type) -> std::string
     );
 }
 
-auto to_string(const type_bound_builtin_method& type) -> std::string
-{
-    return std::format("<bound builtin method: {}.{}>", type.name, *type.type);
-}
-
 auto to_string(const type_arena& type) -> std::string
 {
     return std::string{"<arena>"};
@@ -208,11 +203,6 @@ auto hash(const type_bound_method& type) -> std::size_t
         val ^= hash(param);
     }
     return val;
-}
-
-auto hash(const type_bound_builtin_method& type) -> std::size_t
-{
-    return hash(*type.type) ^ std::hash<std::string>{}(type.name);
 }
 
 auto hash(const type_arena& type) -> std::size_t
@@ -335,11 +325,6 @@ auto type_name::is_builtin() const -> bool
 auto type_name::is_bound_method() const -> bool
 {
     return std::holds_alternative<type_bound_method>(*this);
-}
-
-auto type_name::is_bound_builtin_method() const -> bool
-{
-    return std::holds_alternative<type_bound_builtin_method>(*this);
 }
 
 

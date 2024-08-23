@@ -8,7 +8,7 @@ struct tokenizer
     fn advance(self: &) -> null
     {
         # we are at the last word, so "advance" just invalidates the tokenizer
-        if self._curr == self._string.size() {
+        if self._curr == len(self._string) {
             self._start = self._curr;
             return;
         }
@@ -19,14 +19,14 @@ struct tokenizer
             self._start = self._curr;
         }
 
-        while self._curr < self._string.size() && self._string[self._curr] != self._delim {
+        while self._curr < len(self._string) && self._string[self._curr] != self._delim {
             self._curr = self._curr + 1u;
         }
     }
 
     fn valid(self: const&) -> bool
     {
-        return self._start != self._string.size();
+        return self._start != len(self._string);
     }
 
     fn current(self: const&) -> char const[]

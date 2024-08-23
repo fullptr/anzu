@@ -84,14 +84,6 @@ struct type_bound_method
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
-// A bit half baked, currently only used for .size() on arrays and spans
-struct type_bound_builtin_method
-{
-    std::string          name;
-    value_ptr<type_name> type;
-    auto operator==(const type_bound_builtin_method&) const -> bool = default;
-};
-
 struct type_arena
 {
     auto operator==(const type_arena&) const -> bool = default;
@@ -120,7 +112,6 @@ struct type_name : public std::variant<
     type_function_ptr,
     type_builtin,
     type_bound_method,
-    type_bound_builtin_method,
     type_arena,
     type_type,
     type_module>
@@ -149,7 +140,6 @@ struct type_name : public std::variant<
     [[nodiscard]] auto is_function_ptr() const -> bool;
     [[nodiscard]] auto is_builtin() const -> bool;
     [[nodiscard]] auto is_bound_method() const -> bool;
-    [[nodiscard]] auto is_bound_builtin_method() const -> bool;
     [[nodiscard]] auto is_arena() const -> bool;
 
     [[nodiscard]] auto is_type_value() const -> bool;
@@ -165,7 +155,6 @@ auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_builtin& type) -> std::size_t;
 auto hash(const type_bound_method& type) -> std::size_t;
-auto hash(const type_bound_builtin_method& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_type& type) -> std::size_t;
 auto hash(const type_module& type) -> std::size_t;
@@ -201,7 +190,6 @@ auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
 auto to_string(const type_builtin& type) -> std::string;
 auto to_string(const type_bound_method& type) -> std::string;
-auto to_string(const type_bound_builtin_method& type) -> std::string;
 auto to_string(const type_arena& type) -> std::string;
 auto to_string(const type_type& type) -> std::string;
 auto to_string(const type_module& type) -> std::string;

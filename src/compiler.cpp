@@ -233,7 +233,6 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
         [&](const type_function_ptr& l, const type_function_ptr& r) { return l == r; },
         [&](const type_builtin& l, const type_builtin& r) { return l == r; },
         [&](const type_bound_method& l, const type_bound_method& r) { return l == r; },
-        [&](const type_bound_builtin_method& l, const type_bound_builtin_method& r) { return l == r; },
         [&](const type_arena& l, const type_arena& r) { return true; },
         [&](const type_type& l, const type_type& r) { return l == r; },
         [&](const type_module& l, const type_module& r) { return l == r; },
@@ -738,26 +737,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         push_value(code(com), op::push_function_ptr, info.id, op::call, args_size);
         return *info.return_type;
     }
-    else if (type.is_bound_builtin_method()) { // member builtin call
-        const auto& info = std::get<type_bound_builtin_method>(type);
-        if (info.type->is_array() && info.name == "size") {
-            push_value(code(com), op::push_u64, array_length(*info.type));
-            return u64_type();
-        }
-        else if (info.type->is_span() && info.name == "size") {
-            push_expr(com, compile_type::val, *node.expr); // pointer to the span
-            push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add); // offset to the size value
-            push_load(com, com.types.size_of(u64_type())); // load the size
-            return u64_type();
-        }
-        else if (info.type->is_arena() && info.name == "size") {
-            const auto type = push_expr(com, compile_type::val, *node.expr);
-            auto_deref_pointer(com, type);
-            push_load(com, com.types.size_of(u64_type())); // load the arena
-            push_value(code(com), op::arena_size);
-            return u64_type();
-        }
-    }
 
     node.token.error("unable to call non-callable type {}", type);
 }
@@ -1113,17 +1092,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             .name = info->name.to_string(),
             .id = info->id
         };
-    }
-
-    // Next, it could be a member function on a builtin type
-    if (type.is_array() || type.is_span() || type.is_arena()) {
-        node.token.assert(node.templates.empty(), "builtin members functions cannot be templated");
-        node.token.assert(ct == compile_type::val, "cannot take the address of a bound builtin method");
-        if (node.field_name == "size") {
-            push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
-            auto_deref_pointer(com, type); // allow for field access through a pointer
-            return type_bound_builtin_method{ .name = "size", .type = type };
-        }
     }
 
     // Otherwise, it's a data member

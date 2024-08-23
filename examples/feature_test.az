@@ -259,7 +259,7 @@ fn get(a: arena&, count: u64) -> u64[]
 {
     var p := new(a, count) 0u;
     var idx := 0u;
-    while idx < p.size() {
+    while idx < len(p) {
         p[idx] = idx;
         idx = idx + 1u;
     }
