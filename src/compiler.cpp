@@ -819,6 +819,11 @@ auto push_expr(compiler& com, compile_type ct, const node_sizeof_expr& node) -> 
     return u64_type();
 }
 
+auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> type_name
+{
+    return u64_type();
+}
+
 auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a span expression");
