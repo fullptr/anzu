@@ -1,7 +1,3 @@
-module m := "examples/module.az";
-module io := "lib/io.az";
-arena a;
-let contents := io.read_file("examples/example_data.txt", a&);
-
-print("'{}'\n", contents);
-print("\nsize={}\n", contents.size());
+let x := i64;
+let z := x;
+let y : x = 10;
