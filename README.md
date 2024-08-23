@@ -158,6 +158,7 @@ Runtime  -- runtime.hpp   : Functionality to run a program
 ```
 
 # Next Features
-* Complete spans
-    - Create spans from other spans.
+* Generators
+* Template Type Deductions
+* Pattern Matching
 * Variants

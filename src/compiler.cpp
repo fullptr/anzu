@@ -53,6 +53,16 @@ auto curr_struct(const compiler& com) -> const type_struct&
     return com.current_struct.back().name;
 }
 
+auto push_load(compiler& com, std::size_t size) -> void
+{
+    if (size > 0) push_value(code(com), op::load, size);
+}
+
+auto push_save(compiler& com, std::size_t size) -> void
+{
+    if (size > 0) push_value(code(com), op::save, size);
+}
+
 static const auto no_struct = type_struct{""};
 enum class compile_type { val, ptr };
 
@@ -122,13 +132,13 @@ auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path&
 auto load_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, module, name);
-    push_value(code(com), op::load, com.types.size_of(type));
+    push_load(com, com.types.size_of(type));
 }
 
 auto save_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, module, name);
-    push_value(code(com), op::save, com.types.size_of(type));
+    push_save(com, com.types.size_of(type));
 }
 
 // Given a type and a field name, push the offset of the fields position relative to its
@@ -190,7 +200,7 @@ auto auto_deref_pointer(compiler& com, const type_name& type) -> type_name
 {
     auto t = type;
     while (t.is_ptr()) {
-        push_value(code(com), op::load, sizeof(std::byte*));
+        push_load(com, sizeof(std::byte*));
         t = t.remove_ptr();
     }
     return t;
@@ -225,6 +235,8 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
         [&](const type_bound_method& l, const type_bound_method& r) { return l == r; },
         [&](const type_bound_builtin_method& l, const type_bound_builtin_method& r) { return l == r; },
         [&](const type_arena& l, const type_arena& r) { return true; },
+        [&](const type_type& l, const type_type& r) { return l == r; },
+        [&](const type_module& l, const type_module& r) { return l == r; },
         [&](const auto& l, const auto& r) {
             return false;
         }
@@ -543,7 +555,6 @@ auto push_expr(compiler& com, compile_type ct, const node_unary_op_expr& node) -
     node.token.assert(ct == compile_type::val, "cannot take the address of a unary op");
     using tt = token_type;
     const auto type = push_expr(com, compile_type::val, *node.expr);
-    node.token.assert(!type.is_type_value(), "invalid use of type expression");
 
     switch (node.token.type) {
         case tt::minus: {
@@ -736,13 +747,13 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         else if (info.type->is_span() && info.name == "size") {
             push_expr(com, compile_type::val, *node.expr); // pointer to the span
             push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add); // offset to the size value
-            push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
+            push_load(com, com.types.size_of(u64_type())); // load the size
             return u64_type();
         }
         else if (info.type->is_arena() && info.name == "size") {
             const auto type = push_expr(com, compile_type::val, *node.expr);
             auto_deref_pointer(com, type);
-            push_value(code(com), op::load, com.types.size_of(u64_type())); // load the arena
+            push_load(com, com.types.size_of(u64_type())); // load the arena
             push_value(code(com), op::arena_size);
             return u64_type();
         }
@@ -830,7 +841,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
     if (type.is_span()) {
-        push_value(code(com), op::load, sizeof(std::byte*));
+        push_load(com, sizeof(std::byte*));
     }
 
     if (node.lower_bound) {// move first index of span up
@@ -850,7 +861,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
         // Push the span pointer, offset to the size, and load the size
         push_expr(com, compile_type::ptr, *node.expr);
         push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add);
-        push_value(code(com), op::load, com.types.size_of(u64_type()));
+        push_load(com, com.types.size_of(u64_type()));
     } else {
         push_value(code(com), op::push_u64, array_length(type));
     }
@@ -1002,8 +1013,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         return push_var_addr(com, node.token, curr_module(com), node.name);
     }
     const auto type = push_expr(com, compile_type::ptr, node);
-    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-    push_value(code(com), op::load, com.types.size_of(type));
+    push_load(com, com.types.size_of(type));
     return type;
 }
 
@@ -1036,8 +1046,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             return push_var_addr(com, node.token, info.filepath, node.field_name);
         }
         const auto type = push_expr(com, compile_type::ptr, node);
-        node.token.assert(!type.is_type_value(), "invalid use of type expressions");
-        push_value(code(com), op::load, com.types.size_of(type));
+        push_load(com, com.types.size_of(type));
         return type;
     }
     
@@ -1103,7 +1112,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     auto field_type = push_field_offset(com, node.token, stripped, node.field_name);
     push_value(code(com), op::u64_add); // modify ptr
     if (ct == compile_type::val) {
-        push_value(code(com), op::load, com.types.size_of(field_type));
+        push_load(com, com.types.size_of(field_type));
     }
     
     if (stripped.is_const) field_type.is_const = true; // propagate const to fields
@@ -1115,7 +1124,7 @@ auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> t
     const auto type = push_expr(com, compile_type::val, *node.expr); // Push the address
     node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
     if (ct == compile_type::val) {
-        push_value(code(com), op::load, com.types.size_of(type.remove_ptr()));
+        push_load(com, com.types.size_of(type.remove_ptr()));
     }
     return type.remove_ptr();
 }
@@ -1140,7 +1149,7 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         // If we are a span, we want the address that it holds rather than its own address,
         // so switch the pointer by loading what it's pointing at.
         if (is_span) {
-            push_value(code(com), op::load, sizeof(std::byte*));
+            push_load(com, sizeof(std::byte*));
         }
 
         // Offset pointer by (index * size)
@@ -1157,7 +1166,7 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
     }
 
     const auto t = push_expr(com, compile_type::ptr, node);
-    push_value(code(com), op::load, com.types.size_of(t));
+    push_load(com, com.types.size_of(t));
     return t;
 }
 
@@ -1248,7 +1257,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     push_var_addr(com, node.token, curr_module(com), "$iter"); // push pointer to span
     push_value(code(com), op::push_u64, sizeof(std::byte*));
     push_value(code(com), op::u64_add); // offset to the size value
-    push_value(code(com), op::load, com.types.size_of(u64_type()));       
+    push_load(com, com.types.size_of(u64_type()));       
     declare_var(com, node.token, "$size", u64_type());
 
     push_loop(com, [&] {
@@ -1263,7 +1272,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         // var name := iter[idx]&;
         const auto inner = inner_type(iter_type);
         push_var_addr(com, node.token, curr_module(com), "$iter");
-        push_value(code(com), op::load, sizeof(std::byte*));  
+        push_load(com, sizeof(std::byte*));  
         load_variable(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::push_u64, com.types.size_of(inner));
         push_value(code(com), op::u64_mul, op::u64_add);
@@ -1401,7 +1410,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     node.token.assert(!lhs_type.is_const, "cannot assign to a const variable");
     push_copy_typechecked(com, *node.expr, lhs_type, node.token);
     const auto lhs = push_expr(com, compile_type::ptr, *node.position);
-    push_value(code(com), op::save, com.types.size_of(lhs));
+    push_save(com, com.types.size_of(lhs));
     return;
 }
 
