@@ -225,6 +225,8 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
         [&](const type_bound_method& l, const type_bound_method& r) { return l == r; },
         [&](const type_bound_builtin_method& l, const type_bound_builtin_method& r) { return l == r; },
         [&](const type_arena& l, const type_arena& r) { return true; },
+        [&](const type_type& l, const type_type& r) { return l == r; },
+        [&](const type_module& l, const type_module& r) { return l == r; },
         [&](const auto& l, const auto& r) {
             return false;
         }
@@ -543,7 +545,6 @@ auto push_expr(compiler& com, compile_type ct, const node_unary_op_expr& node) -
     node.token.assert(ct == compile_type::val, "cannot take the address of a unary op");
     using tt = token_type;
     const auto type = push_expr(com, compile_type::val, *node.expr);
-    node.token.assert(!type.is_type_value(), "invalid use of type expression");
 
     switch (node.token.type) {
         case tt::minus: {
@@ -1002,7 +1003,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         return push_var_addr(com, node.token, curr_module(com), node.name);
     }
     const auto type = push_expr(com, compile_type::ptr, node);
-    node.token.assert(!type.is_type_value(), "invalid use of type expressions");
     push_value(code(com), op::load, com.types.size_of(type));
     return type;
 }
@@ -1036,7 +1036,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             return push_var_addr(com, node.token, info.filepath, node.field_name);
         }
         const auto type = push_expr(com, compile_type::ptr, node);
-        node.token.assert(!type.is_type_value(), "invalid use of type expressions");
         push_value(code(com), op::load, com.types.size_of(type));
         return type;
     }
