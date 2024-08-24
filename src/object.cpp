@@ -147,6 +147,11 @@ auto to_string(const type_module& type) -> std::string
     return std::format("<module: {}>", type.filepath.string());
 }
 
+auto to_string(const type_ct_bool& type) -> std::string
+{
+    return std::format("<comptime bool: {}>", type.value);
+}
+
 
 auto hash(const type_name& type) -> std::size_t
 {
@@ -218,6 +223,11 @@ auto hash(const type_type& type) -> std::size_t
 auto hash(const type_module& type) -> std::size_t
 {
     return std::hash<std::string>{}(type.filepath.string()) ^ std::hash<std::string_view>{}("type_module");
+}
+
+auto hash(const type_ct_bool& type) -> std::size_t
+{
+    return std::hash<bool>{}(type.value);
 }
 
 auto hash(std::span<const type_name> types) -> std::size_t

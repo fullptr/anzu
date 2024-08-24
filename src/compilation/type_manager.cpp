@@ -28,7 +28,8 @@ auto type_manager::contains(const type_name& type) const -> bool
         [&](const type_bound_method&)         { return true; },
         [&](const type_arena&)                { return true; },
         [&](const type_type& t)               { return contains(*t.type_val); },
-        [&](const type_module&)               { return true; }
+        [&](const type_module&)               { return true; },
+        [&](const type_ct_bool&)              { return true; }
     }, type);
 }
 
@@ -75,19 +76,22 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         [](const type_function_ptr&) {
             return sizeof(std::byte*);
         },
-        [](const type_builtin&) {
-            return std::size_t{0}; // not a real type, all info is stored in the type
-        },
         [](const type_bound_method&) {
             return sizeof(std::byte*); // pointer to the object, first arg to the function
         },
         [](const type_arena& arena) {
             return sizeof(std::byte*); // the runtime will store the arena separately
         },
+        [](const type_builtin&) {
+            return std::size_t{0};
+        },
         [](const type_type&) {
             return std::size_t{0}; 
         },
         [](const type_module&) {
+            return std::size_t{0}; 
+        },
+        [](const type_ct_bool&) {
             return std::size_t{0}; 
         }
     }, type);

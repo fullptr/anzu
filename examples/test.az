@@ -1,12 +1,8 @@
-struct fake_array
-{
-    size: u64;
 
-    fn length(self: &) -> u64
-    {
-        return self.size;
-    }
+fn is_integer!(T)() -> bool
+{
+    return T == i64;
 }
 
-let fa := fake_array(12u);
-print("{}\n", len(fa));
+print("{}\n", is_integer!(i64)());
+print("{}\n", is_integer!(u64)());

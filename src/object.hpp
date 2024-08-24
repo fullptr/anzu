@@ -102,6 +102,12 @@ struct type_module
     auto operator==(const type_module&) const -> bool = default;
 };
 
+struct type_ct_bool
+{
+    bool value;
+    auto operator==(const type_ct_bool&) const -> bool = default;
+};
+
 
 struct type_name : public std::variant<
     type_fundamental,
@@ -109,12 +115,13 @@ struct type_name : public std::variant<
     type_array,
     type_ptr,
     type_span,
-    type_function_ptr,
-    type_builtin,
-    type_bound_method,
     type_arena,
+    type_function_ptr,
+    type_bound_method,
+    type_builtin,
     type_type,
-    type_module>
+    type_module,
+    type_ct_bool>
 {
     using variant::variant;
     
@@ -161,6 +168,7 @@ auto hash(const type_bound_method& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_type& type) -> std::size_t;
 auto hash(const type_module& type) -> std::size_t;
+auto hash(const type_ct_bool& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
 
 // Used for resolving template types. In the future could also be used for type aliases
@@ -196,6 +204,7 @@ auto to_string(const type_bound_method& type) -> std::string;
 auto to_string(const type_arena& type) -> std::string;
 auto to_string(const type_type& type) -> std::string;
 auto to_string(const type_module& type) -> std::string;
+auto to_string(const type_ct_bool& type) -> std::string;
 
 }
 

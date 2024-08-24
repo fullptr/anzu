@@ -236,6 +236,7 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
         [&](const type_arena& l, const type_arena& r) { return true; },
         [&](const type_type& l, const type_type& r) { return l == r; },
         [&](const type_module& l, const type_module& r) { return l == r; },
+        [&](const type_ct_bool& l, const type_ct_bool& r) { return l == r; },
         [&](const auto& l, const auto& r) {
             return false;
         }
@@ -259,6 +260,12 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     // Allow for a span to be constructed from a nullptr, which results in a null span.
     if (actual == nullptr_type() && expected.is_span()) {
         push_value(code(com), op::push_u64, std::size_t{0}); // push the size
+        return;
+    }
+
+    // Let compile time bools convert to runtime bools
+    if (expected == bool_type() && std::holds_alternative<type_ct_bool>(actual)) {
+        push_value(code(com), op::push_bool, std::get<type_ct_bool>(actual).value);
         return;
     }
 
@@ -575,8 +582,14 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     auto lhs = push_expr(com, compile_type::val, *node.lhs);
     auto rhs = push_expr(com, compile_type::val, *node.rhs);
 
-    // TODO: Implement using == for comparing types
-    node.token.assert(!lhs.is_type_value() && !rhs.is_type_value(), "invalid use of type expression");
+    // Allow for comparisons of types
+    if (lhs.is_type_value() && rhs.is_type_value()) {
+        switch (node.token.type) {
+            case tt::equal_equal: return type_name{type_ct_bool{inner_type(lhs) == inner_type(rhs)}};
+            case tt::bang_equal:  return type_name{type_ct_bool{inner_type(lhs) != inner_type(rhs)}};
+        }
+        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    }
 
     // Pointers can compare to nullptr
     if ((lhs.is_ptr() && rhs == nullptr_type()) || (rhs.is_ptr() && lhs == nullptr_type())) {
@@ -1295,9 +1308,18 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
 void push_stmt(compiler& com, const node_if_stmt& node)
 {
+    const auto type = type_of_expr(com, *node.condition);
+    if (std::holds_alternative<type_ct_bool>(type)) {
+        if (std::get<type_ct_bool>(type).value) {
+            push_stmt(com, *node.body);
+        } else if (node.else_body) {
+            push_stmt(com, *node.else_body);
+        }
+        return;
+    }
+
     const auto cond_type = push_expr(com, compile_type::val, *node.condition);
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
-
     push_value(code(com), op::jump_if_false);
     const auto jump_pos = push_value(code(com), std::uint64_t{0});
     push_stmt(com, *node.body);
@@ -1400,6 +1422,7 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
     // We must unwrap the sequence statement like this since we do no want to introduce a new
     // scope while compiling this, otherwise all the variables will get popped after.
     node.token.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");
+    std::print("    - Compiling {}\n", node.filepath);
     for (const auto& node : std::get<node_sequence_stmt>(*mod.root).sequence) {
         push_stmt(com, *node);
     }
@@ -1442,10 +1465,8 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
     node.token.assert(in_function(com), "can only return within functions");
-    const auto return_type = push_expr(com, compile_type::val, *node.return_value);
-    node.token.assert_eq(
-        return_type, current(com).sig.return_type, "wrong return type"
-    );
+    const auto return_type = current(com).sig.return_type;
+    push_copy_typechecked(com, *node.return_value, return_type, node.token);
     variables(com).handle_function_exit(code(com));
     push_value(code(com), op::ret, com.types.size_of(return_type));
 }
