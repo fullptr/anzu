@@ -1,4 +1,12 @@
-let x := bool == i64;
-let y := f64 == f64;
 
-print("__dump_type", x, y);
+fn is_integer!(T)() -> bool
+{
+    if T == i64 {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+print("{}\n", is_integer!(i64)());
+print("{}\n", is_integer!(u64)());

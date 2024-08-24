@@ -1303,9 +1303,18 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
 void push_stmt(compiler& com, const node_if_stmt& node)
 {
+    const auto type = type_of_expr(com, *node.condition);
+    if (std::holds_alternative<type_ct_bool>(type)) {
+        if (std::get<type_ct_bool>(type).value) {
+            push_stmt(com, *node.body);
+        } else if (node.else_body) {
+            push_stmt(com, *node.else_body);
+        }
+        return;
+    }
+
     const auto cond_type = push_expr(com, compile_type::val, *node.condition);
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
-
     push_value(code(com), op::jump_if_false);
     const auto jump_pos = push_value(code(com), std::uint64_t{0});
     push_stmt(com, *node.body);
