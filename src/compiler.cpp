@@ -582,6 +582,7 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     auto lhs = push_expr(com, compile_type::val, *node.lhs);
     auto rhs = push_expr(com, compile_type::val, *node.rhs);
 
+    // Allow for comparisons of types
     if (lhs.is_type_value() && rhs.is_type_value()) {
         return type_name{type_ct_bool{inner_type(lhs) == inner_type(rhs)}};
     }
