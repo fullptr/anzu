@@ -584,7 +584,11 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 
     // Allow for comparisons of types
     if (lhs.is_type_value() && rhs.is_type_value()) {
-        return type_name{type_ct_bool{inner_type(lhs) == inner_type(rhs)}};
+        switch (node.token.type) {
+            case tt::equal_equal: return type_name{type_ct_bool{inner_type(lhs) == inner_type(rhs)}};
+            case tt::bang_equal:  return type_name{type_ct_bool{inner_type(lhs) != inner_type(rhs)}};
+        }
+        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
     // Pointers can compare to nullptr
