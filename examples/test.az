@@ -1,6 +1,10 @@
-module str := "lib/str.az";
-let hello := "world matt world corinne world worldworld";
+module util := "lib/utility.az";
 
-arena a;
-let replaced := str.replace(a&, hello, "world", "WORLD");
-print("{}\n", replaced);
+var x := [1, 2, 3, 4, 5];
+util.copy!(i64)(x[0u : 2u], x[1u : 3u]);
+
+print("[ ");
+for p in x[] {
+    print("{} ", p@);
+}
+print("]\n");

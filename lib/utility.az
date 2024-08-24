@@ -3,3 +3,13 @@ struct pair!(A, B)
     first: A;
     second: B;
 }
+
+fn copy!(T)(dst: T[], src: T const[])
+{
+    assert len(dst) >= len(src);
+    var idx := 0u;
+    while idx < len(src) {
+        dst[idx] = src[idx];
+        idx = idx + 1u;
+    }
+}

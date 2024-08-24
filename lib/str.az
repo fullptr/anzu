@@ -1,3 +1,4 @@
+module util := "lib/utility.az";
 
 fn equal(lhs: char const[], rhs: char const[]) -> bool
 {
@@ -46,12 +47,7 @@ fn occurrences(string: char const[], substr: char const[]) -> u64
 
 fn copy(dst: char[], src: char const[])
 {
-    assert len(dst) >= len(src);
-    var idx := 0u;
-    while idx < len(src) {
-        dst[idx] = src[idx];
-        idx = idx + 1u;
-    }
+    util.copy!(char)(dst, src);
 }
 
 fn replace(arr: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
