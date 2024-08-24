@@ -1,8 +1,5 @@
+module str := "lib/str.az";
 
-fn is_integer!(T)() -> bool
-{
-    return T == i64;
-}
-
-print("{}\n", is_integer!(i64)());
-print("{}\n", is_integer!(u64)());
+let hello := "hello world matt";
+let sub := "world";
+print("{}\n", str.contains(hello, sub));

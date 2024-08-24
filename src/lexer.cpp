@@ -157,7 +157,11 @@ auto lexer::make_string() -> token
 
 auto lexer::make_char() -> token
 {
-    const auto tok = make_literal('\'', token_type::character);
+    auto tok = make_literal('\'', token_type::character);
+    if (tok.text == "\\n") {
+        tok.text = "\n";
+        return tok;
+    }
     if (const auto size = tok.text.size(); size != 1) {
         lexer_error(d_line, d_col, "Char literal is not one character! Got '{}' ({})", tok.text, size);
     }

@@ -1,0 +1,37 @@
+module io := "lib/io.az";
+module tk := "lib/tokenizer.az";
+
+fn is_digit(c: char) -> bool
+{
+    for x in "0123456789" {
+        if c == x@ { return true; }
+    }
+    return false;
+}
+
+arena a;
+let input := io.read_file("examples/aoc2023-1-input.txt", a&);
+
+let mapping := [
+    ["one", "o1e"],
+    ["two", "t2o"],
+    ["three", "t3e"],
+    ["four", "f4r"],
+    ["five", "f5e"],
+    ["six", "s6x"],
+    ["seven", "s7n"],
+    ["eight", "e8t"],
+    ["nine", "n9e"]
+];
+
+var total_part1 := 0;
+var total_part2 := 0;
+
+var tokens := tk.tokenizer.create(input, '\n');
+while tokens.valid() {
+    let line := tokens.current();
+
+
+
+    tokens.advance();
+}
