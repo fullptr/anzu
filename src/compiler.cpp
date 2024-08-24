@@ -1417,6 +1417,7 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
     // We must unwrap the sequence statement like this since we do no want to introduce a new
     // scope while compiling this, otherwise all the variables will get popped after.
     node.token.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");
+    std::print("    - Compiling {}\n", node.filepath);
     for (const auto& node : std::get<node_sequence_stmt>(*mod.root).sequence) {
         push_stmt(com, *node);
     }
@@ -1459,10 +1460,8 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
     node.token.assert(in_function(com), "can only return within functions");
-    const auto return_type = push_expr(com, compile_type::val, *node.return_value);
-    node.token.assert_eq(
-        return_type, current(com).sig.return_type, "wrong return type"
-    );
+    const auto return_type = current(com).sig.return_type;
+    push_copy_typechecked(com, *node.return_value, return_type, node.token);
     variables(com).handle_function_exit(code(com));
     push_value(code(com), op::ret, com.types.size_of(return_type));
 }

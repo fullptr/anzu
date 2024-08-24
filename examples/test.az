@@ -1,11 +1,7 @@
 
 fn is_integer!(T)() -> bool
 {
-    if T == i64 {
-        return true;
-    } else {
-        return false;
-    }
+    return T == i64;
 }
 
 print("{}\n", is_integer!(i64)());
