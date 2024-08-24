@@ -1,5 +1,5 @@
 module str := "lib/str.az";
 
-let hello := "hello world matt";
+let hello := "hello world matt world corinne world";
 let sub := "world";
-print("{}\n", str.contains(hello, sub));
+print("{}\n", str.occurrences(hello, sub));

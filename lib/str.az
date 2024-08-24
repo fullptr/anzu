@@ -28,6 +28,22 @@ fn contains(string: char const[], substr: char const[]) -> bool
     return find(string, substr, 0u) != len(string);
 }
 
+fn occurrences(string: char const[], substr: char const[]) -> u64
+{
+    var count := 0u;
+    var idx := 0u;
+    while idx < len(string) {
+        let curr_substr := string[idx : idx + len(substr)];
+        if equal(substr, curr_substr) {
+            count = count + 1u;
+            idx = idx + len(substr);
+        } else {
+            idx = idx + 1u;
+        }
+    }
+    return count;
+}
+
 fn replace(arr: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
 {
     return nullptr;
