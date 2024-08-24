@@ -263,6 +263,12 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
         return;
     }
 
+    // Let compile time bools convert to runtime bools
+    if (expected == bool_type() && std::holds_alternative<type_ct_bool>(actual)) {
+        push_value(code(com), op::push_bool, std::get<type_ct_bool>(actual).value);
+        return;
+    }
+
     if (actual.is_arena() || expected.is_arena()) {
         tok.error("arenas can not be copied or assigned");
     }
@@ -576,8 +582,9 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     auto lhs = push_expr(com, compile_type::val, *node.lhs);
     auto rhs = push_expr(com, compile_type::val, *node.rhs);
 
-    // TODO: Implement using == for comparing types
-    node.token.assert(!lhs.is_type_value() && !rhs.is_type_value(), "invalid use of type expression");
+    if (lhs.is_type_value() && rhs.is_type_value()) {
+        return type_name{type_ct_bool{inner_type(lhs) == inner_type(rhs)}};
+    }
 
     // Pointers can compare to nullptr
     if ((lhs.is_ptr() && rhs == nullptr_type()) || (rhs.is_ptr() && lhs == nullptr_type())) {

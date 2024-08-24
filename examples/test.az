@@ -1,12 +1,4 @@
-struct fake_array
-{
-    size: u64;
+let x := bool == i64;
+let y := f64 == f64;
 
-    fn length(self: &) -> u64
-    {
-        return self.size;
-    }
-}
-
-let fa := fake_array(12u);
-print("{}\n", len(fa));
+print("__dump_type", x, y);
