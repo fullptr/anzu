@@ -1416,6 +1416,7 @@ auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
 
     // Second, parse the module into its AST
     const auto path = std::filesystem::absolute(node.filepath);
+    std::print("    - Parsing {}\n", node.filepath);
     const auto mod = parse(path);
 
     com.current_module.emplace_back(node.filepath);

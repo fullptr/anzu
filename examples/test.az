@@ -1,5 +1,6 @@
 module str := "lib/str.az";
+let hello := "world matt world corinne world worldworld";
 
-let hello := "hello world matt world corinne world";
-let sub := "world";
-print("{}\n", str.occurrences(hello, sub));
+arena a;
+let replaced := str.replace(a&, hello, "world", "WORLD");
+print("{}\n", replaced);

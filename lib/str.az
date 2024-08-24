@@ -13,7 +13,7 @@ fn equal(lhs: char const[], rhs: char const[]) -> bool
 fn find(string: char const[], substr: char const[], start: u64) -> u64
 {
     var idx := start;
-    while idx < len(string) - len(substr) {
+    while idx <= len(string) - len(substr) {
         let curr_substr := string[idx : idx + len(substr)];
         if equal(substr, curr_substr) {
             return idx;
@@ -44,9 +44,33 @@ fn occurrences(string: char const[], substr: char const[]) -> u64
     return count;
 }
 
+fn copy(dst: char[], src: char const[])
+{
+    assert len(dst) >= len(src);
+    var idx := 0u;
+    while idx < len(src) {
+        dst[idx] = src[idx];
+        idx = idx + 1u;
+    }
+}
+
 fn replace(arr: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
 {
-    return nullptr;
+    let new_size := len(from) == len(to) ? len(string)
+                                         : len(string) + occurrences(string, from) * (len(to) - len(from));
+
+    var new_string := new(arr, new_size) ' ';
+    var idx := 0u;
+    while idx < len(string) {
+        let next := find(string, from, idx);
+        copy(new_string[idx : next], string[idx : next]);
+        idx = next;
+        if next != len(string) {
+            copy(new_string[idx : idx + len(to)], to);
+            idx = idx + len(to);
+        }
+    }
+    return new_string;
 }
 
 struct tokenizer
