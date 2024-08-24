@@ -236,6 +236,7 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
         [&](const type_arena& l, const type_arena& r) { return true; },
         [&](const type_type& l, const type_type& r) { return l == r; },
         [&](const type_module& l, const type_module& r) { return l == r; },
+        [&](const type_ct_bool& l, const type_ct_bool& r) { return l == r; },
         [&](const auto& l, const auto& r) {
             return false;
         }
