@@ -313,7 +313,6 @@ auto run(const bytecode_program& prog) -> void
     while (true) {
         if constexpr (Debug) {
             print_op(ctx.rom, ctx.frames.back().code, ctx.frames.back().ip);
-            ctx.stack.print();
         }
         if (!apply_op(ctx)) break;
     }

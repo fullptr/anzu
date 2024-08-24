@@ -14,9 +14,10 @@ fn equal(lhs: char const[], rhs: char const[]) -> bool
 fn find(string: char const[], substr: char const[], start: u64) -> u64
 {
     var idx := start;
-    while idx <= len(string) - len(substr) {
+    while idx + len(substr) <= len(string) {
         let curr_substr := string[idx : idx + len(substr)];
         if equal(substr, curr_substr) {
+            print("returning {}\n", idx);
             return idx;
         }
         idx = idx + 1u;
