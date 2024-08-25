@@ -552,7 +552,10 @@ auto push_expr(compiler& com, compile_type ct, const node_literal_string_expr& n
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a string literal");
     push_value(code(com), op::push_string_literal);
-    push_value(code(com), insert_into_rom(com, node.value), node.value.size());
+    auto str = string_replace(node.value, "\\n", "\n");
+    str = string_replace(str, "\\r", "\r");
+    str = string_replace(str, "\\t", "\t");
+    push_value(code(com), insert_into_rom(com, str), str.size());
     return string_literal_type();
 }
 

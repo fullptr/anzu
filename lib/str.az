@@ -35,12 +35,12 @@ struct tokenizer
 
     fn advance(self: &) -> null
     {
-        if self._finished { return; }
-
         if self._started {
             self._start = self._curr + len(self._delim);
             if self._start > len(self._string) {
                 self._finished = true;
+                self._start = len(self._string);
+                self._curr = len(self._string);
             }
             else {
                 self._curr = find(self._string, self._delim, self._start);
@@ -105,11 +105,11 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
     var idx := 0u;
     var tok := tokenizer.create(string, from);
     assert tok.valid(); # There is always at least one token (it may be the whole string)
-
     let curr := tok.current();
     let size := len(curr);
     copy(new_string[idx : idx + size], tok.current());
     idx = idx + size;
+    tok.advance();
 
     while tok.valid() {
         copy(new_string[idx : idx + len(to)], to);
@@ -119,6 +119,7 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
         let size := len(curr);
         copy(new_string[idx : idx + size], tok.current());
         idx = idx + size;
+        tok.advance();
     }
 
     return new_string;

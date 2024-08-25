@@ -1,9 +1,11 @@
 module str := "lib/str.az";
-arena a;
+module io := "lib/io.az";
 
-let line := "4nineeightseven2seven";
-var tok := str.tokenizer.create(line, "seven");
+arena a;
+let input := io.read_file("examples/aoc2023-1-input.txt", a&);
+var tok := str.tokenizer.create(input, "\n");
+
 while tok.valid() {
-    print("'{}'\n", tok.current());
+    print("1. {}\n", tok.current());
     tok.advance();
 }
