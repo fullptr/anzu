@@ -16,7 +16,7 @@ namespace anzu {
 
 // Want these to be equivalent since we want uints available in the runtime but we also want
 // to use it as indexes into C++ vectors which use size_t.
-static_assert(sizeof(std::uint64_t) == sizeof(std::size_t));
+static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 
 struct type_name;
 
