@@ -118,26 +118,26 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             std::print("JUMP: jump={}\n", jump);
         } break;
         case op::jump_if_false: {
-            const auto jump = read_at<std::uint64_t>(&ptr);
+            const auto jump = read_at<std::size_t>(&ptr);
             std::print("JUMP_IF_FALSE: jump={}\n", jump);
         } break;
         case op::ret: {
-            const auto type_size = read_at<std::uint64_t>(&ptr);
+            const auto type_size = read_at<std::size_t>(&ptr);
             std::print("RETURN: type_size={}\n", type_size);
         } break;
         case op::call: {
-            const auto args_size = read_at<std::uint64_t>(&ptr);
+            const auto args_size = read_at<std::size_t>(&ptr);
             std::print("CALL: args_size={}\n", args_size);
         } break;
         case op::builtin_call: {
-            const auto id = read_at<std::uint64_t>(&ptr);
+            const auto id = read_at<std::size_t>(&ptr);
             const auto& b = get_builtin(id);
             std::print("BUILTIN_CALL: {}({}) -> {}\n",
                   b->name, format_comma_separated(b->args), b->return_type);
         } break;
         case op::assert: {
             const auto index = read_at<std::uint64_t>(&ptr);
-            const auto size = read_at<std::uint64_t>(&ptr);
+            const auto size = read_at<std::size_t>(&ptr);
             const auto data = &rom[index];
             std::print("ASSERT: msg={}\n", std::string_view{data, size});
         } break;

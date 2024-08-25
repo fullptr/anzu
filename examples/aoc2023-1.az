@@ -32,7 +32,7 @@ fn process_line(line: char const[]) -> i64
 
 var total_part1 := 0;
 var total_part2 := 0;
-let delim := "\n";
+let delim := "\r\n";
 
 var tokens := str.tokenizer.create(input, delim);
 var x := 0;
