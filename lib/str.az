@@ -17,12 +17,57 @@ fn find(string: char const[], substr: char const[], start: u64) -> u64
     while idx + len(substr) <= len(string) {
         let curr_substr := string[idx : idx + len(substr)];
         if equal(substr, curr_substr) {
-            print("returning {}\n", idx);
             return idx;
         }
         idx = idx + 1u;
     }
     return len(string);
+}
+
+struct tokenizer
+{
+    _string: char const[];
+    _delim: char const[];
+    _start: u64;
+    _curr: u64;
+    _started: bool;
+    _finished: bool;
+
+    fn advance(self: &) -> null
+    {
+        if self._finished { return; }
+
+        if self._started {
+            self._start = self._curr + len(self._delim);
+            if self._start > len(self._string) {
+                self._finished = true;
+            }
+            else {
+                self._curr = find(self._string, self._delim, self._start);
+            }
+        }
+        else { # first time
+            self._curr = find(self._string, self._delim, self._start);
+            self._started = true;
+        }
+    }
+
+    fn valid(self: const&) -> bool
+    {
+        return !self._finished;
+    }
+
+    fn current(self: const&) -> char const[]
+    {
+        return self._string[self._start : self._curr];
+    }
+
+    fn create(input: char const[], delim: char const[]) -> tokenizer
+    {
+        var t := tokenizer(input, delim, 0u, 0u, false, false);
+        t.advance(); # prime the tokenizer at the first word
+        return t;
+    }
 }
 
 fn contains(string: char const[], substr: char const[]) -> bool
@@ -51,65 +96,48 @@ fn copy(dst: char[], src: char const[])
     util.copy!(char)(dst, src);
 }
 
-fn replace(arr: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
+fn replace(a: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
 {
     let new_size := len(from) == len(to) ? len(string)
                                          : len(string) + occurrences(string, from) * (len(to) - len(from));
 
-    var new_string := new(arr, new_size) ' ';
+    var new_string := new(a, new_size) ' ';
     var idx := 0u;
-    while idx < len(string) {
-        let next := find(string, from, idx);
-        copy(new_string[idx : next], string[idx : next]);
-        idx = next;
-        if next != len(string) {
-            copy(new_string[idx : idx + len(to)], to);
-            idx = idx + len(to);
-        }
+    var tok := tokenizer.create(string, from);
+    assert tok.valid(); # There is always at least one token (it may be the whole string)
+
+    let curr := tok.current();
+    let size := len(curr);
+    copy(new_string[idx : idx + size], tok.current());
+    idx = idx + size;
+
+    while tok.valid() {
+        copy(new_string[idx : idx + len(to)], to);
+        idx = idx + len(to);
+
+        let curr := tok.current();
+        let size := len(curr);
+        copy(new_string[idx : idx + size], tok.current());
+        idx = idx + size;
     }
+
     return new_string;
 }
 
-struct tokenizer
+fn is_digit(c: char) -> bool
 {
-    _string: char const[];
-    _delim: char;
-    _start: u64;
-    _curr: u64;
-
-    fn advance(self: &) -> null
-    {
-        # we are at the last word, so "advance" just invalidates the tokenizer
-        if self._curr == len(self._string) {
-            self._start = self._curr;
-            return;
-        }
-
-        # if we are not at the first word, we need to update the start location
-        if self._curr > 0u {
-            self._curr = self._curr + 1u;
-            self._start = self._curr;
-        }
-
-        while self._curr < len(self._string) && self._string[self._curr] != self._delim {
-            self._curr = self._curr + 1u;
-        }
+    for x in "0123456789" {
+        if c == x@ { return true; }
     }
+    return false;
+}
 
-    fn valid(self: const&) -> bool
-    {
-        return self._start != len(self._string);
+fn to_i64(c: char) -> i64
+{
+    var value := 0;
+    for x in "0123456789" {
+        if c == x@ { return value; }
+        value = value + 1;
     }
-
-    fn current(self: const&) -> char const[]
-    {
-        return self._string[self._start : self._curr];
-    }
-
-    fn create(input: char const[], delim: char) -> tokenizer
-    {
-        var t := tokenizer(input, delim, 0u, 0u);
-        t.advance(); # prime the tokenizer at the first word
-        return t;
-    }
+    return -1;
 }

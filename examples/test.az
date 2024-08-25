@@ -1,18 +1,9 @@
 module str := "lib/str.az";
 arena a;
 
-let mapping := [
-    [ "one"   , "o1e" ],
-    [ "two"   , "t2o" ],
-    [ "three" , "t3e" ],
-    [ "four"  , "f4r" ],
-    [ "five"  , "f5e" ],
-    [ "six"   , "s6x" ],
-    [ "seven" , "s7n" ],
-    [ "eight" , "e8t" ],
-    [ "nine"  , "n9e" ]
-];
-
-var line := "m5";
-line = str.replace(a&, line, "one", "o1e");
-print("{}\n", line);
+let line := "4nineeightseven2seven";
+var tok := str.tokenizer.create(line, "seven");
+while tok.valid() {
+    print("'{}'\n", tok.current());
+    tok.advance();
+}

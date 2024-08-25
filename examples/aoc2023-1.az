@@ -1,14 +1,6 @@
 module io := "lib/io.az";
 module str := "lib/str.az";
 
-fn is_digit(c: char) -> bool
-{
-    for x in "0123456789" {
-        if c == x@ { return true; }
-    }
-    return false;
-}
-
 arena a;
 let input := io.read_file("examples/aoc2023-1-input.txt", a&);
 
@@ -24,26 +16,39 @@ let mapping := [
     [ "nine"  , "n9e" ]
 ];
 
+fn process_line(line: char const[]) -> i64
+{
+    var first := 0;
+    var last := 0;
+    for c in line {
+        let i := str.to_i64(c@);
+        if i != -1 {
+            if first == 0 { first = i; }
+            last = i;
+        }
+    }
+    return 10 * first + last;
+}
+
 var total_part1 := 0;
 var total_part2 := 0;
 
-var line := "m5";
-for map in mapping[] {
-    line = str.replace(a&, line, map@[0u], map@[1u]);
-}
-print("matt: {}\n", line);
+var tokens := str.tokenizer.create(input, '\n');
+var x := 0;
+while tokens.valid() {
+    var line := tokens.current();
+    total_part1 = total_part1 + process_line(line);
 
-#var tokens := str.tokenizer.create(input, '\n');
-#var x := 0;
-#while tokens.valid() {
-#    var line := tokens.current();
-#
-#    #for map in mapping[] {
-#    #    line = str.replace(a&, line, map@[0u], map@[1u]);
-#    #}
-#
-#    print("{} {}\n", x, line);
-#
-#    tokens.advance();
-#    x = x + 1;
-#}
+    print("{}\n", line);
+    for map in mapping[] {
+        line = str.replace(a&, line, map@[0u], map@[1u]);
+        print("{}\n", line);
+    }
+    let part2 := process_line(line);
+    total_part2 = total_part2 + part2;
+
+    tokens.advance();
+    x = x + 1;
+}
+
+print("{} {}\n", total_part1, total_part2);
