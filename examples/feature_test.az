@@ -210,19 +210,19 @@ struct vec3
     }
 }
 
-# typeof operator
+# @type_of function
 let variable := 0;
-fn typeof_example(y: typeof(variable)) -> i64
+fn typ_eof_example(y: @type_of(variable)) -> i64
 {
     return y + y;
 }
-print("{}\n", typeof_example(3)); # no error here!
+print("{}\n", type_of_example(3)); # no error here!
 
-fn typeof_example2(a: u64) -> typeof(a)
+fn type_of_example2(a: u64) -> @type_of(a)
 {
     return a * a;
 }
-print("{}\n", typeof_example2(6u));
+print("{}\n", type_of_example2(6u));
 
 {
     var v1 := vec3(1.0, 1.0, 1.0);

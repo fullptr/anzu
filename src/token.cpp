@@ -70,7 +70,6 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::kw_return:           return "return";
         case token_type::kw_struct:           return "struct";
         case token_type::kw_true:             return "true";
-        case token_type::kw_typeof:           return "typeof";
         case token_type::kw_u64:              return "u64";
         case token_type::kw_var:              return "var";
         case token_type::kw_while:            return "while";

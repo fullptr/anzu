@@ -898,12 +898,6 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
     }
 }
 
-auto push_expr(compiler& com, compile_type ct, const node_typeof_expr& node) -> type_name
-{
-    node.token.assert(ct == compile_type::val, "cannot take the address of a typeof expression");
-    return type_type{type_of_expr(com, *node.expr)};
-}
-
 auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr type expression");
@@ -1201,8 +1195,8 @@ auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) ->
 
 auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) -> type_name
 {
+    node.token.assert(ct == compile_type::val, "cannot take the address of a @intrinsic function call");
     if (node.name == "size_of") {
-        node.token.assert(ct == compile_type::val, "cannot take the address of a sizeof expression");
         node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
         const auto type = type_of_expr(com, *node.args[0]);
         if (type.is_type_value()) { // can call sizeof on a type directly
@@ -1211,6 +1205,10 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
             push_value(code(com), op::push_u64, com.types.size_of(type));
         }
         return u64_type();
+    }
+    if (node.name == "type_of") {
+        node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
+        return type_type{type_of_expr(com, *node.args[0])};
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }

@@ -58,7 +58,6 @@ enum class token_type
     kw_return,
     kw_struct,
     kw_true,
-    kw_typeof,
     kw_u64,
     kw_var,
     kw_while,

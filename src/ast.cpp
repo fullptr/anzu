@@ -122,10 +122,6 @@ auto print_node(const node_expr& root, int indent) -> void
                 print_node(*node.upper_bound, indent + 1);
             }
         },
-        [&](const node_typeof_expr& node) {
-            std::print("{}TypeOf\n", spaces);
-            print_node(*node.expr, indent + 1);
-        },
         [&](const node_function_ptr_type_expr& node) {
             std::print("{}FunctionPtrType:\n", spaces);
             std::print("{}- Params:\n", spaces);

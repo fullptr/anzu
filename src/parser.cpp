@@ -162,16 +162,6 @@ auto parse_unary(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
-auto parse_typeof(tokenstream& tokens) -> node_expr_ptr
-{
-    const auto token = tokens.consume_only(token_type::kw_typeof);
-    tokens.consume_only(token_type::left_paren);
-    auto [node, inner] = new_node<node_typeof_expr>(token);
-    inner.expr = parse_expression(tokens);
-    tokens.consume_only(token_type::right_paren);
-    return node;
-}
-
 auto parse_len(tokenstream& tokens) -> node_expr_ptr
 {
     const auto token = tokens.consume_only(token_type::kw_len);
@@ -412,7 +402,6 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_null,             {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_nullptr,          {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_arena,            {parse_name,          nullptr,         precedence::none}},
-    {token_type::kw_typeof,           {parse_typeof,        nullptr,         precedence::none}},
     {token_type::kw_len,              {parse_len,           nullptr,         precedence::none}},
     {token_type::left_bracket,        {parse_array,         parse_subscript, precedence::call}},
     {token_type::dot,                 {nullptr,             parse_dot,       precedence::call}},

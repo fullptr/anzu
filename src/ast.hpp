@@ -160,13 +160,6 @@ struct node_span_expr
     anzu::token token;
 };
 
-struct node_typeof_expr
-{
-    node_expr_ptr expr;
-
-    anzu::token token;
-};
-
 struct node_function_ptr_type_expr
 {
     std::vector<node_expr_ptr> params;
@@ -227,7 +220,6 @@ struct node_expr : std::variant<
     node_addrof_expr,
     node_len_expr,
     node_span_expr,
-    node_typeof_expr,
     node_function_ptr_type_expr,
     node_const_expr,
     node_name_expr,
