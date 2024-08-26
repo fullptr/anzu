@@ -1211,6 +1211,10 @@ auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) ->
     return type;
 }
 
+auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& name) -> type_name
+{
+    return null_type();
+}
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {

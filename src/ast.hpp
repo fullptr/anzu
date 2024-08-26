@@ -208,6 +208,14 @@ struct node_ternary_expr
     anzu::token   token;
 };
 
+struct node_intrinsic_expr
+{
+    std::string                name;
+    std::vector<node_expr_ptr> args;
+
+    anzu::token   token;
+};
+
 struct node_expr : std::variant<
     node_literal_i32_expr,
     node_literal_i64_expr,
@@ -235,7 +243,8 @@ struct node_expr : std::variant<
     node_deref_expr,
     node_subscript_expr,
     node_new_expr,
-    node_ternary_expr>
+    node_ternary_expr,
+    node_intrinsic_expr>
 {
 };
 

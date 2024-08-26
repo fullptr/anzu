@@ -164,6 +164,14 @@ auto print_node(const node_expr& root, int indent) -> void
             print_node(*node.true_case, indent + 1);
             std::print("{}- FalseCase:\n", spaces);
             print_node(*node.false_case, indent + 1);
+        },
+        [&](const node_intrinsic_expr& node) {
+            std::print("{}Intrinsic:\n", spaces);
+            std::print("{}- Name: @{}\n", spaces, node.name);
+            std::print("{}- Args:\n", spaces);
+            for (const auto& arg : node.args) {
+                print_node(*arg, indent + 1);
+            }
         }
     }, root);
 }
