@@ -1211,9 +1211,20 @@ auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) ->
     return type;
 }
 
-auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& name) -> type_name
+auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) -> type_name
 {
-    return null_type();
+    if (node.name == "size_of") {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a sizeof expression");
+        node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        if (type.is_type_value()) { // can call sizeof on a type directly
+            push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
+        } else {
+            push_value(code(com), op::push_u64, com.types.size_of(type));
+        }
+        return u64_type();
+    }
+    node.token.error("no intrisic function named @{} exists", node.name);
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)

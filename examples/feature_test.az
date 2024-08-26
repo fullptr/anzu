@@ -152,13 +152,13 @@ fn print_vec2(v: vec2) -> null
 {
     var xl := [1, 2, 3, 4];
     xl[2u] = 0;
-    print("Size of array is 4: {}\n", sizeof(xl));
+    print("Size of array is 4: {}\n", @size_of(xl));
 
     let xl2 := [vec2(1, 2), vec2(3, 4)];
     print(
         "xl2 should have size 32 but length 2: size={} length={}\n",
-        sizeof(xl2),
-        sizeof(xl2) / sizeof(xl2[0u])
+        @size_of(xl2),
+        @size_of(xl2) / @size_of(xl2[0u])
     );
 }
 
@@ -195,7 +195,7 @@ struct vec3
     let b := [1, 1, 1, 1, 1];
 
     var idx := 0u;
-    while idx != sizeof(a) / sizeof(a[0u]) {
+    while idx != @size_of(a) / @size_of(a[0u]) {
         print("{}\n", a[idx] == b[idx]);
         idx = idx + 1u;
     }
