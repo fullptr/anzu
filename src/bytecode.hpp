@@ -111,8 +111,6 @@ enum class op : std::uint8_t
     f64_gt,
     f64_ge,
 
-    bool_or,
-    bool_and,
     bool_eq,
     bool_ne,
     bool_not,

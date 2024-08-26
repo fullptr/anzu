@@ -279,8 +279,6 @@ auto apply_op(bytecode_context& ctx) -> bool
         case op::f64_gt:  { binary_op<double, std::greater>(ctx); } break;
         case op::f64_ge:  { binary_op<double, std::greater_equal>(ctx); } break;
 
-        case op::bool_and: { binary_op<bool, std::logical_and>(ctx); } break;
-        case op::bool_or:  { binary_op<bool, std::logical_or>(ctx); } break;
         case op::bool_eq:  { binary_op<bool, std::equal_to>(ctx); } break;
         case op::bool_ne:  { binary_op<bool, std::not_equal_to>(ctx); } break;
         case op::bool_not: { unary_op<bool, std::logical_not>(ctx); } break;
