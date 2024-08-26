@@ -1,0 +1,53 @@
+module io := "lib/io.az";
+module str := "lib/str.az";
+
+arena a;
+let input := io.read_file("examples/aoc2023-1-input.txt", a&);
+
+let mapping := [
+    [ "one"   , "o1e" ],
+    [ "two"   , "t2o" ],
+    [ "three" , "t3e" ],
+    [ "four"  , "f4r" ],
+    [ "five"  , "f5e" ],
+    [ "six"   , "s6x" ],
+    [ "seven" , "s7n" ],
+    [ "eight" , "e8t" ],
+    [ "nine"  , "n9e" ]
+];
+
+fn process_line(line: char const[]) -> i64
+{
+    var first := 0;
+    var last := 0;
+    for c in line {
+        let i := str.to_i64(c@);
+        if i != -1 {
+            if first == 0 { first = i; }
+            last = i;
+        }
+    }
+    return 10 * first + last;
+}
+
+var total_part1 := 0;
+var total_part2 := 0;
+let delim := "\r\n";
+
+var tokens := str.tokenizer.create(input, delim);
+var x := 0;
+while tokens.valid() {
+    var line := tokens.current();
+    total_part1 = total_part1 + process_line(line);
+
+    for map in mapping[] {
+        line = str.replace(a&, line, map@[0u], map@[1u]);
+    }
+    let part2 := process_line(line);
+    total_part2 = total_part2 + part2;
+
+    tokens.advance();
+    x = x + 1;
+}
+
+print("{} {}\n", total_part1, total_part2);

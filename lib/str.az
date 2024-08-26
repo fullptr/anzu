@@ -1,0 +1,144 @@
+module util := "lib/utility.az";
+
+fn equal(lhs: char const[], rhs: char const[]) -> bool
+{
+    if len(lhs) != len(rhs) { return false; }
+    var idx := 0u;
+    while idx < len(lhs) {
+        if lhs[idx] != rhs[idx] { return false; }
+        idx = idx + 1u;
+    }
+    return true;
+}
+
+fn find(string: char const[], substr: char const[], start: u64) -> u64
+{
+    var idx := start;
+    while idx + len(substr) <= len(string) {
+        let curr_substr := string[idx : idx + len(substr)];
+        if equal(substr, curr_substr) {
+            return idx;
+        }
+        idx = idx + 1u;
+    }
+    return len(string);
+}
+
+struct tokenizer
+{
+    _string: char const[];
+    _delim: char const[];
+    _start: u64;
+    _curr: u64;
+    _started: bool;
+    _finished: bool;
+
+    fn advance(self: &) -> null
+    {
+        if self._started {
+            self._start = self._curr + len(self._delim);
+            if self._start > len(self._string) {
+                self._finished = true;
+                self._start = len(self._string);
+                self._curr = len(self._string);
+            }
+            else {
+                self._curr = find(self._string, self._delim, self._start);
+            }
+        }
+        else { # first time
+            self._curr = find(self._string, self._delim, self._start);
+            self._started = true;
+        }
+    }
+
+    fn valid(self: const&) -> bool
+    {
+        return !self._finished;
+    }
+
+    fn current(self: const&) -> char const[]
+    {
+        return self._string[self._start : self._curr];
+    }
+
+    fn create(input: char const[], delim: char const[]) -> tokenizer
+    {
+        var t := tokenizer(input, delim, 0u, 0u, false, false);
+        t.advance(); # prime the tokenizer at the first word
+        return t;
+    }
+}
+
+fn contains(string: char const[], substr: char const[]) -> bool
+{
+    return find(string, substr, 0u) != len(string);
+}
+
+fn occurrences(string: char const[], substr: char const[]) -> u64
+{
+    var count := 0u;
+    var idx := 0u;
+    while idx < len(string) {
+        let curr_substr := string[idx : idx + len(substr)];
+        if equal(substr, curr_substr) {
+            count = count + 1u;
+            idx = idx + len(substr);
+        } else {
+            idx = idx + 1u;
+        }
+    }
+    return count;
+}
+
+fn copy(dst: char[], src: char const[])
+{
+    util.copy!(char)(dst, src);
+}
+
+fn replace(a: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
+{
+    let new_size := len(from) == len(to) ? len(string)
+                                         : len(string) + occurrences(string, from) * (len(to) - len(from));
+
+    var new_string := new(a, new_size) ' ';
+    var idx := 0u;
+    var tok := tokenizer.create(string, from);
+    assert tok.valid(); # There is always at least one token (it may be the whole string)
+    let curr := tok.current();
+    let size := len(curr);
+    copy(new_string[idx : idx + size], tok.current());
+    idx = idx + size;
+    tok.advance();
+
+    while tok.valid() {
+        copy(new_string[idx : idx + len(to)], to);
+        idx = idx + len(to);
+
+        let curr := tok.current();
+        let size := len(curr);
+        copy(new_string[idx : idx + size], tok.current());
+        idx = idx + size;
+        tok.advance();
+    }
+
+    return new_string;
+}
+
+fn is_digit(c: char) -> bool
+{
+    for x in "0123456789" {
+        if c == x@ { return true; }
+    }
+    return false;
+}
+
+fn to_i64(c: char) -> i64
+{
+    var value := 0;
+    for x in "0123456789" {
+        if c == x@ { return value; }
+        value = value + 1;
+    }
+    return -1;
+}

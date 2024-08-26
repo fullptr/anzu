@@ -1,8 +1,11 @@
+module str := "lib/str.az";
+module io := "lib/io.az";
 
-fn is_integer!(T)() -> bool
-{
-    return T == i64;
+arena a;
+let input := io.read_file("examples/aoc2023-1-input.txt", a&);
+var tok := str.tokenizer.create(input, "\n");
+
+while tok.valid() {
+    print("1. {}\n", tok.current());
+    tok.advance();
 }
-
-print("{}\n", is_integer!(i64)());
-print("{}\n", is_integer!(u64)());
