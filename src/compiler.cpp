@@ -684,7 +684,18 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     }
     else if (type == bool_type()) {
         switch (node.token.type) {
-            case tt::ampersand_ampersand: { push(); push_value(code(com), op::bool_and); return type; }
+            case tt::ampersand_ampersand: {
+                push_expr(com, compile_type::val, *node.lhs);
+                push_value(code(com), op::jump_if_false);
+                const auto jump_pos = push_value(code(com), std::size_t{0});
+                push_expr(com, compile_type::val, *node.rhs);
+                push_value(code(com), op::jump);
+                const auto jump_pos2 = push_value(code(com), std::size_t{0});
+                write_value(code(com), jump_pos, code(com).size());
+                push_value(code(com), op::push_bool, false);
+                write_value(code(com), jump_pos2, code(com).size());
+                return type;
+            }
             case tt::bar_bar:             { push(); push_value(code(com), op::bool_or);  return type; }
             case tt::equal_equal:         { push(); push_value(code(com), op::bool_eq);  return type; }
             case tt::bang_equal:          { push(); push_value(code(com), op::bool_ne);  return type; }

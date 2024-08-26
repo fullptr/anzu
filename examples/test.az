@@ -1,3 +1,18 @@
-let c := '1';
-let x := @char_to_i64(c);
-print("{}\n", x);
+
+fn f() -> bool
+{
+    print("false\n");
+    return false;
+}
+
+fn t() -> bool
+{
+    print("true\n");
+    return true;
+}
+
+if (t() && t()) {
+    print("success\n");
+} else {
+    print("not success\n");
+}
