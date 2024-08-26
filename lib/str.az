@@ -91,11 +91,6 @@ fn occurrences(string: char const[], substr: char const[]) -> u64
     return count;
 }
 
-fn copy(dst: char[], src: char const[])
-{
-    util.copy!(char)(dst, src);
-}
-
 fn replace(a: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
 {
     let new_size := len(from) == len(to) ? len(string)
@@ -107,17 +102,17 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
     assert tok.valid(); # There is always at least one token (it may be the whole string)
     let curr := tok.current();
     let size := len(curr);
-    copy(new_string[idx : idx + size], tok.current());
+    @copy(new_string[idx : idx + size], tok.current());
     idx = idx + size;
     tok.advance();
 
     while tok.valid() {
-        copy(new_string[idx : idx + len(to)], to);
+        @copy(new_string[idx : idx + len(to)], to);
         idx = idx + len(to);
 
         let curr := tok.current();
         let size := len(curr);
-        copy(new_string[idx : idx + size], tok.current());
+        @copy(new_string[idx : idx + size], tok.current());
         idx = idx + size;
         tok.advance();
     }

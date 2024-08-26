@@ -50,6 +50,7 @@ enum class op : std::uint8_t
     save,
     push,
     pop,
+    memcpy,
     jump,
     jump_if_false,
     call,

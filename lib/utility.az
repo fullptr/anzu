@@ -4,16 +4,6 @@ struct pair!(A, B)
     second: B;
 }
 
-fn copy!(T)(dst: T[], src: T const[])
-{
-    assert len(dst) >= len(src);
-    var idx := 0u;
-    while idx < len(src) {
-        dst[idx] = src[idx];
-        idx = idx + 1u;
-    }
-}
-
 fn safe_minus(lhs: u64, rhs: u64) -> u64
 {
     assert lhs >= rhs;

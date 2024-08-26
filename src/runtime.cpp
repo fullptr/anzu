@@ -105,6 +105,18 @@ auto apply_op(bytecode_context& ctx) -> bool
             const auto size = read_advance<std::uint64_t>(ctx);
             ctx.stack.resize(ctx.stack.size() - size);
         } break;
+        case op::memcpy: {
+            const auto type_size = read_advance<std::uint64_t>(ctx);
+            const auto src_count = ctx.stack.pop<std::uint64_t>(); 
+            const auto src_data = ctx.stack.pop<std::byte*>();
+            const auto dst_count = ctx.stack.pop<std::uint64_t>(); 
+            const auto dst_data = ctx.stack.pop<std::byte*>();
+            if (dst_count < src_count) {
+                runtime_error("dst span too small to hold src span");
+            }
+            std::memcpy(dst_data, src_data, src_count * type_size);
+            ctx.stack.push(std::byte{0}); // returns null;
+        } break;
         case op::arena_new: {
             const auto arena = new memory_arena;
             arena->next = 0;

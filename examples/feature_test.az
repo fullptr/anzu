@@ -212,7 +212,7 @@ struct vec3
 
 # @type_of function
 let variable := 0;
-fn typ_eof_example(y: @type_of(variable)) -> i64
+fn type_of_example(y: @type_of(variable)) -> i64
 {
     return y + y;
 }

@@ -1210,6 +1210,17 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
         return type_type{type_of_expr(com, *node.args[0])};
     }
+    if (node.name == "copy") {
+        node.token.assert_eq(node.args.size(), 2, "@copy requires two spans");
+        const auto lhs = push_expr(com, ct, *node.args[0]);
+        node.token.assert(lhs.is_span(), "@copy bad first arg of type '{}'", lhs);
+        node.token.assert(!inner_type(lhs).is_const, "@copy cannot write through a const span");
+        const auto rhs = push_expr(com, ct, *node.args[1]);
+        node.token.assert(rhs.is_span(), "@copy bad second arg of type '{}'", rhs);
+        node.token.assert_eq(lhs, rhs, "@copy args must be of the same span type");
+        push_value(code(com), op::memcpy, com.types.size_of(inner_type(lhs)));
+        return null_type();
+    }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
 
