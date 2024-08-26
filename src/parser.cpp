@@ -13,12 +13,14 @@ namespace anzu {
 namespace {
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr;
+auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
+auto parse_identifier(tokenstream& tokens) -> std::string;
 
 enum class precedence {
   none,
   ternary,     // ?:
   logical_or,  // or
-  logical_and, // and
+  logical_and, // andE
   equality,    // == !=
   comparison,  // < > <= >=
   term,        // + -
@@ -160,26 +162,6 @@ auto parse_unary(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
-auto parse_typeof(tokenstream& tokens) -> node_expr_ptr
-{
-    const auto token = tokens.consume_only(token_type::kw_typeof);
-    tokens.consume_only(token_type::left_paren);
-    auto [node, inner] = new_node<node_typeof_expr>(token);
-    inner.expr = parse_expression(tokens);
-    tokens.consume_only(token_type::right_paren);
-    return node;
-}
-
-auto parse_sizeof(tokenstream& tokens) -> node_expr_ptr
-{
-    const auto token = tokens.consume_only(token_type::kw_sizeof);
-    tokens.consume_only(token_type::left_paren);
-    auto [node, inner] = new_node<node_sizeof_expr>(token);
-    inner.expr = parse_expression(tokens);
-    tokens.consume_only(token_type::right_paren);
-    return node;
-}
-
 auto parse_len(tokenstream& tokens) -> node_expr_ptr
 {
     const auto token = tokens.consume_only(token_type::kw_len);
@@ -244,6 +226,18 @@ auto parse_new(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
+auto parse_intrinsic(tokenstream& tokens) -> node_expr_ptr
+{
+    const auto token = tokens.consume_only(token_type::at);
+    auto [node, inner] = new_node<node_intrinsic_expr>(token);
+    inner.name = parse_identifier(tokens);
+    tokens.consume_only(token_type::left_paren);
+    tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+        inner.args.push_back(parse_expression(tokens));
+    });
+    return node;
+}
+
 auto parse_binary(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto op = tokens.consume();
@@ -301,10 +295,9 @@ auto parse_subscript(tokenstream& tokens, const node_expr_ptr& left) -> node_exp
 auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     const auto token = tokens.consume_only(token_type::dot);
-    const auto name = tokens.consume_only(token_type::identifier);
     auto [node, inner] = new_node<node_field_expr>(token);
     inner.expr = left;
-    inner.field_name = std::string{name.text};
+    inner.field_name = parse_identifier(tokens);
     if (tokens.consume_maybe(token_type::bang)) {
         tokens.consume_only(token_type::left_paren);
         tokens.consume_comma_separated_list(token_type::right_paren, [&] {
@@ -409,13 +402,11 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_null,             {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_nullptr,          {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_arena,            {parse_name,          nullptr,         precedence::none}},
-    {token_type::kw_typeof,           {parse_typeof,        nullptr,         precedence::none}},
-    {token_type::kw_sizeof,           {parse_sizeof,        nullptr,         precedence::none}},
     {token_type::kw_len,              {parse_len,           nullptr,         precedence::none}},
     {token_type::left_bracket,        {parse_array,         parse_subscript, precedence::call}},
     {token_type::dot,                 {nullptr,             parse_dot,       precedence::call}},
     {token_type::kw_const,            {parse_const_pre,     parse_const,     precedence::call}},
-    {token_type::at,                  {nullptr,             parse_at,        precedence::call}},
+    {token_type::at,                  {parse_intrinsic,     parse_at,        precedence::call}},
     {token_type::ampersand,           {parse_ampersand_pre, parse_ampersand, precedence::call}},
     {token_type::kw_function,         {parse_func_ptr,      nullptr,         precedence::none}},
     {token_type::kw_new,              {parse_new,           nullptr,         precedence::none}},
@@ -433,8 +424,6 @@ auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 {
     return parse_precedence(tokens, precedence::ternary);
 }
-
-auto parse_statement(tokenstream& tokens) -> node_stmt_ptr;
 
 auto parse_identifier(tokenstream& tokens) -> std::string
 {

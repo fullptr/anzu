@@ -50,12 +50,16 @@ enum class op : std::uint8_t
     save,
     push,
     pop,
+    memcpy,
     jump,
+    jump_if_true,
     jump_if_false,
     call,
     builtin_call,
     ret,
     assert,
+
+    char_to_i64,
 
     char_eq,
     char_ne,
@@ -107,8 +111,6 @@ enum class op : std::uint8_t
     f64_gt,
     f64_ge,
 
-    bool_or,
-    bool_and,
     bool_eq,
     bool_ne,
     bool_not,

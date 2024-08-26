@@ -136,13 +136,6 @@ struct node_deref_expr
     anzu::token token;
 };
 
-struct node_sizeof_expr
-{
-    node_expr_ptr expr;
-
-    anzu::token token;
-};
-
 struct node_len_expr
 {
     node_expr_ptr expr;
@@ -164,13 +157,6 @@ struct node_span_expr
     node_expr_ptr lower_bound;
     node_expr_ptr upper_bound;
     
-    anzu::token token;
-};
-
-struct node_typeof_expr
-{
-    node_expr_ptr expr;
-
     anzu::token token;
 };
 
@@ -208,6 +194,14 @@ struct node_ternary_expr
     anzu::token   token;
 };
 
+struct node_intrinsic_expr
+{
+    std::string                name;
+    std::vector<node_expr_ptr> args;
+
+    anzu::token   token;
+};
+
 struct node_expr : std::variant<
     node_literal_i32_expr,
     node_literal_i64_expr,
@@ -224,10 +218,8 @@ struct node_expr : std::variant<
     node_array_expr,
     node_repeat_array_expr,
     node_addrof_expr,
-    node_sizeof_expr,
     node_len_expr,
     node_span_expr,
-    node_typeof_expr,
     node_function_ptr_type_expr,
     node_const_expr,
     node_name_expr,
@@ -235,7 +227,8 @@ struct node_expr : std::variant<
     node_deref_expr,
     node_subscript_expr,
     node_new_expr,
-    node_ternary_expr>
+    node_ternary_expr,
+    node_intrinsic_expr>
 {
 };
 

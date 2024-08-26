@@ -113,9 +113,17 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto size = read_at<std::uint64_t>(&ptr);
             std::print("POP: {}\n", size);
         } break;
+        case op::memcpy: {
+            const auto size = read_at<std::uint64_t>(&ptr);
+            std::print("POP: {}\n", size);
+        } break;
         case op::jump: {
             const auto jump = read_at<std::uint64_t>(&ptr);
             std::print("JUMP: jump={}\n", jump);
+        } break;
+        case op::jump_if_true: {
+            const auto jump = read_at<std::uint64_t>(&ptr);
+            std::print("JUMP_IF_TRUE: jump={}\n", jump);
         } break;
         case op::jump_if_false: {
             const auto jump = read_at<std::uint64_t>(&ptr);
@@ -140,6 +148,9 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto size = read_at<std::uint64_t>(&ptr);
             const auto data = &rom[index];
             std::print("ASSERT: msg={}\n", std::string_view{data, size});
+        } break;
+        case op::char_to_i64: {
+            std::print("CHAR_TO_I64\n");
         } break;
         case op::char_eq: { std::print("CHAR_EQ\n"); } break;
         case op::char_ne: { std::print("CHAR_NE\n"); } break;
@@ -186,8 +197,6 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
         case op::f64_le:  { std::print("F64_LE\n"); } break;
         case op::f64_gt:  { std::print("F64_GT\n"); } break;
         case op::f64_ge:  { std::print("F64_GE\n"); } break;
-        case op::bool_and: { std::print("BOOL_AND\n"); } break;
-        case op::bool_or:  { std::print("BOOL_OR\n"); } break;
         case op::bool_eq:  { std::print("BOOL_EQ\n"); } break;
         case op::bool_ne:  { std::print("BOOL_NE\n"); } break;
         case op::bool_not: { std::print("BOOL_NOT\n"); } break;

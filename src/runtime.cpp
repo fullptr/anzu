@@ -105,6 +105,18 @@ auto apply_op(bytecode_context& ctx) -> bool
             const auto size = read_advance<std::uint64_t>(ctx);
             ctx.stack.resize(ctx.stack.size() - size);
         } break;
+        case op::memcpy: {
+            const auto type_size = read_advance<std::uint64_t>(ctx);
+            const auto src_count = ctx.stack.pop<std::uint64_t>(); 
+            const auto src_data = ctx.stack.pop<std::byte*>();
+            const auto dst_count = ctx.stack.pop<std::uint64_t>(); 
+            const auto dst_data = ctx.stack.pop<std::byte*>();
+            if (dst_count < src_count) {
+                runtime_error("dst span too small to hold src span");
+            }
+            std::memcpy(dst_data, src_data, src_count * type_size);
+            ctx.stack.push(std::byte{0}); // returns null;
+        } break;
         case op::arena_new: {
             const auto arena = new memory_arena;
             arena->next = 0;
@@ -173,6 +185,10 @@ auto apply_op(bytecode_context& ctx) -> bool
             const auto jump = read_advance<std::uint64_t>(ctx);
             frame.ip = &frame.code[jump];
         } break;
+        case op::jump_if_true: {
+            const auto jump = read_advance<std::uint64_t>(ctx);
+            if (ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];
+        } break;
         case op::jump_if_false: {
             const auto jump = read_advance<std::uint64_t>(ctx);
             if (!ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];
@@ -206,6 +222,11 @@ auto apply_op(bytecode_context& ctx) -> bool
                 const auto data = &ctx.rom[index];
                 runtime_error("{}", std::string_view{data, size});
             }
+        } break;
+
+        case op::char_to_i64: {
+            const auto value = ctx.stack.pop<char>();
+            ctx.stack.push(std::int64_t{value});
         } break;
 
         case op::char_eq: { binary_op<char, std::equal_to>(ctx); } break;
@@ -258,8 +279,6 @@ auto apply_op(bytecode_context& ctx) -> bool
         case op::f64_gt:  { binary_op<double, std::greater>(ctx); } break;
         case op::f64_ge:  { binary_op<double, std::greater_equal>(ctx); } break;
 
-        case op::bool_and: { binary_op<bool, std::logical_and>(ctx); } break;
-        case op::bool_or:  { binary_op<bool, std::logical_or>(ctx); } break;
         case op::bool_eq:  { binary_op<bool, std::equal_to>(ctx); } break;
         case op::bool_ne:  { binary_op<bool, std::not_equal_to>(ctx); } break;
         case op::bool_not: { unary_op<bool, std::logical_not>(ctx); } break;

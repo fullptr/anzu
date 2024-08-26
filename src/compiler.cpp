@@ -582,8 +582,13 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a binary op");
     using tt = token_type;
-    auto lhs = push_expr(com, compile_type::val, *node.lhs);
-    auto rhs = push_expr(com, compile_type::val, *node.rhs);
+    auto lhs = type_of_expr(com, *node.lhs);
+    auto rhs = type_of_expr(com, *node.rhs);
+
+    const auto push = [&] {
+        push_expr(com, compile_type::val, *node.lhs);
+        push_expr(com, compile_type::val, *node.rhs);
+    };
 
     // Allow for comparisons of types
     if (lhs.is_type_value() && rhs.is_type_value()) {
@@ -597,8 +602,8 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     // Pointers can compare to nullptr
     if ((lhs.is_ptr() && rhs == nullptr_type()) || (rhs.is_ptr() && lhs == nullptr_type())) {
         switch (node.token.type) {
-            case tt::equal_equal: { push_value(code(com), op::u64_eq); return bool_type(); }
-            case tt::bang_equal:  { push_value(code(com), op::u64_ne); return bool_type(); }
+            case tt::equal_equal: { push(); push_value(code(com), op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push(); push_value(code(com), op::u64_ne); return bool_type(); }
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
@@ -608,81 +613,103 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 
     if (type.is_ptr()) {
         switch (node.token.type) {
-            case tt::equal_equal: { push_value(code(com), op::u64_eq); return bool_type(); }
-            case tt::bang_equal:  { push_value(code(com), op::u64_ne); return bool_type(); }
+            case tt::equal_equal: { push(); push_value(code(com), op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push(); push_value(code(com), op::u64_ne); return bool_type(); }
         }
     }
     else if (type == char_type()) {
         switch (node.token.type) {
-            case tt::equal_equal: { push_value(code(com), op::char_eq); return bool_type(); }
-            case tt::bang_equal:  { push_value(code(com), op::char_ne); return bool_type(); }
+            case tt::equal_equal: { push(); push_value(code(com), op::char_eq); return bool_type(); }
+            case tt::bang_equal:  { push(); push_value(code(com), op::char_ne); return bool_type(); }
         }
     }
     else if (type == i32_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push_value(code(com), op::i32_add); return type;       }
-            case tt::minus:         { push_value(code(com), op::i32_sub); return type;       }
-            case tt::star:          { push_value(code(com), op::i32_mul); return type;       }
-            case tt::slash:         { push_value(code(com), op::i32_div); return type;       }
-            case tt::percent:       { push_value(code(com), op::i32_mod); return type;       }
-            case tt::equal_equal:   { push_value(code(com), op::i32_eq); return bool_type(); }
-            case tt::bang_equal:    { push_value(code(com), op::i32_ne); return bool_type(); }
-            case tt::less:          { push_value(code(com), op::i32_lt); return bool_type(); }
-            case tt::less_equal:    { push_value(code(com), op::i32_le); return bool_type(); }
-            case tt::greater:       { push_value(code(com), op::i32_gt); return bool_type(); }
-            case tt::greater_equal: { push_value(code(com), op::i32_ge); return bool_type(); }
+            case tt::plus:          { push(); push_value(code(com), op::i32_add); return type;       }
+            case tt::minus:         { push(); push_value(code(com), op::i32_sub); return type;       }
+            case tt::star:          { push(); push_value(code(com), op::i32_mul); return type;       }
+            case tt::slash:         { push(); push_value(code(com), op::i32_div); return type;       }
+            case tt::percent:       { push(); push_value(code(com), op::i32_mod); return type;       }
+            case tt::equal_equal:   { push(); push_value(code(com), op::i32_eq); return bool_type(); }
+            case tt::bang_equal:    { push(); push_value(code(com), op::i32_ne); return bool_type(); }
+            case tt::less:          { push(); push_value(code(com), op::i32_lt); return bool_type(); }
+            case tt::less_equal:    { push(); push_value(code(com), op::i32_le); return bool_type(); }
+            case tt::greater:       { push(); push_value(code(com), op::i32_gt); return bool_type(); }
+            case tt::greater_equal: { push(); push_value(code(com), op::i32_ge); return bool_type(); }
         }
     }
     else if (type == i64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push_value(code(com), op::i64_add); return type;       }
-            case tt::minus:         { push_value(code(com), op::i64_sub); return type;       }
-            case tt::star:          { push_value(code(com), op::i64_mul); return type;       }
-            case tt::slash:         { push_value(code(com), op::i64_div); return type;       }
-            case tt::percent:       { push_value(code(com), op::i64_mod); return type;       }
-            case tt::equal_equal:   { push_value(code(com), op::i64_eq); return bool_type(); }
-            case tt::bang_equal:    { push_value(code(com), op::i64_ne); return bool_type(); }
-            case tt::less:          { push_value(code(com), op::i64_lt); return bool_type(); }
-            case tt::less_equal:    { push_value(code(com), op::i64_le); return bool_type(); }
-            case tt::greater:       { push_value(code(com), op::i64_gt); return bool_type(); }
-            case tt::greater_equal: { push_value(code(com), op::i64_ge); return bool_type(); }
+            case tt::plus:          { push(); push_value(code(com), op::i64_add); return type;       }
+            case tt::minus:         { push(); push_value(code(com), op::i64_sub); return type;       }
+            case tt::star:          { push(); push_value(code(com), op::i64_mul); return type;       }
+            case tt::slash:         { push(); push_value(code(com), op::i64_div); return type;       }
+            case tt::percent:       { push(); push_value(code(com), op::i64_mod); return type;       }
+            case tt::equal_equal:   { push(); push_value(code(com), op::i64_eq); return bool_type(); }
+            case tt::bang_equal:    { push(); push_value(code(com), op::i64_ne); return bool_type(); }
+            case tt::less:          { push(); push_value(code(com), op::i64_lt); return bool_type(); }
+            case tt::less_equal:    { push(); push_value(code(com), op::i64_le); return bool_type(); }
+            case tt::greater:       { push(); push_value(code(com), op::i64_gt); return bool_type(); }
+            case tt::greater_equal: { push(); push_value(code(com), op::i64_ge); return bool_type(); }
         }
     }
     else if (type == u64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push_value(code(com), op::u64_add); return type;       }
-            case tt::minus:         { push_value(code(com), op::u64_sub); return type;       }
-            case tt::star:          { push_value(code(com), op::u64_mul); return type;       }
-            case tt::slash:         { push_value(code(com), op::u64_div); return type;       }
-            case tt::percent:       { push_value(code(com), op::u64_mod); return type;       }
-            case tt::equal_equal:   { push_value(code(com), op::u64_eq); return bool_type(); }
-            case tt::bang_equal:    { push_value(code(com), op::u64_ne); return bool_type(); }
-            case tt::less:          { push_value(code(com), op::u64_lt); return bool_type(); }
-            case tt::less_equal:    { push_value(code(com), op::u64_le); return bool_type(); }
-            case tt::greater:       { push_value(code(com), op::u64_gt); return bool_type(); }
-            case tt::greater_equal: { push_value(code(com), op::u64_ge); return bool_type(); }
+            case tt::plus:          { push(); push_value(code(com), op::u64_add); return type;       }
+            case tt::minus:         { push(); push_value(code(com), op::u64_sub); return type;       }
+            case tt::star:          { push(); push_value(code(com), op::u64_mul); return type;       }
+            case tt::slash:         { push(); push_value(code(com), op::u64_div); return type;       }
+            case tt::percent:       { push(); push_value(code(com), op::u64_mod); return type;       }
+            case tt::equal_equal:   { push(); push_value(code(com), op::u64_eq); return bool_type(); }
+            case tt::bang_equal:    { push(); push_value(code(com), op::u64_ne); return bool_type(); }
+            case tt::less:          { push(); push_value(code(com), op::u64_lt); return bool_type(); }
+            case tt::less_equal:    { push(); push_value(code(com), op::u64_le); return bool_type(); }
+            case tt::greater:       { push(); push_value(code(com), op::u64_gt); return bool_type(); }
+            case tt::greater_equal: { push(); push_value(code(com), op::u64_ge); return bool_type(); }
         }
     }
     else if (type == f64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push_value(code(com), op::f64_add); return type;       }
-            case tt::minus:         { push_value(code(com), op::f64_sub); return type;       }
-            case tt::star:          { push_value(code(com), op::f64_mul); return type;       }
-            case tt::slash:         { push_value(code(com), op::f64_div); return type;       }
-            case tt::equal_equal:   { push_value(code(com), op::f64_eq); return bool_type(); }
-            case tt::bang_equal:    { push_value(code(com), op::f64_ne); return bool_type(); }
-            case tt::less:          { push_value(code(com), op::f64_lt); return bool_type(); }
-            case tt::less_equal:    { push_value(code(com), op::f64_le); return bool_type(); }
-            case tt::greater:       { push_value(code(com), op::f64_gt); return bool_type(); }
-            case tt::greater_equal: { push_value(code(com), op::f64_ge); return bool_type(); }
+            case tt::plus:          { push(); push_value(code(com), op::f64_add); return type;       }
+            case tt::minus:         { push(); push_value(code(com), op::f64_sub); return type;       }
+            case tt::star:          { push(); push_value(code(com), op::f64_mul); return type;       }
+            case tt::slash:         { push(); push_value(code(com), op::f64_div); return type;       }
+            case tt::equal_equal:   { push(); push_value(code(com), op::f64_eq); return bool_type(); }
+            case tt::bang_equal:    { push(); push_value(code(com), op::f64_ne); return bool_type(); }
+            case tt::less:          { push(); push_value(code(com), op::f64_lt); return bool_type(); }
+            case tt::less_equal:    { push(); push_value(code(com), op::f64_le); return bool_type(); }
+            case tt::greater:       { push(); push_value(code(com), op::f64_gt); return bool_type(); }
+            case tt::greater_equal: { push(); push_value(code(com), op::f64_ge); return bool_type(); }
         }
     }
     else if (type == bool_type()) {
         switch (node.token.type) {
-            case tt::ampersand_ampersand: { push_value(code(com), op::bool_and); return type; }
-            case tt::bar_bar:             { push_value(code(com), op::bool_or);  return type; }
-            case tt::equal_equal:         { push_value(code(com), op::bool_eq);  return type; }
-            case tt::bang_equal:          { push_value(code(com), op::bool_ne);  return type; }
+            case tt::ampersand_ampersand: {
+                push_expr(com, compile_type::val, *node.lhs);
+                push_value(code(com), op::jump_if_false);
+                const auto jump_pos = push_value(code(com), std::size_t{0});
+                push_expr(com, compile_type::val, *node.rhs);
+                push_value(code(com), op::jump);
+                const auto jump_pos2 = push_value(code(com), std::size_t{0});
+                write_value(code(com), jump_pos, code(com).size());
+                push_value(code(com), op::push_bool, false);
+                write_value(code(com), jump_pos2, code(com).size());
+                return type;
+            }
+            case tt::bar_bar: {
+                push_expr(com, compile_type::val, *node.lhs);
+                push_value(code(com), op::jump_if_true);
+                const auto jump_pos = push_value(code(com), std::size_t{0});
+                push_expr(com, compile_type::val, *node.rhs);
+                push_value(code(com), op::jump);
+                const auto jump_pos2 = push_value(code(com), std::size_t{0});
+                write_value(code(com), jump_pos, code(com).size());
+                push_value(code(com), op::push_bool, true);
+                write_value(code(com), jump_pos2, code(com).size());
+                return type;
+            }
+            case tt::equal_equal: { push(); push_value(code(com), op::bool_eq); return type; }
+            case tt::bang_equal:  { push(); push_value(code(com), op::bool_ne); return type; }
         }
     }
 
@@ -802,18 +829,6 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
     return type.add_ptr();
 }
 
-auto push_expr(compiler& com, compile_type ct, const node_sizeof_expr& node) -> type_name
-{
-    node.token.assert(ct == compile_type::val, "cannot take the address of a sizeof expression");
-    const auto type = type_of_expr(com, *node.expr);
-    if (type.is_type_value()) { // can call sizeof on a type directly
-        push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
-    } else {
-        push_value(code(com), op::push_u64, com.types.size_of(type));
-    }
-    return u64_type();
-}
-
 auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a len expression");
@@ -908,12 +923,6 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
         }
         return type;
     }
-}
-
-auto push_expr(compiler& com, compile_type ct, const node_typeof_expr& node) -> type_name
-{
-    node.token.assert(ct == compile_type::val, "cannot take the address of a typeof expression");
-    return type_type{type_of_expr(com, *node.expr)};
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr& node) -> type_name
@@ -1211,6 +1220,43 @@ auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) ->
     return type;
 }
 
+auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) -> type_name
+{
+    node.token.assert(ct == compile_type::val, "cannot take the address of a @intrinsic function call");
+    if (node.name == "size_of") {
+        node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        if (type.is_type_value()) { // can call sizeof on a type directly
+            push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
+        } else {
+            push_value(code(com), op::push_u64, com.types.size_of(type));
+        }
+        return u64_type();
+    }
+    if (node.name == "type_of") {
+        node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
+        return type_type{type_of_expr(com, *node.args[0])};
+    }
+    if (node.name == "copy") {
+        node.token.assert_eq(node.args.size(), 2, "@copy requires two spans");
+        const auto lhs = push_expr(com, ct, *node.args[0]);
+        node.token.assert(lhs.is_span(), "@copy bad first arg of type '{}'", lhs);
+        node.token.assert(!inner_type(lhs).is_const, "@copy cannot write through a const span");
+        const auto rhs = push_expr(com, ct, *node.args[1]);
+        node.token.assert(rhs.is_span(), "@copy bad second arg of type '{}'", rhs);
+        node.token.assert_eq(lhs, rhs, "@copy args must be of the same span type");
+        push_value(code(com), op::memcpy, com.types.size_of(inner_type(lhs)));
+        return null_type();
+    }
+    if (node.name == "char_to_i64") {
+        node.token.assert_eq(node.args.size(), 1, "@char_to_i64 only accepts one argument");
+        const auto type = push_expr(com, ct, *node.args[0]);
+        node.token.assert_eq(type, char_type(), "@char_to_i64 bad first arg of type '{}'", type);
+        push_value(code(com), op::char_to_i64);
+        return i64_type();
+    }
+    node.token.error("no intrisic function named @{} exists", node.name);
+}
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {

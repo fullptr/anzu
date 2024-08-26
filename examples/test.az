@@ -1,11 +1,18 @@
-module str := "lib/str.az";
-module io := "lib/io.az";
 
-arena a;
-let input := io.read_file("examples/aoc2023-1-input.txt", a&);
-var tok := str.tokenizer.create(input, "\n");
+fn f() -> bool
+{
+    print("false\n");
+    return false;
+}
 
-while tok.valid() {
-    print("1. {}\n", tok.current());
-    tok.advance();
+fn t() -> bool
+{
+    print("true\n");
+    return true;
+}
+
+if (f() || t()) {
+    print("success\n");
+} else {
+    print("not success\n");
 }
