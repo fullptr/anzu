@@ -802,18 +802,6 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
     return type.add_ptr();
 }
 
-auto push_expr(compiler& com, compile_type ct, const node_sizeof_expr& node) -> type_name
-{
-    node.token.assert(ct == compile_type::val, "cannot take the address of a sizeof expression");
-    const auto type = type_of_expr(com, *node.expr);
-    if (type.is_type_value()) { // can call sizeof on a type directly
-        push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
-    } else {
-        push_value(code(com), op::push_u64, com.types.size_of(type));
-    }
-    return u64_type();
-}
-
 auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a len expression");

@@ -56,7 +56,6 @@ enum class token_type
     kw_nullptr,
     kw_print,
     kw_return,
-    kw_sizeof,
     kw_struct,
     kw_true,
     kw_typeof,

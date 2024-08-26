@@ -80,7 +80,6 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "nullptr")  return token_type::kw_nullptr;
     if (token == "print")    return token_type::kw_print;
     if (token == "return")   return token_type::kw_return;
-    if (token == "sizeof")   return token_type::kw_sizeof;
     if (token == "struct")   return token_type::kw_struct;
     if (token == "true")     return token_type::kw_true;
     if (token == "typeof")   return token_type::kw_typeof;
