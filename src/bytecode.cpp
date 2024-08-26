@@ -121,6 +121,10 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto jump = read_at<std::uint64_t>(&ptr);
             std::print("JUMP: jump={}\n", jump);
         } break;
+        case op::jump_if_true: {
+            const auto jump = read_at<std::uint64_t>(&ptr);
+            std::print("JUMP_IF_TRUE: jump={}\n", jump);
+        } break;
         case op::jump_if_false: {
             const auto jump = read_at<std::uint64_t>(&ptr);
             std::print("JUMP_IF_FALSE: jump={}\n", jump);

@@ -185,6 +185,10 @@ auto apply_op(bytecode_context& ctx) -> bool
             const auto jump = read_advance<std::uint64_t>(ctx);
             frame.ip = &frame.code[jump];
         } break;
+        case op::jump_if_true: {
+            const auto jump = read_advance<std::uint64_t>(ctx);
+            if (ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];
+        } break;
         case op::jump_if_false: {
             const auto jump = read_advance<std::uint64_t>(ctx);
             if (!ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];

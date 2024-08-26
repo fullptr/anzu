@@ -11,7 +11,7 @@ fn t() -> bool
     return true;
 }
 
-if (t() && t()) {
+if (f() || t()) {
     print("success\n");
 } else {
     print("not success\n");
