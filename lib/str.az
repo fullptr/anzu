@@ -120,13 +120,11 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
     return new_string;
 }
 
-fn is_digit(c: char) -> bool
-{
-    let x := @char_to_i64(c);
-    return 47 < x && x < 58;
-}
-
 fn to_i64(c: char) -> i64
 {
-    return @char_to_i64(c) - 48;
+    let x := @char_to_i64(c);
+    if 47 < x && x < 58 {
+        return x - 48;
+    }
+    return -1;
 }

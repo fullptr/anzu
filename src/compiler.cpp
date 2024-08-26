@@ -708,8 +708,8 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
                 write_value(code(com), jump_pos2, code(com).size());
                 return type;
             }
-            case tt::equal_equal: { push(); push_value(code(com), op::bool_eq);  return type; }
-            case tt::bang_equal:  { push(); push_value(code(com), op::bool_ne);  return type; }
+            case tt::equal_equal: { push(); push_value(code(com), op::bool_eq); return type; }
+            case tt::bang_equal:  { push(); push_value(code(com), op::bool_ne); return type; }
         }
     }
 
