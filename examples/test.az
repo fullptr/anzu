@@ -1,3 +1,3 @@
-let x := [1, 2, 3, 4, 5, 6];
-
-print("{}\n", @size_of(x));
+let c := '1';
+let x := @char_to_i64(c);
+print("{}\n", x);

@@ -1221,6 +1221,13 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         push_value(code(com), op::memcpy, com.types.size_of(inner_type(lhs)));
         return null_type();
     }
+    if (node.name == "char_to_i64") {
+        node.token.assert_eq(node.args.size(), 1, "@char_to_i64 only accepts one argument");
+        const auto type = push_expr(com, ct, *node.args[0]);
+        node.token.assert_eq(type, char_type(), "@char_to_i64 bad first arg of type '{}'", type);
+        push_value(code(com), op::char_to_i64);
+        return i64_type();
+    }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
 

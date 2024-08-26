@@ -58,6 +58,8 @@ enum class op : std::uint8_t
     ret,
     assert,
 
+    char_to_i64,
+
     char_eq,
     char_ne,
 

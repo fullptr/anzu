@@ -220,6 +220,11 @@ auto apply_op(bytecode_context& ctx) -> bool
             }
         } break;
 
+        case op::char_to_i64: {
+            const auto value = ctx.stack.pop<char>();
+            ctx.stack.push(std::int64_t{value});
+        } break;
+
         case op::char_eq: { binary_op<char, std::equal_to>(ctx); } break;
         case op::char_ne: { binary_op<char, std::not_equal_to>(ctx); } break;
 

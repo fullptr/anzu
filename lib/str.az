@@ -122,18 +122,11 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
 
 fn is_digit(c: char) -> bool
 {
-    for x in "0123456789" {
-        if c == x@ { return true; }
-    }
-    return false;
+    let x := @char_to_i64(c);
+    return 47 < x && x < 58;
 }
 
 fn to_i64(c: char) -> i64
 {
-    var value := 0;
-    for x in "0123456789" {
-        if c == x@ { return value; }
-        value = value + 1;
-    }
-    return -1;
+    return @char_to_i64(c) - 48;
 }
