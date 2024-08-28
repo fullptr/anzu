@@ -105,6 +105,14 @@ An interpreted programming language written in C++. This started out as a stack-
 
 * All the common arithmetic, comparison and logical operators.
 * Builtin functions.
+* Intrinsic func:
+    * These are special functions for accessing compiler internals or to perform operations that require specialised op codes in the runtime to be efficient. They are prefixed with a `@`.
+    * `@size_of(x)` returns the size in bytes of the type of object `x`. `x` can also be itself a type.
+    * `@type_of(x)` return the type of `x`. Can be used anywhere a type is expected.
+    * `@copy(dst, src)` takes two spans of the same type and copies the contents of one into the other. The size of `dst` must be big enough to fit `src`, otherwise it's a runtime error. This exists because it can efficiently memcpy the data rather than looping over the elements.
+    * `@char_to_i64(c)` takes a char and converts its value to an i64. This is always a safe conversion, and will likely be removed for a more general form of casting in the future.
+    * `@import(name)` for importing and using other modules (more info below). This can only be used in the global scope and the module itself is only compiled when the module object is assigned to a variable name in a declaration.
+
 * Memory arenas for allocating dynamic memory:
     ```py
     arena a;
@@ -124,7 +132,7 @@ An interpreted programming language written in C++. This started out as a stack-
 
 * Modules
     ```py
-    module vec := "lib/vector.az";
+    let vec := @import("lib/vector.az");
     var my_vec := vec.vector!(u64).create(alloc&);
     ```
     * Import other files and access their contents via the defined module object.
