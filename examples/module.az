@@ -1,2 +1,2 @@
 
-module io := "lib/io.az";
+let io := @import("lib/io.az");

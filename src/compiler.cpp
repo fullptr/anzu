@@ -1475,7 +1475,14 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     type.is_const = node.add_const;
 
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
-    push_copy_typechecked(com, *node.expr, type, node.token);
+    if (type.is_module_value()) {
+        node.token.assert(type.is_const, "modules can only be declared with 'let'");
+        com.current_module.back().imports[node.name] = std::get<type_module>(type).filepath;
+    }
+    else {
+        push_copy_typechecked(com, *node.expr, type, node.token);
+    }
+
     declare_var(com, node.token, node.name, type);
 }
 

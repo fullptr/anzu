@@ -1,5 +1,5 @@
-module io := "lib/io.az";
-module str := "lib/str.az";
+let io := @import("lib/io.az");
+let str := @import("lib/str.az");
 
 arena a;
 let input := io.read_file("examples/aoc2023-1-input.txt", a&);
