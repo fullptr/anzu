@@ -1545,15 +1545,6 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 
 void push_stmt(compiler& com, const node_print_stmt& node)
 {
-    if (node.message == "__dump_type") { // Hack to allow for an easy way to dump types of expressions
-        std::print("__dump_type(\n");
-        for (const auto& arg : node.args) {
-            std::print("    {},\n", type_of_expr(com, *arg));
-        }
-        std::print(")\n");
-        return;
-    }
-
     const auto parts = string_split(string_replace(node.message, "\\n", "\n"), "{}");
     if (parts.size() != node.args.size() + 1) {
         node.token.error("Not enough args to fill all placeholders");
