@@ -1287,10 +1287,10 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         return i64_type();
     }
     if (node.name == "import") {
+        node.token.assert(com.current_function.size() == 1, "can only import modules at the top level");
         node.token.assert_eq(node.args.size(), 1, "@module only accepts one argument");
         node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
         const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
-        load_module(com, node.token, filepath);
         return type_module{.filepath=filepath};
     }
     node.token.error("no intrisic function named @{} exists", node.name);
@@ -1477,6 +1477,14 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     type.is_const = node.add_const;
 
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
+
+    // We only load here because if the @import expression did it, then calling type_of_expr
+    // on that expression loads the module then wipes the bytecode, but the compiler still thinks
+    // it is imported so doesn't recompile it. We should properly fix type_of_expr at some point
+    // by making it reset all compiler info
+    if (type.is_module_value()) {
+        load_module(com, node.token, std::get<type_module>(type).filepath.string());
+    }
 
     push_copy_typechecked(com, *node.expr, type, node.token);
     declare_var(com, node.token, node.name, type);
