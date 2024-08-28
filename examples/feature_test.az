@@ -1,7 +1,6 @@
 # tests all language features, here is a comment
-
 # importing a module
-module io := "lib/io.az"; # for "read_file"
+let io := @import("lib/io.az"); # for "read_file"
 
 # declaring immutable variables
 {
@@ -348,7 +347,7 @@ struct pair!(T)
     g.print_struct!(u64)(70u);
 }
 
-module util := "lib/utility.az";
+let util := @import("lib/utility.az");
 
 struct double {
     x: util.pair!(i64, f64);
@@ -358,7 +357,8 @@ struct double {
 let d := double(util.pair!(i64, f64)(1, 2.0), util.pair!(u64, bool)(3u, false));
 print("{} {} {} {}\n", d.x.first, d.x.second, d.y.first, d.y.second);
 
-module vec := "lib/vector.az";
+let vec := @import("lib/vector.az");
+let vec2 := vec;
 arena v;
 var my_vec := vec.vector!(i64).create(v&);
 my_vec.push(2);

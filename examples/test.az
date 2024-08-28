@@ -1,18 +1,3 @@
 
-fn f() -> bool
-{
-    print("false\n");
-    return false;
-}
 
-fn t() -> bool
-{
-    print("true\n");
-    return true;
-}
-
-if (f() || t()) {
-    print("success\n");
-} else {
-    print("not success\n");
-}
+let x := @import("examples/feature_test.az");

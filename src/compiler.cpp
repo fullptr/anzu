@@ -250,8 +250,15 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     // Remove top-level const since we are making a copy, ie- you should be able to pass a
     // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
     // for a 'u64 const&' is fine)
-    const auto actual = push_expr(com, compile_type::val, expr).remove_const();
+    const auto actual = type_of_expr(com, expr).remove_const();
     const auto expected = expected_raw.remove_const();
+
+    // Nothing to do for size 0 types
+    if (actual == expected && com.types.size_of(actual) == 0) {
+        return;
+    }
+
+    push_expr(com, compile_type::val, expr);
 
     if (actual == nullptr_type() && expected.is_ptr()) {
         return;
@@ -490,6 +497,42 @@ auto get_struct(compiler& com, const token& tok, const type_struct& name)
     }
 
     return std::nullopt;
+}
+
+auto load_module(compiler& com, const token& tok, const std::string& filepath) -> void
+{
+    // Add as an available module to the current module, and check for circular deps
+    for (const auto& m : com.current_module | std::views::reverse) {
+        if (m.filepath == filepath) {
+            std::print("circular dependencey detected:\n");
+            for (const auto& mod : com.current_module | std::views::reverse) {
+                std::print("  - {}\n", mod.filepath.string());
+                if (mod.filepath == m.filepath) tok.error("circular dependency");
+            }
+        }
+        
+    }
+
+    // Already compiled, nothing more to do
+    if (com.modules.contains(filepath)) {
+        return; 
+    }
+
+    // Second, parse the module into its AST
+    const auto path = std::filesystem::absolute(filepath);
+    std::print("    - Parsing {}\n", filepath);
+    const auto mod = parse(path);
+
+    com.current_module.emplace_back(filepath);
+    // We must unwrap the sequence statement like this since we do no want to introduce a new
+    // scope while compiling this, otherwise all the variables will get popped after.
+    tok.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");
+    std::print("    - Compiling {}\n", filepath);
+    for (const auto& node : std::get<node_sequence_stmt>(*mod.root).sequence) {
+        push_stmt(com, *node);
+    }
+    com.current_module.pop_back();
+    com.modules.emplace(filepath);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> type_name
@@ -1001,11 +1044,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 {
     const auto templates = resolve_types(com, node.token, node.templates);
 
-    // Firstly, it may be a module
-    if (com.current_module.back().imports.contains(node.name)) {
-        return type_module{com.current_module.back().imports[node.name]};
-    }
-
     // Next, check if it is a function
     const auto fname = function_name{curr_module(com), no_struct, node.name, templates};
     if (auto func = get_function(com, node.token, fname)) {
@@ -1255,6 +1293,13 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         push_value(code(com), op::char_to_i64);
         return i64_type();
     }
+    if (node.name == "import") {
+        node.token.assert(com.current_function.size() == 1, "can only import modules at the top level");
+        node.token.assert_eq(node.args.size(), 1, "@module only accepts one argument");
+        node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
+        const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
+        return type_module{.filepath=filepath};
+    }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
 
@@ -1439,6 +1484,15 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     type.is_const = node.add_const;
 
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
+
+    // We only load here because if the @import expression did it, then calling type_of_expr
+    // on that expression loads the module then wipes the bytecode, but the compiler still thinks
+    // it is imported so doesn't recompile it. We should properly fix type_of_expr at some point
+    // by making it reset all compiler info
+    if (type.is_module_value()) {
+        load_module(com, node.token, std::get<type_module>(type).filepath.string());
+    }
+
     push_copy_typechecked(com, *node.expr, type, node.token);
     declare_var(com, node.token, node.name, type);
 }
@@ -1448,36 +1502,6 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
     const auto type = arena_type();
     push_value(code(com), op::arena_new);
     declare_var(com, node.token, node.name, type);
-}
-
-auto push_stmt(compiler& com, const node_module_declaration_stmt& node) -> void
-{
-    // Add as an available module to the current module, and check for circular deps
-    com.current_module.back().imports[node.name] = node.filepath;
-    for (const auto& m : com.current_module) {
-        node.token.assert(m.filepath != node.filepath, "circular dependencey detected");
-    }
-
-    // Already compiled, nothing more to do
-    if (com.modules.contains(node.filepath)) {
-        return; 
-    }
-
-    // Second, parse the module into its AST
-    const auto path = std::filesystem::absolute(node.filepath);
-    std::print("    - Parsing {}\n", node.filepath);
-    const auto mod = parse(path);
-
-    com.current_module.emplace_back(node.filepath);
-    // We must unwrap the sequence statement like this since we do no want to introduce a new
-    // scope while compiling this, otherwise all the variables will get popped after.
-    node.token.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");
-    std::print("    - Compiling {}\n", node.filepath);
-    for (const auto& node : std::get<node_sequence_stmt>(*mod.root).sequence) {
-        push_stmt(com, *node);
-    }
-    com.current_module.pop_back();
-    com.modules.emplace(node.filepath);
 }
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
@@ -1509,6 +1533,7 @@ void push_stmt(compiler& com, const node_function_stmt& node)
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = push_expr(com, compile_type::val, *node.expr);
+    node.token.assert(!type.is_module_value(), "meaningless unused module statment");
     push_value(code(com), op::pop, com.types.size_of(type));
 }
 

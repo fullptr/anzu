@@ -320,13 +320,6 @@ struct node_arena_declaration_stmt
     anzu::token token;
 };
 
-struct node_module_declaration_stmt
-{
-    std::string name;
-    std::string filepath;
-    anzu::token token;
-};
-
 struct node_assignment_stmt
 {
     node_expr_ptr position;
@@ -393,7 +386,6 @@ struct node_stmt : std::variant<
     node_continue_stmt,
     node_declaration_stmt,
     node_arena_declaration_stmt,
-    node_module_declaration_stmt,
     node_assignment_stmt,
     node_function_stmt,
     node_expression_stmt,
