@@ -49,7 +49,6 @@ enum class token_type
     kw_len,
     kw_let,
     kw_loop,
-    kw_module,
     kw_new,
     kw_null,
     kw_nullptr,
