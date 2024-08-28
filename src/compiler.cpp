@@ -53,16 +53,6 @@ auto curr_struct(const compiler& com) -> const type_struct&
     return com.current_struct.back().name;
 }
 
-auto push_load(compiler& com, std::size_t size) -> void
-{
-    if (size > 0) push_value(code(com), op::load, size);
-}
-
-auto push_save(compiler& com, std::size_t size) -> void
-{
-    if (size > 0) push_value(code(com), op::save, size);
-}
-
 static const auto no_struct = type_struct{""};
 enum class compile_type { val, ptr };
 
@@ -132,13 +122,13 @@ auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path&
 auto load_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, module, name);
-    push_load(com, com.types.size_of(type));
+    push_value(code(com), op::load, com.types.size_of(type));
 }
 
 auto save_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
 {
     const auto type = push_var_addr(com, tok, module, name);
-    push_save(com, com.types.size_of(type));
+    push_value(code(com), op::save, com.types.size_of(type));
 }
 
 // Given a type and a field name, push the offset of the fields position relative to its
@@ -200,7 +190,7 @@ auto auto_deref_pointer(compiler& com, const type_name& type) -> type_name
 {
     auto t = type;
     while (t.is_ptr()) {
-        push_load(com, sizeof(std::byte*));
+        push_value(code(com), op::load, sizeof(std::byte*));
         t = t.remove_ptr();
     }
     return t;
@@ -882,11 +872,11 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
     else if (type.is_span()) {
         push_expr(com, compile_type::ptr, *node.expr); // pointer to the span
         push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add); // offset to the size value
-        push_load(com, com.types.size_of(u64_type())); // load the size
+        push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
     }
     else if (type.is_arena()) {
         const auto type = push_expr(com, compile_type::ptr, *node.expr);
-        push_load(com, com.types.size_of(u64_type())); // load the arena
+        push_value(code(com), op::load, com.types.size_of(u64_type())); // load the arena
         push_value(code(com), op::arena_size);
         return u64_type();
     }
@@ -929,7 +919,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
     // If we are a span, we want the address that it holds rather than its own address,
     // so switch the pointer by loading what it's pointing at.
     if (type.is_span()) {
-        push_load(com, sizeof(std::byte*));
+        push_value(code(com), op::load, sizeof(std::byte*));
     }
 
     if (node.lower_bound) {// move first index of span up
@@ -949,7 +939,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
         // Push the span pointer, offset to the size, and load the size
         push_expr(com, compile_type::ptr, *node.expr);
         push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add);
-        push_load(com, com.types.size_of(u64_type()));
+        push_value(code(com), op::load, com.types.size_of(u64_type()));
     } else {
         push_value(code(com), op::push_u64, array_length(type));
     }
@@ -1090,7 +1080,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
         return push_var_addr(com, node.token, curr_module(com), node.name);
     }
     const auto type = push_expr(com, compile_type::ptr, node);
-    push_load(com, com.types.size_of(type));
+    push_value(code(com), op::load, com.types.size_of(type));
     return type;
 }
 
@@ -1123,7 +1113,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             return push_var_addr(com, node.token, info.filepath, node.field_name);
         }
         const auto type = push_expr(com, compile_type::ptr, node);
-        push_load(com, com.types.size_of(type));
+        push_value(code(com), op::load, com.types.size_of(type));
         return type;
     }
     
@@ -1178,7 +1168,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     auto field_type = push_field_offset(com, node.token, stripped, node.field_name);
     push_value(code(com), op::u64_add); // modify ptr
     if (ct == compile_type::val) {
-        push_load(com, com.types.size_of(field_type));
+        push_value(code(com), op::load, com.types.size_of(field_type));
     }
     
     if (stripped.is_const) field_type.is_const = true; // propagate const to fields
@@ -1190,7 +1180,7 @@ auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> t
     const auto type = push_expr(com, compile_type::val, *node.expr); // Push the address
     node.token.assert(type.is_ptr(), "cannot use deref operator on non-ptr type '{}'", type);
     if (ct == compile_type::val) {
-        push_load(com, com.types.size_of(type.remove_ptr()));
+        push_value(code(com), op::load, com.types.size_of(type.remove_ptr()));
     }
     return type.remove_ptr();
 }
@@ -1215,7 +1205,7 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         // If we are a span, we want the address that it holds rather than its own address,
         // so switch the pointer by loading what it's pointing at.
         if (is_span) {
-            push_load(com, sizeof(std::byte*));
+            push_value(code(com), op::load, sizeof(std::byte*));
         }
 
         // Offset pointer by (index * size)
@@ -1232,7 +1222,7 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
     }
 
     const auto t = push_expr(com, compile_type::ptr, node);
-    push_load(com, com.types.size_of(t));
+    push_value(code(com), op::load, com.types.size_of(t));
     return t;
 }
 
@@ -1275,6 +1265,12 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
         return type_type{type_of_expr(com, *node.args[0])};
     }
+    if (node.name == "type_name_of") {
+        node.token.assert_eq(node.args.size(), 1, "@type_name_of only accepts one argument");
+        const auto str = std::format("{}", type_of_expr(com, *node.args[0]));
+        push_value(code(com), op::push_string_literal, insert_into_rom(com, str), str.size());
+        return string_literal_type();
+    }
     if (node.name == "copy") {
         node.token.assert_eq(node.args.size(), 2, "@copy requires two spans");
         const auto lhs = push_expr(com, ct, *node.args[0]);
@@ -1298,6 +1294,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 1, "@module only accepts one argument");
         node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
         const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
+        load_module(com, node.token, filepath);
         return type_module{.filepath=filepath};
     }
     node.token.error("no intrisic function named @{} exists", node.name);
@@ -1367,7 +1364,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     push_var_addr(com, node.token, curr_module(com), "$iter"); // push pointer to span
     push_value(code(com), op::push_u64, sizeof(std::byte*));
     push_value(code(com), op::u64_add); // offset to the size value
-    push_load(com, com.types.size_of(u64_type()));       
+    push_value(code(com), op::load, com.types.size_of(u64_type()));       
     declare_var(com, node.token, "$size", u64_type());
 
     push_loop(com, [&] {
@@ -1382,7 +1379,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         // var name := iter[idx]&;
         const auto inner = inner_type(iter_type);
         push_var_addr(com, node.token, curr_module(com), "$iter");
-        push_load(com, sizeof(std::byte*));  
+        push_value(code(com), op::load, sizeof(std::byte*));  
         load_variable(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::push_u64, com.types.size_of(inner));
         push_value(code(com), op::u64_mul, op::u64_add);
@@ -1485,14 +1482,6 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
 
-    // We only load here because if the @import expression did it, then calling type_of_expr
-    // on that expression loads the module then wipes the bytecode, but the compiler still thinks
-    // it is imported so doesn't recompile it. We should properly fix type_of_expr at some point
-    // by making it reset all compiler info
-    if (type.is_module_value()) {
-        load_module(com, node.token, std::get<type_module>(type).filepath.string());
-    }
-
     push_copy_typechecked(com, *node.expr, type, node.token);
     declare_var(com, node.token, node.name, type);
 }
@@ -1510,7 +1499,7 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
     node.token.assert(!lhs_type.is_const, "cannot assign to a const variable");
     push_copy_typechecked(com, *node.expr, lhs_type, node.token);
     const auto lhs = push_expr(com, compile_type::ptr, *node.position);
-    push_save(com, com.types.size_of(lhs));
+    push_value(code(com), op::save, com.types.size_of(lhs));
     return;
 }
 
@@ -1533,7 +1522,6 @@ void push_stmt(compiler& com, const node_function_stmt& node)
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = push_expr(com, compile_type::val, *node.expr);
-    node.token.assert(!type.is_module_value(), "meaningless unused module statment");
     push_value(code(com), op::pop, com.types.size_of(type));
 }
 
@@ -1557,15 +1545,6 @@ void push_stmt(compiler& com, const node_assert_stmt& node)
 
 void push_stmt(compiler& com, const node_print_stmt& node)
 {
-    if (node.message == "__dump_type") { // Hack to allow for an easy way to dump types of expressions
-        std::print("__dump_type(\n");
-        for (const auto& arg : node.args) {
-            std::print("    {},\n", type_of_expr(com, *arg));
-        }
-        std::print(")\n");
-        return;
-    }
-
     const auto parts = string_split(string_replace(node.message, "\\n", "\n"), "{}");
     if (parts.size() != node.args.size() + 1) {
         node.token.error("Not enough args to fill all placeholders");

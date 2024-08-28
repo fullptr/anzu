@@ -1,5 +1,3 @@
-module util := "lib/utility.az";
-
 fn equal(lhs: char const[], rhs: char const[]) -> bool
 {
     if len(lhs) != len(rhs) { return false; }
