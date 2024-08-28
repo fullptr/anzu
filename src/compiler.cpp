@@ -502,8 +502,15 @@ auto get_struct(compiler& com, const token& tok, const type_struct& name)
 auto load_module(compiler& com, const token& tok, const std::string& filepath) -> void
 {
     // Add as an available module to the current module, and check for circular deps
-    for (const auto& m : com.current_module) {
-        tok.assert(m.filepath != filepath, "circular dependencey detected");
+    for (const auto& m : com.current_module | std::views::reverse) {
+        if (m.filepath == filepath) {
+            std::print("circular dependencey detected:\n");
+            for (const auto& mod : com.current_module | std::views::reverse) {
+                std::print("  - {}\n", mod.filepath.string());
+                if (mod.filepath == m.filepath) tok.error("circular dependency");
+            }
+        }
+        
     }
 
     // Already compiled, nothing more to do

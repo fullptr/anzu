@@ -1,5 +1,4 @@
 # tests all language features, here is a comment
-
 # importing a module
 let io := @import("lib/io.az"); # for "read_file"
 
