@@ -45,7 +45,6 @@ enum class token_type
     kw_i32,
     kw_i64,
     kw_if,
-    kw_import,
     kw_in,
     kw_len,
     kw_let,
