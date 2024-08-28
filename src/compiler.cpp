@@ -492,6 +492,35 @@ auto get_struct(compiler& com, const token& tok, const type_struct& name)
     return std::nullopt;
 }
 
+auto load_module(compiler& com, const token& tok, const std::string& filepath) -> void
+{
+    // Add as an available module to the current module, and check for circular deps
+    for (const auto& m : com.current_module) {
+        tok.assert(m.filepath != filepath, "circular dependencey detected");
+    }
+
+    // Already compiled, nothing more to do
+    if (com.modules.contains(filepath)) {
+        return; 
+    }
+
+    // Second, parse the module into its AST
+    const auto path = std::filesystem::absolute(filepath);
+    std::print("    - Parsing {}\n", filepath);
+    const auto mod = parse(path);
+
+    com.current_module.emplace_back(filepath);
+    // We must unwrap the sequence statement like this since we do no want to introduce a new
+    // scope while compiling this, otherwise all the variables will get popped after.
+    tok.assert(std::holds_alternative<node_sequence_stmt>(*mod.root), "invalid module, top level must be a sequence");
+    std::print("    - Compiling {}\n", filepath);
+    for (const auto& node : std::get<node_sequence_stmt>(*mod.root).sequence) {
+        push_stmt(com, *node);
+    }
+    com.current_module.pop_back();
+    com.modules.emplace(filepath);
+}
+
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a i32 literal");
@@ -1254,6 +1283,13 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(type, char_type(), "@char_to_i64 bad first arg of type '{}'", type);
         push_value(code(com), op::char_to_i64);
         return i64_type();
+    }
+    if (node.name == "import") {
+        node.token.assert_eq(node.args.size(), 1, "@module only accepts one argument");
+        node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
+        const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
+        load_module(com, node.token, filepath);
+        return type_module{.filepath=filepath};
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
