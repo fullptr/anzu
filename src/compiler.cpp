@@ -250,8 +250,15 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     // Remove top-level const since we are making a copy, ie- you should be able to pass a
     // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
     // for a 'u64 const&' is fine)
-    const auto actual = push_expr(com, compile_type::val, expr).remove_const();
+    const auto actual = type_of_expr(com, expr).remove_const();
     const auto expected = expected_raw.remove_const();
+
+    // Nothing to do for size 0 types
+    if (actual == expected && com.types.size_of(actual) == 0) {
+        return;
+    }
+
+    push_expr(com, compile_type::val, expr);
 
     if (actual == nullptr_type() && expected.is_ptr()) {
         return;
@@ -1030,11 +1037,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 {
     const auto templates = resolve_types(com, node.token, node.templates);
 
-    // Firstly, it may be a module
-    if (com.current_module.back().imports.contains(node.name)) {
-        return type_module{com.current_module.back().imports[node.name]};
-    }
-
     // Next, check if it is a function
     const auto fname = function_name{curr_module(com), no_struct, node.name, templates};
     if (auto func = get_function(com, node.token, fname)) {
@@ -1475,14 +1477,8 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     type.is_const = node.add_const;
 
     node.token.assert(!type.is_arena(), "cannot create copies of arenas");
-    if (type.is_module_value()) {
-        node.token.assert(type.is_const, "modules can only be declared with 'let'");
-        com.current_module.back().imports[node.name] = std::get<type_module>(type).filepath;
-    }
-    else {
-        push_copy_typechecked(com, *node.expr, type, node.token);
-    }
 
+    push_copy_typechecked(com, *node.expr, type, node.token);
     declare_var(com, node.token, node.name, type);
 }
 
