@@ -1556,6 +1556,7 @@ void push_stmt(compiler& com, const node_function_stmt& node)
 void push_stmt(compiler& com, const node_expression_stmt& node)
 {
     const auto type = push_expr(com, compile_type::val, *node.expr);
+    node.token.assert(!type.is_module_value(), "meaningless unused module statment");
     push_value(code(com), op::pop, com.types.size_of(type));
 }
 
