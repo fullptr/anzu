@@ -358,7 +358,6 @@ let d := double(util.pair!(i64, f64)(1, 2.0), util.pair!(u64, bool)(3u, false));
 print("{} {} {} {}\n", d.x.first, d.x.second, d.y.first, d.y.second);
 
 let vec := @import("lib/vector.az");
-let vec2 := vec;
 arena v;
 var my_vec := vec.vector!(i64).create(v&);
 my_vec.push(2);
@@ -368,4 +367,3 @@ print("{}\n", my_vec.size());
 for x in my_vec.to_span() {
     print("{} ", x@);
 }
-print("\n");
