@@ -168,7 +168,9 @@ auto type_of_expr(compiler& com, const node_expr& node) -> type_name
 {
     const auto program_size = code(com).size();
     const auto type = push_expr(com, compile_type::val, node);
-    code(com).resize(program_size);
+    if (com.types.size_of(type) > 0) {
+        code(com).resize(program_size);
+    }
     return type;
 }
 
