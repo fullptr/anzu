@@ -367,4 +367,3 @@ print("{}\n", my_vec.size());
 for x in my_vec.to_span() {
     print("{} ", x@);
 }
-print("{}\n", vec.vec_size);

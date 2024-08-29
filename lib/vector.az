@@ -51,5 +51,3 @@ struct vector!(T)
         return vector!(T)(arr, nullptr, 0u);
     }
 }
-
-let vec_size := 100;
