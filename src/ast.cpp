@@ -77,6 +77,15 @@ auto print_node(const node_expr& root, int indent) -> void
                 print_node(*arg, indent + 1);
             }
         },
+        [&](const node_template_expr& node) {
+            std::print("{}Template:\n", spaces);
+            std::print("{}- Expr:\n", spaces);
+            print_node(*node.expr, indent + 1);
+            std::print("{}- Templates:\n", spaces);
+            for (const auto& arg : node.templates) {
+                print_node(*arg, indent + 1);
+            }
+        },
         [&](const node_array_expr& node) {
             std::print("{}Array:\n", spaces);
             std::print("{}- Elements:\n", spaces);

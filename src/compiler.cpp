@@ -819,6 +819,11 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     node.token.error("unable to call non-callable type {}", type);
 }
 
+auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -> type_name
+{
+    return null_type();
+}
+
 auto push_expr(compiler& com, compile_type ct, const node_array_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of an array expression");
