@@ -9,6 +9,11 @@
 
 namespace anzu {
 
+auto type_function::to_pointer() const -> type_name
+{
+    return type_function_ptr{ param_types, return_type };
+}
+
 auto type_name::is_fundamental() const -> bool
 {
     return std::holds_alternative<type_fundamental>(*this);

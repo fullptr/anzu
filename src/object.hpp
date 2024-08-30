@@ -101,6 +101,7 @@ struct type_function
     std::size_t            id;
     std::vector<type_name> param_types;
     value_ptr<type_name>   return_type;
+    auto to_pointer() const -> type_name;
     auto operator==(const type_function&) const -> bool = default;
 };
 

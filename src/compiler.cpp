@@ -227,6 +227,7 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
         [&](const type_bound_method& l, const type_bound_method& r) { return l == r; },
         [&](const type_arena& l, const type_arena& r) { return true; },
         [&](const type_type& l, const type_type& r) { return l == r; },
+        [&](const type_function& l, const type_function& r) { return l == r; },
         [&](const type_module& l, const type_module& r) { return l == r; },
         [&](const type_ct_bool& l, const type_ct_bool& r) { return l == r; },
         [&](const auto& l, const auto& r) {
@@ -265,6 +266,12 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     // Let compile time bools convert to runtime bools
     if (expected == bool_type() && std::holds_alternative<type_ct_bool>(actual)) {
         push_value(code(com), op::push_bool, std::get<type_ct_bool>(actual).value);
+        return;
+    }
+
+    // Let functions convert to function ptrs
+    if (actual.is_function() && std::get<type_function>(actual).to_pointer() == expected) {
+        push_value(code(com), op::push_function_ptr, std::get<type_function>(actual).id); // push the id
         return;
     }
 
@@ -1062,7 +1069,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     if (auto func = get_function(com, node.token, fname)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
         push_value(code(com), op::push_u64, func->id);
-        return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
+        return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };
     }
 
     // Next, it might be a struct
@@ -1127,7 +1134,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (auto func = get_function(com, node.token, fname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
             push_value(code(com), op::push_u64, func->id);
-            return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };
+            return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };
         }
 
         // Otherwise, it must be a variable
@@ -1148,7 +1155,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (auto func = get_function(com, node.token, fname); func.has_value()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
             push_value(code(com), op::push_u64, func->id);
-            return type_function_ptr{ .param_types = func->sig.params, .return_type = func->sig.return_type };   
+            return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };   
         }
 
         node.token.error("can only access member functions from structs");
