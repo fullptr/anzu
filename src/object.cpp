@@ -142,6 +142,12 @@ auto to_string(const type_type& type) -> std::string
     return std::format("<type-expression: {}>", *type.type_val);
 }
 
+auto to_string(const type_function& type) -> std::string
+{
+    const auto function_ptr_type = type_function_ptr{type.param_types, type.return_type};
+    return std::format("<function: id {}  {}>", type.id, to_string(function_ptr_type));
+}
+
 auto to_string(const type_module& type) -> std::string
 {
     return std::format("<module: {}>", type.filepath.string());
@@ -218,6 +224,15 @@ auto hash(const type_arena& type) -> std::size_t
 auto hash(const type_type& type) -> std::size_t
 {
     return hash(*type.type_val) ^ std::hash<std::string_view>{}("type_type");
+}
+
+auto hash(const type_function& type) -> std::size_t
+{
+    auto val = hash(*type.return_type) ^ std::hash<std::size_t>{}(type.id);
+    for (const auto& param : type.param_types) {
+        val ^= hash(param);
+    }
+    return val;
 }
 
 auto hash(const type_module& type) -> std::size_t

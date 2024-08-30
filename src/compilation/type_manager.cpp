@@ -28,6 +28,7 @@ auto type_manager::contains(const type_name& type) const -> bool
         [&](const type_bound_method&)         { return true; },
         [&](const type_arena&)                { return true; },
         [&](const type_type& t)               { return contains(*t.type_val); },
+        [&](const type_function&)             { return true; },
         [&](const type_module&)               { return true; },
         [&](const type_ct_bool&)              { return true; }
     }, type);
@@ -87,6 +88,9 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         },
         [](const type_type&) {
             return std::size_t{0}; 
+        },
+        [](const type_function&) {
+            return std::size_t{0};
         },
         [](const type_module&) {
             return std::size_t{0}; 

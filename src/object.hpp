@@ -96,6 +96,14 @@ struct type_type
     auto operator==(const type_type&) const -> bool = default;
 };
 
+struct type_function
+{
+    std::size_t            id;
+    std::vector<type_name> param_types;
+    value_ptr<type_name>   return_type;
+    auto operator==(const type_function&) const -> bool = default;
+};
+
 struct type_module
 {
     std::filesystem::path filepath;
@@ -120,6 +128,7 @@ struct type_name : public std::variant<
     type_bound_method,
     type_builtin,
     type_type,
+    type_function,
     type_module,
     type_ct_bool>
 {
@@ -167,6 +176,7 @@ auto hash(const type_builtin& type) -> std::size_t;
 auto hash(const type_bound_method& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_type& type) -> std::size_t;
+auto hash(const type_function& type) -> std::size_t;
 auto hash(const type_module& type) -> std::size_t;
 auto hash(const type_ct_bool& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
