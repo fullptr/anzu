@@ -1069,6 +1069,17 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 
     // Next, check if it is a function
     const auto fname = function_name{curr_module(com), no_struct, node.name, templates};
+    if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
+        const auto& func = com.functions[it->second];
+        return type_function{ .id = func.id, .param_types = func.sig.params, .return_type = func.sig.return_type };
+    }
+
+    // If the function doesn't exist, it may still be a template, if it is then compile it
+    if (com.function_templates.contains(fname.as_template())) {
+        const auto& ast = com.function_templates.at(fname.as_template());
+        return type_function_template{ .module = curr_module(com), .struct_name=no_struct, .name=node.name };
+    }
+
     if (auto func = get_function(com, node.token, fname)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
         return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };

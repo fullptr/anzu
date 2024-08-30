@@ -110,7 +110,6 @@ struct type_function_template
     std::filesystem::path    module;
     type_struct              struct_name;
     std::string              name;
-    std::vector<std::string> template_names;
     auto operator==(const type_function_template&) const -> bool = default;
 };
 

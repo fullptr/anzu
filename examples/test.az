@@ -1,7 +1,7 @@
 # functions
-fn adder(a: i64, b: i64) -> i64
+fn adder!(T)(a: i64, b: i64) -> null
 {
-    return a + b;
+    print("{}\n", a + b);
 }
 
-adder(1, 2);
+adder!(i64)(1, 2);
