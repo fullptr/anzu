@@ -8,6 +8,7 @@
 #include <string>
 #include <functional>
 #include <utility>
+#include <cmath>
 
 namespace anzu {
 namespace {

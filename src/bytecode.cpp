@@ -3,6 +3,7 @@
 
 #include <print>
 #include <cstddef>
+#include <cstring>
 
 namespace anzu {
 namespace {
