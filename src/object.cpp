@@ -158,6 +158,11 @@ auto to_string(const type_function_template& type) -> std::string
     return std::format("<function_template: TBA>");
 }
 
+auto to_string(const type_struct_template& type) -> std::string
+{
+    return std::format("<struct_template: TBA>");
+}
+
 auto to_string(const type_module& type) -> std::string
 {
     return std::format("<module: {}>", type.filepath.string());
@@ -246,6 +251,11 @@ auto hash(const type_function& type) -> std::size_t
 }
 
 auto hash(const type_function_template& type) -> std::size_t
+{
+    return 0; // TODO: Implement
+}
+
+auto hash(const type_struct_template& type) -> std::size_t
 {
     return 0; // TODO: Implement
 }
