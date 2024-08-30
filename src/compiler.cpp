@@ -1185,27 +1185,33 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
     // It might be a member function
     const auto fname = function_name{struct_name.module, struct_name, node.field_name};
-    if (auto info = get_function(com, node.token, fname); info.has_value()) {
+    if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a bound method");
+        const auto& info = com.functions[it->second];
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
         const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
-        if (stripped.is_const && !info->sig.params[0].remove_ptr().is_const) {
+        if (stripped.is_const && !info.sig.params[0].remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
 
         // check first argument is a pointer to an instance of the class
-        node.token.assert(info->sig.params.size() > 0, "member functions must have at least one arg");
-        const auto actual = info->sig.params[0];
+        node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");
+        const auto actual = info.sig.params[0];
         const auto expected = stripped.add_const().add_ptr().add_const();
         constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
         node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped);
-        
         return type_bound_method{
-            .param_types = info->sig.params,
-            .return_type = info->sig.return_type,
-            .name = info->name.to_string(),
-            .id = info->id
+            .param_types = info.sig.params,
+            .return_type = info.sig.return_type,
+            .name = info.name.to_string(),
+            .id = info.id
         };
+    }
+
+    // It might be a member function template
+    if (com.function_templates.contains(fname.as_template())) {
+        node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
+        return type_bound_method_template{ .module = struct_name.module, .struct_name=struct_name, .name=node.field_name };
     }
 
     // Otherwise, it's a data member
