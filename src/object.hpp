@@ -105,6 +105,15 @@ struct type_function
     auto operator==(const type_function&) const -> bool = default;
 };
 
+struct type_function_template
+{
+    std::filesystem::path    module;
+    type_struct              struct_name;
+    std::string              name;
+    std::vector<std::string> template_names;
+    auto operator==(const type_function_template&) const -> bool = default;
+};
+
 struct type_module
 {
     std::filesystem::path filepath;
@@ -179,6 +188,7 @@ auto hash(const type_bound_method& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_type& type) -> std::size_t;
 auto hash(const type_function& type) -> std::size_t;
+auto hash(const type_function_template& type) -> std::size_t;
 auto hash(const type_module& type) -> std::size_t;
 auto hash(const type_ct_bool& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
@@ -215,6 +225,8 @@ auto to_string(const type_builtin& type) -> std::string;
 auto to_string(const type_bound_method& type) -> std::string;
 auto to_string(const type_arena& type) -> std::string;
 auto to_string(const type_type& type) -> std::string;
+auto to_string(const type_function& type) -> std::string;
+auto to_string(const type_function_template& type) -> std::string;
 auto to_string(const type_module& type) -> std::string;
 auto to_string(const type_ct_bool& type) -> std::string;
 

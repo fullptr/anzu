@@ -153,6 +153,11 @@ auto to_string(const type_function& type) -> std::string
     return std::format("<function: id {}  {}>", type.id, to_string(function_ptr_type));
 }
 
+auto to_string(const type_function_template& type) -> std::string
+{
+    return std::format("<function_template: TBA>");
+}
+
 auto to_string(const type_module& type) -> std::string
 {
     return std::format("<module: {}>", type.filepath.string());
@@ -238,6 +243,11 @@ auto hash(const type_function& type) -> std::size_t
         val ^= hash(param);
     }
     return val;
+}
+
+auto hash(const type_function_template& type) -> std::size_t
+{
+    return 0; // TODO: Implement
 }
 
 auto hash(const type_module& type) -> std::size_t

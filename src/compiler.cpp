@@ -211,8 +211,6 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
     }
 
     return std::visit(overloaded{
-        [&](type_fundamental l, type_fundamental r) { return l == r; },
-        [&](const type_struct& l, const type_struct& r) { return l == r; },
         [&](const type_array& l, const type_array& r) {
             return l.count == r.count && const_convertable_to(tok, *l.inner_type, *r.inner_type);
         },
@@ -222,14 +220,8 @@ auto const_convertable_to(const token& tok, const type_name& src, const type_nam
         [&](const type_span& l, const type_span& r) {
             return const_convertable_to(tok, *l.inner_type, *r.inner_type);
         },
-        [&](const type_function_ptr& l, const type_function_ptr& r) { return l == r; },
-        [&](const type_builtin& l, const type_builtin& r) { return l == r; },
-        [&](const type_bound_method& l, const type_bound_method& r) { return l == r; },
         [&](const type_arena& l, const type_arena& r) { return true; },
-        [&](const type_type& l, const type_type& r) { return l == r; },
-        [&](const type_function& l, const type_function& r) { return l == r; },
-        [&](const type_module& l, const type_module& r) { return l == r; },
-        [&](const type_ct_bool& l, const type_ct_bool& r) { return l == r; },
+        [&] <typename T> (const T& l, const T& r) { return l == r; },
         [&](const auto& l, const auto& r) {
             return false;
         }

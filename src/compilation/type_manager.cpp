@@ -92,6 +92,9 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         [](const type_function&) {
             return std::size_t{0};
         },
+        [](const type_function_template&) {
+            return std::size_t{0};
+        },
         [](const type_module&) {
             return std::size_t{0}; 
         },
