@@ -84,6 +84,14 @@ struct type_bound_method
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
+struct type_bound_method_template
+{
+    std::filesystem::path    module;
+    type_struct              struct_name;
+    std::string              name;
+    auto operator==(const type_bound_method_template&) const -> bool = default;
+};
+
 struct type_arena
 {
     auto operator==(const type_arena&) const -> bool = default;
@@ -142,6 +150,7 @@ struct type_name : public std::variant<
     type_arena,
     type_function_ptr,
     type_bound_method,
+    type_bound_method_template,
     type_builtin,
     type_type,
     type_function,
@@ -193,6 +202,7 @@ auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_builtin& type) -> std::size_t;
 auto hash(const type_bound_method& type) -> std::size_t;
+auto hash(const type_bound_method_template& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_type& type) -> std::size_t;
 auto hash(const type_function& type) -> std::size_t;
@@ -232,6 +242,7 @@ auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
 auto to_string(const type_builtin& type) -> std::string;
 auto to_string(const type_bound_method& type) -> std::string;
+auto to_string(const type_bound_method_template& type) -> std::string;
 auto to_string(const type_arena& type) -> std::string;
 auto to_string(const type_type& type) -> std::string;
 auto to_string(const type_function& type) -> std::string;

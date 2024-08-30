@@ -1076,12 +1076,12 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // It might be a struct
+    const auto sname = type_struct{node.name, curr_module(com)};
     if (com.types.contains(sname)) {
         return type_type{type_name{sname}};
     }
 
     // It might be a struct template
-    const auto sname = type_struct{node.name, curr_module(com)};
     const auto skey = template_struct_name{curr_module(com), node.name};
     if (com.struct_templates.contains(skey) && !com.types.contains(sname)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
@@ -1130,7 +1130,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto& info = std::get<type_module>(type);
 
         // It might be a function
-        const auto fname = function_name{curr_module(com), no_struct, node.field_name};
+        const auto fname = function_name{info.filepath, no_struct, node.field_name};
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
@@ -1140,15 +1140,15 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return type_function_template{ .module = curr_module(com), .struct_name=no_struct, .name=node.field_name };
+            return type_function_template{ .module = info.filepath, .struct_name=no_struct, .name=node.field_name };
         }
 
         // It might be a struct template
-        const auto sname = type_struct{node.field_name, curr_module(com)};
-        const auto skey = template_struct_name{curr_module(com), node.field_name};
+        const auto sname = type_struct{node.field_name, info.filepath};
+        const auto skey = template_struct_name{info.filepath, node.field_name};
         if (com.struct_templates.contains(skey) && !com.types.contains(sname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-            return type_struct_template{ .module=curr_module(com), .name=node.field_name };
+            return type_struct_template{ .module=info.filepath, .name=node.field_name };
         }
 
         // It might be a struct

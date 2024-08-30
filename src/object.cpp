@@ -137,6 +137,11 @@ auto to_string(const type_bound_method& type) -> std::string
     );
 }
 
+auto to_string(const type_bound_method_template& type) -> std::string
+{
+    return std::format("<bound_method_template: TBA>");
+}
+
 auto to_string(const type_arena& type) -> std::string
 {
     return std::string{"<arena>"};
@@ -229,6 +234,11 @@ auto hash(const type_bound_method& type) -> std::size_t
         val ^= hash(param);
     }
     return val;
+}
+
+auto hash(const type_bound_method_template& type) -> std::size_t
+{
+    return 0; // TODO: Implement
 }
 
 auto hash(const type_arena& type) -> std::size_t
