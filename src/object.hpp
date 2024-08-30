@@ -153,6 +153,7 @@ struct type_name : public std::variant<
     [[nodiscard]] auto add_span() const -> type_name;
     [[nodiscard]] auto remove_span() const -> type_name;
 
+    [[nodiscard]] auto is_function() const -> bool;
     [[nodiscard]] auto is_function_ptr() const -> bool;
     [[nodiscard]] auto is_builtin() const -> bool;
     [[nodiscard]] auto is_bound_method() const -> bool;

@@ -770,6 +770,22 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         }
         return obj_type;
     }
+    else if (type.is_function()) { // function call
+        const auto& info = std::get<type_function>(type);
+        node.token.assert_eq(node.args.size(), info.param_types.size(), 
+                             "invalid number of args for function call");
+
+        auto args_size = std::size_t{0};
+        for (std::size_t i = 0; i != node.args.size(); ++i) {
+            push_copy_typechecked(com, *node.args.at(i), info.param_types[i], node.token);
+            args_size += com.types.size_of(info.param_types[i]);
+        }
+
+        // push the function pointer and call it
+        push_value(code(com), op::push_function_ptr, info.id);
+        push_value(code(com), op::call, args_size);
+        return *info.return_type;
+    }
     else if (type.is_function_ptr()) { // function call
         const auto& info = std::get<type_function_ptr>(type);
         node.token.assert_eq(node.args.size(), info.param_types.size(), 

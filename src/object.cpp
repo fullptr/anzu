@@ -336,6 +336,11 @@ auto type_name::remove_span() const -> type_name
     return *std::get<type_span>(*this).inner_type;
 }
 
+auto type_name::is_function() const -> bool
+{
+    return std::holds_alternative<type_function>(*this);
+}
+
 auto type_name::is_function_ptr() const -> bool
 {
     return std::holds_alternative<type_function_ptr>(*this);
