@@ -29,6 +29,7 @@ auto type_manager::contains(const type_name& type) const -> bool
         [&](const type_arena&)                { return true; },
         [&](const type_type& t)               { return contains(*t.type_val); },
         [&](const type_function&)             { return true; },
+        [&](const type_function_template&)    { return true; },
         [&](const type_module&)               { return true; },
         [&](const type_ct_bool&)              { return true; }
     }, type);

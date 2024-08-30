@@ -836,7 +836,18 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 
 auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -> type_name
 {
-    return null_type();
+    const auto type = push_expr(com, compile_type::val, *node.expr);
+    node.token.assert(std::holds_alternative<type_function_template>(type),
+                      "can only apply a template list to a function template, got {}",
+                      type);
+
+    const auto templates = resolve_types(com, node.token, node.templates);
+    const auto& func = std::get<type_function_template>(type);
+    const auto fname = function_name{ .module=func.module, .struct_name=func.struct_name, .name=func.name, .templates=templates };
+
+    const auto fn = get_function(com, node.token, fname);
+    node.token.assert(fn.has_value(), "WIP: could not find function {}", fname);
+    return type_function{ .id = fn->id, .param_types=fn->sig.params, .return_type=fn->sig.return_type };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_array_expr& node) -> type_name

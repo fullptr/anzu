@@ -139,6 +139,7 @@ struct type_name : public std::variant<
     type_builtin,
     type_type,
     type_function,
+    type_function_template,
     type_module,
     type_ct_bool>
 {
