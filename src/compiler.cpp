@@ -1065,10 +1065,8 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
 {
-    const auto templates = resolve_types(com, node.token, node.templates);
-
     // Next, check if it is a function
-    const auto fname = function_name{curr_module(com), no_struct, node.name, templates};
+    const auto fname = function_name{curr_module(com), no_struct, node.name};
     if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
         const auto& func = com.functions[it->second];
         return type_function{ .id = func.id, .param_types = func.sig.params, .return_type = func.sig.return_type };
@@ -1086,7 +1084,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // Next, it might be a struct
-    const auto sname = type_struct{node.name, curr_module(com), templates};
+    const auto sname = type_struct{node.name, curr_module(com)};
     if (auto it = get_struct(com, node.token, sname); it.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a struct type");
         return *it;
@@ -1113,12 +1111,10 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     // The name might be a builtin (no module, struct or templates, so just the name);
     if (auto func = get_builtin(node.name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
-        node.token.assert(node.templates.empty(), "builtins cannot be templated");
         return type_builtin{func->name, func->id, func->args, func->return_type};
     }
 
     // Otherwise, it must be a variable
-    node.token.assert(node.templates.empty(), "variables cannot be templated {}", node.name);
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, curr_module(com), node.name);
     }
@@ -1129,7 +1125,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
 {
-    const auto templates = resolve_types(com, node.token, node.templates);
     const auto type = type_of_expr(com, *node.expr);
 
     // If the expression is a module, allow for accessing global variables, functions and structs
@@ -1137,20 +1132,19 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto& info = std::get<type_module>(type);
 
         // It might be a struct
-        const auto sname = type_struct{node.field_name, info.filepath, templates};
+        const auto sname = type_struct{node.field_name, info.filepath};
         if (auto it = get_struct(com, node.token, sname); it.has_value()) {
             return *it;
         }
 
         // It might be a function
-        const auto fname = function_name{info.filepath, no_struct, node.field_name, templates};
+        const auto fname = function_name{info.filepath, no_struct, node.field_name};
         if (auto func = get_function(com, node.token, fname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
             return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };
         }
 
         // Otherwise, it must be a variable
-        node.token.assert(node.templates.empty(), "variables cannot be templated {}", node.field_name);
         if (ct == compile_type::ptr) {
             return push_var_addr(com, node.token, info.filepath, node.field_name);
         }
@@ -1163,7 +1157,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     if (type.is_type_value() && std::holds_alternative<type_struct>(inner_type(type))) {
         const auto struct_info = std::get<type_struct>(inner_type(type));
          
-        const auto fname = function_name{struct_info.module, struct_info, node.field_name, templates};
+        const auto fname = function_name{struct_info.module, struct_info, node.field_name};
         if (auto func = get_function(com, node.token, fname); func.has_value()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
             return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };   
@@ -1178,7 +1172,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
                            : no_struct;
 
     // It might be a member function
-    const auto fname = function_name{struct_name.module, struct_name, node.field_name, templates};
+    const auto fname = function_name{struct_name.module, struct_name, node.field_name};
     if (auto info = get_function(com, node.token, fname); info.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a bound method");
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
@@ -1203,7 +1197,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
 
     // Otherwise, it's a data member
-    node.token.assert(node.templates.empty(), "data members cannot be templated");
     push_expr(com, compile_type::ptr, *node.expr);
     auto_deref_pointer(com, type); // allow for field access through a pointer
     auto field_type = push_field_offset(com, node.token, stripped, node.field_name);

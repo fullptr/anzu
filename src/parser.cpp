@@ -136,12 +136,6 @@ auto parse_name(tokenstream& tokens) -> node_expr_ptr
     const auto token = tokens.consume();
     auto [node, inner] = new_node<node_name_expr>(token);
     inner.name = token.text;
-    if (tokens.consume_maybe(token_type::bang)) {
-        tokens.consume_only(token_type::left_paren);
-        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            inner.templates.push_back(parse_expression(tokens));
-        });
-    }
     return node;
 }
 
@@ -262,6 +256,18 @@ auto parse_call(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
     return node;
 }
 
+auto parse_templates(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
+{
+    auto [node, inner] = new_node<node_template_expr>(tokens.consume());
+    inner.expr = left;
+    tokens.consume_only(token_type::left_paren);
+    tokens.consume_comma_separated_list(token_type::right_paren, [&] {
+        inner.templates.push_back(parse_expression(tokens));
+    });
+    
+    return node;
+}
+
 auto parse_subscript(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
 {
     auto node = std::make_shared<node_expr>();
@@ -298,12 +304,6 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
     auto [node, inner] = new_node<node_field_expr>(token);
     inner.expr = left;
     inner.field_name = parse_identifier(tokens);
-    if (tokens.consume_maybe(token_type::bang)) {
-        tokens.consume_only(token_type::left_paren);
-        tokens.consume_comma_separated_list(token_type::right_paren, [&] {
-            inner.templates.push_back(parse_expression(tokens));
-        });
-    }
     return node;
 }
 
@@ -368,7 +368,7 @@ auto parse_precedence(tokenstream& tokens, precedence prec) -> node_expr_ptr
 static const auto rules = std::unordered_map<token_type, parse_rule>
 {
     {token_type::left_paren,          {parse_grouping,      parse_call,      precedence::call}},
-    {token_type::bang,                {parse_unary,         parse_call,      precedence::call}},
+    {token_type::bang,                {parse_unary,         parse_templates, precedence::call}},
     {token_type::minus,               {parse_unary,         parse_binary,    precedence::term}},
     {token_type::plus,                {nullptr,             parse_binary,    precedence::term}},
     {token_type::slash,               {nullptr,             parse_binary,    precedence::factor}},

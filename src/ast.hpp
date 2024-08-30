@@ -70,7 +70,6 @@ struct node_literal_string_expr
 struct node_name_expr
 {
     std::string                name;
-    std::vector<node_expr_ptr> templates;
 
     anzu::token token;
 };
@@ -79,7 +78,6 @@ struct node_field_expr
 {
     node_expr_ptr              expr;
     std::string                field_name;
-    std::vector<node_expr_ptr> templates;
 
     anzu::token token;
 };

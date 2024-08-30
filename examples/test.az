@@ -4,4 +4,7 @@ fn adder!(T)(a: i64, b: i64) -> null
     print("{}\n", a + b);
 }
 
-adder!(i64)(1, 2);
+let a := adder;
+print("{}\n", @type_name_of(adder));
+
+a!(i64)(1, 2);
