@@ -1,3 +1,7 @@
+# functions
+fn adder(a: i64, b: i64) -> i64
+{
+    return a + b;
+}
 
-
-@import("examples/feature_test.az");
+adder(1, 2);

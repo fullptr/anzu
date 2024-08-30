@@ -116,7 +116,7 @@ fn add3(x: i64, y: i64, z: i64) -> i64
     return add2(x, add2(y, z));
 }
 
-print("{}", add3(1, 2, 3));
+print("adder(1, 2, 3) == {}\n", add3(1, 2, 3));
 
 # Struct definition
 struct vec2

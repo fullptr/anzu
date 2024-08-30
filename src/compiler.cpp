@@ -1068,7 +1068,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto fname = function_name{curr_module(com), no_struct, node.name, templates};
     if (auto func = get_function(com, node.token, fname)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
-        push_value(code(com), op::push_u64, func->id);
         return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };
     }
 
@@ -1133,7 +1132,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto fname = function_name{info.filepath, no_struct, node.field_name, templates};
         if (auto func = get_function(com, node.token, fname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
-            push_value(code(com), op::push_u64, func->id);
             return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };
         }
 
@@ -1154,7 +1152,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto fname = function_name{struct_info.module, struct_info, node.field_name, templates};
         if (auto func = get_function(com, node.token, fname); func.has_value()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
-            push_value(code(com), op::push_u64, func->id);
             return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };   
         }
 
