@@ -328,7 +328,6 @@ auto compile_function(
 )
     -> void
 {
-    std::print("compiling {}\n", name);
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
     com.functions.emplace_back(name, id, variable_manager{true});
@@ -834,7 +833,6 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
             // Otherwise, compile the functions now
             for (const auto& func : ast.functions) {
                 const auto& stmt = std::get<node_function_stmt>(*func);
-                std::print("handling {}\n", stmt.name);
                 if (stmt.templates.empty()) {
                     const auto map = build_template_map(com, node.token, ast.templates, name.templates);
 
@@ -874,7 +872,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
 
         node.token.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
         const auto& fn = com.functions[com.functions_by_name.at(name)];
-        push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
+        push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
 
         const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
         if (stripped.is_const && !fn.sig.params[0].remove_ptr().is_const) {
@@ -1219,7 +1217,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
     if (type.is_type_value() && std::holds_alternative<type_struct>(inner_type(type))) {
-        std::print("Here with type {}\n", type);
         const auto struct_info = std::get<type_struct>(inner_type(type));
          
         const auto fname = function_name{struct_info.module, struct_info, node.field_name};
@@ -1229,11 +1226,9 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             return type_function{ .id = func.id, .param_types = func.sig.params, .return_type = func.sig.return_type };   
         }
 
-        std::print("didnt exist\n");
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            std::print("found {}\n", fname);
             return type_function_template{ .module = fname.module, .struct_name=struct_info, .name=node.field_name };
         }
 
@@ -1271,6 +1266,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
     // It might be a member function template
     if (com.function_templates.contains(fname.as_template())) {
+        push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
         return type_bound_method_template{ .module = struct_name.module, .struct_name=struct_name, .name=node.field_name };
     }
 

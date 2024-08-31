@@ -334,7 +334,7 @@ struct pair!(T)
     x: T;
     y: T;
 
-    fn print_struct!(U)(self: pair!(T) const&, u: U) -> null
+    fn print_struct!(U)(self: const&, u: U) -> null
     {
         print("{} {} {}\n", self.x, self.y, u);
     }
@@ -343,7 +343,9 @@ struct pair!(T)
 {
     var f := pair!(i64)(1, 2);
     var g := pair!(f64)(12.3, 45.6);
+print("HERE I AM\n");
     f.print_struct!(u64)(70u);
+print("THERE I AM\n");
     g.print_struct!(u64)(70u);
 }
 
