@@ -303,7 +303,7 @@ auto parse_dot(tokenstream& tokens, const node_expr_ptr& left) -> node_expr_ptr
     const auto token = tokens.consume_only(token_type::dot);
     auto [node, inner] = new_node<node_field_expr>(token);
     inner.expr = left;
-    inner.field_name = parse_identifier(tokens);
+    inner.name = parse_identifier(tokens);
     return node;
 }
 

@@ -44,7 +44,7 @@ auto print_node(const node_expr& root, int indent) -> void
             std::print("{}Field: \n", spaces);
             std::print("{}- Expr:\n", spaces);
             print_node(*node.expr, indent + 1);
-            std::print("{}- Field: {}\n", spaces, node.field_name);
+            std::print("{}- Field: {}\n", spaces, node.name);
         },
         [&](const node_unary_op_expr& node) {
             std::print("{}UnaryOp: \n", spaces);

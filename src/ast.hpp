@@ -69,15 +69,15 @@ struct node_literal_string_expr
 
 struct node_name_expr
 {
-    std::string                name;
+    std::string name;
 
     anzu::token token;
 };
 
 struct node_field_expr
 {
-    node_expr_ptr              expr;
-    std::string                field_name;
+    node_expr_ptr expr;
+    std::string   name;
 
     anzu::token token;
 };
