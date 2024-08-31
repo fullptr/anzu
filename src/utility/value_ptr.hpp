@@ -41,6 +41,8 @@ public:
     {
         return *d_value == *other.d_value;
     }
+
+    auto hash() const -> std::size_t { return var_hash(*d_value); }
 };
 
 template <typename T, typename... Args>
@@ -50,12 +52,3 @@ auto make_value(Args&&... args) -> value_ptr<T>
 }
 
 }
-
-template<typename T>
-struct std::hash<anzu::value_ptr<T>>
-{
-    auto operator()(const anzu::value_ptr<T>& name) const -> std::size_t
-    {
-        return std::hash<T>{}(*name);
-    }
-};

@@ -12,39 +12,9 @@
 
 #include "utility/common.hpp"
 #include "utility/value_ptr.hpp"
+#include "utility/hash.hpp"
 
 namespace anzu {
-
-template <typename T>
-concept has_member_hash = requires(T t) {
-    { t.hash() } -> std::convertible_to<std::size_t>;
-};
-
-auto simple_hash(auto&& obj) -> std::size_t
-{
-    using T = std::remove_cvref_t<decltype(obj)>;
-    if constexpr (has_member_hash<T>) {
-        return obj.hash();
-    } else {
-        return std::hash<T>{}(obj);
-    }
-}
-
-template <typename T>
-auto simple_hash(const std::vector<T>& objs) -> std::size_t
-{
-    auto hash = std::size_t{0};
-    for (const auto& obj : objs) {
-        hash ^= simple_hash(obj);
-    }
-    return hash;
-}
-
-template <typename... Args>
-auto var_hash(Args&&... args) -> std::size_t
-{
-    return (simple_hash(args) ^ ...);
-}
 
 // Want these to be equivalent since we want uints available in the runtime but we also want
 // to use it as indexes into C++ vectors which use size_t.
@@ -303,14 +273,5 @@ struct std::formatter<anzu::type_name> : std::formatter<std::string>
 {
     auto format(const anzu::type_name& type, auto& ctx) const {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
-    }
-};
-
-template<>
-struct std::hash<anzu::type_name>
-{
-    auto operator()(const anzu::type_name& name) const -> std::size_t
-    {
-        return name.hash();
     }
 };
