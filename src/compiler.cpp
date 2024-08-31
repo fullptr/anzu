@@ -811,7 +811,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
     }
     else if (auto info = type.get_if<type_struct_template>()) {
         const auto name = type_struct{ .name=info->name, .module=info->module, .templates=templates };
-        const auto key = template_struct_name{info->module, info->name};
+        const auto key = type_struct_template{info->module, info->name};
 
         if (!com.types.contains(name) && com.struct_templates.contains(key)) {
             const auto& ast = com.struct_templates.at(key);
@@ -1128,7 +1128,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // It might be a struct template
-    const auto skey = template_struct_name{curr_module(com), node.name};
+    const auto skey = type_struct_template{curr_module(com), node.name};
     if (com.struct_templates.contains(skey) && !com.types.contains(sname)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
         return type_struct_template{ .module=curr_module(com), .name=node.name };
@@ -1195,7 +1195,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         }
 
         // It might be a struct template
-        const auto skey = template_struct_name{info->filepath, node.name};
+        const auto skey = type_struct_template{info->filepath, node.name};
         if (com.struct_templates.contains(skey)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
             return type_struct_template{ .module=info->filepath, .name=node.name };
@@ -1542,7 +1542,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     check_duplicate_name(com, node.token, node.name);
     if (!node.templates.empty()) {
-        const auto key = template_struct_name{curr_module(com), node.name};
+        const auto key = type_struct_template{curr_module(com), node.name};
         const auto [it, success] = com.struct_templates.emplace(key, node);
         node.token.assert(success, "struct template named '<{}>.{}' already defined", curr_module(com).string(), node.name);
         return;

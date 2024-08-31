@@ -7,15 +7,6 @@
 
 namespace anzu {
 
-struct template_struct_name
-{
-    std::filesystem::path module;
-    std::string           name;
-
-    auto to_hash() const -> std::size_t { return hash(module, name); }
-    auto operator==(const template_struct_name&) const -> bool = default;
-};
-
 struct function_name
 {
     std::filesystem::path  module;
