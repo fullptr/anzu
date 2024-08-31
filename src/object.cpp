@@ -366,10 +366,4 @@ auto inner_type(const type_name& t) -> type_name
           "can only get the inner type for arrays, spans and type values, type={}", t);
 }
 
-auto array_length(const type_name& t) -> std::size_t
-{
-    panic_if(!t.is<type_array>(), "Tried to get length of a non-array type");
-    return t.as<type_array>().count;
-}
-
 }

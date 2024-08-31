@@ -217,9 +217,6 @@ auto string_literal_type() -> type_name;
 // type with a single subtype.
 auto inner_type(const type_name& t) -> type_name;
 
-// Extracts the array size of the given type. Undefined if the given t is not an array
-auto array_length(const type_name& t) -> std::size_t;
-
 auto to_string(const type_name& type) -> std::string;
 auto to_string(type_fundamental t) -> std::string;
 auto to_string(const type_array& type) -> std::string;

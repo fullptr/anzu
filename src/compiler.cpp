@@ -942,8 +942,8 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a len expression");
     const auto type = type_of_expr(com, *node.expr);
-    if (type.is<type_array>()) {
-        push_value(code(com), op::push_u64, array_length(type));
+    if (auto info = type.get_if<type_array>()) {
+        push_value(code(com), op::push_u64, info->count);
     }
     else if (type.is<type_span>()) {
         push_expr(com, compile_type::ptr, *node.expr); // pointer to the span
@@ -1016,7 +1016,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
         push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add);
         push_value(code(com), op::load, com.types.size_of(u64_type()));
     } else {
-        push_value(code(com), op::push_u64, array_length(type));
+        push_value(code(com), op::push_u64, type.as<type_array>().count);
     }
 
     if (type.is<type_array>()) {
