@@ -327,8 +327,10 @@ auto deduce_template_params(
 )
     -> std::vector<type_name>
 {
+    node.token.assert_eq(args.size(), sig_params.size(), "invalid number of args to template function");
     auto map = template_map{};
     
+
     auto ret = std::vector<type_name>{};
     for (const auto& name : names) {
         if (!map.contains(name)) {
