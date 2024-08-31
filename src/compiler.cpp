@@ -789,9 +789,8 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
     const auto templates = resolve_types(com, node.token, node.templates);
     const auto type = type_of_expr(com, *node.expr);
 
-    if (std::holds_alternative<type_function_template>(type)) {
-        const auto& info = std::get<type_function_template>(type);
-        const auto name = function_name{ .module=info.module, .struct_name=info.struct_name, .name=info.name, .templates=templates };
+    if (auto info = type.get_if<type_function_template>()) {
+        const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
         const auto key = name.as_template();
 
         // If the function doesn't exist, it may still be a template, if it is then compile it
@@ -810,10 +809,9 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         const auto& fn = com.functions[com.functions_by_name.at(name)];
         return type_function{ .id = fn.id, .param_types=fn.sig.params, .return_type=fn.sig.return_type };
     }
-    else if (std::holds_alternative<type_struct_template>(type)) {
-        const auto& info = std::get<type_struct_template>(type);
-        const auto name = type_struct{ .name=info.name, .module=info.module, .templates=templates };
-        const auto key = template_struct_name{info.module, info.name};
+    else if (auto info = type.get_if<type_struct_template>()) {
+        const auto name = type_struct{ .name=info->name, .module=info->module, .templates=templates };
+        const auto key = template_struct_name{info->module, info->name};
 
         if (!com.types.contains(name) && com.struct_templates.contains(key)) {
             const auto& ast = com.struct_templates.at(key);
@@ -853,9 +851,8 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         node.token.assert(com.types.contains(name), "could not find struct {}", type_name{name});
         return type_type{type_name{name}};
     }
-    else if (std::holds_alternative<type_bound_method_template>(type)) {
-        const auto& info = std::get<type_bound_method_template>(type);
-        const auto name = function_name{info.module, info.struct_name, info.name, templates};
+    else if (auto info = type.get_if<type_bound_method_template>()) {
+        const auto name = function_name{info->module, info->struct_name, info->name, templates};
         const auto key = name.as_template();
 
         // If the function doesn't exist, it may still be a template, if it is then compile it
@@ -882,9 +879,9 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         // check first argument is a pointer to an instance of the class
         node.token.assert(fn.sig.params.size() > 0, "member functions must have at least one arg");
         const auto actual = fn.sig.params[0];
-        const auto expected = type_name{info.struct_name}.add_const().add_ptr().add_const();
+        const auto expected = type_name{info->struct_name}.add_const().add_ptr().add_const();
         constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
-        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped, expected, actual);
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped, expected, actual);
 
         return type_bound_method{
             .param_types = fn.sig.params,
@@ -959,9 +956,8 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
         push_value(code(com), op::arena_size);
         return u64_type();
     }
-    else if (type.is<type_struct>()) {
-        const auto& info = type.as<type_struct>();
-        const auto name = function_name{.module=info.module, .struct_name=info, .name="length"};
+    else if (auto info = type.get_if<type_struct>()) {
+        const auto name = function_name{.module=info->module, .struct_name=*info, .name="length"};
         const auto func = get_function(com, node.token, name);
         node.token.assert(func.has_value(), "cannot call 'len' on an object of type {}", type);
         node.token.assert_eq(func->sig.params.size(), 1, "{}.length() must only take one argument", type);
@@ -1176,11 +1172,10 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     const auto type = type_of_expr(com, *node.expr);
 
     // If the expression is a module, allow for accessing global variables, functions and structs
-    if (type.is<type_module>()) {
-        const auto& info = std::get<type_module>(type);
+    if (auto info = type.get_if<type_module>()) {
 
         // It might be a function
-        const auto fname = function_name{info.filepath, no_struct, node.name};
+        const auto fname = function_name{info->filepath, no_struct, node.name};
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
@@ -1190,15 +1185,15 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return type_function_template{ .module = info.filepath, .struct_name=no_struct, .name=node.name };
+            return type_function_template{ .module = info->filepath, .struct_name=no_struct, .name=node.name };
         }
 
         // It might be a struct template
-        const auto sname = type_struct{node.name, info.filepath};
-        const auto skey = template_struct_name{info.filepath, node.name};
+        const auto sname = type_struct{node.name, info->filepath};
+        const auto skey = template_struct_name{info->filepath, node.name};
         if (com.struct_templates.contains(skey) && !com.types.contains(sname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-            return type_struct_template{ .module=info.filepath, .name=node.name };
+            return type_struct_template{ .module=info->filepath, .name=node.name };
         }
 
         // It might be a struct
@@ -1208,7 +1203,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
         // Otherwise, it must be a variable
         if (ct == compile_type::ptr) {
-            return push_var_addr(com, node.token, info.filepath, node.name);
+            return push_var_addr(com, node.token, info->filepath, node.name);
         }
         const auto type = push_expr(com, compile_type::ptr, node);
         push_value(code(com), op::load, com.types.size_of(type));
@@ -1237,7 +1232,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     const auto stripped = strip_pointers(type);
     node.token.assert(stripped.is<type_struct>(), "expected a struct type, got {}\n", stripped);
-    const auto& struct_name = std::get<type_struct>(stripped);
+    const auto& struct_name = stripped.as<type_struct>();
 
     // It might be a member function
     const auto fname = function_name{struct_name.module, struct_name, node.name};
