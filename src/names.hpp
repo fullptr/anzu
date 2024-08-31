@@ -70,7 +70,7 @@ struct std::hash<anzu::template_function_name>
     auto operator()(const anzu::template_function_name& name) const -> std::size_t
     {
         return std::hash<std::string>{}(name.name) ^ std::hash<std::string>{}(name.module.string())
-                                                   ^ anzu::hash(name.struct_name);
+                                                   ^ name.struct_name.hash();
     }
 };
 
@@ -81,6 +81,6 @@ struct std::hash<anzu::function_name>
     auto operator()(const anzu::function_name& name) const -> std::size_t
     {
         return std::hash<std::string>{}(name.name) ^ std::hash<std::string>{}(name.module.string())
-                                                   ^ anzu::hash(name.struct_name);
+                                                   ^ name.struct_name.hash();
     }
 };
