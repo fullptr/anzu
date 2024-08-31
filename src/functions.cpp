@@ -73,7 +73,11 @@ auto builtin_fread(bytecode_context& ctx) -> void
     const auto size = static_cast<std::size_t>(ssize);
     std::rewind(file);
     std::byte* ptr = &arena->data[arena->next];
-    std::fread(ptr, sizeof(std::byte), ssize, file);
+    const auto bytes_read = std::fread(ptr, sizeof(std::byte), ssize, file);
+    if (bytes_read != ssize) {
+        std::print("Error with fread\n");
+	std::exit(1);
+    }	
     arena->next += size;
     ctx.stack.push(ptr); // push the span
     ctx.stack.push(size);
