@@ -256,14 +256,14 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     }
 
     // Let compile time bools convert to runtime bools
-    if (expected == bool_type() && std::holds_alternative<type_ct_bool>(actual)) {
-        push_value(code(com), op::push_bool, std::get<type_ct_bool>(actual).value);
+    if (expected == bool_type() && actual.is<type_ct_bool>()) {
+        push_value(code(com), op::push_bool, actual.as<type_ct_bool>().value);
         return;
     }
 
     // Let functions convert to function ptrs
-    if (actual.is<type_function>() && std::get<type_function>(actual).to_pointer() == expected) {
-        push_value(code(com), op::push_function_ptr, std::get<type_function>(actual).id); // push the id
+    if (auto func = actual.get_if<type_function>(); func && func->to_pointer() == expected) {
+        push_value(code(com), op::push_function_ptr, func->id); // push the id
         return;
     }
 
