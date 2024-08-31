@@ -1,10 +1,5 @@
-# functions
-fn adder!(T)(a: i64, b: i64) -> null
-{
-    print("{}\n", a + b);
-}
-
-let a := adder;
-print("{}\n", @type_name_of(adder));
-
-a!(i64)(1, 2);
+let vec := @import("lib/vector.az");
+arena v;
+let this_type := vec.vector!(i64);
+print("{}\n", @type_name_of(this_type));
+var my_vec := this_type.create(v&);

@@ -9,15 +9,15 @@ struct vector!(T)
         return self._data[0u : self._size];
     }
 
+    fn capacity(self: &) -> u64
+    {
+        return len(self._data);
+    }
+
     fn reserve(self: &, size: u64) -> null
     {
         assert(size > self.capacity());
         self._data = new(self._arr, size, self._data) T();
-    }
-
-    fn capacity(self: &) -> u64
-    {
-        return len(self._data);
     }
 
     fn size(self: const&) -> u64

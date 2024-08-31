@@ -359,7 +359,8 @@ print("{} {} {} {}\n", d.x.first, d.x.second, d.y.first, d.y.second);
 
 let vec := @import("lib/vector.az");
 arena v;
-var my_vec := vec.vector!(i64).create(v&);
+let this_type := vec.vector!(i64);
+var my_vec := this_type.create(v&);
 my_vec.push(2);
 my_vec.push(3);
 my_vec.push(4);

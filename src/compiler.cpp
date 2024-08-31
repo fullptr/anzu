@@ -328,6 +328,7 @@ auto compile_function(
 )
     -> void
 {
+    std::print("compiling {}\n", name);
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
     com.functions.emplace_back(name, id, variable_manager{true});
@@ -812,7 +813,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
     }
     else if (std::holds_alternative<type_struct_template>(type)) {
         const auto& info = std::get<type_struct_template>(type);
-        const auto name = type_struct{ .name=info.name, .module=info.module };
+        const auto name = type_struct{ .name=info.name, .module=info.module, .templates=templates };
         const auto key = template_struct_name{info.module, info.name};
 
         if (!com.types.contains(name) && com.struct_templates.contains(key)) {
@@ -830,11 +831,24 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
             com.current_module.pop_back();
 
             // Template functions only get compiled at the call site, so we just stash the ast
+            // Otherwise, compile the functions now
             for (const auto& func : ast.functions) {
                 const auto& stmt = std::get<node_function_stmt>(*func);
-                const auto fkey = template_function_name{name.module, name, stmt.name};
-                const auto [it, success] = com.function_templates.emplace(fkey, stmt);
-                node.token.assert(success, "function template named '{}' already defined", fkey);
+                std::print("handling {}\n", stmt.name);
+                if (stmt.templates.empty()) {
+                    const auto map = build_template_map(com, node.token, ast.templates, name.templates);
+
+                    com.current_struct.emplace_back(name, com.types.templates_of(name));
+                    com.current_module.emplace_back(name.module);
+                    const auto fn_name = function_name{.module=name.module, .struct_name=name, .name=stmt.name};
+                    compile_function(com, node.token, fn_name, stmt.sig, stmt.body, map);
+                    com.current_struct.pop_back();
+                    com.current_module.pop_back();
+                } else {
+                    const auto fkey = template_function_name{name.module, name, stmt.name};
+                    const auto [it, success] = com.function_templates.emplace(fkey, stmt);
+                    node.token.assert(success, "function template named '{}' already defined", fkey);
+                }
             }
         }
 
@@ -843,13 +857,13 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
     }
     else if (std::holds_alternative<type_bound_method_template>(type)) {
         const auto& info = std::get<type_bound_method_template>(type);
-        const auto name = function_name{info.module, info.struct_name, info.name};
+        const auto name = function_name{info.module, info.struct_name, info.name, templates};
         const auto key = name.as_template();
 
         // If the function doesn't exist, it may still be a template, if it is then compile it
         if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
             const auto& ast = com.function_templates.at(key);
-            const auto map = build_template_map(com, node.token, ast.templates, name.templates);
+            const auto map = build_template_map(com, node.token, ast.templates, templates);
 
             com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
             com.current_module.emplace_back(name.module);
@@ -870,9 +884,9 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         // check first argument is a pointer to an instance of the class
         node.token.assert(fn.sig.params.size() > 0, "member functions must have at least one arg");
         const auto actual = fn.sig.params[0];
-        const auto expected = stripped.add_const().add_ptr().add_const();
-        const auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
-        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped);
+        const auto expected = type_name{info.struct_name}.add_const().add_ptr().add_const();
+        const auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped, expected, actual);
 
         return type_bound_method{
             .param_types = fn.sig.params,
@@ -1205,12 +1219,22 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
     if (type.is_type_value() && std::holds_alternative<type_struct>(inner_type(type))) {
+        std::print("Here with type {}\n", type);
         const auto struct_info = std::get<type_struct>(inner_type(type));
          
         const auto fname = function_name{struct_info.module, struct_info, node.field_name};
-        if (auto func = get_function(com, node.token, fname); func.has_value()) {
+        if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
-            return type_function{ .id = func->id, .param_types = func->sig.params, .return_type = func->sig.return_type };   
+            const auto& func = com.functions[it->second];
+            return type_function{ .id = func.id, .param_types = func.sig.params, .return_type = func.sig.return_type };   
+        }
+
+        std::print("didnt exist\n");
+        // It might be a function template
+        if (com.function_templates.contains(fname.as_template())) {
+            node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
+            std::print("found {}\n", fname);
+            return type_function_template{ .module = fname.module, .struct_name=struct_info, .name=node.field_name };
         }
 
         node.token.error("can only access member functions from structs");
@@ -1224,7 +1248,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     // It might be a member function
     const auto fname = function_name{struct_name.module, struct_name, node.field_name};
     if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
-        node.token.assert(ct == compile_type::val, "cannot take the address of a bound method");
         const auto& info = com.functions[it->second];
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
         const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
@@ -1236,8 +1259,8 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");
         const auto actual = info.sig.params[0];
         const auto expected = stripped.add_const().add_ptr().add_const();
-        constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
-        node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped);
+        constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped, expected, actual);
         return type_bound_method{
             .param_types = info.sig.params,
             .return_type = info.sig.return_type,
@@ -1248,7 +1271,6 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
 
     // It might be a member function template
     if (com.function_templates.contains(fname.as_template())) {
-        node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
         return type_bound_method_template{ .module = struct_name.module, .struct_name=struct_name, .name=node.field_name };
     }
 
