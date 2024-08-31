@@ -1,5 +1,6 @@
-struct pair!(T)
-{
-    x: T;
-    y: T;
+
+fn foo!(U)(x: U) {
+    print("{}\n", x);
 }
+
+foo(10);
