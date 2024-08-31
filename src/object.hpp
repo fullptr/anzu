@@ -211,9 +211,7 @@ struct type_name : public std::variant<
     template <typename T> auto get_if() const -> const T* { return std::get_if<T>(this); }
 
     auto to_hash() const -> std::size_t {
-        return std::visit([](const auto& obj) {
-            return hash(obj);
-        }, *this);
+        return std::visit([](const auto& obj) { return hash(obj); }, *this);
     }
 };
 
