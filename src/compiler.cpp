@@ -1236,9 +1236,8 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
     
     const auto stripped = strip_pointers(type);
-    const auto struct_name = std::holds_alternative<type_struct>(stripped)
-                           ? std::get<type_struct>(stripped)
-                           : no_struct;
+    node.token.assert(stripped.is_struct(), "expected a struct type, got {}\n", stripped);
+    const auto& struct_name = std::get<type_struct>(stripped);
 
     // It might be a member function
     const auto fname = function_name{struct_name.module, struct_name, node.name};
