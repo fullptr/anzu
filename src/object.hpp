@@ -116,7 +116,6 @@ struct type_arena
     auto operator==(const type_arena&) const -> bool = default;
 };
 
-// Represents a type as a value along with the compile-time value
 struct type_type
 {
     value_ptr<type_name> type_val;

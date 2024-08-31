@@ -142,7 +142,12 @@ auto to_string(const type_bound_method& type) -> std::string
 
 auto to_string(const type_bound_method_template& type) -> std::string
 {
-    return std::format("<bound_method_template: TBA>");
+    return std::format(
+        "<bound_method_template: <{}>.{}.{}>",
+        type.module.string(),
+        to_string(type.struct_name),
+        type.name
+    );
 }
 
 auto to_string(const type_arena& type) -> std::string
@@ -152,23 +157,23 @@ auto to_string(const type_arena& type) -> std::string
 
 auto to_string(const type_type& type) -> std::string
 {
-    return std::format("<type-expression: {}>", *type.type_val);
+    return std::format("<type: {}>", *type.type_val);
 }
 
 auto to_string(const type_function& type) -> std::string
 {
     const auto function_ptr_type = type_function_ptr{type.param_types, type.return_type};
-    return std::format("<function: id {}  {}>", type.id, to_string(function_ptr_type));
+    return std::format("<function: id {} {}>", type.id, to_string(function_ptr_type));
 }
 
 auto to_string(const type_function_template& type) -> std::string
 {
-    return std::format("<function_template: TBA>");
+    return std::format("<function_template: <{}>.{}.{}>", type.module.string(), to_string(type.struct_name), type.name);
 }
 
 auto to_string(const type_struct_template& type) -> std::string
 {
-    return std::format("<struct_template: TBA>");
+    return std::format("<struct_template: <{}>.{}>", type.module.string(), type.name);
 }
 
 auto to_string(const type_module& type) -> std::string
@@ -178,7 +183,7 @@ auto to_string(const type_module& type) -> std::string
 
 auto to_string(const type_ct_bool& type) -> std::string
 {
-    return std::format("<comptime bool: {}>", type.value);
+    return std::format("<comptime_bool: {}>", type.value);
 }
 
 auto null_type() -> type_name
