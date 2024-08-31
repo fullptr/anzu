@@ -172,6 +172,23 @@ struct type_ct_bool
     auto operator==(const type_ct_bool&) const -> bool = default;
 };
 
+auto to_string(const type_name& type) -> std::string;
+auto to_string(type_fundamental t) -> std::string;
+auto to_string(const type_array& type) -> std::string;
+auto to_string(const type_ptr& type) -> std::string;
+auto to_string(const type_span& type) -> std::string;
+auto to_string(const type_struct& type) -> std::string;
+auto to_string(const type_function_ptr& type) -> std::string;
+auto to_string(const type_builtin& type) -> std::string;
+auto to_string(const type_bound_method& type) -> std::string;
+auto to_string(const type_bound_method_template& type) -> std::string;
+auto to_string(const type_arena& type) -> std::string;
+auto to_string(const type_type& type) -> std::string;
+auto to_string(const type_function& type) -> std::string;
+auto to_string(const type_function_template& type) -> std::string;
+auto to_string(const type_struct_template& type) -> std::string;
+auto to_string(const type_module& type) -> std::string;
+auto to_string(const type_ct_bool& type) -> std::string;
 
 struct type_name : public std::variant<
     type_fundamental,
@@ -214,6 +231,10 @@ struct type_name : public std::variant<
     auto to_hash() const -> std::size_t {
         return std::visit([](const auto& obj) { return hash(obj); }, *this);
     }
+
+    auto to_string() const -> std::string {
+        return std::visit([](const auto& obj) { return anzu::to_string(obj); }, *this);
+    }
 };
 
 // Used for resolving template types. In the future could also be used for type aliases
@@ -234,24 +255,6 @@ auto string_literal_type() -> type_name;
 // type with a single subtype.
 auto inner_type(const type_name& t) -> type_name;
 
-auto to_string(const type_name& type) -> std::string;
-auto to_string(type_fundamental t) -> std::string;
-auto to_string(const type_array& type) -> std::string;
-auto to_string(const type_ptr& type) -> std::string;
-auto to_string(const type_span& type) -> std::string;
-auto to_string(const type_struct& type) -> std::string;
-auto to_string(const type_function_ptr& type) -> std::string;
-auto to_string(const type_builtin& type) -> std::string;
-auto to_string(const type_bound_method& type) -> std::string;
-auto to_string(const type_bound_method_template& type) -> std::string;
-auto to_string(const type_arena& type) -> std::string;
-auto to_string(const type_type& type) -> std::string;
-auto to_string(const type_function& type) -> std::string;
-auto to_string(const type_function_template& type) -> std::string;
-auto to_string(const type_struct_template& type) -> std::string;
-auto to_string(const type_module& type) -> std::string;
-auto to_string(const type_ct_bool& type) -> std::string;
-
 }
 
 template <>
@@ -260,13 +263,5 @@ struct std::formatter<std::byte> : std::formatter<std::string>
     auto format(std::byte b, auto& ctx) const {
         const auto str = std::format("{:X}", static_cast<unsigned char>(b));
         return std::formatter<std::string>::format(str, ctx);
-    }
-};
-
-template <>
-struct std::formatter<anzu::type_name> : std::formatter<std::string>
-{
-    auto format(const anzu::type_name& type, auto& ctx) const {
-        return std::formatter<std::string>::format(anzu::to_string(type), ctx);
     }
 };

@@ -21,11 +21,3 @@ struct function_name
 };
 
 }
-
-template <>
-struct std::formatter<anzu::function_name> : std::formatter<std::string>
-{
-    auto format(const anzu::function_name& type, auto& ctx) const {
-        return std::formatter<std::string>::format(type.to_string(), ctx);
-    }
-};
