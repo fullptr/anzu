@@ -61,7 +61,8 @@ auto parse_number(tokenstream& tokens) -> node_expr_ptr
     auto text = token.text;
 
     const auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), inner.value);
-    token.assert(ec == std::errc{}, "cannot convert '{}' to '{}'\n", text, TokenType);
+    constexpr auto message = "cannot convert '{}' to '{}'\n";
+    token.assert(ec == std::errc{}, message, text, TokenType);
     return node;
 }
 

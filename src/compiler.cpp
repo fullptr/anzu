@@ -883,7 +883,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         node.token.assert(fn.sig.params.size() > 0, "member functions must have at least one arg");
         const auto actual = fn.sig.params[0];
         const auto expected = type_name{info.struct_name}.add_const().add_ptr().add_const();
-        const auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
+        constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
         node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped, expected, actual);
 
         return type_bound_method{
