@@ -7,14 +7,14 @@ namespace anzu {
 
 template <typename T>
 concept has_member_hash = requires(T t) {
-    { t.hash() } -> std::convertible_to<std::size_t>;
+    { t.to_hash() } -> std::convertible_to<std::size_t>;
 };
 
 auto simple_hash(auto&& obj) -> std::size_t
 {
     using T = std::remove_cvref_t<decltype(obj)>;
     if constexpr (has_member_hash<T>) {
-        return obj.hash();
+        return obj.to_hash();
     } else {
         return std::hash<T>{}(obj);
     }
@@ -43,6 +43,6 @@ struct std::hash<T>
 {
     auto operator()(const T& obj) const -> std::size_t
     {
-        return obj.hash();
+        return obj.to_hash();
     }
 };

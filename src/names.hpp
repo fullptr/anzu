@@ -12,7 +12,7 @@ struct template_struct_name
     std::filesystem::path module;
     std::string           name;
 
-    auto hash() const -> std::size_t { return var_hash(module, name); }
+    auto to_hash() const -> std::size_t { return var_hash(module, name); }
     auto operator==(const template_struct_name&) const -> bool = default;
 };
 
@@ -23,7 +23,7 @@ struct template_function_name
     std::string           name;
 
     auto to_string() const -> std::string;
-    auto hash() const -> std::size_t { return var_hash(module, struct_name, name); }
+    auto to_hash() const -> std::size_t { return var_hash(module, struct_name, name); }
     auto operator==(const template_function_name&) const -> bool = default;
 };
 
@@ -36,7 +36,7 @@ struct function_name
 
     auto as_template() const -> template_function_name;
     auto to_string() const -> std::string;
-    auto hash() const -> std::size_t { return var_hash(module, struct_name, name, templates); }
+    auto to_hash() const -> std::size_t { return var_hash(module, struct_name, name, templates); }
     auto operator==(const function_name&) const -> bool = default;
 };
 

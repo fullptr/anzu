@@ -42,7 +42,7 @@ public:
         return *d_value == *other.d_value;
     }
 
-    auto hash() const -> std::size_t { return var_hash(*d_value); }
+    auto to_hash() const -> std::size_t { return var_hash(*d_value); }
 };
 
 template <typename T, typename... Args>
