@@ -175,20 +175,9 @@ struct type_name : public std::variant<
     [[nodiscard]] auto add_span() const -> type_name;
     [[nodiscard]] auto remove_span() const -> type_name;
 
-    template <typename T>
-    auto is() const -> bool { return std::holds_alternative<T>(*this); }
-
-    template <typename T>
-    auto as() -> T& { return std::get<T>(*this); }
-
-    template <typename T>
-    auto as() const -> const T& { return std::get<T>(*this); }
-
-    template <typename T>
-    auto get_if() -> T* { if (is<T>()) return &as<T>(); return nullptr;}
-
-    template <typename T>
-    auto get_if() const -> const T* { if (is<T>()) return &as<T>(); return nullptr; }
+    template <typename T> auto is()     const -> bool     { return std::holds_alternative<T>(*this); }
+    template <typename T> auto as()     const -> const T& { return std::get<T>(*this); }
+    template <typename T> auto get_if() const -> const T* { return std::get_if<T>(this); }
 };
 
 auto hash(const type_name& type) -> std::size_t;
