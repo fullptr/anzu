@@ -9,6 +9,11 @@
 
 namespace anzu {
 
+auto type_function::to_pointer() const -> type_name
+{
+    return type_function_ptr{ param_types, return_type };
+}
+
 auto type_name::is_fundamental() const -> bool
 {
     return std::holds_alternative<type_fundamental>(*this);
@@ -132,6 +137,11 @@ auto to_string(const type_bound_method& type) -> std::string
     );
 }
 
+auto to_string(const type_bound_method_template& type) -> std::string
+{
+    return std::format("<bound_method_template: TBA>");
+}
+
 auto to_string(const type_arena& type) -> std::string
 {
     return std::string{"<arena>"};
@@ -140,6 +150,22 @@ auto to_string(const type_arena& type) -> std::string
 auto to_string(const type_type& type) -> std::string
 {
     return std::format("<type-expression: {}>", *type.type_val);
+}
+
+auto to_string(const type_function& type) -> std::string
+{
+    const auto function_ptr_type = type_function_ptr{type.param_types, type.return_type};
+    return std::format("<function: id {}  {}>", type.id, to_string(function_ptr_type));
+}
+
+auto to_string(const type_function_template& type) -> std::string
+{
+    return std::format("<function_template: TBA>");
+}
+
+auto to_string(const type_struct_template& type) -> std::string
+{
+    return std::format("<struct_template: TBA>");
 }
 
 auto to_string(const type_module& type) -> std::string
@@ -210,6 +236,11 @@ auto hash(const type_bound_method& type) -> std::size_t
     return val;
 }
 
+auto hash(const type_bound_method_template& type) -> std::size_t
+{
+    return 0; // TODO: Implement
+}
+
 auto hash(const type_arena& type) -> std::size_t
 {
     return std::hash<std::string_view>{}("type_arena");
@@ -218,6 +249,25 @@ auto hash(const type_arena& type) -> std::size_t
 auto hash(const type_type& type) -> std::size_t
 {
     return hash(*type.type_val) ^ std::hash<std::string_view>{}("type_type");
+}
+
+auto hash(const type_function& type) -> std::size_t
+{
+    auto val = hash(*type.return_type) ^ std::hash<std::size_t>{}(type.id);
+    for (const auto& param : type.param_types) {
+        val ^= hash(param);
+    }
+    return val;
+}
+
+auto hash(const type_function_template& type) -> std::size_t
+{
+    return 0; // TODO: Implement
+}
+
+auto hash(const type_struct_template& type) -> std::size_t
+{
+    return 0; // TODO: Implement
 }
 
 auto hash(const type_module& type) -> std::size_t
@@ -319,6 +369,11 @@ auto type_name::remove_span() const -> type_name
 {
     panic_if(!is_span(), "Tried to strip span from non-span type {}", *this);
     return *std::get<type_span>(*this).inner_type;
+}
+
+auto type_name::is_function() const -> bool
+{
+    return std::holds_alternative<type_function>(*this);
 }
 
 auto type_name::is_function_ptr() const -> bool

@@ -69,17 +69,15 @@ struct node_literal_string_expr
 
 struct node_name_expr
 {
-    std::string                name;
-    std::vector<node_expr_ptr> templates;
+    std::string name;
 
     anzu::token token;
 };
 
 struct node_field_expr
 {
-    node_expr_ptr              expr;
-    std::string                field_name;
-    std::vector<node_expr_ptr> templates;
+    node_expr_ptr expr;
+    std::string   name;
 
     anzu::token token;
 };
@@ -103,6 +101,14 @@ struct node_call_expr
 {
     node_expr_ptr expr;
     std::vector<node_expr_ptr> args;
+
+    anzu::token token;
+};
+
+struct node_template_expr
+{
+    node_expr_ptr expr;
+    std::vector<node_expr_ptr> templates;
 
     anzu::token token;
 };
@@ -215,6 +221,7 @@ struct node_expr : std::variant<
     node_unary_op_expr,
     node_binary_op_expr,
     node_call_expr,
+    node_template_expr,
     node_array_expr,
     node_repeat_array_expr,
     node_addrof_expr,

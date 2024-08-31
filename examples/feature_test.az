@@ -116,7 +116,7 @@ fn add3(x: i64, y: i64, z: i64) -> i64
     return add2(x, add2(y, z));
 }
 
-print("{}", add3(1, 2, 3));
+print("adder(1, 2, 3) == {}\n", add3(1, 2, 3));
 
 # Struct definition
 struct vec2
@@ -334,7 +334,7 @@ struct pair!(T)
     x: T;
     y: T;
 
-    fn print_struct!(U)(self: pair!(T) const&, u: U) -> null
+    fn print_struct!(U)(self: const&, u: U) -> null
     {
         print("{} {} {}\n", self.x, self.y, u);
     }
@@ -343,7 +343,9 @@ struct pair!(T)
 {
     var f := pair!(i64)(1, 2);
     var g := pair!(f64)(12.3, 45.6);
+print("HERE I AM\n");
     f.print_struct!(u64)(70u);
+print("THERE I AM\n");
     g.print_struct!(u64)(70u);
 }
 
@@ -359,7 +361,8 @@ print("{} {} {} {}\n", d.x.first, d.x.second, d.y.first, d.y.second);
 
 let vec := @import("lib/vector.az");
 arena v;
-var my_vec := vec.vector!(i64).create(v&);
+let this_type := vec.vector!(i64);
+var my_vec := this_type.create(v&);
 my_vec.push(2);
 my_vec.push(3);
 my_vec.push(4);

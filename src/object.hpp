@@ -84,6 +84,14 @@ struct type_bound_method
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
+struct type_bound_method_template
+{
+    std::filesystem::path    module;
+    type_struct              struct_name;
+    std::string              name;
+    auto operator==(const type_bound_method_template&) const -> bool = default;
+};
+
 struct type_arena
 {
     auto operator==(const type_arena&) const -> bool = default;
@@ -94,6 +102,30 @@ struct type_type
 {
     value_ptr<type_name> type_val;
     auto operator==(const type_type&) const -> bool = default;
+};
+
+struct type_function
+{
+    std::size_t            id;
+    std::vector<type_name> param_types;
+    value_ptr<type_name>   return_type;
+    auto to_pointer() const -> type_name;
+    auto operator==(const type_function&) const -> bool = default;
+};
+
+struct type_function_template
+{
+    std::filesystem::path    module;
+    type_struct              struct_name;
+    std::string              name;
+    auto operator==(const type_function_template&) const -> bool = default;
+};
+
+struct type_struct_template
+{
+    std::filesystem::path module;
+    std::string           name;
+    auto operator==(const type_struct_template&) const -> bool = default;
 };
 
 struct type_module
@@ -118,8 +150,12 @@ struct type_name : public std::variant<
     type_arena,
     type_function_ptr,
     type_bound_method,
+    type_bound_method_template,
     type_builtin,
     type_type,
+    type_function,
+    type_function_template,
+    type_struct_template,
     type_module,
     type_ct_bool>
 {
@@ -144,6 +180,7 @@ struct type_name : public std::variant<
     [[nodiscard]] auto add_span() const -> type_name;
     [[nodiscard]] auto remove_span() const -> type_name;
 
+    [[nodiscard]] auto is_function() const -> bool;
     [[nodiscard]] auto is_function_ptr() const -> bool;
     [[nodiscard]] auto is_builtin() const -> bool;
     [[nodiscard]] auto is_bound_method() const -> bool;
@@ -165,8 +202,12 @@ auto hash(const type_span& type) -> std::size_t;
 auto hash(const type_function_ptr& type) -> std::size_t;
 auto hash(const type_builtin& type) -> std::size_t;
 auto hash(const type_bound_method& type) -> std::size_t;
+auto hash(const type_bound_method_template& type) -> std::size_t;
 auto hash(const type_arena& type) -> std::size_t;
 auto hash(const type_type& type) -> std::size_t;
+auto hash(const type_function& type) -> std::size_t;
+auto hash(const type_function_template& type) -> std::size_t;
+auto hash(const type_struct_template& type) -> std::size_t;
 auto hash(const type_module& type) -> std::size_t;
 auto hash(const type_ct_bool& type) -> std::size_t;
 auto hash(std::span<const type_name> types) -> std::size_t;
@@ -201,8 +242,12 @@ auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
 auto to_string(const type_builtin& type) -> std::string;
 auto to_string(const type_bound_method& type) -> std::string;
+auto to_string(const type_bound_method_template& type) -> std::string;
 auto to_string(const type_arena& type) -> std::string;
 auto to_string(const type_type& type) -> std::string;
+auto to_string(const type_function& type) -> std::string;
+auto to_string(const type_function_template& type) -> std::string;
+auto to_string(const type_struct_template& type) -> std::string;
 auto to_string(const type_module& type) -> std::string;
 auto to_string(const type_ct_bool& type) -> std::string;
 
