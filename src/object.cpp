@@ -9,19 +9,14 @@
 
 namespace anzu {
 
+auto type_function_template::to_string() const -> std::string
+{
+    return anzu::to_string(*this);
+}
+
 auto type_function::to_pointer() const -> type_name
 {
     return type_function_ptr{ param_types, return_type };
-}
-
-auto type_name::is_fundamental() const -> bool
-{
-    return std::holds_alternative<type_fundamental>(*this);
-}
-
-auto type_name::is_ptr() const -> bool
-{
-    return std::holds_alternative<type_ptr>(*this);
 }
 
 auto type_name::add_ptr() const -> type_name
@@ -31,8 +26,8 @@ auto type_name::add_ptr() const -> type_name
 
 auto type_name::remove_ptr() const -> type_name
 {
-    if (!is_ptr()) panic("tried to remove_ptr on a non-ptr type\n");
-    return *std::get<type_ptr>(*this).inner_type;
+    if (!is<type_ptr>()) panic("tried to remove_ptr on a non-ptr type\n");
+    return *as<type_ptr>().inner_type;
 }
 
 auto type_name::add_const() const -> type_name
@@ -52,7 +47,7 @@ auto type_name::remove_const() const -> type_name
 auto to_string_paren(const type_name& type) -> std::string
 {
     const auto str = to_string(type);
-    if (type.is_function_ptr()) {
+    if (type.is<type_function_ptr>()) {
         return std::format("({})", str);
     }
     return str;
@@ -139,7 +134,12 @@ auto to_string(const type_bound_method& type) -> std::string
 
 auto to_string(const type_bound_method_template& type) -> std::string
 {
-    return std::format("<bound_method_template: TBA>");
+    return std::format(
+        "<bound_method_template: <{}>.{}.{}>",
+        type.module.string(),
+        to_string(type.struct_name),
+        type.name
+    );
 }
 
 auto to_string(const type_arena& type) -> std::string
@@ -149,23 +149,23 @@ auto to_string(const type_arena& type) -> std::string
 
 auto to_string(const type_type& type) -> std::string
 {
-    return std::format("<type-expression: {}>", *type.type_val);
+    return std::format("<type: {}>", *type.type_val);
 }
 
 auto to_string(const type_function& type) -> std::string
 {
     const auto function_ptr_type = type_function_ptr{type.param_types, type.return_type};
-    return std::format("<function: id {}  {}>", type.id, to_string(function_ptr_type));
+    return std::format("<function: id {} {}>", type.id, to_string(function_ptr_type));
 }
 
 auto to_string(const type_function_template& type) -> std::string
 {
-    return std::format("<function_template: TBA>");
+    return std::format("<function_template: <{}>.{}.{}>", type.module.string(), to_string(type.struct_name), type.name);
 }
 
 auto to_string(const type_struct_template& type) -> std::string
 {
-    return std::format("<struct_template: TBA>");
+    return std::format("<struct_template: <{}>.{}>", type.module.string(), type.name);
 }
 
 auto to_string(const type_module& type) -> std::string
@@ -175,118 +175,7 @@ auto to_string(const type_module& type) -> std::string
 
 auto to_string(const type_ct_bool& type) -> std::string
 {
-    return std::format("<comptime bool: {}>", type.value);
-}
-
-
-auto hash(const type_name& type) -> std::size_t
-{
-    return std::visit([](const auto& t) { return hash(t); }, type);
-}
-
-auto hash(type_fundamental type) -> std::size_t
-{
-    return static_cast<std::size_t>(type);
-}
-
-auto hash(const type_struct& type) -> std::size_t
-{
-    return std::hash<std::string>{}(type.name);
-}
-
-auto hash(const type_array& type) -> std::size_t
-{
-    return hash(*type.inner_type) ^ std::hash<std::size_t>{}(type.count);
-}
-
-auto hash(const type_ptr& type) -> std::size_t
-{
-    return hash(*type.inner_type) ^ std::hash<std::string_view>{}("type_ptr");
-}
-
-auto hash(const type_span& type) -> std::size_t
-{
-    return hash(*type.inner_type) ^ std::hash<std::string_view>{}("type_span");
-}
-
-auto hash(const type_function_ptr& type) -> std::size_t
-{
-    auto val = hash(*type.return_type);
-    for (const auto& param : type.param_types) {
-        val ^= hash(param);
-    }
-    return val;
-}
-
-auto hash(const type_builtin& type) -> std::size_t
-{
-    auto val = hash(*type.return_type) ^ std::hash<std::string>{}(type.name);
-    for (const auto& param : type.args) {
-        val ^= hash(param);
-    }
-    return val;
-}
-
-auto hash(const type_bound_method& type) -> std::size_t
-{
-    auto val = hash(*type.return_type) ^ std::hash<std::size_t>{}(type.id);
-    for (const auto& param : type.param_types) {
-        val ^= hash(param);
-    }
-    return val;
-}
-
-auto hash(const type_bound_method_template& type) -> std::size_t
-{
-    return 0; // TODO: Implement
-}
-
-auto hash(const type_arena& type) -> std::size_t
-{
-    return std::hash<std::string_view>{}("type_arena");
-}
-
-auto hash(const type_type& type) -> std::size_t
-{
-    return hash(*type.type_val) ^ std::hash<std::string_view>{}("type_type");
-}
-
-auto hash(const type_function& type) -> std::size_t
-{
-    auto val = hash(*type.return_type) ^ std::hash<std::size_t>{}(type.id);
-    for (const auto& param : type.param_types) {
-        val ^= hash(param);
-    }
-    return val;
-}
-
-auto hash(const type_function_template& type) -> std::size_t
-{
-    return 0; // TODO: Implement
-}
-
-auto hash(const type_struct_template& type) -> std::size_t
-{
-    return 0; // TODO: Implement
-}
-
-auto hash(const type_module& type) -> std::size_t
-{
-    return std::hash<std::string>{}(type.filepath.string()) ^ std::hash<std::string_view>{}("type_module");
-}
-
-auto hash(const type_ct_bool& type) -> std::size_t
-{
-    return std::hash<bool>{}(type.value);
-}
-
-auto hash(std::span<const type_name> types) -> std::size_t
-{
-    auto hash_value = size_t{0};
-    for (const auto& type : types) {
-        hash_value ^= hash(type);
-    }
-    return hash_value;
+    return std::format("<comptime_bool: {}>", type.value);
 }
 
 auto null_type() -> type_name
@@ -339,11 +228,6 @@ auto string_literal_type() -> type_name
     return char_type().add_const().add_span();
 }
 
-auto type_name::is_array() const -> bool
-{
-    return std::holds_alternative<type_array>(*this);
-}
-
 auto type_name::add_array(std::size_t size) const -> type_name
 {
     return {type_array{ .inner_type = { *this }, .count = size }};
@@ -351,13 +235,8 @@ auto type_name::add_array(std::size_t size) const -> type_name
 
 auto type_name::remove_array() const -> type_name
 {
-    panic_if(!is_array(), "Tried to strip array from non-array type {}", *this);
-    return *std::get<type_array>(*this).inner_type;
-}
-
-auto type_name::is_span() const -> bool
-{
-    return std::holds_alternative<type_span>(*this);
+    panic_if(!is<type_array>(), "Tried to strip array from non-array type {}", *this);
+    return *as<type_array>().inner_type;
 }
 
 auto type_name::add_span() const -> type_name
@@ -367,78 +246,23 @@ auto type_name::add_span() const -> type_name
 
 auto type_name::remove_span() const -> type_name
 {
-    panic_if(!is_span(), "Tried to strip span from non-span type {}", *this);
-    return *std::get<type_span>(*this).inner_type;
-}
-
-auto type_name::is_function() const -> bool
-{
-    return std::holds_alternative<type_function>(*this);
-}
-
-auto type_name::is_function_ptr() const -> bool
-{
-    return std::holds_alternative<type_function_ptr>(*this);
-}
-
-auto type_name::is_builtin() const -> bool
-{
-    return std::holds_alternative<type_builtin>(*this);
-}
-
-
-auto type_name::is_bound_method() const -> bool
-{
-    return std::holds_alternative<type_bound_method>(*this);
-}
-
-
-auto type_name::is_arena() const -> bool
-{
-    return std::holds_alternative<type_arena>(*this);
-}
-
-auto type_name::is_struct() const -> bool
-{
-    return std::holds_alternative<type_struct>(*this);
-}
-
-auto type_name::as_struct() const -> const type_struct&
-{
-    return std::get<type_struct>(*this);
-}
-
-
-auto type_name::is_type_value() const -> bool
-{
-    return std::holds_alternative<type_type>(*this);
-}
-
-auto type_name::is_module_value() const -> bool
-{
-    return std::holds_alternative<type_module>(*this);
+    panic_if(!is<type_span>(), "Tried to strip span from non-span type {}", *this);
+    return *as<type_span>().inner_type;
 }
 
 auto inner_type(const type_name& t) -> type_name
 {
-    if (t.is_array()) {
-        return *std::get<type_array>(t).inner_type;
+    if (auto type = t.get_if<type_array>()) {
+        return *type->inner_type;
     }
-    if (t.is_span()) {
-        return *std::get<type_span>(t).inner_type; 
+    if (auto type = t.get_if<type_span>()) {
+        return *type->inner_type; 
     }
-    if (t.is_type_value()) {
-        return *std::get<type_type>(t).type_val; 
+    if (auto type = t.get_if<type_type>()) {
+        return *type->type_val; 
     }
     panic("tried to get the inner type of an invalid type category, "
           "can only get the inner type for arrays, spans and type values, type={}", t);
-}
-
-auto array_length(const type_name& t) -> std::size_t
-{
-    const auto mut_type = t.remove_const();
-    panic_if(!mut_type.is_array(), "Tried to get length of a non-array type");
-    return std::get<type_array>(mut_type).count;
 }
 
 }

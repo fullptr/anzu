@@ -41,6 +41,8 @@ public:
     {
         return *d_value == *other.d_value;
     }
+
+    auto to_hash() const -> std::size_t { return hash(*d_value); }
 };
 
 template <typename T, typename... Args>
