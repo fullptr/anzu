@@ -1507,8 +1507,8 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 void push_stmt(compiler& com, const node_if_stmt& node)
 {
     const auto type = type_of_expr(com, *node.condition);
-    if (std::holds_alternative<type_ct_bool>(type)) {
-        if (std::get<type_ct_bool>(type).value) {
+    if (auto info = type.get_if<type_ct_bool>()) {
+        if (info->value) {
             push_stmt(com, *node.body);
         } else if (node.else_body) {
             push_stmt(com, *node.else_body);
