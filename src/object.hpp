@@ -163,34 +163,32 @@ struct type_name : public std::variant<
     
     bool is_const = false;
 
-    [[nodiscard]] auto is_fundamental() const -> bool;
-
-    [[nodiscard]] auto is_ptr() const -> bool;
     [[nodiscard]] auto add_ptr() const -> type_name;
     [[nodiscard]] auto remove_ptr() const -> type_name;
  
     [[nodiscard]] auto add_const() const -> type_name;
     [[nodiscard]] auto remove_const() const -> type_name;
 
-    [[nodiscard]] auto is_array() const -> bool;
     [[nodiscard]] auto add_array(std::size_t size) const -> type_name;
     [[nodiscard]] auto remove_array() const -> type_name;
 
-    [[nodiscard]] auto is_span() const -> bool;
     [[nodiscard]] auto add_span() const -> type_name;
     [[nodiscard]] auto remove_span() const -> type_name;
 
-    [[nodiscard]] auto is_function() const -> bool;
-    [[nodiscard]] auto is_function_ptr() const -> bool;
-    [[nodiscard]] auto is_builtin() const -> bool;
-    [[nodiscard]] auto is_bound_method() const -> bool;
-    [[nodiscard]] auto is_arena() const -> bool;
+    template <typename T>
+    auto is() const -> bool { return std::holds_alternative<T>(*this); }
 
-    [[nodiscard]] auto is_struct() const -> bool;
-    [[nodiscard]] auto as_struct() const -> const type_struct&;
+    template <typename T>
+    auto as() -> T& { return std::get<T>(*this); }
 
-    [[nodiscard]] auto is_type_value() const -> bool;
-    [[nodiscard]] auto is_module_value() const -> bool;
+    template <typename T>
+    auto as() const -> const T& { return std::get<T>(*this); }
+
+    template <typename T>
+    auto get_if() -> T* { if (is<T>()) return &as<T>(); return nullptr;}
+
+    template <typename T>
+    auto get_if() const -> const T* { if (is<T>()) return &as<T>(); return nullptr; }
 };
 
 auto hash(const type_name& type) -> std::size_t;

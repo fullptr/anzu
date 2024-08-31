@@ -7,7 +7,7 @@ namespace {
 auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope, bool is_local)
 {
     for (const auto& var : scope.variables | std::views::reverse) {
-        if (var.type.is_arena()) {
+        if (var.type.is<type_arena>()) {
             const auto op = is_local ? op::push_ptr_local : op::push_ptr_global;
             push_value(program, op, var.location, op::load, sizeof(std::byte*), op::arena_delete);
         }

@@ -14,16 +14,6 @@ auto type_function::to_pointer() const -> type_name
     return type_function_ptr{ param_types, return_type };
 }
 
-auto type_name::is_fundamental() const -> bool
-{
-    return std::holds_alternative<type_fundamental>(*this);
-}
-
-auto type_name::is_ptr() const -> bool
-{
-    return std::holds_alternative<type_ptr>(*this);
-}
-
 auto type_name::add_ptr() const -> type_name
 {
     return { type_ptr{ .inner_type{*this} } };
@@ -31,8 +21,8 @@ auto type_name::add_ptr() const -> type_name
 
 auto type_name::remove_ptr() const -> type_name
 {
-    if (!is_ptr()) panic("tried to remove_ptr on a non-ptr type\n");
-    return *std::get<type_ptr>(*this).inner_type;
+    if (!is<type_ptr>()) panic("tried to remove_ptr on a non-ptr type\n");
+    return *as<type_ptr>().inner_type;
 }
 
 auto type_name::add_const() const -> type_name
@@ -52,7 +42,7 @@ auto type_name::remove_const() const -> type_name
 auto to_string_paren(const type_name& type) -> std::string
 {
     const auto str = to_string(type);
-    if (type.is_function_ptr()) {
+    if (type.is<type_function_ptr>()) {
         return std::format("({})", str);
     }
     return str;
@@ -339,11 +329,6 @@ auto string_literal_type() -> type_name
     return char_type().add_const().add_span();
 }
 
-auto type_name::is_array() const -> bool
-{
-    return std::holds_alternative<type_array>(*this);
-}
-
 auto type_name::add_array(std::size_t size) const -> type_name
 {
     return {type_array{ .inner_type = { *this }, .count = size }};
@@ -351,13 +336,8 @@ auto type_name::add_array(std::size_t size) const -> type_name
 
 auto type_name::remove_array() const -> type_name
 {
-    panic_if(!is_array(), "Tried to strip array from non-array type {}", *this);
-    return *std::get<type_array>(*this).inner_type;
-}
-
-auto type_name::is_span() const -> bool
-{
-    return std::holds_alternative<type_span>(*this);
+    panic_if(!is<type_array>(), "Tried to strip array from non-array type {}", *this);
+    return *as<type_array>().inner_type;
 }
 
 auto type_name::add_span() const -> type_name
@@ -367,68 +347,20 @@ auto type_name::add_span() const -> type_name
 
 auto type_name::remove_span() const -> type_name
 {
-    panic_if(!is_span(), "Tried to strip span from non-span type {}", *this);
-    return *std::get<type_span>(*this).inner_type;
-}
-
-auto type_name::is_function() const -> bool
-{
-    return std::holds_alternative<type_function>(*this);
-}
-
-auto type_name::is_function_ptr() const -> bool
-{
-    return std::holds_alternative<type_function_ptr>(*this);
-}
-
-auto type_name::is_builtin() const -> bool
-{
-    return std::holds_alternative<type_builtin>(*this);
-}
-
-
-auto type_name::is_bound_method() const -> bool
-{
-    return std::holds_alternative<type_bound_method>(*this);
-}
-
-
-auto type_name::is_arena() const -> bool
-{
-    return std::holds_alternative<type_arena>(*this);
-}
-
-auto type_name::is_struct() const -> bool
-{
-    return std::holds_alternative<type_struct>(*this);
-}
-
-auto type_name::as_struct() const -> const type_struct&
-{
-    return std::get<type_struct>(*this);
-}
-
-
-auto type_name::is_type_value() const -> bool
-{
-    return std::holds_alternative<type_type>(*this);
-}
-
-auto type_name::is_module_value() const -> bool
-{
-    return std::holds_alternative<type_module>(*this);
+    panic_if(!is<type_span>(), "Tried to strip span from non-span type {}", *this);
+    return *as<type_span>().inner_type;
 }
 
 auto inner_type(const type_name& t) -> type_name
 {
-    if (t.is_array()) {
-        return *std::get<type_array>(t).inner_type;
+    if (auto type = t.get_if<type_array>()) {
+        return *type->inner_type;
     }
-    if (t.is_span()) {
-        return *std::get<type_span>(t).inner_type; 
+    if (auto type = t.get_if<type_span>()) {
+        return *type->inner_type; 
     }
-    if (t.is_type_value()) {
-        return *std::get<type_type>(t).type_val; 
+    if (auto type = t.get_if<type_type>()) {
+        return *type->type_val; 
     }
     panic("tried to get the inner type of an invalid type category, "
           "can only get the inner type for arrays, spans and type values, type={}", t);
@@ -436,9 +368,8 @@ auto inner_type(const type_name& t) -> type_name
 
 auto array_length(const type_name& t) -> std::size_t
 {
-    const auto mut_type = t.remove_const();
-    panic_if(!mut_type.is_array(), "Tried to get length of a non-array type");
-    return std::get<type_array>(mut_type).count;
+    panic_if(!t.is<type_array>(), "Tried to get length of a non-array type");
+    return t.as<type_array>().count;
 }
 
 }
