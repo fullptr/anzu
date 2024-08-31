@@ -270,11 +270,3 @@ struct std::formatter<anzu::type_name> : std::formatter<std::string>
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
     }
 };
-
-template <>
-struct std::formatter<anzu::type_function_template> : std::formatter<std::string>
-{
-    auto format(const anzu::type_function_template& type, auto& ctx) const {
-        return std::formatter<std::string>::format(type.to_string(), ctx);
-    }
-};
