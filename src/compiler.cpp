@@ -841,7 +841,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
                     com.current_struct.pop_back();
                     com.current_module.pop_back();
                 } else {
-                    const auto fkey = template_function_name{name.module, name, stmt.name};
+                    const auto fkey = type_function_template{name.module, name, stmt.name};
                     const auto [it, success] = com.function_templates.emplace(fkey, stmt);
                     node.token.assert(success, "function template named '{}' already defined", fkey);
                 }
@@ -1188,17 +1188,17 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
             return type_function_template{ .module = info->filepath, .struct_name=no_struct, .name=node.name };
         }
 
-        // It might be a struct template
-        const auto sname = type_struct{node.name, info->filepath};
-        const auto skey = template_struct_name{info->filepath, node.name};
-        if (com.struct_templates.contains(skey) && !com.types.contains(sname)) {
-            node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-            return type_struct_template{ .module=info->filepath, .name=node.name };
-        }
-
         // It might be a struct
+        const auto sname = type_struct{node.name, info->filepath};
         if (com.types.contains(sname)) {
             return type_type{type_name{sname}};
+        }
+
+        // It might be a struct template
+        const auto skey = template_struct_name{info->filepath, node.name};
+        if (com.struct_templates.contains(skey)) {
+            node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
+            return type_struct_template{ .module=info->filepath, .name=node.name };
         }
 
         // Otherwise, it must be a variable
@@ -1611,7 +1611,7 @@ void push_stmt(compiler& com, const node_function_stmt& node)
 
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
-        const auto key = template_function_name{curr_module(com), curr_struct(com), node.name};
+        const auto key = type_function_template{curr_module(com), curr_struct(com), node.name};
         const auto [it, success] = com.function_templates.emplace(key, node);
         node.token.assert(success, "function template named '{}' already defined", key);
         return;

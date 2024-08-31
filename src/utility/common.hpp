@@ -120,4 +120,18 @@ struct overloaded : Ts...
     using Ts::operator()...;
 };
 
+template <typename T>
+concept has_to_string_member = requires(T obj)
+{
+    { obj.to_string() } -> std::convertible_to<std::string>;
+};
+
 }
+
+template <anzu::has_to_string_member T>
+struct std::formatter<T> : std::formatter<std::string>
+{
+    auto format(const T& obj, auto& ctx) const {
+        return std::formatter<std::string>::format(obj.to_string(), ctx);
+    }
+};

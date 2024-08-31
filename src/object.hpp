@@ -143,6 +143,7 @@ struct type_function_template
     std::string              name;
 
     auto to_hash() const -> std::size_t { return hash(module, struct_name, name); }
+    auto to_string() const -> std::string;
     auto operator==(const type_function_template&) const -> bool = default;
 };
 
@@ -267,5 +268,13 @@ struct std::formatter<anzu::type_name> : std::formatter<std::string>
 {
     auto format(const anzu::type_name& type, auto& ctx) const {
         return std::formatter<std::string>::format(anzu::to_string(type), ctx);
+    }
+};
+
+template <>
+struct std::formatter<anzu::type_function_template> : std::formatter<std::string>
+{
+    auto format(const anzu::type_function_template& type, auto& ctx) const {
+        return std::formatter<std::string>::format(type.to_string(), ctx);
     }
 };

@@ -38,7 +38,7 @@ auto hash(First&& first, Second&& second, Args&&... args) -> std::size_t
 
 }
 
-template<anzu::has_member_hash T>
+template <anzu::has_member_hash T>
 struct std::hash<T>
 {
     auto operator()(const T& obj) const -> std::size_t
