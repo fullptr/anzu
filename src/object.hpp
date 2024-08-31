@@ -212,11 +212,7 @@ struct type_name : public std::variant<
 
     auto to_hash() const -> std::size_t {
         return std::visit([](const auto& obj) {
-            if constexpr (std::same_as<std::remove_cvref_t<decltype(obj)>, type_fundamental>) {
-                return static_cast<std::size_t>(obj);
-            } else {
-                return obj.to_hash();
-            }
+            return var_hash(obj);
         }, *this);
     }
 };

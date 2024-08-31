@@ -10,7 +10,7 @@ concept has_member_hash = requires(T t) {
     { t.to_hash() } -> std::convertible_to<std::size_t>;
 };
 
-auto simple_hash(auto&& obj) -> std::size_t
+auto var_hash(auto&& obj) -> std::size_t
 {
     using T = std::remove_cvref_t<decltype(obj)>;
     if constexpr (has_member_hash<T>) {
@@ -21,19 +21,19 @@ auto simple_hash(auto&& obj) -> std::size_t
 }
 
 template <typename T>
-auto simple_hash(const std::vector<T>& objs) -> std::size_t
+auto var_hash(const std::vector<T>& objs) -> std::size_t
 {
     auto hash = std::size_t{0};
     for (const auto& obj : objs) {
-        hash ^= simple_hash(obj);
+        hash ^= var_hash(obj);
     }
     return hash;
 }
 
-template <typename... Args>
-auto var_hash(Args&&... args) -> std::size_t
+template <typename First, typename Second, typename... Args>
+auto var_hash(First&& first, Second&& second, Args&&... args) -> std::size_t
 {
-    return (simple_hash(args) ^ ...);
+    return ((var_hash(first) ^ var_hash(second)) ^ ... ^ var_hash(args));
 }
 
 }
