@@ -924,9 +924,9 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
             // Otherwise, compile the functions now
             for (const auto& func : ast.functions) {
                 const auto& stmt = std::get<node_function_stmt>(*func);
+                const auto fn_name = function_name{name.module, name, stmt.name};
                 if (stmt.templates.empty()) {
                     const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-                    const auto fn_name = function_name{.module=name.module, .struct_name=name, .name=stmt.name};
                     compile_function(com, node.token, fn_name, stmt.sig, stmt.body, map);
                 } else {
                     const auto fkey = type_function_template{name.module, name, stmt.name};
@@ -1267,12 +1267,13 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return type_function_template{ .module = info->filepath, .struct_name=no_struct, .name=node.name };
+            return type_function_template{ info->filepath, no_struct, node.name };
         }
 
         // It might be a struct
-        const auto sname = type_struct{node.name, info->filepath};
+        const auto sname = type_struct{ node.name, info->filepath };
         if (com.types.contains(sname)) {
+            node.token.assert(ct == compile_type::val, "cannot take the address of a struct");
             return type_type{type_name{sname}};
         }
 
@@ -1280,7 +1281,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto skey = type_struct_template{info->filepath, node.name};
         if (com.struct_templates.contains(skey)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-            return type_struct_template{ .module=info->filepath, .name=node.name };
+            return type_struct_template{ info->filepath, node.name };
         }
 
         // Otherwise, it must be a variable
@@ -1298,15 +1299,15 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
          
         const auto fname = function_name{struct_info.module, struct_info, node.name};
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
-            node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
+            node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
-            return type_function{ .id = func.id, .param_types = func.sig.params, .return_type = func.sig.return_type };   
+            return type_function{ func.id, func.sig.params, func.sig.return_type };   
         }
 
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return type_function_template{ .module = fname.module, .struct_name=struct_info, .name=node.name };
+            return type_function_template{ fname.module, struct_info, node.name };
         }
 
         node.token.error("can only access member functions from structs");
