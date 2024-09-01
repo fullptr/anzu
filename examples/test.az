@@ -6,12 +6,9 @@ struct pair!(T, U)
 {
     first: T;
     second: U;
+
+    fn boo!(A)(x: i64) { print("{}\n", x); }
 }
 
-fn make_pair!(T, U)(f: T, s: U) -> pair!(T, U)
-{
-    return pair!(T, U)(f, s);
-}
-
-let p := make_pair(1, 2.0);
-print("{}\n", @type_name_of(p));
+let p := pair!(i64, u64).boo;
+p(10);

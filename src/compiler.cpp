@@ -355,9 +355,6 @@ void match_placeholders(template_map& map, const token& tok, const type_name& ac
                 match_placeholders(map, tok, *a.return_type, *e.return_type);
             }
         },
-        //[&](const type_type& a, const type_type& e) { // what would this even be used for?
-        //    match_placeholders(map, tok, *a.type_val, *e.type_val);
-        //},
         [](const auto& a, const auto& e) {}
     }, actual, expected);
 }
