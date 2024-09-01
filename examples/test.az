@@ -1,5 +1,14 @@
-struct pair!(T)
+
+
+
+
+struct pair!(T, U)
 {
-    x: T;
-    y: T;
+    first: T;
+    second: U;
+
+    fn boo!(A)(x: i64) { print("{}\n", x); }
 }
+
+let p := pair!(i64, u64).boo;
+p(10);

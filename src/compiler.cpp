@@ -318,6 +318,80 @@ auto build_template_map(
     return map;
 }
 
+void match_placeholders(template_map& map, const token& tok, const type_name& actual, const type_name& expected)
+{
+    if (auto type = expected.get_if<type_placeholder>()) {
+        const auto [it, success] = map.emplace(type->name, actual);
+        tok.assert(success || it->second == actual,
+                   "ambiguous template deduction, deduced {} as both {} and {}",
+                   type->name, it->second, actual);
+        return;
+    }
+
+    std::visit(overloaded{
+        [&](const type_struct& a, const type_struct& e) {
+            if (a.name == e.name && a.module == e.module && a.templates.size() == e.templates.size()) {
+                for (const auto& [a_type, e_type] : zip(a.templates, e.templates)) {
+                    match_placeholders(map, tok, a_type, e_type);
+                }
+            }
+        },
+        [&](const type_array& a, const type_array& e) {
+            if (a.count == e.count) {
+                match_placeholders(map, tok, *a.inner_type, *e.inner_type);
+            }
+        },
+        [&](const type_ptr& a, const type_ptr& e) {
+            match_placeholders(map, tok, *a.inner_type, *e.inner_type);
+        },
+        [&](const type_span& a, const type_span& e) {
+            match_placeholders(map, tok, *a.inner_type, *e.inner_type);
+        },
+        [&](const type_function_ptr& a, const type_function_ptr& e) {
+            if (a.param_types.size() == e.param_types.size()) {
+                for (const auto& [a_type, e_type] : zip(a.param_types, e.param_types)) {
+                    match_placeholders(map, tok, a_type, e_type);
+                }
+                match_placeholders(map, tok, *a.return_type, *e.return_type);
+            }
+        },
+        [](const auto& a, const auto& e) {}
+    }, actual, expected);
+}
+
+auto deduce_template_params(
+    compiler& com,
+    const token& tok,
+    const std::vector<std::string>& names,
+    const std::vector<node_expr_ptr>& sig_params,
+    const std::vector<node_expr_ptr>& args
+)
+    -> std::vector<type_name>
+{
+    tok.assert_eq(args.size(), sig_params.size(), "invalid number of args to template function");
+
+    auto placeholders = std::unordered_set<std::string>{};
+    for (const auto name : names) placeholders.emplace(name);
+    com.current_placeholders.push_back(placeholders);
+
+    auto name_map = template_map{};
+    for (const auto& [param, arg] : zip(sig_params, args)) {
+        const auto param_type = resolve_type(com, tok, param);
+        const auto arg_type = type_of_expr(com, *arg);
+        match_placeholders(name_map, tok, arg_type, param_type);
+    }
+    com.current_placeholders.pop_back();
+
+    auto deduced_templates = std::vector<type_name>{};
+    deduced_templates.reserve(names.size());
+    for (const auto& name : names) {
+        const auto it = name_map.find(name);
+        tok.assert(it != name_map.end(), "unable to deduce type of template {}", name);
+        deduced_templates.push_back(it->second);
+    }
+    return deduced_templates;
+}
+
 auto compile_function(
     compiler& com,
     const token& tok,
@@ -735,6 +809,47 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         push_value(code(com), op::call, args_size);
         return *info.return_type;
     }
+    else if (auto info = type.get_if<type_function_template>()) {
+        const auto& ast = com.function_templates[*info];
+
+        auto sig_params = std::vector<node_expr_ptr>{};
+        for (const auto& arg : ast.sig.params) {
+            sig_params.push_back(arg.type);
+        }
+        const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
+        
+        const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
+        const auto key = name.as_template();
+
+        // If the function doesn't exist, it may still be a template, if it is then compile it
+        if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
+            const auto& ast = com.function_templates.at(key);
+            const auto map = build_template_map(com, node.token, ast.templates, name.templates);
+
+            com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
+            com.current_module.emplace_back(name.module);
+            compile_function(com, node.token, name, ast.sig, ast.body, map);
+            com.current_struct.pop_back();
+            com.current_module.pop_back();
+        }
+
+        node.token.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
+        const auto& fn = com.functions[com.functions_by_name.at(name)];
+        
+        node.token.assert_eq(node.args.size(), fn.sig.params.size(), 
+                             "invalid number of args for function call");
+
+        auto args_size = std::size_t{0};
+        for (std::size_t i = 0; i != node.args.size(); ++i) {
+            push_copy_typechecked(com, *node.args.at(i), fn.sig.params[i], node.token);
+            args_size += com.types.size_of(fn.sig.params[i]);
+        }
+
+        // push the function pointer and call it
+        push_value(code(com), op::push_function_ptr, fn.id);
+        push_value(code(com), op::call, args_size);
+        return fn.sig.return_type;
+    }
     else if (type.is<type_function_ptr>()) { // function call
         const auto& info = std::get<type_function_ptr>(type);
         node.token.assert_eq(node.args.size(), info.param_types.size(), 
@@ -1103,6 +1218,7 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 //  - a type alias for the current struct template
 //  - a function
 //  - a builtin function
+//  - a placeholder
 //  - a variable
 void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
@@ -1150,6 +1266,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto& map2 = com.current_struct.back().templates;
     if (auto it = map2.find(node.name); it != map2.end()) {
         return type_type{it->second};
+    }
+
+    // It might be a tempalte placeholder for a type the needs to be deduced
+    if (!com.current_placeholders.empty() && com.current_placeholders.back().contains(node.name)) {
+        return type_type{type_name{type_placeholder{node.name}}};
     }
 
     // The name might be a builtin (no module, struct or templates, so just the name);
@@ -1370,6 +1491,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     if (node.name == "type_name_of") {
         node.token.assert_eq(node.args.size(), 1, "@type_name_of only accepts one argument");
         const auto str = std::format("{}", type_of_expr(com, *node.args[0]));
+        std::print("@type_name_of == {}\n", str);
         push_value(code(com), op::push_string_literal, insert_into_rom(com, str), str.size());
         return string_literal_type();
     }
@@ -1398,6 +1520,14 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
         load_module(com, node.token, filepath);
         return type_module{.filepath=filepath};
+    }
+    if (node.name == "fn_ptr") {
+        node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        node.token.assert(type.is<type_function>(), "can only convert functions to function pointers");
+        const auto& info = type.as<type_function>();
+        push_value(code(com), op::push_function_ptr, info.id);
+        return type_function_ptr{.param_types=info.param_types, .return_type=info.return_type};
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }

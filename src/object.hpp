@@ -171,6 +171,15 @@ struct type_ct_bool
     auto operator==(const type_ct_bool&) const -> bool = default;
 };
 
+// Only used during template argument type deduction
+struct type_placeholder
+{
+    std::string name;
+
+    auto to_hash() const -> std::size_t { return hash(name); }
+    auto operator==(const type_placeholder&) const -> bool = default;
+};
+
 auto to_string(const type_name& type) -> std::string;
 auto to_string(type_fundamental t) -> std::string;
 auto to_string(const type_array& type) -> std::string;
@@ -188,6 +197,7 @@ auto to_string(const type_function_template& type) -> std::string;
 auto to_string(const type_struct_template& type) -> std::string;
 auto to_string(const type_module& type) -> std::string;
 auto to_string(const type_ct_bool& type) -> std::string;
+auto to_string(const type_placeholder& type) -> std::string;
 
 struct type_name : public std::variant<
     type_fundamental,
@@ -205,7 +215,8 @@ struct type_name : public std::variant<
     type_function_template,
     type_struct_template,
     type_module,
-    type_ct_bool>
+    type_ct_bool,
+    type_placeholder>
 {
     using variant::variant;
     
@@ -232,7 +243,8 @@ struct type_name : public std::variant<
     }
 
     auto to_string() const -> std::string {
-        return std::visit([](const auto& obj) { return anzu::to_string(obj); }, *this);
+        const auto inner = std::visit([](const auto& obj) { return anzu::to_string(obj); }, *this);
+        return std::format("{}{}", inner, is_const ? " const" : "");
     }
 };
 

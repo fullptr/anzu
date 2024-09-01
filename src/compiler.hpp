@@ -67,6 +67,8 @@ struct compiler
     std::vector<module_info> current_module;
     std::vector<struct_info> current_struct;
     std::vector<func_info>   current_function;
+
+    std::vector<std::unordered_set<std::string>> current_placeholders;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

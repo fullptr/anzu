@@ -291,17 +291,4 @@ auto print_node(const node_stmt& root, int indent) -> void
     }, root);
 }
 
-auto is_lvalue_expr(const node_expr& expr) -> bool
-{
-    return std::holds_alternative<node_name_expr>(expr)
-        || std::holds_alternative<node_field_expr>(expr)
-        || std::holds_alternative<node_deref_expr>(expr)
-        || std::holds_alternative<node_subscript_expr>(expr);
-}
-
-auto is_rvalue_expr(const node_expr& expr) -> bool
-{
-    return !is_lvalue_expr(expr);
-}
-
 }
