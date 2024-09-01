@@ -171,6 +171,7 @@ struct type_ct_bool
     auto operator==(const type_ct_bool&) const -> bool = default;
 };
 
+// Only used during template argument type deduction
 struct type_placeholder
 {
     std::string name;
@@ -214,7 +215,8 @@ struct type_name : public std::variant<
     type_function_template,
     type_struct_template,
     type_module,
-    type_ct_bool>
+    type_ct_bool,
+    type_placeholder>
 {
     using variant::variant;
     

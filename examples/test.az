@@ -1,6 +1,15 @@
 
-fn foo!(U)(x: U) -> null {
+struct Type!(X)
+{
+    x: X;
+}
+
+fn foo!(U)(x: Type!(U)) -> null {
     print("{}\n", x);
 }
 
-foo(5);
+
+
+
+let s := Type!(u64)(60u);
+foo(s);

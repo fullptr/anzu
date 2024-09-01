@@ -318,21 +318,23 @@ auto build_template_map(
     return map;
 }
 
-auto find_template_name(
-    compiler& com,
-    const token& tok,
-    const std::string& name,
-    const node_expr_ptr& expected,
-    const node_expr_ptr& actual
-)
-    -> std::optional<type_name>
+auto match_placeholders(const type_name& actual, const type_name& expected)
 {
-    // Need to resolve the expr pointers to actual type_names, but in order to do that,
-    // type_placeholder is needed so that the template name can be represented
-    if (auto info = std::get_if<node_name_expr>(&*expected); info->name == name) {
-        return resolve_type(com, tok, actual);
+    if (auto type = expected.get_if<type_placeholder>()) {
+        std::print("matched {} to {}\n", type->name, actual);
+        return;
     }
-    return std::nullopt;
+
+    std::visit(overloaded{
+        [](const type_struct& a, const type_struct& e) {
+            if (a.name == e.name && a.module == e.module && a.templates.size() == e.templates.size()) {
+                for (const auto& [a_type, e_type] : zip(a.templates, e.templates)) {
+                    match_placeholders(a_type, e_type);
+                }
+            }
+        },
+        [](const auto& a, const auto& e) {}
+    }, actual, expected);
 }
 
 auto deduce_template_params(
@@ -346,19 +348,23 @@ auto deduce_template_params(
 {
     tok.assert_eq(args.size(), sig_params.size(), "invalid number of args to template function");
 
+    auto placeholders = std::unordered_set<std::string>{};
+    for (const auto name : names) placeholders.emplace(name);
+    com.current_placeholders.push_back(placeholders);
+
     auto retvec = std::vector<type_name>{};
     for (const auto& name : names) {
         bool found = false;
         for (const auto& [param, arg] : zip(sig_params, args)) {
-            const auto ret = find_template_name(com, tok, name, param, arg);
-            if (ret.has_value()) {
-                found = true;
-                retvec.push_back(*ret);
-                break;
-            }
+            
+            const auto param_type = resolve_type(com, tok, param);
+            const auto arg_type = type_of_expr(com, *arg);
+            match_placeholders(arg_type, param_type);
         }
         if (!found) tok.error("could not deduce the type of {}", name);
     }
+
+    com.current_placeholders.pop_back();
     return retvec;
 }
 
@@ -1188,6 +1194,7 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> typ
 //  - a type alias for the current struct template
 //  - a function
 //  - a builtin function
+//  - a placeholder
 //  - a variable
 void push_stmt(compiler& com, const node_function_stmt& stmt);
 auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> type_name
@@ -1235,6 +1242,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     const auto& map2 = com.current_struct.back().templates;
     if (auto it = map2.find(node.name); it != map2.end()) {
         return type_type{it->second};
+    }
+
+    // It might be a tempalte placeholder for a type the needs to be deduced
+    if (!com.current_placeholders.empty() && com.current_placeholders.back().contains(node.name)) {
+        return type_type{type_name{type_placeholder{node.name}}};
     }
 
     // The name might be a builtin (no module, struct or templates, so just the name);
