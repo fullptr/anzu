@@ -1,11 +1,9 @@
 
 
-fn bar() -> i64 { return 10; }
 
 
-fn foo!(U)(x: fn() -> U) -> null {
-    print("{}\n", x());
+fn foo!(U)(x: U) -> null {
 }
 
-print("{}\n", @type_name_of(@fn_ptr(bar)));
-foo(@fn_ptr(bar));
+
+foo(5);
