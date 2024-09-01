@@ -404,6 +404,8 @@ auto compile_function(
 {
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
+    com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
+    com.current_module.emplace_back(name.module);
     com.functions.emplace_back(name, id, variable_manager{true});
     const auto [it, success] = com.functions_by_name.emplace(name, id);
     tok.assert(success, "a function with the name '{}' already exists", name);
@@ -433,6 +435,8 @@ auto compile_function(
 
     variables(com).pop_scope(code(com));
     com.current_function.pop_back();
+    com.current_struct.pop_back();
+    com.current_module.pop_back();
 }
 
 // Temp: remove this for a more efficient function
@@ -515,7 +519,6 @@ auto load_module(compiler& com, const token& tok, const std::string& filepath) -
                 if (mod.filepath == m.filepath) tok.error("circular dependency");
             }
         }
-        
     }
 
     // Already compiled, nothing more to do
@@ -548,12 +551,7 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
     if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
         const auto& ast = com.function_templates.at(key);
         const auto map = build_template_map(com, tok, ast.templates, name.templates);
-
-        com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
-        com.current_module.emplace_back(name.module);
         compile_function(com, tok, name, ast.sig, ast.body, map);
-        com.current_struct.pop_back();
-        com.current_module.pop_back();
     }
 
     tok.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
@@ -928,13 +926,8 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
                 const auto& stmt = std::get<node_function_stmt>(*func);
                 if (stmt.templates.empty()) {
                     const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-
-                    com.current_struct.emplace_back(name, com.types.templates_of(name));
-                    com.current_module.emplace_back(name.module);
                     const auto fn_name = function_name{.module=name.module, .struct_name=name, .name=stmt.name};
                     compile_function(com, node.token, fn_name, stmt.sig, stmt.body, map);
-                    com.current_struct.pop_back();
-                    com.current_module.pop_back();
                 } else {
                     const auto fkey = type_function_template{name.module, name, stmt.name};
                     const auto [it, success] = com.function_templates.emplace(fkey, stmt);
@@ -1627,18 +1620,8 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     }
 }
 
-auto check_duplicate_name(compiler& com, const token& tok, const std::string& name)
-{
-    const auto sname = type_struct{ .name=name, .module=curr_module(com) };
-    const auto fname = function_name{curr_module(com), no_struct, name};
-    const auto message = std::format("type '{}' already defined", name);
-    tok.assert(!com.types.contains(sname), "{}", message);
-    tok.assert(!com.functions_by_name.contains(fname), "{}", message);
-}
-
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
-    check_duplicate_name(com, node.token, node.name);
     if (!node.templates.empty()) {
         const auto key = type_struct_template{curr_module(com), node.name};
         const auto [it, success] = com.struct_templates.emplace(key, node);
@@ -1705,18 +1688,15 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 
 void push_stmt(compiler& com, const node_function_stmt& node)
 {
-    check_duplicate_name(com, node.token, node.name);
-
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
         const auto key = type_function_template{curr_module(com), curr_struct(com), node.name};
         const auto [it, success] = com.function_templates.emplace(key, node);
         node.token.assert(success, "function template named '{}' already defined", key);
-        return;
+    } else {
+        const auto name = function_name{curr_module(com), curr_struct(com), node.name};
+        compile_function(com, node.token, name, node.sig, node.body);
     }
-
-    const auto fname = function_name{curr_module(com), curr_struct(com), node.name};
-    compile_function(com, node.token, fname, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
