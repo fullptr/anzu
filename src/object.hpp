@@ -40,7 +40,7 @@ struct type_struct
     std::filesystem::path  module;
     std::vector<type_name> templates;
 
-    auto to_hash() const -> std::size_t { return hash(name, module, templates); }
+    auto to_hash() const { return hash(name, module, templates); }
     auto operator==(const type_struct&) const -> bool = default;
 };
 
@@ -49,7 +49,7 @@ struct type_array
     value_ptr<type_name> inner_type;
     std::size_t          count;
 
-    auto to_hash() const -> std::size_t { return hash(inner_type, count); }
+    auto to_hash() const { return hash(inner_type, count); }
     auto operator==(const type_array&) const -> bool = default;
 };
 
@@ -57,7 +57,7 @@ struct type_ptr
 {
     value_ptr<type_name> inner_type;
 
-    auto to_hash() const -> std::size_t { return hash(inner_type); }
+    auto to_hash() const { return hash(inner_type); }
     auto operator==(const type_ptr&) const -> bool = default;
 };
 
@@ -65,7 +65,7 @@ struct type_span
 {
     value_ptr<type_name> inner_type;
 
-    auto to_hash() const -> std::size_t { return hash(inner_type); }
+    auto to_hash() const { return hash(inner_type); }
     auto operator==(const type_span&) const -> bool = default;
 };
 
@@ -74,7 +74,7 @@ struct type_function_ptr
     std::vector<type_name> param_types;
     value_ptr<type_name>   return_type;
 
-    auto to_hash() const -> std::size_t { return hash(param_types, return_type); }
+    auto to_hash() const { return hash(param_types, return_type); }
     auto operator==(const type_function_ptr&) const -> bool = default;
 };
 
@@ -85,7 +85,7 @@ struct type_builtin
     std::vector<type_name> args;
     value_ptr<type_name>   return_type;
 
-    auto to_hash() const -> std::size_t { return hash(name, id); }
+    auto to_hash() const { return hash(name, id); }
     auto operator==(const type_builtin&) const -> bool = default;
 };
 
@@ -96,7 +96,7 @@ struct type_bound_method
     std::string            name; // for printing only
     std::size_t            id;
 
-    auto to_hash() const -> std::size_t { return hash(name, id); }
+    auto to_hash() const { return hash(name, id); }
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
@@ -106,13 +106,13 @@ struct type_bound_method_template
     type_struct              struct_name;
     std::string              name;
 
-    auto to_hash() const -> std::size_t { return hash(module, struct_name, name); }
+    auto to_hash() const { return hash(module, struct_name, name); }
     auto operator==(const type_bound_method_template&) const -> bool = default;
 };
 
 struct type_arena
 {
-    auto to_hash() const -> std::size_t { return 0; }
+    auto to_hash() const { return hash(0); }
     auto operator==(const type_arena&) const -> bool = default;
 };
 
@@ -120,7 +120,7 @@ struct type_type
 {
     value_ptr<type_name> type_val;
 
-    auto to_hash() const -> std::size_t { return hash(type_val); }
+    auto to_hash() const { return hash(type_val); }
     auto operator==(const type_type&) const -> bool = default;
 };
 
@@ -131,7 +131,7 @@ struct type_function
     value_ptr<type_name>   return_type;
 
     auto to_pointer() const -> type_name;
-    auto to_hash() const -> std::size_t { return hash(id, param_types, return_type); }
+    auto to_hash() const { return hash(id, param_types, return_type); }
     auto operator==(const type_function&) const -> bool = default;
 };
 
@@ -141,7 +141,7 @@ struct type_function_template
     type_struct              struct_name;
     std::string              name;
 
-    auto to_hash() const -> std::size_t { return hash(module, struct_name, name); }
+    auto to_hash() const { return hash(module, struct_name, name); }
     auto to_string() const -> std::string;
     auto operator==(const type_function_template&) const -> bool = default;
 };
@@ -151,7 +151,7 @@ struct type_struct_template
     std::filesystem::path module;
     std::string           name;
 
-    auto to_hash() const -> std::size_t { return hash(module, name); }
+    auto to_hash() const { return hash(module, name); }
     auto operator==(const type_struct_template&) const -> bool = default;
 };
 
@@ -159,7 +159,7 @@ struct type_module
 {
     std::filesystem::path filepath;
 
-    auto to_hash() const -> std::size_t { return hash(filepath); }
+    auto to_hash() const { return hash(filepath); }
     auto operator==(const type_module&) const -> bool = default;
 };
 
@@ -167,7 +167,7 @@ struct type_ct_bool
 {
     bool value;
 
-    auto to_hash() const -> std::size_t { return hash(value); }
+    auto to_hash() const { return hash(value); }
     auto operator==(const type_ct_bool&) const -> bool = default;
 };
 
@@ -176,7 +176,7 @@ struct type_placeholder
 {
     std::string name;
 
-    auto to_hash() const -> std::size_t { return hash(name); }
+    auto to_hash() const { return hash(name); }
     auto operator==(const type_placeholder&) const -> bool = default;
 };
 
