@@ -1,15 +1,11 @@
 
-struct Type!(X)
-{
-    x: X;
+
+fn bar() -> i64 { return 10; }
+
+
+fn foo!(U)(x: fn() -> U) -> null {
+    print("{}\n", x());
 }
 
-fn foo!(U)(x: Type!(U)) -> null {
-    print("{}\n", x);
-}
-
-
-
-
-let s := Type!(u64)(60u);
-foo(s);
+print("{}\n", @type_name_of(@fn_ptr(bar)));
+foo(@fn_ptr(bar));

@@ -243,7 +243,8 @@ struct type_name : public std::variant<
     }
 
     auto to_string() const -> std::string {
-        return std::visit([](const auto& obj) { return anzu::to_string(obj); }, *this);
+        const auto inner = std::visit([](const auto& obj) { return anzu::to_string(obj); }, *this);
+        return std::format("{}{}", inner, is_const ? " const" : "");
     }
 };
 

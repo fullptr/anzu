@@ -333,6 +333,25 @@ auto match_placeholders(const type_name& actual, const type_name& expected)
                 }
             }
         },
+        [](const type_array& a, const type_array& e) {
+            if (a.count == e.count) {
+                match_placeholders(*a.inner_type, *e.inner_type);
+            }
+        },
+        [](const type_ptr& a, const type_ptr& e) {
+            match_placeholders(*a.inner_type, *e.inner_type);
+        },
+        [](const type_span& a, const type_span& e) {
+            match_placeholders(*a.inner_type, *e.inner_type);
+        },
+        [](const type_function_ptr& a, const type_function_ptr& e) {
+            if (a.param_types.size() == e.param_types.size()) {
+                for (const auto& [a_type, e_type] : zip(a.param_types, e.param_types)) {
+                    match_placeholders(a_type, e_type);
+                }
+                match_placeholders(*a.return_type, *e.return_type);
+            }
+        },
         [](const auto& a, const auto& e) {}
     }, actual, expected);
 }
@@ -1467,6 +1486,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     if (node.name == "type_name_of") {
         node.token.assert_eq(node.args.size(), 1, "@type_name_of only accepts one argument");
         const auto str = std::format("{}", type_of_expr(com, *node.args[0]));
+        std::print("@type_name_of == {}\n", str);
         push_value(code(com), op::push_string_literal, insert_into_rom(com, str), str.size());
         return string_literal_type();
     }
@@ -1495,6 +1515,14 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
         load_module(com, node.token, filepath);
         return type_module{.filepath=filepath};
+    }
+    if (node.name == "fn_ptr") {
+        node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        node.token.assert(type.is<type_function>(), "can only convert functions to function pointers");
+        const auto& info = type.as<type_function>();
+        push_value(code(com), op::push_function_ptr, info.id);
+        return type_function_ptr{.param_types=info.param_types, .return_type=info.return_type};
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
