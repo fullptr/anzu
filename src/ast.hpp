@@ -402,9 +402,6 @@ struct node_stmt : std::variant<
 {
 };
 
-auto is_lvalue_expr(const node_expr& expr) -> bool;
-auto is_rvalue_expr(const node_expr& expr) -> bool;
-
 auto print_node(const anzu::node_expr& root, int indent = 0) -> void;
 auto print_node(const anzu::node_stmt& root, int indent = 0) -> void;
 

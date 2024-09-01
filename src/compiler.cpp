@@ -318,27 +318,48 @@ auto build_template_map(
     return map;
 }
 
+auto find_template_name(
+    compiler& com,
+    const token& tok,
+    const std::string& name,
+    const node_expr_ptr& expected,
+    const node_expr_ptr& actual
+)
+    -> std::optional<type_name>
+{
+    // Need to resolve the expr pointers to actual type_names, but in order to do that,
+    // type_placeholder is needed so that the template name can be represented
+    if (auto info = std::get_if<node_name_expr>(&*expected); info->name == name) {
+        return resolve_type(com, tok, actual);
+    }
+    return std::nullopt;
+}
+
 auto deduce_template_params(
     compiler& com,
     const token& tok,
     const std::vector<std::string>& names,
-    const std::vector<type_name>& sig_params,
+    const std::vector<node_expr_ptr>& sig_params,
     const std::vector<node_expr_ptr>& args
 )
     -> std::vector<type_name>
 {
-    node.token.assert_eq(args.size(), sig_params.size(), "invalid number of args to template function");
-    auto map = template_map{};
-    
+    tok.assert_eq(args.size(), sig_params.size(), "invalid number of args to template function");
 
-    auto ret = std::vector<type_name>{};
+    auto retvec = std::vector<type_name>{};
     for (const auto& name : names) {
-        if (!map.contains(name)) {
-            tok.error("unable to deduce type of {}", name);
+        bool found = false;
+        for (const auto& [param, arg] : zip(sig_params, args)) {
+            const auto ret = find_template_name(com, tok, name, param, arg);
+            if (ret.has_value()) {
+                found = true;
+                retvec.push_back(*ret);
+                break;
+            }
         }
-        ret.push_back(map[name]);
+        if (!found) tok.error("could not deduce the type of {}", name);
     }
-    return ret;
+    return retvec;
 }
 
 auto compile_function(
@@ -761,9 +782,9 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     else if (auto info = type.get_if<type_function_template>()) {
         const auto& ast = com.function_templates[*info];
 
-        auto sig_params = std::vector<type_name>{};
+        auto sig_params = std::vector<node_expr_ptr>{};
         for (const auto& arg : ast.sig.params) {
-            sig_params.push_back(resolve_type(com, node.token, arg.type));
+            sig_params.push_back(arg.type);
         }
         const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
         

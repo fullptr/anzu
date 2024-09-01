@@ -1,6 +1,6 @@
 
-fn foo!(U)(x: U) {
+fn foo!(U)(x: U) -> null {
     print("{}\n", x);
 }
 
-foo(10);
+foo(5);
