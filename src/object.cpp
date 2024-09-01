@@ -178,6 +178,11 @@ auto to_string(const type_ct_bool& type) -> std::string
     return std::format("<comptime_bool: {}>", type.value);
 }
 
+auto to_string(const type_placeholder& type) -> std::string
+{
+    return std::format("<placeholder: {}>", type.name);
+}
+
 auto null_type() -> type_name
 {
     return {type_fundamental::null_type};

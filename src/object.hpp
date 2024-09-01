@@ -171,6 +171,14 @@ struct type_ct_bool
     auto operator==(const type_ct_bool&) const -> bool = default;
 };
 
+struct type_placeholder
+{
+    std::string name;
+
+    auto to_hash() const -> std::size_t { return hash(name); }
+    auto operator==(const type_placeholder&) const -> bool = default;
+};
+
 auto to_string(const type_name& type) -> std::string;
 auto to_string(type_fundamental t) -> std::string;
 auto to_string(const type_array& type) -> std::string;
@@ -188,6 +196,7 @@ auto to_string(const type_function_template& type) -> std::string;
 auto to_string(const type_struct_template& type) -> std::string;
 auto to_string(const type_module& type) -> std::string;
 auto to_string(const type_ct_bool& type) -> std::string;
+auto to_string(const type_placeholder& type) -> std::string;
 
 struct type_name : public std::variant<
     type_fundamental,
