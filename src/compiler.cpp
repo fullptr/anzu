@@ -391,7 +391,7 @@ auto deduce_template_params(
     deduced_templates.reserve(names.size());
     for (const auto& name : names) {
         const auto it = name_map.find(name);
-        tok.assert(it != name_map.end(), "unable to deduce type of placeholder {}", name);
+        tok.assert(it != name_map.end(), "unable to deduce type of template {}", name);
         deduced_templates.push_back(it->second);
     }
     return deduced_templates;
