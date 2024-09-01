@@ -404,6 +404,8 @@ auto compile_function(
 {
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
+    com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
+    com.current_module.emplace_back(name.module);
     com.functions.emplace_back(name, id, variable_manager{true});
     const auto [it, success] = com.functions_by_name.emplace(name, id);
     tok.assert(success, "a function with the name '{}' already exists", name);
@@ -433,6 +435,8 @@ auto compile_function(
 
     variables(com).pop_scope(code(com));
     com.current_function.pop_back();
+    com.current_struct.pop_back();
+    com.current_module.pop_back();
 }
 
 // Temp: remove this for a more efficient function
@@ -504,16 +508,6 @@ auto push_loop(compiler& com, std::function<void()> body) -> void
     variables(com).pop_scope(code(com));
 }
 
-auto get_function(compiler& com, const token& tok, const function_name& name)
-    -> std::optional<function>
-{
-    if (const auto it = com.functions_by_name.find(name); it != com.functions_by_name.end()) {
-        return com.functions[it->second];
-    }
-
-    return std::nullopt;
-}
-
 auto load_module(compiler& com, const token& tok, const std::string& filepath) -> void
 {
     // Add as an available module to the current module, and check for circular deps
@@ -525,7 +519,6 @@ auto load_module(compiler& com, const token& tok, const std::string& filepath) -
                 if (mod.filepath == m.filepath) tok.error("circular dependency");
             }
         }
-        
     }
 
     // Already compiled, nothing more to do
@@ -548,6 +541,22 @@ auto load_module(compiler& com, const token& tok, const std::string& filepath) -
     }
     com.current_module.pop_back();
     com.modules.emplace(filepath);
+}
+
+auto fetch_function(compiler& com, const token& tok, const function_name& name) -> type_function
+{
+    const auto key = name.as_template();
+
+    // If the function doesn't exist, it may still be a template, if it is then compile it
+    if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
+        const auto& ast = com.function_templates.at(key);
+        const auto map = build_template_map(com, tok, ast.templates, name.templates);
+        compile_function(com, tok, name, ast.sig, ast.body, map);
+    }
+
+    tok.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
+    const auto& fn = com.functions[com.functions_by_name.at(name)];
+    return type_function{ .id = fn.id, .param_types=fn.sig.params, .return_type=fn.sig.return_type };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> type_name
@@ -817,38 +826,23 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
             sig_params.push_back(arg.type);
         }
         const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
-        
+
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
-        const auto key = name.as_template();
-
-        // If the function doesn't exist, it may still be a template, if it is then compile it
-        if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
-            const auto& ast = com.function_templates.at(key);
-            const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-
-            com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
-            com.current_module.emplace_back(name.module);
-            compile_function(com, node.token, name, ast.sig, ast.body, map);
-            com.current_struct.pop_back();
-            com.current_module.pop_back();
-        }
-
-        node.token.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
-        const auto& fn = com.functions[com.functions_by_name.at(name)];
+        const auto func = fetch_function(com, node.token, name);
         
-        node.token.assert_eq(node.args.size(), fn.sig.params.size(), 
+        node.token.assert_eq(node.args.size(), func.param_types.size(), 
                              "invalid number of args for function call");
 
         auto args_size = std::size_t{0};
         for (std::size_t i = 0; i != node.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), fn.sig.params[i], node.token);
-            args_size += com.types.size_of(fn.sig.params[i]);
+            push_copy_typechecked(com, *node.args.at(i), func.param_types[i], node.token);
+            args_size += com.types.size_of(func.param_types[i]);
         }
 
         // push the function pointer and call it
-        push_value(code(com), op::push_function_ptr, fn.id);
+        push_value(code(com), op::push_function_ptr, func.id);
         push_value(code(com), op::call, args_size);
-        return fn.sig.return_type;
+        return *func.return_type;
     }
     else if (type.is<type_function_ptr>()) { // function call
         const auto& info = std::get<type_function_ptr>(type);
@@ -906,23 +900,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
 
     if (auto info = type.get_if<type_function_template>()) {
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
-        const auto key = name.as_template();
-
-        // If the function doesn't exist, it may still be a template, if it is then compile it
-        if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
-            const auto& ast = com.function_templates.at(key);
-            const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-
-            com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
-            com.current_module.emplace_back(name.module);
-            compile_function(com, node.token, name, ast.sig, ast.body, map);
-            com.current_struct.pop_back();
-            com.current_module.pop_back();
-        }
-
-        node.token.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
-        const auto& fn = com.functions[com.functions_by_name.at(name)];
-        return type_function{ .id = fn.id, .param_types=fn.sig.params, .return_type=fn.sig.return_type };
+        return fetch_function(com, node.token, name);
     }
     else if (auto info = type.get_if<type_struct_template>()) {
         const auto name = type_struct{ .name=info->name, .module=info->module, .templates=templates };
@@ -946,15 +924,10 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
             // Otherwise, compile the functions now
             for (const auto& func : ast.functions) {
                 const auto& stmt = std::get<node_function_stmt>(*func);
+                const auto fn_name = function_name{name.module, name, stmt.name};
                 if (stmt.templates.empty()) {
                     const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-
-                    com.current_struct.emplace_back(name, com.types.templates_of(name));
-                    com.current_module.emplace_back(name.module);
-                    const auto fn_name = function_name{.module=name.module, .struct_name=name, .name=stmt.name};
                     compile_function(com, node.token, fn_name, stmt.sig, stmt.body, map);
-                    com.current_struct.pop_back();
-                    com.current_module.pop_back();
                 } else {
                     const auto fkey = type_function_template{name.module, name, stmt.name};
                     const auto [it, success] = com.function_templates.emplace(fkey, stmt);
@@ -968,41 +941,27 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
     }
     else if (auto info = type.get_if<type_bound_method_template>()) {
         const auto name = function_name{info->module, info->struct_name, info->name, templates};
-        const auto key = name.as_template();
+        const auto func = fetch_function(com, node.token, name);
 
-        // If the function doesn't exist, it may still be a template, if it is then compile it
-        if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
-            const auto& ast = com.function_templates.at(key);
-            const auto map = build_template_map(com, node.token, ast.templates, templates);
-
-            com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
-            com.current_module.emplace_back(name.module);
-            compile_function(com, node.token, name, ast.sig, ast.body, map);
-            com.current_struct.pop_back();
-            com.current_module.pop_back();
-        }
-
-        node.token.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
-        const auto& fn = com.functions[com.functions_by_name.at(name)];
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
 
         const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
-        if (stripped.is_const && !fn.sig.params[0].remove_ptr().is_const) {
+        if (stripped.is_const && !func.param_types[0].remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
 
         // check first argument is a pointer to an instance of the class
-        node.token.assert(fn.sig.params.size() > 0, "member functions must have at least one arg");
-        const auto actual = fn.sig.params[0];
+        node.token.assert(func.param_types.size() > 0, "member functions must have at least one arg");
+        const auto actual = func.param_types[0];
         const auto expected = type_name{info->struct_name}.add_const().add_ptr().add_const();
         constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
         node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped, expected, actual);
 
         return type_bound_method{
-            .param_types = fn.sig.params,
-            .return_type = fn.sig.return_type,
-            .name = fn.name.to_string(),
-            .id = fn.id
+            .param_types = func.param_types,
+            .return_type = *func.return_type,
+            .name = name.to_string(),
+            .id = func.id
         };
     }
     node.token.error("object of type {} can not be called with template parameters", type);
@@ -1073,13 +1032,15 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
     }
     else if (auto info = type.get_if<type_struct>()) {
         const auto name = function_name{.module=info->module, .struct_name=*info, .name="length"};
-        const auto func = get_function(com, node.token, name);
-        node.token.assert(func.has_value(), "cannot call 'len' on an object of type {}", type);
-        node.token.assert_eq(func->sig.params.size(), 1, "{}.length() must only take one argument", type);
-        node.token.assert_eq(func->sig.params[0], type.add_ptr(), "{}.length() must only take a pointer to the object", type);
-        node.token.assert_eq(func->sig.return_type, u64_type(), "{}.length() must return a u64", type);
+        const auto it = com.functions_by_name.find(name);
+        node.token.assert(it != com.functions_by_name.end(), "cannot call 'len' on an object of type {}", type);
+
+        const auto& func = com.functions[it->second];
+        node.token.assert_eq(func.sig.params.size(), 1, "{}.length() must only take one argument", type);
+        node.token.assert_eq(func.sig.params[0], type.add_ptr(), "{}.length() must only take a pointer to the object", type);
+        node.token.assert_eq(func.sig.return_type, u64_type(), "{}.length() must return a u64", type);
         push_expr(com, compile_type::ptr, *node.expr);
-        push_value(code(com), op::push_function_ptr, func->id, op::call, sizeof(std::byte*));
+        push_value(code(com), op::push_function_ptr, func.id, op::call, sizeof(std::byte*));
     }
     else {
         node.token.error("cannot call 'len' on an object of type {}", type);
@@ -1306,12 +1267,13 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return type_function_template{ .module = info->filepath, .struct_name=no_struct, .name=node.name };
+            return type_function_template{ info->filepath, no_struct, node.name };
         }
 
         // It might be a struct
-        const auto sname = type_struct{node.name, info->filepath};
+        const auto sname = type_struct{ node.name, info->filepath };
         if (com.types.contains(sname)) {
+            node.token.assert(ct == compile_type::val, "cannot take the address of a struct");
             return type_type{type_name{sname}};
         }
 
@@ -1319,7 +1281,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto skey = type_struct_template{info->filepath, node.name};
         if (com.struct_templates.contains(skey)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-            return type_struct_template{ .module=info->filepath, .name=node.name };
+            return type_struct_template{ info->filepath, node.name };
         }
 
         // Otherwise, it must be a variable
@@ -1337,15 +1299,15 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
          
         const auto fname = function_name{struct_info.module, struct_info, node.name};
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
-            node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr");
+            node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
-            return type_function{ .id = func.id, .param_types = func.sig.params, .return_type = func.sig.return_type };   
+            return type_function{ func.id, func.sig.params, func.sig.return_type };   
         }
 
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return type_function_template{ .module = fname.module, .struct_name=struct_info, .name=node.name };
+            return type_function_template{ fname.module, struct_info, node.name };
         }
 
         node.token.error("can only access member functions from structs");
@@ -1659,18 +1621,8 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     }
 }
 
-auto check_duplicate_name(compiler& com, const token& tok, const std::string& name)
-{
-    const auto sname = type_struct{ .name=name, .module=curr_module(com) };
-    const auto fname = function_name{curr_module(com), no_struct, name};
-    const auto message = std::format("type '{}' already defined", name);
-    tok.assert(!com.types.contains(sname), "{}", message);
-    tok.assert(!com.functions_by_name.contains(fname), "{}", message);
-}
-
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
-    check_duplicate_name(com, node.token, node.name);
     if (!node.templates.empty()) {
         const auto key = type_struct_template{curr_module(com), node.name};
         const auto [it, success] = com.struct_templates.emplace(key, node);
@@ -1737,18 +1689,15 @@ void push_stmt(compiler& com, const node_assignment_stmt& node)
 
 void push_stmt(compiler& com, const node_function_stmt& node)
 {
-    check_duplicate_name(com, node.token, node.name);
-
     // Template functions only get compiled at the call site, so we just stash the ast
     if (!node.templates.empty()) {
         const auto key = type_function_template{curr_module(com), curr_struct(com), node.name};
         const auto [it, success] = com.function_templates.emplace(key, node);
         node.token.assert(success, "function template named '{}' already defined", key);
-        return;
+    } else {
+        const auto name = function_name{curr_module(com), curr_struct(com), node.name};
+        compile_function(com, node.token, name, node.sig, node.body);
     }
-
-    const auto fname = function_name{curr_module(com), curr_struct(com), node.name};
-    compile_function(com, node.token, fname, node.sig, node.body);
 }
 
 void push_stmt(compiler& com, const node_expression_stmt& node)
