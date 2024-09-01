@@ -318,42 +318,47 @@ auto build_template_map(
     return map;
 }
 
-auto match_placeholders(const type_name& actual, const type_name& expected)
+void match_placeholders(template_map& map, const token& tok, const type_name& actual, const type_name& expected)
 {
     if (auto type = expected.get_if<type_placeholder>()) {
-        std::print("matched {} to {}\n", type->name, actual);
+        const auto [it, success] = map.emplace(type->name, actual);
+        if (!success) {
+            tok.assert(it->second == actual,
+                       "ambiguous template deduction, deduced {} as both {} and {}",
+                       type->name, it->second, actual);
+        }
         return;
     }
 
     std::visit(overloaded{
-        [](const type_struct& a, const type_struct& e) {
+        [&](const type_struct& a, const type_struct& e) {
             if (a.name == e.name && a.module == e.module && a.templates.size() == e.templates.size()) {
                 for (const auto& [a_type, e_type] : zip(a.templates, e.templates)) {
-                    match_placeholders(a_type, e_type);
+                    match_placeholders(map, tok, a_type, e_type);
                 }
             }
         },
-        [](const type_array& a, const type_array& e) {
+        [&](const type_array& a, const type_array& e) {
             if (a.count == e.count) {
-                match_placeholders(*a.inner_type, *e.inner_type);
+                match_placeholders(map, tok, *a.inner_type, *e.inner_type);
             }
         },
-        [](const type_ptr& a, const type_ptr& e) {
-            match_placeholders(*a.inner_type, *e.inner_type);
+        [&](const type_ptr& a, const type_ptr& e) {
+            match_placeholders(map, tok, *a.inner_type, *e.inner_type);
         },
-        [](const type_span& a, const type_span& e) {
-            match_placeholders(*a.inner_type, *e.inner_type);
+        [&](const type_span& a, const type_span& e) {
+            match_placeholders(map, tok, *a.inner_type, *e.inner_type);
         },
-        [](const type_function_ptr& a, const type_function_ptr& e) {
+        [&](const type_function_ptr& a, const type_function_ptr& e) {
             if (a.param_types.size() == e.param_types.size()) {
                 for (const auto& [a_type, e_type] : zip(a.param_types, e.param_types)) {
-                    match_placeholders(a_type, e_type);
+                    match_placeholders(map, tok, a_type, e_type);
                 }
-                match_placeholders(*a.return_type, *e.return_type);
+                match_placeholders(map, tok, *a.return_type, *e.return_type);
             }
         },
-        //[](const type_type& a, const type_type& e) { // what would this even be used for?
-        //    match_placeholders(*a.type_val, *e.type_val);
+        //[&](const type_type& a, const type_type& e) { // what would this even be used for?
+        //    match_placeholders(map, tok, *a.type_val, *e.type_val);
         //},
         [](const auto& a, const auto& e) {}
     }, actual, expected);
@@ -374,20 +379,20 @@ auto deduce_template_params(
     for (const auto name : names) placeholders.emplace(name);
     com.current_placeholders.push_back(placeholders);
 
-    auto retvec = std::vector<type_name>{};
+    auto name_map = template_map{};
     for (const auto& name : names) {
         bool found = false;
         for (const auto& [param, arg] : zip(sig_params, args)) {
             
             const auto param_type = resolve_type(com, tok, param);
             const auto arg_type = type_of_expr(com, *arg);
-            match_placeholders(arg_type, param_type);
+            match_placeholders(name_map, tok, arg_type, param_type);
         }
         if (!found) tok.error("could not deduce the type of {}", name);
     }
 
     com.current_placeholders.pop_back();
-    return retvec;
+    return {};
 }
 
 auto compile_function(
