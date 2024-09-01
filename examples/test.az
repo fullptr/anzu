@@ -4,4 +4,4 @@
 
 fn baz!(T)(a: T, b: T) -> null {}
 
-baz(1, 2.0);
+baz(1.0, 2.0);

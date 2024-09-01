@@ -322,11 +322,9 @@ void match_placeholders(template_map& map, const token& tok, const type_name& ac
 {
     if (auto type = expected.get_if<type_placeholder>()) {
         const auto [it, success] = map.emplace(type->name, actual);
-        if (!success) {
-            tok.assert(it->second == actual,
-                       "ambiguous template deduction, deduced {} as both {} and {}",
-                       type->name, it->second, actual);
-        }
+        tok.assert(success || it->second == actual,
+                   "ambiguous template deduction, deduced {} as both {} and {}",
+                   type->name, it->second, actual);
         return;
     }
 
