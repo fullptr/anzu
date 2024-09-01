@@ -3,6 +3,7 @@
 
 
 fn foo!(U)(x: U) -> null {
+    print("{}\n", x);
 }
 
 

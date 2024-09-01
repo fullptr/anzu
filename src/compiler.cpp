@@ -380,19 +380,21 @@ auto deduce_template_params(
     com.current_placeholders.push_back(placeholders);
 
     auto name_map = template_map{};
-    for (const auto& name : names) {
-        bool found = false;
-        for (const auto& [param, arg] : zip(sig_params, args)) {
-            
-            const auto param_type = resolve_type(com, tok, param);
-            const auto arg_type = type_of_expr(com, *arg);
-            match_placeholders(name_map, tok, arg_type, param_type);
-        }
-        if (!found) tok.error("could not deduce the type of {}", name);
+    for (const auto& [param, arg] : zip(sig_params, args)) {
+        const auto param_type = resolve_type(com, tok, param);
+        const auto arg_type = type_of_expr(com, *arg);
+        match_placeholders(name_map, tok, arg_type, param_type);
     }
-
     com.current_placeholders.pop_back();
-    return {};
+
+    auto deduced_templates = std::vector<type_name>{};
+    deduced_templates.reserve(names.size());
+    for (const auto& name : names) {
+        const auto it = name_map.find(name);
+        tok.assert(it != name_map.end(), "unable to deduce type of placeholder {}", name);
+        deduced_templates.push_back(it->second);
+    }
+    return deduced_templates;
 }
 
 auto compile_function(
