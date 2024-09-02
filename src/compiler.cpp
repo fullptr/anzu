@@ -802,21 +802,20 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         }
         return obj_type;
     }
-    else if (type.is<type_function>()) { // function call
-        const auto& info = std::get<type_function>(type);
-        node.token.assert_eq(node.args.size(), info.param_types.size(), 
+    else if (auto info = type.get_if<type_function>()) { // function call
+        node.token.assert_eq(node.args.size(), info->param_types.size(), 
                              "invalid number of args for function call");
 
         auto args_size = std::size_t{0};
         for (std::size_t i = 0; i != node.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), info.param_types[i], node.token);
-            args_size += com.types.size_of(info.param_types[i]);
+            push_copy_typechecked(com, *node.args.at(i), info->param_types[i], node.token);
+            args_size += com.types.size_of(info->param_types[i]);
         }
 
         // push the function pointer and call it
-        push_value(code(com), op::push_function_ptr, info.id);
+        push_value(code(com), op::push_function_ptr, info->id);
         push_value(code(com), op::call, args_size);
-        return *info.return_type;
+        return *info->return_type;
     }
     else if (auto info = type.get_if<type_function_template>()) {
         const auto& ast = com.function_templates[*info];
@@ -826,7 +825,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
             sig_params.push_back(arg.type);
         }
         const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
-
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
         const auto func = fetch_function(com, node.token, name);
         
@@ -888,6 +886,50 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 
         push_value(code(com), op::push_function_ptr, info.id, op::call, args_size);
         return *info.return_type;
+    }
+    else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
+        const auto& ast = com.function_templates[type_function_template{info->module, info->struct_name, info->name}];
+        auto sig_params = std::vector<node_expr_ptr>{};
+        for (const auto& arg : ast.sig.params) {
+            sig_params.push_back(arg.type);
+        }
+        const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
+        const auto name = function_name{info->module, info->struct_name, info->name, templates};
+        const auto func = fetch_function(com, node.token, name);
+
+        push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
+
+        const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
+        if (stripped.is_const && !func.param_types[0].remove_ptr().is_const) {
+            node.token.error("cannot bind a const variable to a non-const member function");
+        }
+
+        // check first argument is a pointer to an instance of the class
+        node.token.assert(func.param_types.size() > 0, "member functions must have at least one arg");
+        const auto actual = func.param_types[0];
+        const auto expected = type_name{info->struct_name}.add_const().add_ptr().add_const();
+        constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped, expected, actual);
+
+        return type_bound_method{
+            .param_types = func.param_types,
+            .return_type = *func.return_type,
+            .name = name.to_string(),
+            .id = func.id
+        };
+    
+        // cannot use push_copy_typechecked because the types mismatch, but the bound method
+        // type just wraps a pointer to the instance, so this is fine
+        push_expr(com, compile_type::val, *node.expr);
+        auto args_size = com.types.size_of(func.param_types[0]);
+
+        for (std::size_t i = 0; i != node.args.size(); ++i) {
+            push_copy_typechecked(com, *node.args.at(i), func.param_types[i + 1], node.token);
+            args_size += com.types.size_of(func.param_types[i]);
+        }
+
+        push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
+        return *func.return_type;
     }
 
     node.token.error("unable to call non-callable type {}", type);
