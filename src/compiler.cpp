@@ -819,13 +819,11 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (auto info = type.get_if<type_function_template>()) {
         const auto& ast = com.function_templates[*info];
-
-        auto sig_params = std::vector<node_expr_ptr>{};
-        for (const auto& arg : ast.sig.params) {
-            sig_params.push_back(arg.type);
-        }
-        const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
-        const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
+        const auto params = ast.sig.params
+                          | std::views::transform(&node_parameter::type)
+                          | std::ranges::to<std::vector>();
+        const auto templates = deduce_template_params(com, node.token, ast.templates, params, node.args);
+        const auto name = function_name{ info->module, info->struct_name, info->name, templates };
         const auto func = fetch_function(com, node.token, name);
         
         node.token.assert_eq(node.args.size(), func.param_types.size(), 
@@ -872,13 +870,10 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         node.token.assert_eq(node.args.size(), info.param_types.size() - 1, // instance ptr
                              "invalid number of args for function call");
 
-        auto args_size = std::size_t{0};
-    
         // cannot use push_copy_typechecked because the types mismatch, but the bound method
         // type just wraps a pointer to the instance, so this is fine
         push_expr(com, compile_type::val, *node.expr);
-        args_size += com.types.size_of(info.param_types[0]);
-
+        auto args_size = com.types.size_of(info.param_types[0]);
         for (std::size_t i = 0; i != node.args.size(); ++i) {
             push_copy_typechecked(com, *node.args.at(i), info.param_types[i + 1], node.token);
             args_size += com.types.size_of(info.param_types[i]);
@@ -889,10 +884,9 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
         const auto& ast = com.function_templates[type_function_template{info->module, info->struct_name, info->name}];
-    
-        // can skip the first param since that's the self parameter
+      
         const auto sig_params = ast.sig.params 
-                              | std::views::drop(1)
+                              | std::views::drop(1) // can skip the self parameter
                               | std::views::transform(&node_parameter::type)
                               | std::ranges::to<std::vector>();
 
