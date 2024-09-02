@@ -890,7 +890,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
         const auto& ast = com.function_templates[type_function_template{info->module, info->struct_name, info->name}];
     
-
         // can skip the first param since that's the self parameter so cannot be used to deduce
         // template types anyway
         auto sig_params = std::vector<node_expr_ptr>{};
