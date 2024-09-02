@@ -7,9 +7,8 @@ struct pair
     first: i64;
     second: i64;
 
-    fn boo!(A)(self: const&, x: A) { print("{}\n", x); }
+    fn boo(x: i64) { print("{}\n", x); }
 }
 
-let p := pair(1, 2);
-let q := p&;
-q.boo(10);
+let pa := pair(1, 2);
+let p := pa.boo(10);

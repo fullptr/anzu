@@ -889,7 +889,8 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
         const auto& ast = com.function_templates[type_function_template{info->module, info->struct_name, info->name}];
-        
+    
+
         // can skip the first param since that's the self parameter so cannot be used to deduce
         // template types anyway
         auto sig_params = std::vector<node_expr_ptr>{};
@@ -1361,16 +1362,16 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         const auto& info = com.functions[it->second];
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
         const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
-        if (stripped.is_const && !info.sig.params[0].remove_ptr().is_const) {
-            node.token.error("cannot bind a const variable to a non-const member function");
-        }
 
         // check first argument is a pointer to an instance of the class
         node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");
         const auto actual = info.sig.params[0];
         const auto expected = stripped.add_const().add_ptr().add_const();
-        constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
-        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped, expected, actual);
+        constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped);
+        if (stripped.is_const && !actual.remove_ptr().is_const) {
+            node.token.error("cannot bind a const variable to a non-const member function");
+        }
         return type_bound_method{
             .param_types = info.sig.params,
             .return_type = info.sig.return_type,
