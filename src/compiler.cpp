@@ -892,10 +892,10 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     
         // can skip the first param since that's the self parameter so cannot be used to deduce
         // template types anyway
-        auto sig_params = std::vector<node_expr_ptr>{};
-        for (const auto& arg : ast.sig.params | std::views::drop(1)) {
-            sig_params.push_back(arg.type);
-        }
+        const auto sig_params = ast.sig.params
+                              | std::views::drop(1)
+                              | std::views::transform(&node_parameter::type)
+                              | std::ranges::to<std::vector>();
 
         const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
         const auto name = function_name{info->module, info->struct_name, info->name, templates};
