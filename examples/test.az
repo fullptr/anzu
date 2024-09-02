@@ -7,8 +7,9 @@ struct pair
     first: i64;
     second: i64;
 
-    fn boo(x: i64) { print("{}\n", x); }
+    fn boo!(T)(x: T) { print("{}\n", x); }
 }
 
-let pa := pair(1, 2);
-let p := pa.boo(10);
+let pa := pair.boo;
+pa(10);
+print("{}\n", @type_name_of(pa));

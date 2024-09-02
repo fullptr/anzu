@@ -160,7 +160,7 @@ auto to_string(const type_function& type) -> std::string
 
 auto to_string(const type_function_template& type) -> std::string
 {
-    return std::format("<function_template: <{}>.{}.{}>", type.module.string(), to_string(type.struct_name), type.name);
+    return std::format("<function_template: <{}>.{}.{}>", type.module.string(), type.struct_name.name, type.name);
 }
 
 auto to_string(const type_struct_template& type) -> std::string
