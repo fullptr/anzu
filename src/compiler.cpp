@@ -311,7 +311,7 @@ auto build_template_map(
 {
     tok.assert_eq(types.size(), names.size(), "bad number of template args");
     auto map = template_map{};
-    for (const auto& [actual, expected] : zip(types, names)) {
+    for (const auto& [actual, expected] : std::views::zip(types, names)) {
         const auto [it, success] = map.emplace(expected, actual);
         if (!success) { tok.error("duplicate template name {}", expected); }
     }
@@ -331,7 +331,7 @@ void match_placeholders(template_map& map, const token& tok, const type_name& ac
     std::visit(overloaded{
         [&](const type_struct& a, const type_struct& e) {
             if (a.name == e.name && a.module == e.module && a.templates.size() == e.templates.size()) {
-                for (const auto& [a_type, e_type] : zip(a.templates, e.templates)) {
+                for (const auto& [a_type, e_type] : std::views::zip(a.templates, e.templates)) {
                     match_placeholders(map, tok, a_type, e_type);
                 }
             }
@@ -349,7 +349,7 @@ void match_placeholders(template_map& map, const token& tok, const type_name& ac
         },
         [&](const type_function_ptr& a, const type_function_ptr& e) {
             if (a.param_types.size() == e.param_types.size()) {
-                for (const auto& [a_type, e_type] : zip(a.param_types, e.param_types)) {
+                for (const auto& [a_type, e_type] : std::views::zip(a.param_types, e.param_types)) {
                     match_placeholders(map, tok, a_type, e_type);
                 }
                 match_placeholders(map, tok, *a.return_type, *e.return_type);
@@ -375,7 +375,7 @@ auto deduce_template_params(
     com.current_placeholders.push_back(placeholders);
 
     auto name_map = template_map{};
-    for (const auto& [param, arg] : zip(sig_params, args)) {
+    for (const auto& [param, arg] : std::views::zip(sig_params, args)) {
         const auto param_type = resolve_type(com, tok, param);
         const auto arg_type = type_of_expr(com, *arg);
         match_placeholders(name_map, tok, arg_type, param_type);
@@ -783,38 +783,36 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
+template <typename Args, typename Params>
+auto push_args_typechecked(compiler& com, const token& tok, const Args& args, const Params& expected_types) -> std::size_t
+{
+    tok.assert_eq(args.size(), expected_types.size(), "invalid number of args for function call");
+    auto args_size = std::size_t{0};
+    for (const auto& [arg, type] : std::views::zip(args, expected_types)) {
+        push_copy_typechecked(com, *arg, type, tok);
+        args_size += com.types.size_of(type);
+    }
+    return args_size;
+}
+
 auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
     const auto type = type_of_expr(com, *node.expr);
 
     if (type.is<type_type>()) { // constructor
-        const auto obj_type = inner_type(type);
+        const auto inner = inner_type(type);
         if (node.args.empty()) { // default constructor
-            push_value(code(com), op::push, com.types.size_of(obj_type));
-            return obj_type;
+            push_value(code(com), op::push, com.types.size_of(inner));
+        } else {
+            const auto params = get_constructor_params(com, inner);
+            push_args_typechecked(com, node.token, node.args, params);
         }
-        const auto expected_params = get_constructor_params(com, obj_type);
-        node.token.assert_eq(node.args.size(), expected_params.size(), 
-                             "bad number of arguments to constructor call");
-        for (std::size_t i = 0; i != node.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), expected_params[i], node.token);
-        }
-        return obj_type;
+        return inner;
     }
     else if (auto info = type.get_if<type_function>()) { // function call
-        node.token.assert_eq(node.args.size(), info->param_types.size(), 
-                             "invalid number of args for function call");
-
-        auto args_size = std::size_t{0};
-        for (std::size_t i = 0; i != node.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), info->param_types[i], node.token);
-            args_size += com.types.size_of(info->param_types[i]);
-        }
-
-        // push the function pointer and call it
-        push_value(code(com), op::push_function_ptr, info->id);
-        push_value(code(com), op::call, args_size);
+        const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
+        push_value(code(com), op::push_function_ptr, info->id, op::call, args_size);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_function_template>()) {
@@ -826,42 +824,19 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         const auto name = function_name{ info->module, info->struct_name, info->name, templates };
         const auto func = fetch_function(com, node.token, name);
         
-        node.token.assert_eq(node.args.size(), func.param_types.size(), 
-                             "invalid number of args for function call");
-
-        auto args_size = std::size_t{0};
-        for (std::size_t i = 0; i != node.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), func.param_types[i], node.token);
-            args_size += com.types.size_of(func.param_types[i]);
-        }
-
-        // push the function pointer and call it
-        push_value(code(com), op::push_function_ptr, func.id);
-        push_value(code(com), op::call, args_size);
+        const auto args_size = push_args_typechecked(com, node.token, node.args, func.param_types);
+        push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
         return *func.return_type;
     }
-    else if (type.is<type_function_ptr>()) { // function call
-        const auto& info = std::get<type_function_ptr>(type);
-        node.token.assert_eq(node.args.size(), info.param_types.size(), 
-                             "invalid number of args for function call");
-
-        auto args_size = std::size_t{0};
-        for (std::size_t i = 0; i != node.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), info.param_types[i], node.token);
-            args_size += com.types.size_of(info.param_types[i]);
-        }
-
-        // push the function pointer and call it
+    else if (auto info = type.get_if<type_function_ptr>()) { // function call
+        const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
         push_expr(com, compile_type::val, *node.expr);
         push_value(code(com), op::call, args_size);
-        return *info.return_type;
+        return *info->return_type;
     }
     else if (type.is<type_builtin>()) { // builtin call
         const auto& info = std::get<type_builtin>(type);
-        node.token.assert_eq(node.args.size(), info.args.size(), "bad number of arguments to builtin call");
-        for (std::size_t i = 0; i != info.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), info.args[i], node.token);
-        }
+        push_args_typechecked(com, node.token, node.args, info.args);
         push_value(code(com), op::builtin_call, info.id);
         return *info.return_type;
     }
@@ -874,10 +849,9 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         // type just wraps a pointer to the instance, so this is fine
         push_expr(com, compile_type::val, *node.expr);
         auto args_size = com.types.size_of(info.param_types[0]);
-        for (std::size_t i = 0; i != node.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), info.param_types[i + 1], node.token);
-            args_size += com.types.size_of(info.param_types[i]);
-        }
+
+        args_size += push_args_typechecked(com, node.token, node.args, info.param_types | std::views::drop(1));
+
 
         push_value(code(com), op::push_function_ptr, info.id, op::call, args_size);
         return *info.return_type;

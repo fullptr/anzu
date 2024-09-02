@@ -219,6 +219,7 @@ struct type_name : public std::variant<
     type_placeholder>
 {
     using variant::variant;
+    type_name(const type_name&) = default;
     
     bool is_const = false;
 
