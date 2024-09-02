@@ -889,14 +889,20 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
         const auto& ast = com.function_templates[type_function_template{info->module, info->struct_name, info->name}];
+        
+        // can skip the first param since that's the self parameter so cannot be used to deduce
+        // template types anyway
         auto sig_params = std::vector<node_expr_ptr>{};
-        for (const auto& arg : ast.sig.params) {
+        for (const auto& arg : ast.sig.params | std::views::drop(1)) {
             sig_params.push_back(arg.type);
         }
+
         const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
         const auto name = function_name{info->module, info->struct_name, info->name, templates};
         const auto func = fetch_function(com, node.token, name);
 
+        // cannot use push_copy_typechecked because the types mismatch, but the bound method
+        // type just wraps a pointer to the instance, so this is fine
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
 
         const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
@@ -910,17 +916,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         const auto expected = type_name{info->struct_name}.add_const().add_ptr().add_const();
         constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
         node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped, expected, actual);
-
-        return type_bound_method{
-            .param_types = func.param_types,
-            .return_type = *func.return_type,
-            .name = name.to_string(),
-            .id = func.id
-        };
     
-        // cannot use push_copy_typechecked because the types mismatch, but the bound method
-        // type just wraps a pointer to the instance, so this is fine
-        push_expr(com, compile_type::val, *node.expr);
         auto args_size = com.types.size_of(func.param_types[0]);
 
         for (std::size_t i = 0; i != node.args.size(); ++i) {

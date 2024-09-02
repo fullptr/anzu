@@ -11,4 +11,5 @@ struct pair
 }
 
 let p := pair(1, 2);
-p.boo(10);
+let q := p&;
+q.boo(10);
