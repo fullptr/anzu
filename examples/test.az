@@ -2,13 +2,14 @@
 
 
 
-struct pair!(T, U)
+struct pair
 {
-    first: T;
-    second: U;
+    first: i64;
+    second: i64;
 
-    fn boo!(A)(x: i64) { print("{}\n", x); }
+    fn boo!(T)(x: T) { print("{}\n", x); }
 }
 
-let p := pair!(i64, u64).boo;
-p(10);
+let pa := pair.boo;
+pa(10);
+print("{}\n", @type_name_of(pa));
