@@ -22,16 +22,16 @@ struct type_info
 
 class type_manager
 {
-    std::unordered_map<type_name, type_info> d_classes;
+    std::unordered_map<type_struct, type_info> d_classes;
 
 public:
-    auto add_type(const type_name& name, const template_map& templates = {}) -> bool;
-    auto add_field(const type_name& name, const type_field& field) -> bool;
-    auto contains(const type_name& t) const -> bool;
+    auto add_type(const type_struct& name, const template_map& templates = {}) -> bool;
+    auto add_field(const type_struct& name, const type_field& field) -> bool;
+    auto contains(const type_struct& t) const -> bool;
 
     auto size_of(const type_name& t) const -> std::size_t;
-    auto fields_of(const type_name& t) const -> type_fields;
-    auto templates_of(const type_name& t) const -> template_map;
+    auto fields_of(const type_struct& t) const -> type_fields;
+    auto templates_of(const type_struct& t) const -> template_map;
 };
 
 }

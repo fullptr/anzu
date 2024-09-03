@@ -134,7 +134,7 @@ auto save_variable(compiler& com, const token& tok, const std::filesystem::path&
 // Given a type and a field name, push the offset of the fields position relative to its
 // owner onto the stack
 auto push_field_offset(
-    compiler& com, const token& tok, const type_name& type, const std::string& field_name
+    compiler& com, const token& tok, const type_struct& type, const std::string& field_name
 )
     -> type_name
 {
@@ -147,19 +147,19 @@ auto push_field_offset(
         offset += com.types.size_of(field.type);
     }
     
-    tok.error("could not find field '{}' for type '{}'\n", field_name, type.remove_const());
+    tok.error("could not find field '{}' for type '{}'\n", field_name, to_string(type));
 }
 
 auto constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
 {
-    if (type.is<type_fundamental>()) {
-        return {type};
+    if (type.is<type_struct>()) {
+        auto params = std::vector<type_name>{};
+        for (const auto& field : com.types.fields_of(type.as<type_struct>())) {
+            params.emplace_back(field.type);
+        }
+        return params;
     }
-    auto params = std::vector<type_name>{};
-    for (const auto& field : com.types.fields_of(type)) {
-        params.emplace_back(field.type);
-    }
-    return params;
+    return {type};
 }
 
 // Gets the type of the expression by compiling it, then removes the added
@@ -1321,7 +1321,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     // Otherwise, it's a data member
     push_expr(com, compile_type::ptr, *node.expr);
     auto_deref_pointer(com, type); // allow for field access through a pointer
-    auto field_type = push_field_offset(com, node.token, stripped, node.name);
+    auto field_type = push_field_offset(com, node.token, struct_name, node.name);
     push_value(code(com), op::u64_add); // modify ptr
     if (ct == compile_type::val) {
         push_value(code(com), op::load, com.types.size_of(field_type));
