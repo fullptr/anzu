@@ -85,18 +85,17 @@ struct type_builtin
     std::vector<type_name> args;
     value_ptr<type_name>   return_type;
 
-    auto to_hash() const { return hash(name, id); }
+    auto to_hash() const { return hash(name, id, args, return_type); }
     auto operator==(const type_builtin&) const -> bool = default;
 };
 
 struct type_bound_method
 {
+    std::size_t            id;
     std::vector<type_name> param_types;
     value_ptr<type_name>   return_type;
-    std::string            name; // for printing only
-    std::size_t            id;
 
-    auto to_hash() const { return hash(name, id); }
+    auto to_hash() const { return hash(id, param_types, return_type); }
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
@@ -132,6 +131,7 @@ struct type_function
 
     auto to_pointer() const -> type_name;
     auto to_hash() const { return hash(id, param_types, return_type); }
+    auto to_bound_method() -> type_bound_method { return {id, param_types, return_type}; }
     auto operator==(const type_function&) const -> bool = default;
 };
 
@@ -219,6 +219,7 @@ struct type_name : public std::variant<
     type_placeholder>
 {
     using variant::variant;
+    type_name(const type_name&) = default;
     
     bool is_const = false;
 

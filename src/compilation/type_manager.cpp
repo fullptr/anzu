@@ -3,28 +3,27 @@
 
 namespace anzu {
 
-auto type_manager::add(
-    const type_name& name,
-    const type_fields& fields,
-    const template_map& templates) -> bool
+auto type_manager::add_type(const type_struct& name, const template_map& templates) -> bool
 {
     if (d_classes.contains(name)) {
         return false;
     }
-    d_classes.emplace(name, type_info{fields, templates});
+    d_classes.emplace(name, type_info{{}, templates});
     return true;
 }
 
-auto type_manager::contains(const type_name& type) const -> bool
+auto type_manager::add_field(const type_struct& name, const type_field& field) -> bool
 {
-    return std::visit(overloaded{
-        [&](const type_struct&)  { return d_classes.contains(type); },
-        [&](const type_array& t) { return contains(*t.inner_type); },
-        [&](const type_span& t)  { return contains(*t.inner_type); },
-        [&](const type_ptr& t)   { return contains(*t.inner_type); },
-        [&](const type_type& t)  { return contains(*t.type_val); },
-        [&](const auto&)         { return true; }
-    }, type);
+    if (!d_classes.contains(name)) {
+        return false;
+    }
+    d_classes[name].fields.push_back(field);
+    return true;
+}
+
+auto type_manager::contains(const type_struct& type) const -> bool
+{
+    return d_classes.contains(type);
 }
 
 auto type_manager::size_of(const type_name& type) const -> std::size_t
@@ -48,12 +47,12 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
                 return 0;
             }
         },
-        [&](const type_struct&) -> std::size_t {
-            if (!d_classes.contains(type)) {
+        [&](const type_struct& t) -> std::size_t {
+            if (!d_classes.contains(t)) {
                 panic("unknown type '{}'", type);
             }
             auto size = std::size_t{0};
-            for (const auto& field : fields_of(type)) {
+            for (const auto& field : fields_of(t)) {
                 size += size_of(field.type);
             }
             return std::max(std::size_t{1}, size); // empty structs take up one byte
@@ -106,17 +105,17 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
     }, type);
 }
 
-auto type_manager::fields_of(const type_name& t) const -> type_fields
+auto type_manager::fields_of(const type_struct& t) const -> type_fields
 {
-    if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
+    if (auto it = d_classes.find(t); it != d_classes.end()) {
         return it->second.fields;
     }
     return {};
 }
 
-auto type_manager::templates_of(const type_name& t) const -> template_map
+auto type_manager::templates_of(const type_struct& t) const -> template_map
 {
-    if (auto it = d_classes.find(t.remove_const()); it != d_classes.end()) {
+    if (auto it = d_classes.find(t); it != d_classes.end()) {
         return it->second.templates;
     }
     return {};
