@@ -1454,7 +1454,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
         const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
         load_module(com, node.token, filepath);
-        return type_module{.filepath=filepath};
+        return type_module{filepath};
     }
     if (node.name == "fn_ptr") {
         node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");
