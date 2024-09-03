@@ -1352,11 +1352,13 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
     }
 
     if (ct == compile_type::ptr) {
-        const auto is_array = type.is<type_array>();
-        const auto is_span = type.is<type_span>();
+        const auto stripped = strip_pointers(type);
+        const auto is_array = stripped.is<type_array>();
+        const auto is_span = stripped.is<type_span>();
         node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
         push_expr(com, compile_type::ptr, *node.expr);
+        auto_deref_pointer(com, type);
 
         // If we are a span, we want the address that it holds rather than its own address,
         // so switch the pointer by loading what it's pointing at.
@@ -1365,13 +1367,13 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         }
 
         // Offset pointer by (index * size)
-        const auto inner = inner_type(type);
+        const auto inner = inner_type(stripped);
         const auto index = push_expr(com, compile_type::val, *node.index);
         node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
         push_value(code(com), op::push_u64, com.types.size_of(inner));
         push_value(code(com), op::u64_mul);
         push_value(code(com), op::u64_add); // modify ptr
-        if (is_array && type.is_const) {
+        if (is_array && stripped.is_const) {
             return inner.add_const(); // propagate const to elements
         }
         return inner;

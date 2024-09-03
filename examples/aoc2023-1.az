@@ -41,7 +41,7 @@ while tokens.valid() {
     total_part1 = total_part1 + process_line(line);
 
     for map in mapping[] {
-        line = str.replace(a&, line, map@[0u], map@[1u]);
+        line = str.replace(a&, line, map[0u], map[1u]);
     }
     let part2 := process_line(line);
     total_part2 = total_part2 + part2;
