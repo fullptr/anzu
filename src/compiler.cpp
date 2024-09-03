@@ -22,7 +22,7 @@ namespace {
 
 // Returns the current function
 auto current(compiler& com) -> function& {
-    return com.functions[com.current_function.back().id];
+    return com.functions[com.current_function.back()];
 }
 
 // Returns the bytecode that we are currently writing to
@@ -403,10 +403,10 @@ auto compile_function(
     -> void
 {
     const auto id = com.functions.size();
-    com.current_function.emplace_back(id, map);
+    com.current_function.emplace_back(id);
     com.current_struct.emplace_back(name.struct_name);
     com.current_module.emplace_back(name.module);
-    com.functions.emplace_back(name, id, variable_manager{true});
+    com.functions.emplace_back(name, id, variable_manager{true}, map);
     const auto [it, success] = com.functions_by_name.emplace(name, id);
     tok.assert(success, "a function with the name '{}' already exists", name);
     
@@ -1177,7 +1177,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // It might be one of the current functions template aliases
-    const auto& map1 = com.current_function.back().templates;
+    const auto& map1 = current(com).templates;
     if (auto it = map1.find(node.name); it != map1.end()) {
         return type_type{it->second};
     }
@@ -1739,7 +1739,7 @@ auto compile(const anzu_module& ast) -> bytecode_program
     const auto fname = function_name{"__main__", no_struct, "$main"};
     com.functions.emplace_back(fname, 0, variable_manager{false});
 
-    com.current_function.emplace_back(0, template_map{});
+    com.current_function.emplace_back(0);
     com.current_struct.emplace_back(fname.struct_name);
     com.current_module.emplace_back(fname.module);
     variables(com).new_scope();

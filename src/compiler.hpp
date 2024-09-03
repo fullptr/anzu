@@ -27,15 +27,10 @@ struct function
     function_name    name;
     std::size_t      id;
     variable_manager variables;
+    template_map     templates;
     
     std::vector<std::byte> code = {};
     signature              sig  = {};
-};
-
-struct func_info
-{
-    std::size_t  id;
-    template_map templates;
 };
 
 struct compiler
@@ -54,7 +49,7 @@ struct compiler
 
     std::vector<std::filesystem::path> current_module;
     std::vector<type_struct>           current_struct;
-    std::vector<func_info>             current_function;
+    std::vector<std::size_t>           current_function;
 
     std::vector<std::unordered_set<std::string>> current_placeholders;
 };
