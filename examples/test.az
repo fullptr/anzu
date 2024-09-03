@@ -7,9 +7,9 @@ struct pair
     first: i64;
     second: i64;
 
-    fn boo!(T)(x: T) { print("{}\n", x); }
+    fn boo!(T)(self: &, t: T) { print("{}\n", t); }
 }
 
-let pa := pair.boo;
-pa(10);
-print("{}\n", @type_name_of(pa));
+let pa := pair(1, 2);
+let z := pa.boo; # should not be possible? because its always useless
+z(10); # or maybe it should only fail here, because calling it is the realy problem

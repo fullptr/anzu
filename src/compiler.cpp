@@ -873,19 +873,33 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         const auto expected = type_name{info->struct_name}.add_const().add_ptr().add_const();
         constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
         node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped, expected, actual);
-    
-        auto args_size = com.types.size_of(func.param_types[0]);
 
-        for (std::size_t i = 0; i != node.args.size(); ++i) {
-            push_copy_typechecked(com, *node.args.at(i), func.param_types[i + 1], node.token);
-            args_size += com.types.size_of(func.param_types[i]);
-        }
+        auto args_size = com.types.size_of(func.param_types[0]);
+        args_size += push_args_typechecked(com, node.token, node.args, func.param_types | std::views::drop(1));
 
         push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
         return *func.return_type;
     }
 
     node.token.error("unable to call non-callable type {}", type);
+}
+
+auto foo(compiler& com, const token& tok, const type_function& func, const node_expr_ptr& expr)
+{
+    const auto type = type_of_expr(com, *expr);
+    push_expr(com, compile_type::val, *expr); // push pointer to the instance to bind to
+
+    const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
+    if (stripped.is_const && !func.param_types[0].remove_ptr().is_const) {
+        tok.error("cannot bind a const variable to a non-const member function");
+    }
+
+    // check first argument is a pointer to an instance of the class
+    tok.assert(func.param_types.size() > 0, "member functions must have at least one arg");
+    const auto actual = func.param_types.at(0);
+    const auto expected = stripped.add_const().add_ptr().add_const();
+    constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
+    tok.assert(const_convertable_to(tok, actual, expected), message, "TBA", stripped, expected, actual);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -> type_name
@@ -939,18 +953,6 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         const auto func = fetch_function(com, node.token, name);
 
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
-
-        const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
-        if (stripped.is_const && !func.param_types[0].remove_ptr().is_const) {
-            node.token.error("cannot bind a const variable to a non-const member function");
-        }
-
-        // check first argument is a pointer to an instance of the class
-        node.token.assert(func.param_types.size() > 0, "member functions must have at least one arg");
-        const auto actual = func.param_types[0];
-        const auto expected = type_name{info->struct_name}.add_const().add_ptr().add_const();
-        constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class expected={} actual={}";
-        node.token.assert(const_convertable_to(node.token, actual, expected), message, info->name, stripped, expected, actual);
 
         return type_bound_method{
             .param_types = func.param_types,
@@ -1337,8 +1339,26 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     }
 
     // It might be a member function template
+    // TODO: We should type check the first argument here
     if (com.function_templates.contains(fname.as_template())) {
+        const auto& info = com.function_templates[fname.as_template()];
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
+        const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
+        
+        // check first argument is a pointer to an instance of the class
+        node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");
+        com.current_module.emplace_back(fname.module);
+        com.current_struct.emplace_back(fname.struct_name, com.types.templates_of(fname.struct_name));
+        const auto actual = resolve_type(com, node.token, info.sig.params[0].type);
+        com.current_struct.pop_back();
+        com.current_module.pop_back();
+        const auto expected = stripped.add_const().add_ptr().add_const();
+        constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped);
+        if (stripped.is_const && !actual.remove_ptr().is_const) {
+            node.token.error("cannot bind a const variable to a non-const member function");
+        }
+        
         return type_bound_method_template{ .module = struct_name.module, .struct_name=struct_name, .name=node.name };
     }
 
