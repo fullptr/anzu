@@ -884,7 +884,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         const auto name = function_name{info->module, info->struct_name, info->name, templates};
         const auto func = fetch_function(com, node.token, name);
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
-        return type_bound_method{ func.param_types, *func.return_type, name.to_string(), func.id };
+        return type_bound_method{ func.param_types, *func.return_type, func.id };
     }
     else if (auto info = type.get_if<type_struct_template>()) {
         const auto name = type_struct{ .name=info->name, .module=info->module, .templates=templates };
@@ -1292,12 +1292,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (stripped.is_const && !actual.remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
-        return type_bound_method{
-            .param_types = info.sig.params,
-            .return_type = info.sig.return_type,
-            .name = info.name.to_string(),
-            .id = info.id
-        };
+        return type_bound_method{ info.sig.params, info.sig.return_type, info.id };
     }
 
     // It might be a member function template

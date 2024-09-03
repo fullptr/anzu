@@ -11,5 +11,3 @@ struct pair
 }
 
 let pa := pair(1, 2);
-let z := pa.boo; # should not be possible? because its always useless
-z(10); # or maybe it should only fail here, because calling it is the realy problem

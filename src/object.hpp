@@ -85,7 +85,7 @@ struct type_builtin
     std::vector<type_name> args;
     value_ptr<type_name>   return_type;
 
-    auto to_hash() const { return hash(name, id); }
+    auto to_hash() const { return hash(name, id, args, return_type); }
     auto operator==(const type_builtin&) const -> bool = default;
 };
 
@@ -93,10 +93,9 @@ struct type_bound_method
 {
     std::vector<type_name> param_types;
     value_ptr<type_name>   return_type;
-    std::string            name; // for printing only
     std::size_t            id;
 
-    auto to_hash() const { return hash(name, id); }
+    auto to_hash() const { return hash(param_types, return_type, id); }
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 

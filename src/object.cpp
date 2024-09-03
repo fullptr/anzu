@@ -124,9 +124,9 @@ auto to_string(const type_builtin& type) -> std::string
 auto to_string(const type_bound_method& type) -> std::string
 {
     return std::format(
-        "<bound method: '{} {}({}) -> {}'>",
+        "<bound_method: '{}({}) -> {}'>",
         to_string(token_type::kw_function),
-        type.name,
+        type.id,
         format_comma_separated(type.param_types),
         to_string_paren(*type.return_type)
     );
