@@ -895,7 +895,8 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
 
             com.current_struct.emplace_back(name);
             com.current_module.emplace_back(name.module);
-            com.types.add_type(name, map);
+            const auto success = com.types.add_type(name, map);
+            node.token.assert(success, "multiple definitions for struct {} found", to_string(name));
             for (const auto& p : ast.fields) {
                 const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
                 com.types.add_field(name, f);
@@ -1163,8 +1164,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // It might be a struct template
-    const auto skey = type_struct_template{curr_module(com), node.name};
-    if (com.struct_templates.contains(skey) && !com.types.contains(sname)) {
+    const auto stemp = type_struct_template{curr_module(com), node.name};
+    if (com.struct_templates.contains(stemp)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
         return type_struct_template{ .module=curr_module(com), .name=node.name };
     }
@@ -1602,7 +1603,8 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 
     const auto sname = type_struct{ .name=node.name, .module=curr_module(com) };
     com.current_struct.emplace_back(sname);
-    com.types.add_type(sname, template_map{});
+    const auto success = com.types.add_type(sname);
+    node.token.assert(success, "multiple definitions for struct {} found", to_string(sname));
     for (const auto& p : node.fields) {
         const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
         com.types.add_field(sname, f);
