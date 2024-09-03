@@ -38,12 +38,6 @@ struct module_info
     std::unordered_map<std::string, std::filesystem::path> imports;
 };
 
-struct struct_info
-{
-    type_struct  name;
-    template_map templates;
-};
-
 struct func_info
 {
     std::size_t  id;
@@ -65,7 +59,7 @@ struct compiler
     std::unordered_map<type_struct_template,   node_struct_stmt>   struct_templates;
 
     std::vector<module_info> current_module;
-    std::vector<struct_info> current_struct;
+    std::vector<type_struct> current_struct;
     std::vector<func_info>   current_function;
 
     std::vector<std::unordered_set<std::string>> current_placeholders;

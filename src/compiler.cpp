@@ -50,7 +50,7 @@ auto curr_module(const compiler& com) -> const std::filesystem::path&
 
 auto curr_struct(const compiler& com) -> const type_struct&
 {
-    return com.current_struct.back().name;
+    return com.current_struct.back();
 }
 
 static const auto no_struct = type_struct{""};
@@ -404,7 +404,7 @@ auto compile_function(
 {
     const auto id = com.functions.size();
     com.current_function.emplace_back(id, map);
-    com.current_struct.emplace_back(name.struct_name, com.types.templates_of(name.struct_name));
+    com.current_struct.emplace_back(name.struct_name);
     com.current_module.emplace_back(name.module);
     com.functions.emplace_back(name, id, variable_manager{true});
     const auto [it, success] = com.functions_by_name.emplace(name, id);
@@ -893,7 +893,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
             const auto& ast = com.struct_templates.at(key);
             const auto map = build_template_map(com, node.token, ast.templates, name.templates);
 
-            com.current_struct.emplace_back(name, template_map{});
+            com.current_struct.emplace_back(name);
             com.current_module.emplace_back(name.module);
             com.types.add_type(name, map);
             for (const auto& p : ast.fields) {
@@ -1182,7 +1182,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // It might be one of the current structs template aliases
-    const auto map2 = com.types.templates_of(com.current_struct.back().name);
+    const auto map2 = com.types.templates_of(curr_struct(com));
     if (auto it = map2.find(node.name); it != map2.end()) {
         return type_type{it->second};
     }
@@ -1303,7 +1303,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         // check first argument is a pointer to an instance of the class
         node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");
         com.current_module.emplace_back(fname.module);
-        com.current_struct.emplace_back(fname.struct_name, com.types.templates_of(fname.struct_name));
+        com.current_struct.emplace_back(fname.struct_name);
         const auto actual = resolve_type(com, node.token, info.sig.params[0].type);
         com.current_struct.pop_back();
         com.current_module.pop_back();
@@ -1601,7 +1601,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     }
 
     const auto sname = type_struct{ .name=node.name, .module=curr_module(com) };
-    com.current_struct.emplace_back(sname, template_map{});
+    com.current_struct.emplace_back(sname);
     com.types.add_type(sname, template_map{});
     for (const auto& p : node.fields) {
         const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
