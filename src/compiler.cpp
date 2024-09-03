@@ -45,7 +45,7 @@ auto globals(compiler& com) -> variable_manager& {
 
 auto curr_module(const compiler& com) -> const std::filesystem::path&
 {
-    return com.current_module.back().filepath;
+    return com.current_module.back();
 }
 
 auto curr_struct(const compiler& com) -> const type_struct&
@@ -512,11 +512,11 @@ auto load_module(compiler& com, const token& tok, const std::string& filepath) -
 {
     // Add as an available module to the current module, and check for circular deps
     for (const auto& m : com.current_module | std::views::reverse) {
-        if (m.filepath == filepath) {
+        if (m == filepath) {
             std::print("circular dependencey detected:\n");
             for (const auto& mod : com.current_module | std::views::reverse) {
-                std::print("  - {}\n", mod.filepath.string());
-                if (mod.filepath == m.filepath) tok.error("circular dependency");
+                std::print("  - {}\n", mod.string());
+                if (mod == m) tok.error("circular dependency");
             }
         }
     }

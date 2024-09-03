@@ -32,12 +32,6 @@ struct function
     signature              sig  = {};
 };
 
-struct module_info
-{
-    std::filesystem::path                                  filepath;
-    std::unordered_map<std::string, std::filesystem::path> imports;
-};
-
 struct func_info
 {
     std::size_t  id;
@@ -58,9 +52,9 @@ struct compiler
     std::unordered_map<type_function_template, node_function_stmt> function_templates;
     std::unordered_map<type_struct_template,   node_struct_stmt>   struct_templates;
 
-    std::vector<module_info> current_module;
-    std::vector<type_struct> current_struct;
-    std::vector<func_info>   current_function;
+    std::vector<std::filesystem::path> current_module;
+    std::vector<type_struct>           current_struct;
+    std::vector<func_info>             current_function;
 
     std::vector<std::unordered_set<std::string>> current_placeholders;
 };
