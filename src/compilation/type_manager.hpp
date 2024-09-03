@@ -25,7 +25,6 @@ class type_manager
     std::unordered_map<type_name, type_info> d_classes;
 
 public:
-    auto add(const type_name& name, const type_fields& fields, const template_map& templates = {}) -> bool;
     auto add_type(const type_name& name, const template_map& templates) -> bool;
     auto add_field(const type_name& name, const type_field& field) -> bool;
     auto contains(const type_name& t) const -> bool;

@@ -1602,12 +1602,12 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
 
     const auto sname = type_struct{ .name=node.name, .module=curr_module(com) };
     com.current_struct.emplace_back(sname, template_map{});
-    auto fields = std::vector<type_field>{};
+    com.types.add_type(sname, template_map{});
     for (const auto& p : node.fields) {
-        fields.emplace_back(p.name, resolve_type(com, node.token, p.type));
+        const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
+        com.types.add_field(sname, f);
     }
 
-    com.types.add(sname, fields);
     for (const auto& function : node.functions) {
         push_stmt(com, *function);
     }

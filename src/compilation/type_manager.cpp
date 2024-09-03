@@ -3,18 +3,6 @@
 
 namespace anzu {
 
-auto type_manager::add(
-    const type_name& name,
-    const type_fields& fields,
-    const template_map& templates) -> bool
-{
-    if (d_classes.contains(name)) {
-        return false;
-    }
-    d_classes.emplace(name, type_info{fields, templates});
-    return true;
-}
-
 auto type_manager::add_type(const type_name& name, const template_map& templates) -> bool
 {
     if (d_classes.contains(name)) {
