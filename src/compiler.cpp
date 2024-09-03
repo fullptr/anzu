@@ -783,8 +783,7 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
-template <typename Args, typename Params>
-auto push_args_typechecked(compiler& com, const token& tok, const Args& args, const Params& expected_types) -> std::size_t
+auto push_args_typechecked(compiler& com, const token& tok, const auto& args, const auto& expected_types) -> std::size_t
 {
     tok.assert_eq(args.size(), expected_types.size(), "invalid number of args for function call");
     auto args_size = std::size_t{0};
@@ -842,16 +841,12 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (type.is<type_bound_method>()) { // member function call
         const auto& info = std::get<type_bound_method>(type);
-        node.token.assert_eq(node.args.size(), info.param_types.size() - 1, // instance ptr
-                             "invalid number of args for function call");
 
         // cannot use push_copy_typechecked because the types mismatch, but the bound method
         // type just wraps a pointer to the instance, so this is fine
         push_expr(com, compile_type::val, *node.expr);
-        auto args_size = com.types.size_of(info.param_types[0]);
-
+        auto args_size = com.types.size_of(info.param_types[0])
         args_size += push_args_typechecked(com, node.token, node.args, info.param_types | std::views::drop(1));
-
 
         push_value(code(com), op::push_function_ptr, info.id, op::call, args_size);
         return *info.return_type;
