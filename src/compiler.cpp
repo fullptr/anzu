@@ -881,10 +881,9 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         return fetch_function(com, node.token, name);
     }
     else if (auto info = type.get_if<type_bound_method_template>()) {
-        const auto name = function_name{info->module, info->struct_name, info->name, templates};
-        const auto func = fetch_function(com, node.token, name);
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
-        return type_bound_method{ func.param_types, *func.return_type, func.id };
+        const auto name = function_name{info->module, info->struct_name, info->name, templates};
+        return fetch_function(com, node.token, name).to_bound_method();
     }
     else if (auto info = type.get_if<type_struct_template>()) {
         const auto name = type_struct{ .name=info->name, .module=info->module, .templates=templates };
@@ -894,13 +893,13 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
             const auto& ast = com.struct_templates.at(key);
             const auto map = build_template_map(com, node.token, ast.templates, name.templates);
 
-            com.current_struct.emplace_back(name, map);
+            com.current_struct.emplace_back(name, template_map{});
             com.current_module.emplace_back(name.module);
-            auto fields = std::vector<type_field>{};
+            com.types.add_type(name, map);
             for (const auto& p : ast.fields) {
-                fields.emplace_back(type_field{ .name=p.name, .type=resolve_type(com, node.token, p.type) });
+                const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
+                com.types.add_field(name, f);
             }
-            com.types.add(name, fields, map);
             com.current_struct.pop_back();
             com.current_module.pop_back();
 
@@ -1183,7 +1182,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     }
 
     // It might be one of the current structs template aliases
-    const auto& map2 = com.current_struct.back().templates;
+    const auto map2 = com.types.templates_of(com.current_struct.back().name);
     if (auto it = map2.find(node.name); it != map2.end()) {
         return type_type{it->second};
     }
@@ -1281,7 +1280,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
     if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
         const auto& info = com.functions[it->second];
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
-        const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
+        auto_deref_pointer(com, type); // allow for field access through a pointer
 
         // check first argument is a pointer to an instance of the class
         node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");
@@ -1292,14 +1291,14 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (stripped.is_const && !actual.remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
-        return type_bound_method{ info.sig.params, info.sig.return_type, info.id };
+        return type_bound_method{ info.id, info.sig.params, info.sig.return_type };
     }
 
     // It might be a member function template
     if (com.function_templates.contains(fname.as_template())) {
         const auto& info = com.function_templates[fname.as_template()];
         push_expr(com, compile_type::ptr, *node.expr); // push pointer to the instance to bind to
-        const auto stripped = auto_deref_pointer(com, type); // allow for field access through a pointer
+        auto_deref_pointer(com, type); // allow for field access through a pointer
         
         // check first argument is a pointer to an instance of the class
         node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");

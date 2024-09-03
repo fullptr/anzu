@@ -15,6 +15,24 @@ auto type_manager::add(
     return true;
 }
 
+auto type_manager::add_type(const type_name& name, const template_map& templates) -> bool
+{
+    if (d_classes.contains(name)) {
+        return false;
+    }
+    d_classes.emplace(name, type_info{{}, templates});
+    return true;
+}
+
+auto type_manager::add_field(const type_name& name, const type_field& field) -> bool
+{
+    if (!d_classes.contains(name)) {
+        return false;
+    }
+    d_classes[name].fields.push_back(field);
+    return true;
+}
+
 auto type_manager::contains(const type_name& type) const -> bool
 {
     return std::visit(overloaded{
