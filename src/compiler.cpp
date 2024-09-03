@@ -150,7 +150,7 @@ auto push_field_offset(
     tok.error("could not find field '{}' for type '{}'\n", field_name, type.remove_const());
 }
 
-auto get_constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
+auto constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
 {
     if (type.is<type_fundamental>()) {
         return {type};
@@ -799,19 +799,24 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
     const auto type = type_of_expr(com, *node.expr);
 
-    if (type.is<type_type>()) { // constructor
-        const auto inner = inner_type(type);
+    if (auto info = type.get_if<type_type>()) { // constructor
         if (node.args.empty()) { // default constructor
-            push_value(code(com), op::push, com.types.size_of(inner));
+            push_value(code(com), op::push, com.types.size_of(*info->type_val));
         } else {
-            const auto params = get_constructor_params(com, inner);
-            push_args_typechecked(com, node.token, node.args, params);
+            push_args_typechecked(com, node.token, node.args, constructor_params(com, *info->type_val));
         }
-        return inner;
+        return *info->type_val;
     }
-    else if (auto info = type.get_if<type_function>()) { // function call
+    else if (auto info = type.get_if<type_function_ptr>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
-        push_value(code(com), op::push_function_ptr, info->id, op::call, args_size);
+        push_expr(com, compile_type::val, *node.expr);
+        push_value(code(com), op::call, args_size);
+        return *info->return_type;
+    }
+    else if (auto info = type.get_if<type_function>()) {
+        const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
+        push_value(code(com), op::push_function_ptr, info->id);
+        push_value(code(com), op::call, args_size);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_function_template>()) {
@@ -827,29 +832,19 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
         return *func.return_type;
     }
-    else if (auto info = type.get_if<type_function_ptr>()) { // function call
-        const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
-        push_expr(com, compile_type::val, *node.expr);
-        push_value(code(com), op::call, args_size);
+    else if (auto info = type.get_if<type_builtin>()) { // builtin call
+        push_args_typechecked(com, node.token, node.args, info->args);
+        push_value(code(com), op::builtin_call, info->id);
         return *info->return_type;
     }
-    else if (type.is<type_builtin>()) { // builtin call
-        const auto& info = std::get<type_builtin>(type);
-        push_args_typechecked(com, node.token, node.args, info.args);
-        push_value(code(com), op::builtin_call, info.id);
-        return *info.return_type;
-    }
-    else if (type.is<type_bound_method>()) { // member function call
-        const auto& info = std::get<type_bound_method>(type);
-
+    else if (auto info = type.get_if<type_bound_method>()) { // member function call
         // cannot use push_copy_typechecked because the types mismatch, but the bound method
         // type just wraps a pointer to the instance, so this is fine
         push_expr(com, compile_type::val, *node.expr);
-        auto args_size = com.types.size_of(info.param_types[0])
-        args_size += push_args_typechecked(com, node.token, node.args, info.param_types | std::views::drop(1));
-
-        push_value(code(com), op::push_function_ptr, info.id, op::call, args_size);
-        return *info.return_type;
+        auto args_size = com.types.size_of(info->param_types[0]);
+        args_size += push_args_typechecked(com, node.token, node.args, info->param_types | std::views::drop(1));
+        push_value(code(com), op::push_function_ptr, info->id, op::call, args_size);
+        return *info->return_type;
     }
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
         const auto& ast = com.function_templates[type_function_template{info->module, info->struct_name, info->name}];
