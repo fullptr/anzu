@@ -864,7 +864,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 
         auto args_size = com.types.size_of(func.param_types[0]);
         args_size += push_args_typechecked(com, node.token, node.args, func.param_types | std::views::drop(1));
-
         push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
         return *func.return_type;
     }
@@ -880,6 +879,12 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
     if (auto info = type.get_if<type_function_template>()) {
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
         return fetch_function(com, node.token, name);
+    }
+    else if (auto info = type.get_if<type_bound_method_template>()) {
+        const auto name = function_name{info->module, info->struct_name, info->name, templates};
+        const auto func = fetch_function(com, node.token, name);
+        push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
+        return type_bound_method{ func.param_types, *func.return_type, name.to_string(), func.id };
     }
     else if (auto info = type.get_if<type_struct_template>()) {
         const auto name = type_struct{ .name=info->name, .module=info->module, .templates=templates };
@@ -917,19 +922,6 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
 
         node.token.assert(com.types.contains(name), "could not find struct {}", type_name{name});
         return type_type{type_name{name}};
-    }
-    else if (auto info = type.get_if<type_bound_method_template>()) {
-        const auto name = function_name{info->module, info->struct_name, info->name, templates};
-        const auto func = fetch_function(com, node.token, name);
-
-        push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
-
-        return type_bound_method{
-            .param_types = func.param_types,
-            .return_type = *func.return_type,
-            .name = name.to_string(),
-            .id = func.id
-        };
     }
     node.token.error("object of type {} can not be called with template parameters", type);
 }
