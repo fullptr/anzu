@@ -37,7 +37,12 @@ enum class op : std::uint8_t
     push_string_literal,
     push_ptr_global,
     push_ptr_local,
+    push_val_global,
+    push_val_local,
     push_function_ptr,
+
+    nth_element_ptr,
+    nth_element_val,
 
     arena_new,
     arena_delete,
@@ -54,8 +59,9 @@ enum class op : std::uint8_t
     jump,
     jump_if_true,
     jump_if_false,
-    call,
-    builtin_call,
+    call_static,
+    call_ptr,
+    call_builtin,
     ret,
     assert,
 

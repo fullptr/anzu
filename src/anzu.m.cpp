@@ -31,6 +31,7 @@ auto main(const int argc, const char* argv[]) -> int
         return 1;
     }
 
+    const auto timer = anzu::scope_timer{};
     const auto file = std::filesystem::canonical(argv[1]);
     const auto root = file.parent_path();
     const auto mode = std::string{argv[2]};

@@ -119,10 +119,24 @@ auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path&
     return var->type;
 }
 
+auto push_var_val(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> type_name
+{
+    if (in_function(com)) {
+        if (const auto var = variables(com).find(module, name); var.has_value()) {
+            push_value(code(com), op::push_val_local, var->location, com.types.size_of(var->type));
+            return var->type;
+        }
+    }
+
+    const auto var = globals(com).find(module, name);
+    tok.assert(var.has_value(), "could not find variable '{}'\n", name);
+    push_value(code(com), op::push_val_global, var->location, com.types.size_of(var->type));
+    return var->type;
+}
+
 auto load_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
 {
-    const auto type = push_var_addr(com, tok, module, name);
-    push_value(code(com), op::load, com.types.size_of(type));
+    push_var_val(com, tok, module, name);
 }
 
 auto save_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
@@ -810,13 +824,12 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     else if (auto info = type.get_if<type_function_ptr>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
         push_expr(com, compile_type::val, *node.expr);
-        push_value(code(com), op::call, args_size);
+        push_value(code(com), op::call_ptr, args_size);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_function>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
-        push_value(code(com), op::push_function_ptr, info->id);
-        push_value(code(com), op::call, args_size);
+        push_value(code(com), op::call_static, info->id, args_size);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_function_template>()) {
@@ -829,12 +842,12 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         const auto func = fetch_function(com, node.token, name);
         
         const auto args_size = push_args_typechecked(com, node.token, node.args, func.param_types);
-        push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
+        push_value(code(com), op::call_static, func.id, args_size);
         return *func.return_type;
     }
     else if (auto info = type.get_if<type_builtin>()) { // builtin call
         push_args_typechecked(com, node.token, node.args, info->args);
-        push_value(code(com), op::builtin_call, info->id);
+        push_value(code(com), op::call_builtin, info->id);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_bound_method>()) { // member function call
@@ -843,7 +856,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         push_expr(com, compile_type::val, *node.expr);
         auto args_size = com.types.size_of(info->param_types[0]);
         args_size += push_args_typechecked(com, node.token, node.args, info->param_types | std::views::drop(1));
-        push_value(code(com), op::push_function_ptr, info->id, op::call, args_size);
+        push_value(code(com), op::call_static, info->id, args_size);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
@@ -864,7 +877,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 
         auto args_size = com.types.size_of(func.param_types[0]);
         args_size += push_args_typechecked(com, node.token, node.args, func.param_types | std::views::drop(1));
-        push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
+        push_value(code(com), op::call_static, func.id, args_size);
         return *func.return_type;
     }
 
@@ -999,7 +1012,7 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
         node.token.assert_eq(func.params[0], type.add_ptr(), "{}.length() must only take a pointer to the object", type);
         node.token.assert_eq(func.return_type, u64_type(), "{}.length() must return a u64", type);
         push_expr(com, compile_type::ptr, *node.expr);
-        push_value(code(com), op::push_function_ptr, func.id, op::call, sizeof(std::byte*));
+        push_value(code(com), op::call_static, func.id, sizeof(std::byte*));
     }
     else {
         node.token.error("cannot call 'len' on an object of type {}", type);
@@ -1203,9 +1216,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, curr_module(com), node.name);
     }
-    const auto type = push_expr(com, compile_type::ptr, node);
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
+    return push_var_val(com, node.token, curr_module(com), node.name);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
@@ -1247,9 +1258,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (ct == compile_type::ptr) {
             return push_var_addr(com, node.token, info->filepath, node.name);
         }
-        const auto type = push_expr(com, compile_type::ptr, node);
-        push_value(code(com), op::load, com.types.size_of(type));
-        return type;
+        return push_var_val(com, node.token, info->filepath, node.name);
     }
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
@@ -1351,37 +1360,31 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         node.token.error("index must be a u64 literal when delcaring an array type");
     }
 
-    if (ct == compile_type::ptr) {
-        const auto stripped = strip_pointers(type);
-        const auto is_array = stripped.is<type_array>();
-        const auto is_span = stripped.is<type_span>();
-        node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
+    const auto stripped = strip_pointers(type);
+    const auto is_array = stripped.is<type_array>();
+    const auto is_span = stripped.is<type_span>();
+    node.token.assert(is_array || is_span, "subscript only supported for arrays and spans");
 
-        push_expr(com, compile_type::ptr, *node.expr);
-        auto_deref_pointer(com, type);
+    push_expr(com, compile_type::ptr, *node.expr);
+    auto_deref_pointer(com, type);
 
-        // If we are a span, we want the address that it holds rather than its own address,
-        // so switch the pointer by loading what it's pointing at.
-        if (is_span) {
-            push_value(code(com), op::load, sizeof(std::byte*));
-        }
-
-        // Offset pointer by (index * size)
-        const auto inner = inner_type(stripped);
-        const auto index = push_expr(com, compile_type::val, *node.index);
-        node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-        push_value(code(com), op::push_u64, com.types.size_of(inner));
-        push_value(code(com), op::u64_mul);
-        push_value(code(com), op::u64_add); // modify ptr
-        if (is_array && stripped.is_const) {
-            return inner.add_const(); // propagate const to elements
-        }
-        return inner;
+    // If we are a span, we want the address that it holds rather than its own address,
+    // so switch the pointer by loading what it's pointing at.
+    if (is_span) {
+        push_value(code(com), op::load, sizeof(std::byte*));
     }
 
-    const auto t = push_expr(com, compile_type::ptr, node);
-    push_value(code(com), op::load, com.types.size_of(t));
-    return t;
+    // Offset pointer by (index * size)
+    const auto inner = inner_type(stripped);
+    const auto index = push_expr(com, compile_type::val, *node.index);
+    node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
+    const auto opcode = ct == compile_type::val ? op::nth_element_val : op::nth_element_ptr;
+    push_value(code(com), opcode, com.types.size_of(inner));
+
+    if (is_array && stripped.is_const) {
+        return inner.add_const(); // propagate const to elements
+    }
+    return inner;
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) -> type_name
@@ -1493,8 +1496,7 @@ void push_stmt(compiler& com, const node_while_stmt& node)
         // if !<condition> break;
         const auto cond_type = push_expr(com, compile_type::val, *node.condition);
         node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
-        push_value(code(com), op::bool_not);
-        push_value(code(com), op::jump_if_false);
+        push_value(code(com), op::jump_if_true);
         const auto jump_pos = push_value(code(com), std::uint64_t{0});
         push_break(com, node.token);
         write_value(code(com), jump_pos, code(com).size()); // Jump past the end if false      
@@ -1548,8 +1550,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_var_addr(com, node.token, curr_module(com), "$iter");
         push_value(code(com), op::load, sizeof(std::byte*));  
         load_variable(com, node.token, curr_module(com), "$idx");
-        push_value(code(com), op::push_u64, com.types.size_of(inner));
-        push_value(code(com), op::u64_mul, op::u64_add);
+        push_value(code(com), op::nth_element_ptr, com.types.size_of(inner));
         declare_var(com, node.token, node.name, inner.add_ptr());
 
         // idx = idx + 1;

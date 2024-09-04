@@ -35,7 +35,6 @@ var total_part2 := 0;
 let delim := "\r\n";
 
 var tokens := str.tokenizer.create(input, delim);
-var x := 0;
 while tokens.valid() {
     var line := tokens.current();
     total_part1 = total_part1 + process_line(line);
@@ -47,7 +46,6 @@ while tokens.valid() {
     total_part2 = total_part2 + part2;
 
     tokens.advance();
-    x = x + 1;
 }
 
 print("{} {}\n", total_part1, total_part2);

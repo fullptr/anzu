@@ -40,7 +40,7 @@ template <typename T>
 requires std::integral<T> || std::floating_point<T> || std::same_as<T, std::byte*> || std::same_as<T, op>
 auto read_advance(bytecode_context& ctx) -> T
 {
-    auto ret = T{};
+    T ret;
     std::memcpy(&ret, ctx.frames.back().ip, sizeof(T));
     ctx.frames.back().ip += sizeof(T);
     return ret;
@@ -91,6 +91,30 @@ auto execute_program(bytecode_context& ctx) -> void
                 const auto offset = read_advance<std::uint64_t>(ctx);
                 std::byte* ptr = &ctx.stack.at(frame.base_ptr + offset);
                 ctx.stack.push(ptr);
+            } break;
+            case op::push_val_global: {
+                const auto offset = read_advance<std::uint64_t>(ctx);
+                const auto size = read_advance<std::uint64_t>(ctx);
+                std::byte* ptr = &ctx.stack.at(offset);
+                ctx.stack.push(ptr, size);
+            } break;
+            case op::push_val_local: {
+                const auto offset = read_advance<std::uint64_t>(ctx);
+                const auto size = read_advance<std::uint64_t>(ctx);
+                std::byte* ptr = &ctx.stack.at(frame.base_ptr + offset);
+                ctx.stack.push(ptr, size);
+            } break;
+            case op::nth_element_ptr: {
+                const auto size = read_advance<std::uint64_t>(ctx);
+                const auto index = ctx.stack.pop<std::uint64_t>();
+                const auto ptr = ctx.stack.pop<std::byte*>();
+                ctx.stack.push(ptr + index * size);
+            } break;
+            case op::nth_element_val: {
+                const auto size = read_advance<std::uint64_t>(ctx);
+                const auto index = ctx.stack.pop<std::uint64_t>();
+                const auto ptr = ctx.stack.pop<std::byte*>();
+                ctx.stack.push(ptr + index * size, size);
             } break;
             case op::load: {
                 const auto size = read_advance<std::uint64_t>(ctx);
@@ -204,19 +228,25 @@ auto execute_program(bytecode_context& ctx) -> void
                 ctx.stack.resize(frame.base_ptr + size);
                 ctx.frames.pop_back();
             } break;
-            case op::call: {
+            case op::call_static: {
+                const auto function_id = read_advance<std::uint64_t>(ctx);
                 const auto args_size = read_advance<std::uint64_t>(ctx);
-                const auto function_id = ctx.stack.pop<std::uint64_t>();
-                if (function_id >= ctx.functions.size()) {
-                    runtime_error("invalid function id: {}", function_id);
-                }
                 ctx.frames.push_back(call_frame{
                     .code = ctx.functions[function_id].code.data(),
                     .ip = ctx.functions[function_id].code.data(),
                     .base_ptr = ctx.stack.size() - args_size
                 });
             } break;
-            case op::builtin_call: {
+            case op::call_ptr: {
+                const auto args_size = read_advance<std::uint64_t>(ctx);
+                const auto function_id = ctx.stack.pop<std::uint64_t>();
+                ctx.frames.push_back(call_frame{
+                    .code = ctx.functions[function_id].code.data(),
+                    .ip = ctx.functions[function_id].code.data(),
+                    .base_ptr = ctx.stack.size() - args_size
+                });
+            } break;
+            case op::call_builtin: {
                 const auto id = read_advance<std::uint64_t>(ctx);
                 get_builtin(id)->ptr(ctx);
             } break;
@@ -326,8 +356,8 @@ auto execute_program(bytecode_context& ctx) -> void
 template <bool Debug>
 auto run(const bytecode_program& prog) -> void
 {
-    const auto timer = scope_timer{};
     bytecode_context ctx{prog.functions, prog.rom};
+    ctx.frames.reserve(1000);
     ctx.frames.emplace_back(call_frame{
         .code = ctx.functions.front().code.data(),
         .ip = ctx.functions.front().code.data(),
