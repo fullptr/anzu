@@ -396,7 +396,8 @@ auto compile_function(
     compiler& com,
     const token& tok,
     const function_name& name,
-    const node_signature& node_sig,
+    const std::vector<node_parameter>& ast_params,
+    const node_expr_ptr& ast_return_type,
     const node_stmt_ptr& body,
     const template_map& map = {}
 )
@@ -412,14 +413,12 @@ auto compile_function(
     
     variables(com).new_scope();
 
-    auto params = std::vector<type_name>{};
-    for (const auto& arg : node_sig.params) {
+    for (const auto& arg : ast_params) {
         const auto type = resolve_type(com, tok, arg.type);
         declare_var(com, tok, arg.name, type);
-        params.push_back(type);
+        current(com).params.push_back(type);
     }
-    const auto return_type = node_sig.return_type ? resolve_type(com, tok, node_sig.return_type) : null_type();
-    current(com).params = params;
+    const auto return_type = ast_return_type ? resolve_type(com, tok, ast_return_type) : null_type();
     current(com).return_type = return_type;
 
     // this can cause other template functions to be compiled so any references to function
@@ -552,7 +551,7 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
     if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
         const auto& ast = com.function_templates.at(key);
         const auto map = build_template_map(com, tok, ast.templates, name.templates);
-        compile_function(com, tok, name, ast.sig, ast.body, map);
+        compile_function(com, tok, name, ast.params, ast.return_type, ast.body, map);
     }
 
     tok.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
@@ -822,7 +821,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     }
     else if (auto info = type.get_if<type_function_template>()) {
         const auto& ast = com.function_templates[*info];
-        const auto params = ast.sig.params
+        const auto params = ast.params
                           | std::views::transform(&node_parameter::type)
                           | std::ranges::to<std::vector>();
         const auto templates = deduce_template_params(com, node.token, ast.templates, params, node.args);
@@ -850,7 +849,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
         const auto& ast = com.function_templates[type_function_template{info->module, info->struct_name, info->name}];
       
-        const auto sig_params = ast.sig.params 
+        const auto sig_params = ast.params 
                               | std::views::drop(1) // can skip the self parameter
                               | std::views::transform(&node_parameter::type)
                               | std::ranges::to<std::vector>();
@@ -912,7 +911,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
                 const auto fn_name = function_name{name.module, name, stmt.name};
                 if (stmt.templates.empty()) {
                     const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-                    compile_function(com, node.token, fn_name, stmt.sig, stmt.body, map);
+                    compile_function(com, node.token, fn_name, stmt.params, stmt.return_type, stmt.body, map);
                 } else {
                     const auto fkey = type_function_template{name.module, name, stmt.name};
                     const auto [it, success] = com.function_templates.emplace(fkey, stmt);
@@ -1303,10 +1302,10 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         auto_deref_pointer(com, type); // allow for field access through a pointer
         
         // check first argument is a pointer to an instance of the class
-        node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");
+        node.token.assert(info.params.size() > 0, "member functions must have at least one arg");
         com.current_module.emplace_back(fname.module);
         com.current_struct.emplace_back(fname.struct_name);
-        const auto actual = resolve_type(com, node.token, info.sig.params[0].type);
+        const auto actual = resolve_type(com, node.token, info.params[0].type);
         com.current_struct.pop_back();
         com.current_module.pop_back();
         const auto expected = stripped.add_const().add_ptr().add_const();
@@ -1671,7 +1670,7 @@ void push_stmt(compiler& com, const node_function_stmt& node)
         node.token.assert(success, "function template named '{}' already defined", key);
     } else {
         const auto name = function_name{curr_module(com), curr_struct(com), node.name};
-        compile_function(com, node.token, name, node.sig, node.body);
+        compile_function(com, node.token, name, node.params, node.return_type, node.body);
     }
 }
 

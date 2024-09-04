@@ -245,12 +245,6 @@ struct node_parameter
     node_expr_ptr type;
 };
 
-struct node_signature
-{
-    std::vector<node_parameter> params;
-    node_expr_ptr               return_type;
-};
-
 struct node_sequence_stmt
 {
     std::vector<node_stmt_ptr> sequence;
@@ -337,10 +331,11 @@ struct node_assignment_stmt
 
 struct node_function_stmt
 {
-    std::string              name;
-    std::vector<std::string> templates;
-    node_signature           sig;
-    node_stmt_ptr            body;
+    std::string                 name;
+    std::vector<std::string>    templates;
+    std::vector<node_parameter> params;
+    node_expr_ptr               return_type;
+    node_stmt_ptr               body;
 
     anzu::token token;
 };

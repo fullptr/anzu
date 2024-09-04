@@ -259,12 +259,12 @@ auto print_node(const node_stmt& root, int indent) -> void
             }
             std::print("\n");
             std::print("{}- FunctionArguments:\n", spaces);
-            for (const auto& param : node.sig.params) {
+            for (const auto& param : node.params) {
                 std::print("    {}:\n", param.name);
                 print_node(*param.type, indent + 1);
             }
             std::print("{}- ReturnType:\n", spaces);
-            print_node(*node.sig.return_type, indent + 1);
+            print_node(*node.return_type, indent + 1);
             std::print("{}- Body\n", spaces);
             print_node(*node.body, indent + 1);
         },
