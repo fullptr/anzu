@@ -451,11 +451,11 @@ auto parse_function_def_stmt(tokenstream& tokens) -> node_stmt_ptr
         param.name = parse_identifier(tokens);
         tokens.consume_only(token_type::colon);
         param.type = parse_expression(tokens);
-        stmt.sig.params.push_back(param);
+        stmt.params.push_back(param);
     });
 
     if (tokens.consume_maybe(token_type::arrow)) {
-        stmt.sig.return_type = parse_expression(tokens);
+        stmt.return_type = parse_expression(tokens);
     }
     stmt.body = parse_statement(tokens);
     return node;

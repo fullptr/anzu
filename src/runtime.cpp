@@ -46,276 +46,281 @@ auto read_advance(bytecode_context& ctx) -> T
     return ret;
 }
 
-auto apply_op(bytecode_context& ctx) -> bool
+template <bool Debug>
+auto execute_program(bytecode_context& ctx) -> void
 {
-    auto& frame = ctx.frames.back();
-    const auto op_code = read_advance<op>(ctx);
-    switch (op_code) {
-        case op::end_program: return false;
-        case op::push_char:
-        case op::push_bool: {
-            ctx.stack.push(read_advance<std::uint8_t>(ctx));
-        } break;
-        case op::push_i32: {
-            ctx.stack.push(read_advance<std::uint32_t>(ctx));
-        } break;
-        case op::push_i64:
-        case op::push_u64:
-        case op::push_f64:
-        case op::push_function_ptr: {
-            ctx.stack.push(read_advance<std::uint64_t>(ctx));
-        } break;
-        case op::push_string_literal: {
-            const auto index = read_advance<std::uint64_t>(ctx);
-            const auto size = read_advance<std::uint64_t>(ctx);
-            ctx.stack.push(&ctx.rom[index]);
-            ctx.stack.push(size);
-        } break;
-        case op::push_null: {
-            ctx.stack.push(std::byte{0});
-        } break;
-        case op::push_nullptr: {
-            ctx.stack.push(std::uint64_t{0});
-        } break;
-        case op::push_ptr_global: {
-            const auto offset = read_advance<std::uint64_t>(ctx);
-            std::byte* ptr = &ctx.stack.at(offset);
-            ctx.stack.push(ptr);
-        } break;
-        case op::push_ptr_local: {
-            const auto offset = read_advance<std::uint64_t>(ctx);
-            std::byte* ptr = &ctx.stack.at(frame.base_ptr + offset);
-            ctx.stack.push(ptr);
-        } break;
-        case op::load: {
-            const auto size = read_advance<std::uint64_t>(ctx);
-            const auto ptr = ctx.stack.pop<std::byte*>();
-            ctx.stack.push(ptr, size);
-        } break;
-        case op::save: {
-            const auto size = read_advance<std::uint64_t>(ctx);
-            const auto ptr = ctx.stack.pop<std::byte*>();
-            ctx.stack.pop_and_save(ptr, size);
-        } break;
-        case op::push: {
-            const auto size = read_advance<std::uint64_t>(ctx);
-            ctx.stack.resize(ctx.stack.size() + size);
-        } break;
-        case op::pop: {
-            const auto size = read_advance<std::uint64_t>(ctx);
-            ctx.stack.resize(ctx.stack.size() - size);
-        } break;
-        case op::memcpy: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto src_count = ctx.stack.pop<std::uint64_t>(); 
-            const auto src_data = ctx.stack.pop<std::byte*>();
-            const auto dst_count = ctx.stack.pop<std::uint64_t>(); 
-            const auto dst_data = ctx.stack.pop<std::byte*>();
-            if (dst_count < src_count) {
-                runtime_error("dst span too small to hold src span");
-            }
-            std::memcpy(dst_data, src_data, src_count * type_size);
-            ctx.stack.push(std::byte{0}); // returns null;
-        } break;
-        case op::arena_new: {
-            const auto arena = new memory_arena;
-            arena->next = 0;
-            ctx.stack.push(arena);
-        } break;
-        case op::arena_delete: {
-            const auto arena = ctx.stack.pop<memory_arena*>();
-            delete arena;
-        } break;
-        case op::arena_alloc: {
-            auto arena = ctx.stack.pop<memory_arena*>();
-            const auto size = read_advance<std::uint64_t>(ctx);
-            if (arena->next + size > arena->data.size()) {
-                runtime_error("arena overflow");
-            }
-            const auto data = &arena->data[arena->next];
-            arena->next += size;
-            ctx.stack.pop_and_save(data, size);
-            ctx.stack.push(data);
-        } break;
-        case op::arena_alloc_array: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            auto arena = ctx.stack.pop<memory_arena*>();
-            const auto count = ctx.stack.pop<std::uint64_t>();
-            const auto size = type_size * count;
-            if (arena->next + size > arena->data.size()) {
-                runtime_error("arena overflow");
-            }
-            const auto data = &arena->data[arena->next];
-            for (size_t i = 0; i != count; ++i) {
-                ctx.stack.save(data + i * type_size, type_size);
-            }
-            ctx.stack.pop_n(type_size);
-            arena->next += size;
-            ctx.stack.push(data); // push the span (ptr + count)
-            ctx.stack.push(count);
-        } break;
-        case op::arena_realloc_array: {
-            const auto type_size = read_advance<std::uint64_t>(ctx);
-            const auto old_count = ctx.stack.pop<std::uint64_t>(); // this is the 
-            const auto old_data = ctx.stack.pop<std::byte*>();     // pushed span
-            auto arena = ctx.stack.pop<memory_arena*>();
-            const auto new_count = ctx.stack.pop<std::uint64_t>();
-            const auto size = type_size * new_count;
-            if (new_count <= old_count) {
-                runtime_error("invalid use of new, can only realloc to grow, old={} new={}", old_count, new_count);
-            }
-            if (arena->next + size > arena->data.size()) {
-                runtime_error("arena overflow");
-            }
-            const auto new_data = &arena->data[arena->next];
-            std::memcpy(new_data, old_data, type_size * old_count);
-            for (size_t i = old_count; i != new_count; ++i) {
-                ctx.stack.save(new_data + i * type_size, type_size);
-            }
-            ctx.stack.pop_n(type_size);
-            arena->next += size;
-            ctx.stack.push(new_data); // push the span (ptr + count)
-            ctx.stack.push(new_count);
-        } break;
-        case op::arena_size: {
-            auto arena = ctx.stack.pop<memory_arena*>();
-            ctx.stack.push(arena->next);
-        } break;
-        case op::jump: {
-            const auto jump = read_advance<std::uint64_t>(ctx);
-            frame.ip = &frame.code[jump];
-        } break;
-        case op::jump_if_true: {
-            const auto jump = read_advance<std::uint64_t>(ctx);
-            if (ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];
-        } break;
-        case op::jump_if_false: {
-            const auto jump = read_advance<std::uint64_t>(ctx);
-            if (!ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];
-        } break;
-        case op::ret: {
-            const auto size = read_advance<std::uint64_t>(ctx);
-            std::memcpy(&ctx.stack.at(frame.base_ptr), &ctx.stack.at(ctx.stack.size() - size), size);
-            ctx.stack.resize(frame.base_ptr + size);
-            ctx.frames.pop_back();
-        } break;
-        case op::call: {
-            const auto args_size = read_advance<std::uint64_t>(ctx);
-            const auto function_id = ctx.stack.pop<std::uint64_t>();
-            if (function_id >= ctx.functions.size()) {
-                runtime_error("invalid function id: {}", function_id);
-            }
-            ctx.frames.push_back(call_frame{
-                .code = ctx.functions[function_id].code.data(),
-                .ip = ctx.functions[function_id].code.data(),
-                .base_ptr = ctx.stack.size() - args_size
-            });
-        } break;
-        case op::builtin_call: {
-            const auto id = read_advance<std::uint64_t>(ctx);
-            get_builtin(id)->ptr(ctx);
-        } break;
-        case op::assert: {
-            const auto index = read_advance<std::uint64_t>(ctx);
-            const auto size = read_advance<std::uint64_t>(ctx);
-            if (!ctx.stack.pop<bool>()) {
-                const auto data = &ctx.rom[index];
-                runtime_error("{}", std::string_view{data, size});
-            }
-        } break;
+    while (true) {
+        auto& frame = ctx.frames.back();
+        if constexpr (Debug) {
+            print_op(ctx.rom, frame.code, frame.ip);
+        }
+        const auto op_code = read_advance<op>(ctx);
+        switch (op_code) {
+            case op::end_program: return;
+            case op::push_char:
+            case op::push_bool: {
+                ctx.stack.push(read_advance<std::uint8_t>(ctx));
+            } break;
+            case op::push_i32: {
+                ctx.stack.push(read_advance<std::uint32_t>(ctx));
+            } break;
+            case op::push_i64:
+            case op::push_u64:
+            case op::push_f64:
+            case op::push_function_ptr: {
+                ctx.stack.push(read_advance<std::uint64_t>(ctx));
+            } break;
+            case op::push_string_literal: {
+                const auto index = read_advance<std::uint64_t>(ctx);
+                const auto size = read_advance<std::uint64_t>(ctx);
+                ctx.stack.push(&ctx.rom[index]);
+                ctx.stack.push(size);
+            } break;
+            case op::push_null: {
+                ctx.stack.push(std::byte{0});
+            } break;
+            case op::push_nullptr: {
+                ctx.stack.push(std::uint64_t{0});
+            } break;
+            case op::push_ptr_global: {
+                const auto offset = read_advance<std::uint64_t>(ctx);
+                std::byte* ptr = &ctx.stack.at(offset);
+                ctx.stack.push(ptr);
+            } break;
+            case op::push_ptr_local: {
+                const auto offset = read_advance<std::uint64_t>(ctx);
+                std::byte* ptr = &ctx.stack.at(frame.base_ptr + offset);
+                ctx.stack.push(ptr);
+            } break;
+            case op::load: {
+                const auto size = read_advance<std::uint64_t>(ctx);
+                const auto ptr = ctx.stack.pop<std::byte*>();
+                ctx.stack.push(ptr, size);
+            } break;
+            case op::save: {
+                const auto size = read_advance<std::uint64_t>(ctx);
+                const auto ptr = ctx.stack.pop<std::byte*>();
+                ctx.stack.pop_and_save(ptr, size);
+            } break;
+            case op::push: {
+                const auto size = read_advance<std::uint64_t>(ctx);
+                ctx.stack.resize(ctx.stack.size() + size);
+            } break;
+            case op::pop: {
+                const auto size = read_advance<std::uint64_t>(ctx);
+                ctx.stack.resize(ctx.stack.size() - size);
+            } break;
+            case op::memcpy: {
+                const auto type_size = read_advance<std::uint64_t>(ctx);
+                const auto src_count = ctx.stack.pop<std::uint64_t>(); 
+                const auto src_data = ctx.stack.pop<std::byte*>();
+                const auto dst_count = ctx.stack.pop<std::uint64_t>(); 
+                const auto dst_data = ctx.stack.pop<std::byte*>();
+                if (dst_count < src_count) {
+                    runtime_error("dst span too small to hold src span");
+                }
+                std::memcpy(dst_data, src_data, src_count * type_size);
+                ctx.stack.push(std::byte{0}); // returns null;
+            } break;
+            case op::arena_new: {
+                const auto arena = new memory_arena;
+                arena->next = 0;
+                ctx.stack.push(arena);
+            } break;
+            case op::arena_delete: {
+                const auto arena = ctx.stack.pop<memory_arena*>();
+                delete arena;
+            } break;
+            case op::arena_alloc: {
+                auto arena = ctx.stack.pop<memory_arena*>();
+                const auto size = read_advance<std::uint64_t>(ctx);
+                if (arena->next + size > arena->data.size()) {
+                    runtime_error("arena overflow");
+                }
+                const auto data = &arena->data[arena->next];
+                arena->next += size;
+                ctx.stack.pop_and_save(data, size);
+                ctx.stack.push(data);
+            } break;
+            case op::arena_alloc_array: {
+                const auto type_size = read_advance<std::uint64_t>(ctx);
+                auto arena = ctx.stack.pop<memory_arena*>();
+                const auto count = ctx.stack.pop<std::uint64_t>();
+                const auto size = type_size * count;
+                if (arena->next + size > arena->data.size()) {
+                    runtime_error("arena overflow");
+                }
+                const auto data = &arena->data[arena->next];
+                for (size_t i = 0; i != count; ++i) {
+                    ctx.stack.save(data + i * type_size, type_size);
+                }
+                ctx.stack.pop_n(type_size);
+                arena->next += size;
+                ctx.stack.push(data); // push the span (ptr + count)
+                ctx.stack.push(count);
+            } break;
+            case op::arena_realloc_array: {
+                const auto type_size = read_advance<std::uint64_t>(ctx);
+                const auto old_count = ctx.stack.pop<std::uint64_t>(); // this is the 
+                const auto old_data = ctx.stack.pop<std::byte*>();     // pushed span
+                auto arena = ctx.stack.pop<memory_arena*>();
+                const auto new_count = ctx.stack.pop<std::uint64_t>();
+                const auto size = type_size * new_count;
+                if (new_count <= old_count) {
+                    runtime_error("invalid use of new, can only realloc to grow, old={} new={}", old_count, new_count);
+                }
+                if (arena->next + size > arena->data.size()) {
+                    runtime_error("arena overflow");
+                }
+                const auto new_data = &arena->data[arena->next];
+                std::memcpy(new_data, old_data, type_size * old_count);
+                for (size_t i = old_count; i != new_count; ++i) {
+                    ctx.stack.save(new_data + i * type_size, type_size);
+                }
+                ctx.stack.pop_n(type_size);
+                arena->next += size;
+                ctx.stack.push(new_data); // push the span (ptr + count)
+                ctx.stack.push(new_count);
+            } break;
+            case op::arena_size: {
+                auto arena = ctx.stack.pop<memory_arena*>();
+                ctx.stack.push(arena->next);
+            } break;
+            case op::jump: {
+                const auto jump = read_advance<std::uint64_t>(ctx);
+                frame.ip = &frame.code[jump];
+            } break;
+            case op::jump_if_true: {
+                const auto jump = read_advance<std::uint64_t>(ctx);
+                if (ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];
+            } break;
+            case op::jump_if_false: {
+                const auto jump = read_advance<std::uint64_t>(ctx);
+                if (!ctx.stack.pop<bool>()) frame.ip = &frame.code[jump];
+            } break;
+            case op::ret: {
+                const auto size = read_advance<std::uint64_t>(ctx);
+                std::memcpy(&ctx.stack.at(frame.base_ptr), &ctx.stack.at(ctx.stack.size() - size), size);
+                ctx.stack.resize(frame.base_ptr + size);
+                ctx.frames.pop_back();
+            } break;
+            case op::call: {
+                const auto args_size = read_advance<std::uint64_t>(ctx);
+                const auto function_id = ctx.stack.pop<std::uint64_t>();
+                if (function_id >= ctx.functions.size()) {
+                    runtime_error("invalid function id: {}", function_id);
+                }
+                ctx.frames.push_back(call_frame{
+                    .code = ctx.functions[function_id].code.data(),
+                    .ip = ctx.functions[function_id].code.data(),
+                    .base_ptr = ctx.stack.size() - args_size
+                });
+            } break;
+            case op::builtin_call: {
+                const auto id = read_advance<std::uint64_t>(ctx);
+                get_builtin(id)->ptr(ctx);
+            } break;
+            case op::assert: {
+                const auto index = read_advance<std::uint64_t>(ctx);
+                const auto size = read_advance<std::uint64_t>(ctx);
+                if (!ctx.stack.pop<bool>()) {
+                    const auto data = &ctx.rom[index];
+                    runtime_error("{}", std::string_view{data, size});
+                }
+            } break;
 
-        case op::char_to_i64: {
-            const auto value = ctx.stack.pop<char>();
-            ctx.stack.push(std::int64_t{value});
-        } break;
+            case op::char_to_i64: {
+                const auto value = ctx.stack.pop<char>();
+                ctx.stack.push(std::int64_t{value});
+            } break;
 
-        case op::char_eq: { binary_op<char, std::equal_to>(ctx); } break;
-        case op::char_ne: { binary_op<char, std::not_equal_to>(ctx); } break;
+            case op::char_eq: { binary_op<char, std::equal_to>(ctx); } break;
+            case op::char_ne: { binary_op<char, std::not_equal_to>(ctx); } break;
 
-        case op::i32_add: { binary_op<std::int32_t, std::plus>(ctx); } break;
-        case op::i32_sub: { binary_op<std::int32_t, std::minus>(ctx); } break;
-        case op::i32_mul: { binary_op<std::int32_t, std::multiplies>(ctx); } break;
-        case op::i32_div: { binary_op<std::int32_t, std::divides>(ctx); } break;
-        case op::i32_mod: { binary_op<std::int32_t, std::modulus>(ctx); } break;
-        case op::i32_eq:  { binary_op<std::int32_t, std::equal_to>(ctx); } break;
-        case op::i32_ne:  { binary_op<std::int32_t, std::not_equal_to>(ctx); } break;
-        case op::i32_lt:  { binary_op<std::int32_t, std::less>(ctx); } break;
-        case op::i32_le:  { binary_op<std::int32_t, std::less_equal>(ctx); } break;
-        case op::i32_gt:  { binary_op<std::int32_t, std::greater>(ctx); } break;
-        case op::i32_ge:  { binary_op<std::int32_t, std::greater_equal>(ctx); } break;
+            case op::i32_add: { binary_op<std::int32_t, std::plus>(ctx); } break;
+            case op::i32_sub: { binary_op<std::int32_t, std::minus>(ctx); } break;
+            case op::i32_mul: { binary_op<std::int32_t, std::multiplies>(ctx); } break;
+            case op::i32_div: { binary_op<std::int32_t, std::divides>(ctx); } break;
+            case op::i32_mod: { binary_op<std::int32_t, std::modulus>(ctx); } break;
+            case op::i32_eq:  { binary_op<std::int32_t, std::equal_to>(ctx); } break;
+            case op::i32_ne:  { binary_op<std::int32_t, std::not_equal_to>(ctx); } break;
+            case op::i32_lt:  { binary_op<std::int32_t, std::less>(ctx); } break;
+            case op::i32_le:  { binary_op<std::int32_t, std::less_equal>(ctx); } break;
+            case op::i32_gt:  { binary_op<std::int32_t, std::greater>(ctx); } break;
+            case op::i32_ge:  { binary_op<std::int32_t, std::greater_equal>(ctx); } break;
 
-        case op::i64_add: { binary_op<std::int64_t, std::plus>(ctx); } break;
-        case op::i64_sub: { binary_op<std::int64_t, std::minus>(ctx); } break;
-        case op::i64_mul: { binary_op<std::int64_t, std::multiplies>(ctx); } break;
-        case op::i64_div: { binary_op<std::int64_t, std::divides>(ctx); } break;
-        case op::i64_mod: { binary_op<std::int64_t, std::modulus>(ctx); } break;
-        case op::i64_eq:  { binary_op<std::int64_t, std::equal_to>(ctx); } break;
-        case op::i64_ne:  { binary_op<std::int64_t, std::not_equal_to>(ctx); } break;
-        case op::i64_lt:  { binary_op<std::int64_t, std::less>(ctx); } break;
-        case op::i64_le:  { binary_op<std::int64_t, std::less_equal>(ctx); } break;
-        case op::i64_gt:  { binary_op<std::int64_t, std::greater>(ctx); } break;
-        case op::i64_ge:  { binary_op<std::int64_t, std::greater_equal>(ctx); } break;
+            case op::i64_add: { binary_op<std::int64_t, std::plus>(ctx); } break;
+            case op::i64_sub: { binary_op<std::int64_t, std::minus>(ctx); } break;
+            case op::i64_mul: { binary_op<std::int64_t, std::multiplies>(ctx); } break;
+            case op::i64_div: { binary_op<std::int64_t, std::divides>(ctx); } break;
+            case op::i64_mod: { binary_op<std::int64_t, std::modulus>(ctx); } break;
+            case op::i64_eq:  { binary_op<std::int64_t, std::equal_to>(ctx); } break;
+            case op::i64_ne:  { binary_op<std::int64_t, std::not_equal_to>(ctx); } break;
+            case op::i64_lt:  { binary_op<std::int64_t, std::less>(ctx); } break;
+            case op::i64_le:  { binary_op<std::int64_t, std::less_equal>(ctx); } break;
+            case op::i64_gt:  { binary_op<std::int64_t, std::greater>(ctx); } break;
+            case op::i64_ge:  { binary_op<std::int64_t, std::greater_equal>(ctx); } break;
 
-        case op::u64_add: { binary_op<std::uint64_t, std::plus>(ctx); } break;
-        case op::u64_sub: { binary_op<std::uint64_t, std::minus>(ctx); } break;
-        case op::u64_mul: { binary_op<std::uint64_t, std::multiplies>(ctx); } break;
-        case op::u64_div: { binary_op<std::uint64_t, std::divides>(ctx); } break;
-        case op::u64_mod: { binary_op<std::uint64_t, std::modulus>(ctx); } break;
-        case op::u64_eq:  { binary_op<std::uint64_t, std::equal_to>(ctx); } break;
-        case op::u64_ne:  { binary_op<std::uint64_t, std::not_equal_to>(ctx); } break;
-        case op::u64_lt:  { binary_op<std::uint64_t, std::less>(ctx); } break;
-        case op::u64_le:  { binary_op<std::uint64_t, std::less_equal>(ctx); } break;
-        case op::u64_gt:  { binary_op<std::uint64_t, std::greater>(ctx); } break;
-        case op::u64_ge:  { binary_op<std::uint64_t, std::greater_equal>(ctx); } break;
+            case op::u64_add: { binary_op<std::uint64_t, std::plus>(ctx); } break;
+            case op::u64_sub: { binary_op<std::uint64_t, std::minus>(ctx); } break;
+            case op::u64_mul: { binary_op<std::uint64_t, std::multiplies>(ctx); } break;
+            case op::u64_div: { binary_op<std::uint64_t, std::divides>(ctx); } break;
+            case op::u64_mod: { binary_op<std::uint64_t, std::modulus>(ctx); } break;
+            case op::u64_eq:  { binary_op<std::uint64_t, std::equal_to>(ctx); } break;
+            case op::u64_ne:  { binary_op<std::uint64_t, std::not_equal_to>(ctx); } break;
+            case op::u64_lt:  { binary_op<std::uint64_t, std::less>(ctx); } break;
+            case op::u64_le:  { binary_op<std::uint64_t, std::less_equal>(ctx); } break;
+            case op::u64_gt:  { binary_op<std::uint64_t, std::greater>(ctx); } break;
+            case op::u64_ge:  { binary_op<std::uint64_t, std::greater_equal>(ctx); } break;
 
-        case op::f64_add: { binary_op<double, std::plus>(ctx); } break;
-        case op::f64_sub: { binary_op<double, std::minus>(ctx); } break;
-        case op::f64_mul: { binary_op<double, std::multiplies>(ctx); } break;
-        case op::f64_div: { binary_op<double, std::divides>(ctx); } break;
-        case op::f64_eq:  { binary_op<double, std::equal_to>(ctx); } break;
-        case op::f64_ne:  { binary_op<double, std::not_equal_to>(ctx); } break;
-        case op::f64_lt:  { binary_op<double, std::less>(ctx); } break;
-        case op::f64_le:  { binary_op<double, std::less_equal>(ctx); } break;
-        case op::f64_gt:  { binary_op<double, std::greater>(ctx); } break;
-        case op::f64_ge:  { binary_op<double, std::greater_equal>(ctx); } break;
+            case op::f64_add: { binary_op<double, std::plus>(ctx); } break;
+            case op::f64_sub: { binary_op<double, std::minus>(ctx); } break;
+            case op::f64_mul: { binary_op<double, std::multiplies>(ctx); } break;
+            case op::f64_div: { binary_op<double, std::divides>(ctx); } break;
+            case op::f64_eq:  { binary_op<double, std::equal_to>(ctx); } break;
+            case op::f64_ne:  { binary_op<double, std::not_equal_to>(ctx); } break;
+            case op::f64_lt:  { binary_op<double, std::less>(ctx); } break;
+            case op::f64_le:  { binary_op<double, std::less_equal>(ctx); } break;
+            case op::f64_gt:  { binary_op<double, std::greater>(ctx); } break;
+            case op::f64_ge:  { binary_op<double, std::greater_equal>(ctx); } break;
 
-        case op::bool_eq:  { binary_op<bool, std::equal_to>(ctx); } break;
-        case op::bool_ne:  { binary_op<bool, std::not_equal_to>(ctx); } break;
-        case op::bool_not: { unary_op<bool, std::logical_not>(ctx); } break;
+            case op::bool_eq:  { binary_op<bool, std::equal_to>(ctx); } break;
+            case op::bool_ne:  { binary_op<bool, std::not_equal_to>(ctx); } break;
+            case op::bool_not: { unary_op<bool, std::logical_not>(ctx); } break;
 
-        case op::i32_neg: { unary_op<std::int32_t, std::negate>(ctx); } break;
-        case op::i64_neg: { unary_op<std::int64_t, std::negate>(ctx); } break;
-        case op::f64_neg: { unary_op<double, std::negate>(ctx); } break;
+            case op::i32_neg: { unary_op<std::int32_t, std::negate>(ctx); } break;
+            case op::i64_neg: { unary_op<std::int64_t, std::negate>(ctx); } break;
+            case op::f64_neg: { unary_op<double, std::negate>(ctx); } break;
 
-        case op::print_null: {
-            ctx.stack.pop<std::byte>(); // pops the null byte
-            std::print("null");
-        } break;
-        case op::print_bool: {
-            const auto b = ctx.stack.pop<bool>();
-            std::print("{}", b ? "true" : "false");
-        } break;
-        case op::print_char: {
-            const auto c = ctx.stack.pop<char>();
-            std::print("{}", c);
-        } break;
-        case op::print_i32: { print_value<std::int32_t>(ctx); } break;
-        case op::print_i64: { print_value<std::int64_t>(ctx); } break;
-        case op::print_u64: { print_value<std::uint64_t>(ctx); } break;
-        case op::print_f64: { print_value<double>(ctx); } break;
-        case op::print_char_span: {
-            const auto size = ctx.stack.pop<std::uint64_t>();
-            const auto ptr = ctx.stack.pop<const char*>();
-            std::print("{}", std::string_view{ptr, size});
-        } break;
-        case op::print_ptr: {
-            const auto ptr = ctx.stack.pop<std::uint64_t>();
-            std::print("{:#018x}", ptr);
-        } break; 
+            case op::print_null: {
+                ctx.stack.pop<std::byte>(); // pops the null byte
+                std::print("null");
+            } break;
+            case op::print_bool: {
+                const auto b = ctx.stack.pop<bool>();
+                std::print("{}", b ? "true" : "false");
+            } break;
+            case op::print_char: {
+                const auto c = ctx.stack.pop<char>();
+                std::print("{}", c);
+            } break;
+            case op::print_i32: { print_value<std::int32_t>(ctx); } break;
+            case op::print_i64: { print_value<std::int64_t>(ctx); } break;
+            case op::print_u64: { print_value<std::uint64_t>(ctx); } break;
+            case op::print_f64: { print_value<double>(ctx); } break;
+            case op::print_char_span: {
+                const auto size = ctx.stack.pop<std::uint64_t>();
+                const auto ptr = ctx.stack.pop<const char*>();
+                std::print("{}", std::string_view{ptr, size});
+            } break;
+            case op::print_ptr: {
+                const auto ptr = ctx.stack.pop<std::uint64_t>();
+                std::print("{:#018x}", ptr);
+            } break; 
 
-        default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
+            default: { runtime_error("unknown op code! ({})", static_cast<int>(op_code)); } break;
+        }
     }
-    return true;
 }
 
 template <bool Debug>
@@ -329,12 +334,7 @@ auto run(const bytecode_program& prog) -> void
         .base_ptr = 0
     });
 
-    while (true) {
-        if constexpr (Debug) {
-            print_op(ctx.rom, ctx.frames.back().code, ctx.frames.back().ip);
-        }
-        if (!apply_op(ctx)) break;
-    }
+    execute_program<Debug>(ctx);
 
     if (ctx.stack.size() > 0) {
         std::print("\n -> Stack Size: {}, bug in the compiler!\n", ctx.stack.size());
