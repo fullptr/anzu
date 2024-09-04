@@ -412,14 +412,15 @@ auto compile_function(
     
     variables(com).new_scope();
 
-    auto sig = signature{};
+    auto params = std::vector<type_name>{};
     for (const auto& arg : node_sig.params) {
         const auto type = resolve_type(com, tok, arg.type);
         declare_var(com, tok, arg.name, type);
-        sig.params.push_back(type);
+        params.push_back(type);
     }
-    sig.return_type = node_sig.return_type ? resolve_type(com, tok, node_sig.return_type) : null_type();
-    current(com).sig = sig;
+    const auto return_type = node_sig.return_type ? resolve_type(com, tok, node_sig.return_type) : null_type();
+    current(com).params = params;
+    current(com).return_type = return_type;
 
     // this can cause other template functions to be compiled so any references to function
     // info above may be invalidated!
@@ -427,8 +428,8 @@ auto compile_function(
 
     if (!ends_in_return(*body)) {
         // Functions returning null don't need a final return, since we can just add it
-        if (sig.return_type != null_type()) {
-            tok.error("fn '{}' does not end in a return (needs {})", name, sig.return_type);
+        if (return_type != null_type()) {
+            tok.error("fn '{}' does not end in a return (needs {})", name, return_type);
         }
         push_value(code(com), op::push_null, op::ret, std::uint64_t{1});
     }
@@ -556,7 +557,7 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
 
     tok.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
     const auto& fn = com.functions[com.functions_by_name.at(name)];
-    return type_function{ .id = fn.id, .param_types=fn.sig.params, .return_type=fn.sig.return_type };
+    return type_function{ .id = fn.id, .param_types=fn.params, .return_type=fn.return_type };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> type_name
@@ -995,9 +996,9 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
         node.token.assert(it != com.functions_by_name.end(), "cannot call 'len' on an object of type {}", type);
 
         const auto& func = com.functions[it->second];
-        node.token.assert_eq(func.sig.params.size(), 1, "{}.length() must only take one argument", type);
-        node.token.assert_eq(func.sig.params[0], type.add_ptr(), "{}.length() must only take a pointer to the object", type);
-        node.token.assert_eq(func.sig.return_type, u64_type(), "{}.length() must return a u64", type);
+        node.token.assert_eq(func.params.size(), 1, "{}.length() must only take one argument", type);
+        node.token.assert_eq(func.params[0], type.add_ptr(), "{}.length() must only take a pointer to the object", type);
+        node.token.assert_eq(func.return_type, u64_type(), "{}.length() must return a u64", type);
         push_expr(com, compile_type::ptr, *node.expr);
         push_value(code(com), op::push_function_ptr, func.id, op::call, sizeof(std::byte*));
     }
@@ -1148,7 +1149,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function");
         const auto& func = com.functions[it->second];
-        return type_function{ .id = func.id, .param_types = func.sig.params, .return_type = func.sig.return_type };
+        return type_function{func.id, func.params, func.return_type};
     }
 
     // It might be a function template
@@ -1220,7 +1221,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
-            return type_function{ .id = func.id, .param_types = func.sig.params, .return_type = func.sig.return_type };
+            return type_function{func.id, func.params, func.return_type };
         }
 
         // It might be a function template
@@ -1260,13 +1261,13 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
-            return type_function{ func.id, func.sig.params, func.sig.return_type };   
+            return type_function{func.id, func.params, func.return_type};   
         }
 
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return type_function_template{ fname.module, struct_info, node.name };
+            return type_function_template{fname.module, struct_info, node.name};
         }
 
         node.token.error("can only access member functions from structs");
@@ -1284,15 +1285,15 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         auto_deref_pointer(com, type); // allow for field access through a pointer
 
         // check first argument is a pointer to an instance of the class
-        node.token.assert(info.sig.params.size() > 0, "member functions must have at least one arg");
-        const auto actual = info.sig.params[0];
+        node.token.assert(info.params.size() > 0, "member functions must have at least one arg");
+        const auto actual = info.params[0];
         const auto expected = stripped.add_const().add_ptr().add_const();
         constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
         node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped);
         if (stripped.is_const && !actual.remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
-        return type_bound_method{ info.id, info.sig.params, info.sig.return_type };
+        return type_bound_method{info.id, info.params, info.return_type};
     }
 
     // It might be a member function template
@@ -1683,7 +1684,7 @@ void push_stmt(compiler& com, const node_expression_stmt& node)
 void push_stmt(compiler& com, const node_return_stmt& node)
 {
     node.token.assert(in_function(com), "can only return within functions");
-    const auto return_type = current(com).sig.return_type;
+    const auto return_type = current(com).return_type;
     push_copy_typechecked(com, *node.return_value, return_type, node.token);
     variables(com).handle_function_exit(code(com));
     push_value(code(com), op::ret, com.types.size_of(return_type));

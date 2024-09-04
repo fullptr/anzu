@@ -16,21 +16,16 @@
 
 namespace anzu {
 
-struct signature
-{
-    std::vector<type_name> params;
-    type_name              return_type;
-};
-
 struct function
 {
-    function_name    name;
-    std::size_t      id;
-    variable_manager variables;
-    template_map     templates;
+    function_name          name;
+    std::size_t            id;
+    variable_manager       variables;
+    template_map           templates;
+    std::vector<type_name> params;
+    type_name              return_type;
     
     std::vector<std::byte> code = {};
-    signature              sig  = {};
 };
 
 struct compiler
