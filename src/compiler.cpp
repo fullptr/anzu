@@ -119,10 +119,24 @@ auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path&
     return var->type;
 }
 
+auto push_var_val(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> type_name
+{
+    if (in_function(com)) {
+        if (const auto var = variables(com).find(module, name); var.has_value()) {
+            push_value(code(com), op::push_val_local, var->location, com.types.size_of(var->type));
+            return var->type;
+        }
+    }
+
+    const auto var = globals(com).find(module, name);
+    tok.assert(var.has_value(), "could not find variable '{}'\n", name);
+    push_value(code(com), op::push_val_global, var->location, com.types.size_of(var->type));
+    return var->type;
+}
+
 auto load_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
 {
-    const auto type = push_var_addr(com, tok, module, name);
-    push_value(code(com), op::load, com.types.size_of(type));
+    push_var_val(com, tok, module, name);
 }
 
 auto save_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
@@ -1203,9 +1217,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ty
     if (ct == compile_type::ptr) {
         return push_var_addr(com, node.token, curr_module(com), node.name);
     }
-    const auto type = push_expr(com, compile_type::ptr, node);
-    push_value(code(com), op::load, com.types.size_of(type));
-    return type;
+    return push_var_val(com, node.token, curr_module(com), node.name);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> type_name
@@ -1247,9 +1259,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> t
         if (ct == compile_type::ptr) {
             return push_var_addr(com, node.token, info->filepath, node.name);
         }
-        const auto type = push_expr(com, compile_type::ptr, node);
-        push_value(code(com), op::load, com.types.size_of(type));
-        return type;
+        return push_var_val(com, node.token, info->filepath, node.name);
     }
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
@@ -1493,8 +1503,7 @@ void push_stmt(compiler& com, const node_while_stmt& node)
         // if !<condition> break;
         const auto cond_type = push_expr(com, compile_type::val, *node.condition);
         node.token.assert_eq(cond_type, bool_type(), "while-stmt invalid condition");
-        push_value(code(com), op::bool_not);
-        push_value(code(com), op::jump_if_false);
+        push_value(code(com), op::jump_if_true);
         const auto jump_pos = push_value(code(com), std::uint64_t{0});
         push_break(com, node.token);
         write_value(code(com), jump_pos, code(com).size()); // Jump past the end if false      

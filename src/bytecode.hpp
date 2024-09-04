@@ -37,6 +37,8 @@ enum class op : std::uint8_t
     push_string_literal,
     push_ptr_global,
     push_ptr_local,
+    push_val_global,
+    push_val_local,
     push_function_ptr,
 
     arena_new,

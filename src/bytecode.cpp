@@ -73,6 +73,16 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto offset = read_at<std::uint64_t>(&ptr);
             std::print("PUSH_PTR_LOCAL: base_ptr + {}\n", offset);
         } break;
+        case op::push_val_global: {
+            const auto offset = read_at<std::uint64_t>(&ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
+            std::print("PUSH_VAL_GLOBAL: {}, size={}\n", offset, size);
+        } break;
+        case op::push_val_local: {
+            const auto offset = read_at<std::uint64_t>(&ptr);
+            const auto size = read_at<std::uint64_t>(&ptr);
+            std::print("PUSH_VAL_LOCAL: base_ptr + {}, size={}\n", offset, size);
+        } break;
         case op::push_function_ptr: {
             const auto id = read_at<std::uint64_t>(&ptr);
             std::print("PUSH_FUNCTION_PTR: id={}\n", id);
