@@ -1379,9 +1379,7 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         const auto inner = inner_type(stripped);
         const auto index = push_expr(com, compile_type::val, *node.index);
         node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
-        push_value(code(com), op::push_u64, com.types.size_of(inner));
-        push_value(code(com), op::u64_mul);
-        push_value(code(com), op::u64_add); // modify ptr
+        push_value(code(com), op::offset_index, com.types.size_of(inner));
         if (is_array && stripped.is_const) {
             return inner.add_const(); // propagate const to elements
         }

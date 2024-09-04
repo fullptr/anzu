@@ -87,6 +87,10 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto id = read_at<std::uint64_t>(&ptr);
             std::print("PUSH_FUNCTION_PTR: id={}\n", id);
         } break;
+        case op::offset_index: {
+            const auto size = read_at<std::uint64_t>(&ptr);
+            std::print("OFFSET_INDEX: size={}\n", size);
+        } break;
         case op::arena_new: {
             std::print("ARENA_NEW\n");
         } break;

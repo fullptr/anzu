@@ -41,6 +41,8 @@ enum class op : std::uint8_t
     push_val_local,
     push_function_ptr,
 
+    offset_index,
+
     arena_new,
     arena_delete,
     arena_alloc,
