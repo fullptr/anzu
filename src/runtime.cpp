@@ -216,7 +216,16 @@ auto execute_program(bytecode_context& ctx) -> void
                 ctx.stack.resize(frame.base_ptr + size);
                 ctx.frames.pop_back();
             } break;
-            case op::call: {
+            case op::call_static: {
+                const auto function_id = read_advance<std::uint64_t>(ctx);
+                const auto args_size = read_advance<std::uint64_t>(ctx);
+                ctx.frames.push_back(call_frame{
+                    .code = ctx.functions[function_id].code.data(),
+                    .ip = ctx.functions[function_id].code.data(),
+                    .base_ptr = ctx.stack.size() - args_size
+                });
+            } break;
+            case op::call_ptr: {
                 const auto args_size = read_advance<std::uint64_t>(ctx);
                 const auto function_id = ctx.stack.pop<std::uint64_t>();
                 ctx.frames.push_back(call_frame{
@@ -225,7 +234,7 @@ auto execute_program(bytecode_context& ctx) -> void
                     .base_ptr = ctx.stack.size() - args_size
                 });
             } break;
-            case op::builtin_call: {
+            case op::call_builtin: {
                 const auto id = read_advance<std::uint64_t>(ctx);
                 get_builtin(id)->ptr(ctx);
             } break;

@@ -824,13 +824,12 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
     else if (auto info = type.get_if<type_function_ptr>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
         push_expr(com, compile_type::val, *node.expr);
-        push_value(code(com), op::call, args_size);
+        push_value(code(com), op::call_ptr, args_size);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_function>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
-        push_value(code(com), op::push_function_ptr, info->id);
-        push_value(code(com), op::call, args_size);
+        push_value(code(com), op::call_static, info->id, args_size);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_function_template>()) {
@@ -843,12 +842,12 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         const auto func = fetch_function(com, node.token, name);
         
         const auto args_size = push_args_typechecked(com, node.token, node.args, func.param_types);
-        push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
+        push_value(code(com), op::call_static, func.id, args_size);
         return *func.return_type;
     }
     else if (auto info = type.get_if<type_builtin>()) { // builtin call
         push_args_typechecked(com, node.token, node.args, info->args);
-        push_value(code(com), op::builtin_call, info->id);
+        push_value(code(com), op::call_builtin, info->id);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_bound_method>()) { // member function call
@@ -857,7 +856,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         push_expr(com, compile_type::val, *node.expr);
         auto args_size = com.types.size_of(info->param_types[0]);
         args_size += push_args_typechecked(com, node.token, node.args, info->param_types | std::views::drop(1));
-        push_value(code(com), op::push_function_ptr, info->id, op::call, args_size);
+        push_value(code(com), op::call_static, info->id, args_size);
         return *info->return_type;
     }
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
@@ -878,7 +877,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
 
         auto args_size = com.types.size_of(func.param_types[0]);
         args_size += push_args_typechecked(com, node.token, node.args, func.param_types | std::views::drop(1));
-        push_value(code(com), op::push_function_ptr, func.id, op::call, args_size);
+        push_value(code(com), op::call_static, func.id, args_size);
         return *func.return_type;
     }
 
@@ -1013,7 +1012,7 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
         node.token.assert_eq(func.params[0], type.add_ptr(), "{}.length() must only take a pointer to the object", type);
         node.token.assert_eq(func.return_type, u64_type(), "{}.length() must return a u64", type);
         push_expr(com, compile_type::ptr, *node.expr);
-        push_value(code(com), op::push_function_ptr, func.id, op::call, sizeof(std::byte*));
+        push_value(code(com), op::call_static, func.id, sizeof(std::byte*));
     }
     else {
         node.token.error("cannot call 'len' on an object of type {}", type);

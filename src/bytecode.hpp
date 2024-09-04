@@ -56,8 +56,9 @@ enum class op : std::uint8_t
     jump,
     jump_if_true,
     jump_if_false,
-    call,
-    builtin_call,
+    call_static,
+    call_ptr,
+    call_builtin,
     ret,
     assert,
 

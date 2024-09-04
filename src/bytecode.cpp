@@ -144,14 +144,19 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto type_size = read_at<std::uint64_t>(&ptr);
             std::print("RETURN: type_size={}\n", type_size);
         } break;
-        case op::call: {
+        case op::call_static: {
+            const auto id = read_at<std::uint64_t>(&ptr);
             const auto args_size = read_at<std::uint64_t>(&ptr);
-            std::print("CALL: args_size={}\n", args_size);
+            std::print("CALL_PTR: id={} args_size={}\n", id, args_size);
         } break;
-        case op::builtin_call: {
+        case op::call_ptr: {
+            const auto args_size = read_at<std::uint64_t>(&ptr);
+            std::print("CALL_PTR: args_size={}\n", args_size);
+        } break;
+        case op::call_builtin: {
             const auto id = read_at<std::uint64_t>(&ptr);
             const auto& b = get_builtin(id);
-            std::print("BUILTIN_CALL: {}({}) -> {}\n",
+            std::print("CALL_BUILTIN: {}({}) -> {}\n",
                   b->name, format_comma_separated(b->args), b->return_type);
         } break;
         case op::assert: {
