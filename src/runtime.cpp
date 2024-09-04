@@ -356,7 +356,6 @@ auto execute_program(bytecode_context& ctx) -> void
 template <bool Debug>
 auto run(const bytecode_program& prog) -> void
 {
-    const auto timer = scope_timer{};
     bytecode_context ctx{prog.functions, prog.rom};
     ctx.frames.reserve(1000);
     ctx.frames.emplace_back(call_frame{
