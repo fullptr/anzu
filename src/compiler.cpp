@@ -1554,8 +1554,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_var_addr(com, node.token, curr_module(com), "$iter");
         push_value(code(com), op::load, sizeof(std::byte*));  
         load_variable(com, node.token, curr_module(com), "$idx");
-        push_value(code(com), op::push_u64, com.types.size_of(inner));
-        push_value(code(com), op::u64_mul, op::u64_add);
+        push_value(code(com), op::offset_index, com.types.size_of(inner));
         declare_var(com, node.token, node.name, inner.add_ptr());
 
         // idx = idx + 1;
