@@ -104,11 +104,17 @@ auto execute_program(bytecode_context& ctx) -> void
                 std::byte* ptr = &ctx.stack.at(frame.base_ptr + offset);
                 ctx.stack.push(ptr, size);
             } break;
-            case op::offset_index: {
+            case op::nth_element_ptr: {
                 const auto size = read_advance<std::uint64_t>(ctx);
                 const auto index = ctx.stack.pop<std::uint64_t>();
                 const auto ptr = ctx.stack.pop<std::byte*>();
                 ctx.stack.push(ptr + index * size);
+            } break;
+            case op::nth_element_val: {
+                const auto size = read_advance<std::uint64_t>(ctx);
+                const auto index = ctx.stack.pop<std::uint64_t>();
+                const auto ptr = ctx.stack.pop<std::byte*>();
+                ctx.stack.push(ptr + index * size, size);
             } break;
             case op::load: {
                 const auto size = read_advance<std::uint64_t>(ctx);
