@@ -24,8 +24,7 @@ struct function
     template_map           templates;
     std::vector<type_name> params;
     type_name              return_type;
-    
-    std::vector<std::byte> code = {};
+    std::vector<std::byte> code;
 };
 
 struct compiler
