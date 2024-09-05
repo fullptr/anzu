@@ -821,6 +821,47 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
         }
         return *info->type_val;
     }
+    else if (auto info = type.get_if<type_struct_template>()) {
+        const auto& ast = com.struct_templates[*info];
+        const auto params = ast.fields
+                          | std::views::transform(&node_parameter::type)
+                          | std::ranges::to<std::vector>();
+        const auto templates = deduce_template_params(com, node.token, ast.templates, params, node.args);
+        const auto name = type_struct{info->name, info->module, templates};
+
+        if (!com.types.contains(name)) {
+
+            const auto map = build_template_map(com, node.token, ast.templates, name.templates);
+
+            com.current_struct.emplace_back(name);
+            com.current_module.emplace_back(name.module);
+            const auto success = com.types.add_type(name, map);
+            node.token.assert(success, "multiple definitions for struct {} found", to_string(name));
+            for (const auto& p : ast.fields) {
+                const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
+                com.types.add_field(name, f);
+            }
+            com.current_struct.pop_back();
+            com.current_module.pop_back();
+
+            // Template functions only get compiled at the call site, so we just stash the ast
+            // Otherwise, compile the functions now
+            for (const auto& func : ast.functions) {
+                const auto& stmt = std::get<node_function_stmt>(*func);
+                const auto fn_name = function_name{name.module, name, stmt.name};
+                if (stmt.templates.empty()) {
+                    const auto map = build_template_map(com, node.token, ast.templates, name.templates);
+                    compile_function(com, node.token, fn_name, stmt.params, stmt.return_type, stmt.body, map);
+                } else {
+                    const auto fkey = type_function_template{name.module, name, stmt.name};
+                    const auto [it, success] = com.function_templates.emplace(fkey, stmt);
+                    node.token.assert(success, "function template named '{}' already defined", fkey);
+                }
+            }
+        }
+        push_args_typechecked(com, node.token, node.args, constructor_params(com, name));
+        return name;
+    }
     else if (auto info = type.get_if<type_function_ptr>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
         push_expr(com, compile_type::val, *node.expr);
