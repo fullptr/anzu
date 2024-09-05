@@ -4,5 +4,5 @@ struct foo!(T)
     y: T;
 }
 
-let s := foo(1, 2.0);
+let s := foo(1, 2);
 @type_name_of(s);

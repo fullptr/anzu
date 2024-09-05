@@ -610,7 +610,6 @@ auto compile_struct_template(
         const auto& stmt = std::get<node_function_stmt>(*func);
         const auto fn_name = function_name{name.module, name, stmt.name};
         if (stmt.templates.empty()) {
-            const auto map = build_template_map(com, tok, stmt.templates, name.templates);
             compile_function(com, tok, fn_name, stmt.params, stmt.return_type, stmt.body, map);
         } else {
             const auto fkey = type_function_template{name.module, name, stmt.name};
@@ -953,33 +952,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
 
         if (!com.types.contains(name) && com.struct_templates.contains(key)) {
             const auto& ast = com.struct_templates.at(key);
-            const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-
-            com.current_struct.emplace_back(name);
-            com.current_module.emplace_back(name.module);
-            const auto success = com.types.add_type(name, map);
-            node.token.assert(success, "multiple definitions for struct {} found", to_string(name));
-            for (const auto& p : ast.fields) {
-                const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
-                com.types.add_field(name, f);
-            }
-            com.current_struct.pop_back();
-            com.current_module.pop_back();
-
-            // Template functions only get compiled at the call site, so we just stash the ast
-            // Otherwise, compile the functions now
-            for (const auto& func : ast.functions) {
-                const auto& stmt = std::get<node_function_stmt>(*func);
-                const auto fn_name = function_name{name.module, name, stmt.name};
-                if (stmt.templates.empty()) {
-                    const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-                    compile_function(com, node.token, fn_name, stmt.params, stmt.return_type, stmt.body, map);
-                } else {
-                    const auto fkey = type_function_template{name.module, name, stmt.name};
-                    const auto [it, success] = com.function_templates.emplace(fkey, stmt);
-                    node.token.assert(success, "function template named '{}' already defined", fkey);
-                }
-            }
+            compile_struct_template(com, node.token, name, ast);
         }
 
         node.token.assert(com.types.contains(name), "could not find struct {}", type_name{name});
