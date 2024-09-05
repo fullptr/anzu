@@ -573,6 +573,53 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
     return type_function{ .id = fn.id, .param_types=fn.params, .return_type=fn.return_type };
 }
 
+auto push_args_typechecked(compiler& com, const token& tok, const auto& args, const auto& expected_types) -> std::size_t
+{
+    tok.assert_eq(args.size(), expected_types.size(), "invalid number of args for function call");
+    auto args_size = std::size_t{0};
+    for (const auto& [arg, type] : std::views::zip(args, expected_types)) {
+        push_copy_typechecked(com, *arg, type, tok);
+        args_size += com.types.size_of(type);
+    }
+    return args_size;
+}
+
+auto compile_struct_template(
+    compiler& com,
+    const token& tok,
+    const type_struct& name,
+    const node_struct_stmt& stmt
+)
+    -> void
+{
+    const auto map = build_template_map(com, tok, stmt.templates, name.templates);
+    com.current_struct.emplace_back(name);
+    com.current_module.emplace_back(name.module);
+    const auto success = com.types.add_type(name, map);
+    tok.assert(success, "multiple definitions for struct {} found", to_string(name));
+    for (const auto& p : stmt.fields) {
+        const auto f = type_field{p.name, resolve_type(com, tok, p.type)};
+        com.types.add_field(name, f);
+    }
+    com.current_struct.pop_back();
+    com.current_module.pop_back();
+
+    // Template functions only get compiled at the call site, so we just stash the ast
+    // Otherwise, compile the functions now
+    for (const auto& func : stmt.functions) {
+        const auto& stmt = std::get<node_function_stmt>(*func);
+        const auto fn_name = function_name{name.module, name, stmt.name};
+        if (stmt.templates.empty()) {
+            const auto map = build_template_map(com, tok, stmt.templates, name.templates);
+            compile_function(com, tok, fn_name, stmt.params, stmt.return_type, stmt.body, map);
+        } else {
+            const auto fkey = type_function_template{name.module, name, stmt.name};
+            const auto [it, success] = com.function_templates.emplace(fkey, stmt);
+            tok.assert(success, "function template named '{}' already defined", fkey);
+        }
+    }
+}
+
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a i32 literal");
@@ -797,17 +844,6 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
-auto push_args_typechecked(compiler& com, const token& tok, const auto& args, const auto& expected_types) -> std::size_t
-{
-    tok.assert_eq(args.size(), expected_types.size(), "invalid number of args for function call");
-    auto args_size = std::size_t{0};
-    for (const auto& [arg, type] : std::views::zip(args, expected_types)) {
-        push_copy_typechecked(com, *arg, type, tok);
-        args_size += com.types.size_of(type);
-    }
-    return args_size;
-}
-
 auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
@@ -828,36 +864,8 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ty
                           | std::ranges::to<std::vector>();
         const auto templates = deduce_template_params(com, node.token, ast.templates, params, node.args);
         const auto name = type_struct{info->name, info->module, templates};
-
         if (!com.types.contains(name)) {
-
-            const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-
-            com.current_struct.emplace_back(name);
-            com.current_module.emplace_back(name.module);
-            const auto success = com.types.add_type(name, map);
-            node.token.assert(success, "multiple definitions for struct {} found", to_string(name));
-            for (const auto& p : ast.fields) {
-                const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
-                com.types.add_field(name, f);
-            }
-            com.current_struct.pop_back();
-            com.current_module.pop_back();
-
-            // Template functions only get compiled at the call site, so we just stash the ast
-            // Otherwise, compile the functions now
-            for (const auto& func : ast.functions) {
-                const auto& stmt = std::get<node_function_stmt>(*func);
-                const auto fn_name = function_name{name.module, name, stmt.name};
-                if (stmt.templates.empty()) {
-                    const auto map = build_template_map(com, node.token, ast.templates, name.templates);
-                    compile_function(com, node.token, fn_name, stmt.params, stmt.return_type, stmt.body, map);
-                } else {
-                    const auto fkey = type_function_template{name.module, name, stmt.name};
-                    const auto [it, success] = com.function_templates.emplace(fkey, stmt);
-                    node.token.assert(success, "function template named '{}' already defined", fkey);
-                }
-            }
+            compile_struct_template(com, node.token, name, ast);
         }
         push_args_typechecked(com, node.token, node.args, constructor_params(com, name));
         return name;
