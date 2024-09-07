@@ -43,6 +43,7 @@ enum class op : std::uint8_t
 
     nth_element_ptr,
     nth_element_val,
+    push_span_len,
 
     arena_new,
     arena_delete,

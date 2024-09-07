@@ -1015,8 +1015,7 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
     }
     else if (type.is<type_span>()) {
         push_expr(com, compile_type::ptr, *node.expr); // pointer to the span
-        push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add); // offset to the size value
-        push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
+        push_value(code(com), op::push_span_len);
     }
     else if (type.is<type_arena>()) {
         const auto type = push_expr(com, compile_type::ptr, *node.expr);

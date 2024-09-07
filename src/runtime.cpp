@@ -116,6 +116,10 @@ auto execute_program(bytecode_context& ctx) -> void
                 const auto ptr = ctx.stack.pop<std::byte*>();
                 ctx.stack.push(ptr + index * size, size);
             } break;
+            case op::push_span_len: {
+                const std::byte* ptr = ctx.stack.pop<std::byte*>();
+                ctx.stack.push(ptr + sizeof(std::byte*), sizeof(std::uint64_t));
+            } break;
             case op::load: {
                 const auto size = read_advance<std::uint64_t>(ctx);
                 const auto ptr = ctx.stack.pop<std::byte*>();
