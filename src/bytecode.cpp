@@ -95,8 +95,8 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto size = read_at<std::uint64_t>(&ptr);
             std::print("NTH_ELEMENT_VAL: size={}\n", size);
         } break;
-        case op::push_span_len: {
-            std::print("PUSH_SPAN_LEN\n");
+        case op::span_ptr_to_len: {
+            std::print("SPAN_PTR_TO_LEN\n");
         } break;
         case op::arena_new: {
             std::print("ARENA_NEW\n");

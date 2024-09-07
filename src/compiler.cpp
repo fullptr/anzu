@@ -947,7 +947,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         return fetch_function(com, node.token, name).to_bound_method();
     }
     else if (auto info = type.get_if<type_struct_template>()) {
-        const auto name = type_struct{ .name=info->name, .module=info->module, .templates=templates };
+        const auto name = type_struct{info->name, info->module, templates};
         const auto key = type_struct_template{info->module, info->name};
 
         if (!com.types.contains(name) && com.struct_templates.contains(key)) {
@@ -1015,7 +1015,7 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
     }
     else if (type.is<type_span>()) {
         push_expr(com, compile_type::ptr, *node.expr); // pointer to the span
-        push_value(code(com), op::push_span_len);
+        push_value(code(com), op::span_ptr_to_len);
     }
     else if (type.is<type_arena>()) {
         const auto type = push_expr(com, compile_type::ptr, *node.expr);
