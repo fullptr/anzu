@@ -1066,19 +1066,13 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
         push_value(code(com), op::load, sizeof(std::byte*));
     }
 
-    if (node.lower_bound) {// move first index of span up
-        push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
-        const auto lower_bound_type = push_expr(com, compile_type::val, *node.lower_bound);
-        node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
-        push_value(code(com), op::u64_mul);
-        push_value(code(com), op::u64_add);
-    }
-
     // next push the size to make up the second half of the span
     if (node.lower_bound && node.upper_bound) {
-        push_expr(com, compile_type::val, *node.upper_bound);
-        push_expr(com, compile_type::val, *node.lower_bound);
-        push_value(code(com), op::u64_sub);
+        const auto lower_bound_type = push_expr(com, compile_type::val, *node.lower_bound);
+        node.token.assert_eq(lower_bound_type, u64_type(), "subspan lower bound must be u64");
+        const auto upper_bound_type = push_expr(com, compile_type::val, *node.upper_bound);
+        node.token.assert_eq(upper_bound_type, u64_type(), "subspan upper bound must be u64");
+        push_value(code(com), op::push_subspan, com.types.size_of(inner_type(type)));
     } else if (type.is<type_span>()) {
         // Push the span pointer, offset to the size, and load the size
         push_expr(com, compile_type::ptr, *node.expr);
