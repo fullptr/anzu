@@ -1546,9 +1546,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
     // var size := length of iter;
     push_var_addr(com, node.token, curr_module(com), "$iter"); // push pointer to span
-    push_value(code(com), op::push_u64, sizeof(std::byte*));
-    push_value(code(com), op::u64_add); // offset to the size value
-    push_value(code(com), op::load, com.types.size_of(u64_type()));       
+    push_value(code(com), op::span_ptr_to_len);
     declare_var(com, node.token, "$size", u64_type());
 
     push_loop(com, [&] {
