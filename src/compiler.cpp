@@ -134,17 +134,6 @@ auto push_var_val(compiler& com, const token& tok, const std::filesystem::path& 
     return var->type;
 }
 
-auto load_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
-{
-    push_var_val(com, tok, module, name);
-}
-
-auto save_variable(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> void
-{
-    const auto type = push_var_addr(com, tok, module, name);
-    push_value(code(com), op::save, com.types.size_of(type));
-}
-
 // Given a type and a field name, push the offset of the fields position relative to its
 // owner onto the stack
 auto push_field_offset(
@@ -947,7 +936,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         return fetch_function(com, node.token, name).to_bound_method();
     }
     else if (auto info = type.get_if<type_struct_template>()) {
-        const auto name = type_struct{ .name=info->name, .module=info->module, .templates=templates };
+        const auto name = type_struct{info->name, info->module, templates};
         const auto key = type_struct_template{info->module, info->name};
 
         if (!com.types.contains(name) && com.struct_templates.contains(key)) {
@@ -1015,8 +1004,7 @@ auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> typ
     }
     else if (type.is<type_span>()) {
         push_expr(com, compile_type::ptr, *node.expr); // pointer to the span
-        push_value(code(com), op::push_u64, sizeof(std::byte*), op::u64_add); // offset to the size value
-        push_value(code(com), op::load, com.types.size_of(u64_type())); // load the size
+        push_value(code(com), op::span_ptr_to_len);
     }
     else if (type.is<type_arena>()) {
         const auto type = push_expr(com, compile_type::ptr, *node.expr);
@@ -1067,19 +1055,13 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> typ
         push_value(code(com), op::load, sizeof(std::byte*));
     }
 
-    if (node.lower_bound) {// move first index of span up
-        push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
-        const auto lower_bound_type = push_expr(com, compile_type::val, *node.lower_bound);
-        node.token.assert_eq(lower_bound_type, u64_type(), "subspan indices must be u64");
-        push_value(code(com), op::u64_mul);
-        push_value(code(com), op::u64_add);
-    }
-
     // next push the size to make up the second half of the span
     if (node.lower_bound && node.upper_bound) {
-        push_expr(com, compile_type::val, *node.upper_bound);
-        push_expr(com, compile_type::val, *node.lower_bound);
-        push_value(code(com), op::u64_sub);
+        const auto lower_bound_type = push_expr(com, compile_type::val, *node.lower_bound);
+        node.token.assert_eq(lower_bound_type, u64_type(), "subspan lower bound must be u64");
+        const auto upper_bound_type = push_expr(com, compile_type::val, *node.upper_bound);
+        node.token.assert_eq(upper_bound_type, u64_type(), "subspan upper bound must be u64");
+        push_value(code(com), op::push_subspan, com.types.size_of(inner_type(type)));
     } else if (type.is<type_span>()) {
         // Push the span pointer, offset to the size, and load the size
         push_expr(com, compile_type::ptr, *node.expr);
@@ -1543,42 +1525,37 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 {
     variables(com).new_scope();
 
+    // Declare the span ptr and size as two separate variables
     const auto iter_type = push_expr(com, compile_type::val, *node.iter);
     node.token.assert(iter_type.is<type_span>(), "can only iterate spans, got {}", iter_type);
-    declare_var(com, node.token, "$iter", iter_type);
+    const auto inner = inner_type(iter_type);
+    declare_var(com, node.token, "$iter", inner.add_ptr());
+    declare_var(com, node.token, "$size", u64_type());
 
     // var idx := 0u;
     push_value(code(com), op::push_u64, std::uint64_t{0});
     declare_var(com, node.token, "$idx", u64_type());
 
-    // var size := length of iter;
-    push_var_addr(com, node.token, curr_module(com), "$iter"); // push pointer to span
-    push_value(code(com), op::push_u64, sizeof(std::byte*));
-    push_value(code(com), op::u64_add); // offset to the size value
-    push_value(code(com), op::load, com.types.size_of(u64_type()));       
-    declare_var(com, node.token, "$size", u64_type());
-
     push_loop(com, [&] {
         // if idx == size break;
-        load_variable(com, node.token, curr_module(com), "$idx");
-        load_variable(com, node.token, curr_module(com), "$size");
+        push_var_val(com, node.token, curr_module(com), "$idx");
+        push_var_val(com, node.token, curr_module(com), "$size");
         push_value(code(com), op::u64_eq, op::jump_if_false);
         const auto jump_pos = push_value(code(com), std::uint64_t{0});
         push_break(com, node.token);
         write_value(code(com), jump_pos, code(com).size());
 
         // var name := iter[idx]&;
-        const auto inner = inner_type(iter_type);
-        push_var_addr(com, node.token, curr_module(com), "$iter");
-        push_value(code(com), op::load, sizeof(std::byte*));  
-        load_variable(com, node.token, curr_module(com), "$idx");
+        push_var_val(com, node.token, curr_module(com), "$iter");
+        push_var_val(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::nth_element_ptr, com.types.size_of(inner));
         declare_var(com, node.token, node.name, inner.add_ptr());
 
         // idx = idx + 1;
-        load_variable(com, node.token, curr_module(com), "$idx");
+        push_var_val(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::push_u64, std::uint64_t{1}, op::u64_add);
-        save_variable(com, node.token, curr_module(com), "$idx");
+        const auto x = push_var_addr(com, node.token, curr_module(com), "$idx");
+        push_value(code(com), op::save, com.types.size_of(u64_type()));
 
         // main body
         push_stmt(com, *node.body);
