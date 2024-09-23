@@ -995,41 +995,6 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
     return type.add_ptr();
 }
 
-auto push_expr(compiler& com, compile_type ct, const node_len_expr& node) -> type_name
-{
-    node.token.assert(ct == compile_type::val, "cannot take the address of a len expression");
-    const auto type = type_of_expr(com, *node.expr);
-    if (auto info = type.get_if<type_array>()) {
-        push_value(code(com), op::push_u64, info->count);
-    }
-    else if (type.is<type_span>()) {
-        push_expr(com, compile_type::ptr, *node.expr); // pointer to the span
-        push_value(code(com), op::span_ptr_to_len);
-    }
-    else if (type.is<type_arena>()) {
-        const auto type = push_expr(com, compile_type::ptr, *node.expr);
-        push_value(code(com), op::load, com.types.size_of(u64_type())); // load the arena
-        push_value(code(com), op::arena_size);
-        return u64_type();
-    }
-    else if (auto info = type.get_if<type_struct>()) {
-        const auto name = function_name{.module=info->module, .struct_name=*info, .name="length"};
-        const auto it = com.functions_by_name.find(name);
-        node.token.assert(it != com.functions_by_name.end(), "cannot call 'len' on an object of type {}", type);
-
-        const auto& func = com.functions[it->second];
-        node.token.assert_eq(func.params.size(), 1, "{}.length() must only take one argument", type);
-        node.token.assert_eq(func.params[0], type.add_ptr(), "{}.length() must only take a pointer to the object", type);
-        node.token.assert_eq(func.return_type, u64_type(), "{}.length() must return a u64", type);
-        push_expr(com, compile_type::ptr, *node.expr);
-        push_value(code(com), op::call_static, func.id, sizeof(std::byte*));
-    }
-    else {
-        node.token.error("cannot call 'len' on an object of type {}", type);
-    }
-    return u64_type();
-}
-
 auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a span expression");
@@ -1470,6 +1435,39 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         const auto& info = type.as<type_function>();
         push_value(code(com), op::push_function_ptr, info.id);
         return type_function_ptr{.param_types=info.param_types, .return_type=info.return_type};
+    }
+    if (node.name == "len") {
+        node.token.assert_eq(node.args.size(), 1, "@len only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        if (auto info = type.get_if<type_array>()) {
+            push_value(code(com), op::push_u64, info->count);
+        }
+        else if (type.is<type_span>()) {
+            push_expr(com, compile_type::ptr, *node.args[0]); // pointer to the span
+            push_value(code(com), op::span_ptr_to_len);
+        }
+        else if (type.is<type_arena>()) {
+            const auto type = push_expr(com, compile_type::ptr, *node.args[0]);
+            push_value(code(com), op::load, com.types.size_of(u64_type())); // load the arena
+            push_value(code(com), op::arena_size);
+            return u64_type();
+        }
+        else if (auto info = type.get_if<type_struct>()) {
+            const auto name = function_name{.module=info->module, .struct_name=*info, .name="len"};
+            const auto it = com.functions_by_name.find(name);
+            node.token.assert(it != com.functions_by_name.end(), "cannot call @len on an object of type {}", type);
+
+            const auto& func = com.functions[it->second];
+            node.token.assert_eq(func.params.size(), 1, "@len must only take one argument");
+            node.token.assert_eq(func.params[0], type.add_ptr(), "@len must only take a pointer to the object");
+            node.token.assert_eq(func.return_type, u64_type(), "@len must return a u64");
+            push_expr(com, compile_type::ptr, *node.args[0]);
+            push_value(code(com), op::call_static, func.id, sizeof(std::byte*));
+        }
+        else {
+            node.token.error("cannot call 'len' on an object of type {}", type);
+        }
+        return u64_type();
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
