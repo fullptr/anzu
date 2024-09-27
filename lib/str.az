@@ -1,8 +1,8 @@
 fn equal(lhs: char const[], rhs: char const[]) -> bool
 {
-    if len(lhs) != len(rhs) { return false; }
+    if @len(lhs) != @len(rhs) { return false; }
     var idx := 0u;
-    while idx < len(lhs) {
+    while idx < @len(lhs) {
         if lhs[idx] != rhs[idx] { return false; }
         idx = idx + 1u;
     }
@@ -12,14 +12,14 @@ fn equal(lhs: char const[], rhs: char const[]) -> bool
 fn find(string: char const[], substr: char const[], start: u64) -> u64
 {
     var idx := start;
-    while idx + len(substr) <= len(string) {
-        let curr_substr := string[idx : idx + len(substr)];
+    while idx + @len(substr) <= @len(string) {
+        let curr_substr := string[idx : idx + @len(substr)];
         if equal(substr, curr_substr) {
             return idx;
         }
         idx = idx + 1u;
     }
-    return len(string);
+    return @len(string);
 }
 
 struct tokenizer
@@ -34,11 +34,11 @@ struct tokenizer
     fn advance(self: &) -> null
     {
         if self._started {
-            self._start = self._curr + len(self._delim);
-            if self._start > len(self._string) {
+            self._start = self._curr + @len(self._delim);
+            if self._start > @len(self._string) {
                 self._finished = true;
-                self._start = len(self._string);
-                self._curr = len(self._string);
+                self._start = @len(self._string);
+                self._curr = @len(self._string);
             }
             else {
                 self._curr = find(self._string, self._delim, self._start);
@@ -70,18 +70,18 @@ struct tokenizer
 
 fn contains(string: char const[], substr: char const[]) -> bool
 {
-    return find(string, substr, 0u) != len(string);
+    return find(string, substr, 0u) != @len(string);
 }
 
 fn occurrences(string: char const[], substr: char const[]) -> u64
 {
     var count := 0u;
     var idx := 0u;
-    while idx < len(string) {
-        let curr_substr := string[idx : idx + len(substr)];
+    while idx < @len(string) {
+        let curr_substr := string[idx : idx + @len(substr)];
         if equal(substr, curr_substr) {
             count = count + 1u;
-            idx = idx + len(substr);
+            idx = idx + @len(substr);
         } else {
             idx = idx + 1u;
         }
@@ -91,25 +91,25 @@ fn occurrences(string: char const[], substr: char const[]) -> u64
 
 fn replace(a: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
 {
-    let new_size := len(from) == len(to) ? len(string)
-                                         : len(string) + occurrences(string, from) * (len(to) - len(from));
+    let new_size := @len(from) == @len(to) ? @len(string)
+                                         : @len(string) + occurrences(string, from) * (@len(to) - @len(from));
 
     var new_string := new(a, new_size) ' ';
     var idx := 0u;
     var tok := tokenizer.create(string, from);
     assert tok.valid(); # There is always at least one token (it may be the whole string)
     let curr := tok.current();
-    let size := len(curr);
+    let size := @len(curr);
     @copy(new_string[idx : idx + size], tok.current());
     idx = idx + size;
     tok.advance();
 
     while tok.valid() {
-        @copy(new_string[idx : idx + len(to)], to);
-        idx = idx + len(to);
+        @copy(new_string[idx : idx + @len(to)], to);
+        idx = idx + @len(to);
 
         let curr := tok.current();
-        let size := len(curr);
+        let size := @len(curr);
         @copy(new_string[idx : idx + size], tok.current());
         idx = idx + size;
         tok.advance();

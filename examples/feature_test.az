@@ -258,7 +258,7 @@ fn get(a: arena&, count: u64) -> u64[]
 {
     var p := new(a, count) 0u;
     var idx := 0u;
-    while idx < len(p) {
+    while idx < @len(p) {
         p[idx] = idx;
         idx = idx + 1u;
     }
@@ -268,10 +268,10 @@ fn get(a: arena&, count: u64) -> u64[]
 {
     arena a;
     var z := get(a&, 5u);
-    print("size={}\n", len(a));
+    print("size={}\n", @len(a));
 
     var idx := 0u;
-    while idx < len(z) {
+    while idx < @len(z) {
         print("{}\n", z[idx])
         idx = idx + 1u;
     }
@@ -281,7 +281,7 @@ arena a;
 let contents := io.read_file("examples/example_data.txt", a&);
 
 print("'{}'\n", contents);
-print("\nsize={}\n", len(contents));
+print("\nsize={}\n", @len(contents));
 
 # nullptr checks
 {

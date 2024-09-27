@@ -99,10 +99,6 @@ auto print_node(const node_expr& root, int indent) -> void
             std::print("{}Deref:\n", spaces);
             print_node(*node.expr, indent + 1);
         },
-        [&](const node_len_expr& node) {
-            std::print("{}Len:\n", spaces);
-            print_node(*node.expr, indent + 1);
-        },
         [&](const node_subscript_expr& node) {
             std::print("{}Subscript:\n", spaces);
             std::print("{}- Expr:\n", spaces);

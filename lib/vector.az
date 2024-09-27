@@ -11,7 +11,7 @@ struct vector!(T)
 
     fn capacity(self: &) -> u64
     {
-        return len(self._data);
+        return @len(self._data);
     }
 
     fn reserve(self: &, size: u64) -> null
