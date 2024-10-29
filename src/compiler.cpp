@@ -246,9 +246,14 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
         return;
     }
 
-    // null can convert to a nullptr
+    // null can convert to a null ptr and null span
     if (expected.is<type_ptr>() && actual == null_type()) {
         push_value(code(com), op::push_u64, std::size_t{0}); // push a nullptr
+        return;
+    }
+    if (expected.is<type_span>() && actual == null_type()) {
+        push_value(code(com), op::push_u64, std::size_t{0}); // push a nullptr
+        push_value(code(com), op::push_u64, std::size_t{0}); // push the size
         return;
     }
 

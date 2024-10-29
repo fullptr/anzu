@@ -1,2 +1,2 @@
-let x : i64 = null;
-print("{}\n", x);
+let x : i64[] = null;
+print("{}\n", @len(x));
