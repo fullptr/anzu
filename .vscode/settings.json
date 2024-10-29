@@ -114,6 +114,7 @@
         "resumable": "cpp",
         "stacktrace": "cpp",
         "stdfloat": "cpp",
-        "hash_map": "cpp"
+        "hash_map": "cpp",
+        "string_view": "cpp"
     }
 }

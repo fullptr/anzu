@@ -246,6 +246,12 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
         return;
     }
 
+    // null can convert to a nullptr
+    if (expected.is<type_ptr>() && actual == null_type()) {
+        push_value(code(com), op::push_u64, std::size_t{0}); // push a nullptr
+        return;
+    }
+
     push_expr(com, compile_type::val, expr);
 
     if (actual == nullptr_type() && expected.is<type_ptr>()) {

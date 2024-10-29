@@ -1,3 +1,2 @@
-let x := [1, 2, 3, 4, 5, 6];
-let y := x[];
-print("{}\n", @len(y));
+let x : i64 = null;
+print("{}\n", x);
