@@ -15,7 +15,7 @@ An interpreted programming language written in C++. This started out as a stack-
     1. eg: `i64&` is an `i64` pointer.
     1. If `ptr` is an `i64&`, then `ptr@` is the int that it points to.
     1. Uses `@` instead of the familiar `*` because using `*` in trailing syntax can be ambigious with multiplication. Plus I like it more; it signals that I'm using the value "at" the pointer.
-    1. `nullptr` is a value of a special type to is convertible to any pointer type.
+    1. Null pointers: pointers can be created from, and compared to, `null`. It is an error to derefence one.
 
 * Arrays:
     1. Fixed size arrays with statically known size.
@@ -29,7 +29,7 @@ An interpreted programming language written in C++. This started out as a stack-
     1. eg: If `l` is an array of 5 `i64`s, then `l[]` is an `i64[]`.
     1. Slicing syntax `l[0 : 2]` for creating subspans.
     1. Arrays can automatically convert to spans when passing to functions.
-    1. A "null span" of zero elements can be created from `nullptr`.
+    1. Null span: spans can be created from, and compared to, `null`. It has a size of zero.
 
 * Function Pointers:
     1. Function names resolve to function pointers which can be passed to functions.
