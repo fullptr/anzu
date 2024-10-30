@@ -707,16 +707,11 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         push_expr(com, compile_type::val, *node.rhs);
     };
 
-    const auto push_ptr = [&] {
-        if (lhs == null_type()) {
+    const auto push_ptr = [&] (const node_expr& expr) {
+        if (type_of_expr(com, expr) == null_type()) {
             push_value(code(com), op::push_u64, std::size_t{0});
         } else {
-            push_expr(com, compile_type::val, *node.lhs);
-        }
-        if (rhs == null_type()) {
-            push_value(code(com), op::push_u64, std::size_t{0});
-        } else {
-            push_expr(com, compile_type::val, *node.rhs);
+            push_expr(com, compile_type::val, expr);
         }
     };
 
@@ -731,9 +726,11 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 
     // Pointers can compare to null
     if ((lhs.is<type_ptr>() && rhs == null_type()) || (rhs.is<type_ptr>() && lhs == null_type())) {
+        push_ptr(*node.lhs);
+        push_ptr(*node.rhs); 
         switch (node.token.type) {
-            case tt::equal_equal: { push_ptr(); push_value(code(com), op::u64_eq); return bool_type(); }
-            case tt::bang_equal:  { push_ptr(); push_value(code(com), op::u64_ne); return bool_type(); }
+            case tt::equal_equal: { push_value(code(com), op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(code(com), op::u64_ne); return bool_type(); }
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
