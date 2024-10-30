@@ -40,7 +40,6 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
                 case type_fundamental::i64_type:
                 case type_fundamental::u64_type:
                 case type_fundamental::f64_type:
-                case type_fundamental::nullptr_type:
                     return 8;
                 default:
                     panic("unknown fundamental type");

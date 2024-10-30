@@ -69,7 +69,6 @@ auto get_builtin_type(const std::string& name) -> std::optional<type_name>
     if (name == "i64")     return type_name(type_fundamental::i64_type);
     if (name == "u64")     return type_name(type_fundamental::u64_type);
     if (name == "f64")     return type_name(type_fundamental::f64_type);
-    if (name == "nullptr") return type_name(type_fundamental::nullptr_type);
     if (name == "arena")   return type_name(type_arena{});
     return {};
 }
@@ -80,8 +79,8 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
 {
     const auto type_expr_type = type_of_expr(com, *expr);
     
-    // null and nullptr and also their own types
-    if (type_expr_type == null_type() || type_expr_type == nullptr_type()) {
+    // null is also their own types
+    if (type_expr_type == null_type()) {
         return type_expr_type;
     }
     
@@ -246,17 +245,18 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
         return;
     }
 
-    push_expr(com, compile_type::val, expr);
-
-    if (actual == nullptr_type() && expected.is<type_ptr>()) {
+    // null can convert to a null ptr and null span
+    if (expected.is<type_ptr>() && actual == null_type()) {
+        push_value(code(com), op::push_u64, std::size_t{0}); // push a nullptr
         return;
     }
-
-    // Allow for a span to be constructed from a nullptr, which results in a null span.
-    if (actual == nullptr_type() && expected.is<type_span>()) {
+    if (expected.is<type_span>() && actual == null_type()) {
+        push_value(code(com), op::push_u64, std::size_t{0}); // push a nullptr
         push_value(code(com), op::push_u64, std::size_t{0}); // push the size
         return;
     }
+
+    push_expr(com, compile_type::val, expr);
 
     // Let compile time bools convert to runtime bools
     if (expected == bool_type() && actual.is<type_ct_bool>()) {
@@ -484,7 +484,6 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == char_type().add_span()) {
         push_value(code(com), op::print_char_span);
     }
-    else if (type == nullptr_type()) { push_value(code(com), op::print_ptr); }
     else if (type.is<type_ptr>()) { push_value(code(com), op::print_ptr); }
     else { tok.error("cannot print value of type {}", type); }
 }
@@ -657,13 +656,6 @@ auto push_expr(compiler& com, compile_type ct, const node_literal_null_expr& nod
     return null_type();
 }
 
-auto push_expr(compiler& com, compile_type ct, const node_literal_nullptr_expr& node) -> type_name
-{
-    node.token.assert(ct == compile_type::val, "cannot take the address of a nullptr literal");
-    push_value(code(com), op::push_nullptr);
-    return nullptr_type();
-}
-
 auto push_expr(compiler& com, compile_type ct, const node_literal_string_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a string literal");
@@ -706,6 +698,14 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         push_expr(com, compile_type::val, *node.rhs);
     };
 
+    const auto push_ptr = [&] (const node_expr& expr) {
+        if (type_of_expr(com, expr) == null_type()) {
+            push_value(code(com), op::push_u64, std::size_t{0});
+        } else {
+            push_expr(com, compile_type::val, expr);
+        }
+    };
+
     // Allow for comparisons of types
     if (lhs.is<type_type>() && rhs.is<type_type>()) {
         switch (node.token.type) {
@@ -715,11 +715,13 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
-    // Pointers can compare to nullptr
-    if ((lhs.is<type_ptr>() && rhs == nullptr_type()) || (rhs.is<type_ptr>() && lhs == nullptr_type())) {
+    // Pointers can compare to null
+    if ((lhs.is<type_ptr>() && rhs == null_type()) || (rhs.is<type_ptr>() && lhs == null_type())) {
+        push_ptr(*node.lhs);
+        push_ptr(*node.rhs); 
         switch (node.token.type) {
-            case tt::equal_equal: { push(); push_value(code(com), op::u64_eq); return bool_type(); }
-            case tt::bang_equal:  { push(); push_value(code(com), op::u64_ne); return bool_type(); }
+            case tt::equal_equal: { push_value(code(com), op::u64_eq); return bool_type(); }
+            case tt::bang_equal:  { push_value(code(com), op::u64_ne); return bool_type(); }
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }

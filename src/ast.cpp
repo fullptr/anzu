@@ -31,9 +31,6 @@ auto print_node(const node_expr& root, int indent) -> void
         [&](const node_literal_null_expr&) {
             std::print("{}Literal (null): null\n", spaces);
         },
-        [&](const node_literal_nullptr_expr&) {
-            std::print("{}Literal (nullptr): nullptr\n", spaces);
-        },
         [&](const node_literal_string_expr& node) {
             std::print("{}Literal (string-literal): {}\n", spaces, node.value);
         },

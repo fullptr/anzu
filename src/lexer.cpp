@@ -74,7 +74,6 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "loop")     return token_type::kw_loop;
     if (token == "new")      return token_type::kw_new;
     if (token == "null")     return token_type::kw_null;
-    if (token == "nullptr")  return token_type::kw_nullptr;
     if (token == "print")    return token_type::kw_print;
     if (token == "return")   return token_type::kw_return;
     if (token == "struct")   return token_type::kw_struct;

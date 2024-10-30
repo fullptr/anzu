@@ -71,7 +71,6 @@ auto to_string(type_fundamental t) -> std::string
         case type_fundamental::i64_type:     return "i64";
         case type_fundamental::u64_type:     return "u64";
         case type_fundamental::f64_type:     return "f64";
-        case type_fundamental::nullptr_type: return "nullptr";
         default: return "UNKNOWN FUNDAMENTAL";
     }
 }
@@ -186,11 +185,6 @@ auto to_string(const type_placeholder& type) -> std::string
 auto null_type() -> type_name
 {
     return {type_fundamental::null_type};
-}
-
-auto nullptr_type() -> type_name
-{
-    return {type_fundamental::nullptr_type};
 }
 
 auto bool_type() -> type_name
