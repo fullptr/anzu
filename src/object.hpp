@@ -31,7 +31,6 @@ enum class type_fundamental : std::uint8_t
     i64_type,
     u64_type,
     f64_type,
-    nullptr_type,
 };
 
 struct type_struct
@@ -253,7 +252,6 @@ struct type_name : public std::variant<
 using template_map = std::unordered_map<std::string, type_name>;
 
 auto null_type() -> type_name;
-auto nullptr_type() -> type_name;
 auto bool_type() -> type_name;
 auto char_type() -> type_name;
 auto i32_type() -> type_name;

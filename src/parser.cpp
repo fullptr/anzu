@@ -125,13 +125,6 @@ auto parse_null(tokenstream& tokens) -> node_expr_ptr
     return node;
 }
 
-auto parse_nullptr(tokenstream& tokens) -> node_expr_ptr
-{
-    const auto token = tokens.consume_only(token_type::kw_nullptr);
-    auto [node, inner] = new_node<node_literal_nullptr_expr>(token);
-    return node;
-}
-
 auto parse_name(tokenstream& tokens) -> node_expr_ptr
 {
     const auto token = tokens.consume();
@@ -373,7 +366,6 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_true,             {parse_true,          nullptr,         precedence::none}},
     {token_type::kw_false,            {parse_false,         nullptr,         precedence::none}},
     {token_type::kw_null,             {parse_null,          nullptr,         precedence::none}},
-    {token_type::kw_nullptr,          {parse_nullptr,       nullptr,         precedence::none}},
     {token_type::string,              {parse_string,        nullptr,         precedence::none}},
     {token_type::equal_equal,         {nullptr,             parse_binary,    precedence::equality}},
     {token_type::bang_equal,          {nullptr,             parse_binary,    precedence::equality}},
@@ -391,7 +383,6 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::kw_char,             {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_bool,             {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_null,             {parse_name,          nullptr,         precedence::none}},
-    {token_type::kw_nullptr,          {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_arena,            {parse_name,          nullptr,         precedence::none}},
     {token_type::left_bracket,        {parse_array,         parse_subscript, precedence::call}},
     {token_type::dot,                 {nullptr,             parse_dot,       precedence::call}},

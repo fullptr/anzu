@@ -69,7 +69,6 @@ auto get_builtin_type(const std::string& name) -> std::optional<type_name>
     if (name == "i64")     return type_name(type_fundamental::i64_type);
     if (name == "u64")     return type_name(type_fundamental::u64_type);
     if (name == "f64")     return type_name(type_fundamental::f64_type);
-    if (name == "nullptr") return type_name(type_fundamental::nullptr_type);
     if (name == "arena")   return type_name(type_arena{});
     return {};
 }
@@ -80,8 +79,8 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
 {
     const auto type_expr_type = type_of_expr(com, *expr);
     
-    // null and nullptr and also their own types
-    if (type_expr_type == null_type() || type_expr_type == nullptr_type()) {
+    // null is also their own types
+    if (type_expr_type == null_type()) {
         return type_expr_type;
     }
     
@@ -485,7 +484,6 @@ auto push_print_fundamental(compiler& com, const node_expr& node, const token& t
     else if (type == char_type().add_span()) {
         push_value(code(com), op::print_char_span);
     }
-    else if (type == nullptr_type()) { push_value(code(com), op::print_ptr); }
     else if (type.is<type_ptr>()) { push_value(code(com), op::print_ptr); }
     else { tok.error("cannot print value of type {}", type); }
 }
@@ -656,13 +654,6 @@ auto push_expr(compiler& com, compile_type ct, const node_literal_null_expr& nod
     node.token.assert(ct == compile_type::val, "cannot take the address of a null literal");
     push_value(code(com), op::push_null);
     return null_type();
-}
-
-auto push_expr(compiler& com, compile_type ct, const node_literal_nullptr_expr& node) -> type_name
-{
-    node.token.assert(ct == compile_type::val, "cannot take the address of a nullptr literal");
-    push_value(code(com), op::push_nullptr);
-    return nullptr_type();
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_string_expr& node) -> type_name
