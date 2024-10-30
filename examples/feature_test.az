@@ -283,15 +283,15 @@ let contents := io.read_file("examples/example_data.txt", a&);
 print("'{}'\n", contents);
 print("\nsize={}\n", @len(contents));
 
-# nullptr checks
+# null checks
 {
-    var p : i64& = nullptr;
-    var q : i64& = nullptr;
+    var p : i64& = null;
+    var q : i64& = null;
     print("{}\n", p == q);
 
     var x := 10;
     p = x&;
-    print("comparison of a pointer {} to nullptr: {}\n", p, p == nullptr);
+    print("comparison of a pointer {} to null: {}\n", p, p == null);
 }
 
 # template tests

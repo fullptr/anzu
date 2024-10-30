@@ -48,6 +48,6 @@ struct vector!(T)
 
     fn create(arr: arena&) -> vector!(T)
     {
-        return vector!(T)(arr, nullptr, 0u);
+        return vector!(T)(arr, null, 0u);
     }
 }
