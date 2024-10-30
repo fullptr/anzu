@@ -29,7 +29,7 @@ An interpreted programming language written in C++. This started out as a stack-
     1. eg: If `l` is an array of 5 `i64`s, then `l[]` is an `i64[]`.
     1. Slicing syntax `l[0 : 2]` for creating subspans.
     1. Arrays can automatically convert to spans when passing to functions.
-    1. Null span: spans can be created from, and compared to, `null`. It has a size of zero.
+    1. Null spans: spans can be created from, and compared to, `null`. It has a size of zero.
 
 * Function Pointers:
     1. Function names resolve to function pointers which can be passed to functions.
