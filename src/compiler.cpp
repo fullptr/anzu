@@ -1425,14 +1425,14 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     if (node.name == "i64_to_u64") {
         node.token.assert_eq(node.args.size(), 1, "@i64_to_u64 only accepts one argument");
         const auto type = push_expr(com, ct, *node.args[0]);
-        node.token.assert_eq(type, char_type(), "@i64_to_u64 bad first arg of type '{}'", type);
+        node.token.assert_eq(type, i64_type(), "@i64_to_u64 bad first arg of type '{}'", type);
         push_value(code(com), op::i64_to_u64);
         return u64_type();
     }
     if (node.name == "f64_to_u64") {
         node.token.assert_eq(node.args.size(), 1, "@f64_to_u64 only accepts one argument");
         const auto type = push_expr(com, ct, *node.args[0]);
-        node.token.assert_eq(type, char_type(), "@f64_to_u64 bad first arg of type '{}'", type);
+        node.token.assert_eq(type, f64_type(), "@f64_to_u64 bad first arg of type '{}'", type);
         push_value(code(com), op::f64_to_u64);
         return u64_type();
     }

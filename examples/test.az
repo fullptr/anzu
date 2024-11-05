@@ -1,2 +1,3 @@
-let x : i64[] = null;
-print("{}\n", @len(x));
+let util := @import("lib/utility.az");
+let x := -1234;
+print("{}\n", util.hash(x&));

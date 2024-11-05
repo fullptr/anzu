@@ -13,7 +13,7 @@ fn safe_minus(lhs: u64, rhs: u64) -> u64
 fn hash!(T)(value: T&) -> u64
 {
     if T == u64 {
-        return value;
+        return value@;
     }
     else if T == i64 {
         return @i64_to_u64(value@);
