@@ -275,6 +275,14 @@ auto execute_program(bytecode_context& ctx) -> void
                 const auto value = ctx.stack.pop<char>();
                 ctx.stack.push(std::int64_t{value});
             } break;
+            case op::i64_to_u64: {
+                const auto value = ctx.stack.pop<std::int64_t>();
+                ctx.stack.push(static_cast<std::uint64_t>(value));
+            } break;
+            case op::f64_to_u64: {
+                const auto value = ctx.stack.pop<double>();
+                ctx.stack.push(static_cast<std::uint64_t>(value));
+            } break;
 
             case op::char_eq: { binary_op<char, std::equal_to>(ctx); } break;
             case op::char_ne: { binary_op<char, std::not_equal_to>(ctx); } break;

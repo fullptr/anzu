@@ -1422,6 +1422,20 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         push_value(code(com), op::char_to_i64);
         return i64_type();
     }
+    if (node.name == "i64_to_u64") {
+        node.token.assert_eq(node.args.size(), 1, "@i64_to_u64 only accepts one argument");
+        const auto type = push_expr(com, ct, *node.args[0]);
+        node.token.assert_eq(type, char_type(), "@i64_to_u64 bad first arg of type '{}'", type);
+        push_value(code(com), op::i64_to_u64);
+        return u64_type();
+    }
+    if (node.name == "f64_to_u64") {
+        node.token.assert_eq(node.args.size(), 1, "@f64_to_u64 only accepts one argument");
+        const auto type = push_expr(com, ct, *node.args[0]);
+        node.token.assert_eq(type, char_type(), "@f64_to_u64 bad first arg of type '{}'", type);
+        push_value(code(com), op::f64_to_u64);
+        return u64_type();
+    }
     if (node.name == "import") {
         node.token.assert(com.current_function.size() == 1, "can only import modules at the top level");
         node.token.assert_eq(node.args.size(), 1, "@module only accepts one argument");

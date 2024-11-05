@@ -180,9 +180,9 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto data = &rom[index];
             std::print("ASSERT: msg={}\n", std::string_view{data, size});
         } break;
-        case op::char_to_i64: {
-            std::print("CHAR_TO_I64\n");
-        } break;
+        case op::char_to_i64: { std::print("CHAR_TO_I64\n"); } break;
+        case op::i64_to_u64: { std::print("I64_TO_U64\n"); } break;
+        case op::f64_to_u64: { std::print("F64_TO_U64\n"); } break;
         case op::char_eq: { std::print("CHAR_EQ\n"); } break;
         case op::char_ne: { std::print("CHAR_NE\n"); } break;
         case op::i32_add: { std::print("I32_ADD\n"); } break;
