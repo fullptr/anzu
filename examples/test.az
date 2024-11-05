@@ -1,3 +1,4 @@
 let util := @import("lib/utility.az");
-let x := -1234;
+let x := null;
+
 print("{}\n", util.hash(x&));

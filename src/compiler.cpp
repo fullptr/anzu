@@ -715,6 +715,17 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
+    // Types can compare to null, since null is also its own type, allows for T == null
+    if ((lhs.is<type_type>() && rhs == null_type()) || (rhs.is<type_type>() && lhs == null_type())) {
+        const auto lhs_inner = lhs.is<type_type>() ? inner_type(lhs) : null_type();
+        const auto rhs_inner = rhs.is<type_type>() ? inner_type(rhs) : null_type();
+        switch (node.token.type) {
+            case tt::equal_equal: return type_name{type_ct_bool{lhs_inner == rhs_inner}};
+            case tt::bang_equal:  return type_name{type_ct_bool{lhs_inner != rhs_inner}};
+        }
+        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    }
+
     // Pointers can compare to null
     if ((lhs.is<type_ptr>() && rhs == null_type()) || (rhs.is<type_ptr>() && lhs == null_type())) {
         push_ptr(*node.lhs);

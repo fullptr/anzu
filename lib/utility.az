@@ -12,25 +12,11 @@ fn safe_minus(lhs: u64, rhs: u64) -> u64
 
 fn hash!(T)(value: T&) -> u64
 {
-    if T == u64 {
-        return value@;
-    }
-    else if T == i64 {
-        return @i64_to_u64(value@);
-    }
-    else if T == f64 {
-        return @f64_to_u64(value@);
-    }
-    else if T == char {
-        return @i64_to_u64(@char_to_i64(value@));
-    }
-    else if T == bool {
-        return value ? 1u : 0u;
-    }
-    else if T == null {
-        return 0u;
-    }
-    else {
-        return value.hash();
-    }
+    if T == u64       { return value@; }
+    else if T == i64  { return @i64_to_u64(value@); }
+    else if T == f64  { return @f64_to_u64(value@); }
+    else if T == char { return @i64_to_u64(@char_to_i64(value@)); }
+    else if T == bool { return value ? 1u : 0u; }
+    else if T == null { return 0u; }
+    else              { return value.hash(); }
 }
