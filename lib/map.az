@@ -1,0 +1,11 @@
+struct map!(Key, Value)
+{
+    _arr: arena&;
+    _data: T[];
+    _size: u64;
+
+    fn create(arr: arena&) -> map!(Key, Value)
+    {
+        return map!(Key, Value)(arr, null, 0u);
+    }
+}
