@@ -92,7 +92,7 @@ fn occurrences(string: char const[], substr: char const[]) -> u64
 fn replace(a: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
 {
     let new_size := @len(from) == @len(to) ? @len(string)
-                                         : @len(string) + occurrences(string, from) * (@len(to) - @len(from));
+                                           : @len(string) + occurrences(string, from) * (@len(to) - @len(from));
 
     var new_string := new(a, new_size) ' ';
     var idx := 0u;
