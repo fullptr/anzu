@@ -158,6 +158,13 @@ auto execute_program(bytecode_context& ctx) -> void
                 std::memcpy(dst_data, src_data, src_count * type_size);
                 ctx.stack.push(std::byte{0}); // returns null;
             } break;
+            case op::memcmp: {
+                const auto type_size = read_advance<std::uint64_t>(ctx); 
+                const auto rhs_data = ctx.stack.pop<std::byte*>();
+                const auto lhs_data = ctx.stack.pop<std::byte*>();
+                const bool equal = std::memcmp(lhs_data, rhs_data, type_size) == 0;
+                ctx.stack.push(equal); // returns null;
+            } break;
             case op::arena_new: {
                 const auto arena = new memory_arena;
                 arena->next = 0;

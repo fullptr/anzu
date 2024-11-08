@@ -58,6 +58,7 @@ enum class op : std::uint8_t
     push,
     pop,
     memcpy,
+    memcmp,
     jump,
     jump_if_true,
     jump_if_false,

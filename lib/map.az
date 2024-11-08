@@ -1,8 +1,32 @@
+let util := @import("lib/utility.az");
+
+struct map_element!(Key, Value)
+{
+    key: Key;
+    value: Value;
+}
+
 struct map!(Key, Value)
 {
     _arr: arena&;
-    _data: T[];
+    _data: map_element!(Key, Value)[];
     _size: u64;
+
+    fn insert(self: &, key: Key&, value: Value&)
+    {
+
+    }
+
+    fn has(self: const&, key: Key const&) -> bool
+    {
+        let hash := util.hash(key);
+        return hash < self._size && self._data[hash].key
+    }
+
+    fn get(self: &, key: Key&) -> Value&
+    {
+        let hash := util.hash(key);
+    }
 
     fn create(arr: arena&) -> map!(Key, Value)
     {

@@ -1426,6 +1426,18 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         push_value(code(com), op::memcpy, com.types.size_of(inner_type(lhs)));
         return null_type();
     }
+    if (node.name == "compare") {
+        node.token.assert_eq(node.args.size(), 2, "@compare requires two arguments");
+        const auto lhs = push_expr(com, ct, *node.args[0]);
+        node.token.assert(lhs.is<type_ptr>(), "@compare bad first arg of type '{}'", lhs);
+        const auto rhs = push_expr(com, ct, *node.args[1]);
+        node.token.assert(rhs.is<type_ptr>(), "@compare bad second arg of type '{}'", rhs);
+        node.token.assert_eq(rhs.remove_ptr().remove_const(),
+                             lhs.remove_ptr().remove_const(),
+                             "@copy args must be of the same type");
+        push_value(code(com), op::memcmp, com.types.size_of(lhs.remove_ptr()));
+        return bool_type();
+    }
     if (node.name == "char_to_i64") {
         node.token.assert_eq(node.args.size(), 1, "@char_to_i64 only accepts one argument");
         const auto type = push_expr(com, ct, *node.args[0]);

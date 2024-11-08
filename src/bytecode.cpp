@@ -141,7 +141,11 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
         } break;
         case op::memcpy: {
             const auto size = read_at<std::uint64_t>(&ptr);
-            std::print("POP: {}\n", size);
+            std::print("MEMCPY: {}\n", size);
+        } break;
+        case op::memcmp: {
+            const auto size = read_at<std::uint64_t>(&ptr);
+            std::print("MEMCMP: {}\n", size);
         } break;
         case op::jump: {
             const auto jump = read_at<std::uint64_t>(&ptr);
