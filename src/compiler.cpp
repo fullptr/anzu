@@ -1513,7 +1513,26 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
 
 auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type_name
 {
-    return null_type();
+    node.token.assert(ct == compile_type::val, "cannot take the address of an 'as' statement");
+    const auto src_type = push_expr(com, ct, *node.expr);
+    const auto dst_wrapped = push_expr(com, ct, *node.type);
+    node.token.assert(dst_wrapped.is<type_type>(), "expected a type, got {}", dst_wrapped);
+    const auto dst_type = inner_type(dst_wrapped);
+    using tf = type_fundamental;
+    std::visit(overloaded{
+        [&](tf src, tf dst) {
+            if (src == tf::i64_type && dst == tf::u64_type) {
+                push_value(code(com), op::i64_to_u64);
+            }
+            else {
+                node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
+            }
+        },
+        [&](const auto& src, const auto& dst) {
+            node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
+        }
+    }, src_type, dst_type);
+    return dst_type;
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
