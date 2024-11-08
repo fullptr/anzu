@@ -111,6 +111,7 @@ An interpreted programming language written in C++. This started out as a stack-
     * `@type_of(x)` returns the type of `x`. Can be used anywhere a type is expected.
     * `@type_name_of(x)` returns a string representation of the type of `x`.
     * `@copy(dst, src)` takes two spans of the same type and copies the contents of one into the other. The size of `dst` must be big enough to fit `src`, otherwise it's a runtime error. This exists because it can efficiently memcpy the data rather than looping over the elements.
+    * `@compare(lhs, rhs)` takes two pointers of the same type and compares them bytewise via memcmp. 
     * `@char_to_i64(c)` takes a char and converts its value to an i64. This is always a safe conversion, and will likely be removed for a more general form of casting in the future.
     * `@import(name)` for importing and using other modules (more info below). This can only be used in the global scope.
     * `@fn_ptr(func)` takes the name of a function an explicitly converts it to a function pointer.

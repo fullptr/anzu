@@ -20,12 +20,15 @@ struct map!(Key, Value)
     fn has(self: const&, key: Key const&) -> bool
     {
         let hash := util.hash(key);
-        return hash < self._size && self._data[hash].key
+        return hash < self._size && @compare(key, self._data[hash].key&);
     }
 
     fn get(self: &, key: Key&) -> Value&
     {
         let hash := util.hash(key);
+        assert(self.has(key));
+        
+        return self._data[hash].value&;
     }
 
     fn create(arr: arena&) -> map!(Key, Value)
