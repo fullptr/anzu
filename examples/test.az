@@ -1,2 +1,2 @@
-let x := false as u64;
+let x := null as i64;
 print("{}\n", x);
