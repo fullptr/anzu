@@ -1438,27 +1438,6 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         push_value(code(com), op::memcmp, com.types.size_of(lhs.remove_ptr()));
         return bool_type();
     }
-    if (node.name == "char_to_i64") {
-        node.token.assert_eq(node.args.size(), 1, "@char_to_i64 only accepts one argument");
-        const auto type = push_expr(com, ct, *node.args[0]);
-        node.token.assert_eq(type, char_type(), "@char_to_i64 bad first arg of type '{}'", type);
-        push_value(code(com), op::char_to_i64);
-        return i64_type();
-    }
-    if (node.name == "i64_to_u64") {
-        node.token.assert_eq(node.args.size(), 1, "@i64_to_u64 only accepts one argument");
-        const auto type = push_expr(com, ct, *node.args[0]);
-        node.token.assert_eq(type, i64_type(), "@i64_to_u64 bad first arg of type '{}'", type);
-        push_value(code(com), op::i64_to_u64);
-        return u64_type();
-    }
-    if (node.name == "f64_to_u64") {
-        node.token.assert_eq(node.args.size(), 1, "@f64_to_u64 only accepts one argument");
-        const auto type = push_expr(com, ct, *node.args[0]);
-        node.token.assert_eq(type, f64_type(), "@f64_to_u64 bad first arg of type '{}'", type);
-        push_value(code(com), op::f64_to_u64);
-        return u64_type();
-    }
     if (node.name == "import") {
         node.token.assert(com.current_function.size() == 1, "can only import modules at the top level");
         node.token.assert_eq(node.args.size(), 1, "@module only accepts one argument");
@@ -1522,14 +1501,25 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type
     using tf = type_fundamental;
     std::visit(overloaded{
         [&](tf src, tf dst) {
-            if (src == tf::i64_type && dst == tf::u64_type) {
+            if (src == dst) {
+                // noop
+            }
+
+            else if (src == tf::char_type && dst == tf::i64_type) {
+                push_value(code(com), op::char_to_i64);
+            }
+
+            else if (src == tf::bool_type && dst == tf::u64_type) {
+                push_value(code(com), op::bool_to_u64);
+            }
+            else if (src == tf::char_type && dst == tf::u64_type) {
+                push_value(code(com), op::char_to_u64);
+            }
+            else if (src == tf::i64_type && dst == tf::u64_type) {
                 push_value(code(com), op::i64_to_u64);
             }
             else if (src == tf::f64_type && dst == tf::u64_type) {
                 push_value(code(com), op::f64_to_u64);
-            }
-            else if (src == tf::char_type && dst == tf::i64_type) {
-                push_value(code(com), op::char_to_i64);
             }
             else {
                 node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);

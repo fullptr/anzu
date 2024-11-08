@@ -69,6 +69,9 @@ enum class op : std::uint8_t
     assert,
 
     char_to_i64,
+
+    bool_to_u64,
+    char_to_u64,
     i64_to_u64,
     f64_to_u64,
 
