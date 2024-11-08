@@ -1,2 +1,2 @@
-let x := -1 as u64;
+let x := 12.8 as u64;
 print("{}\n", x);

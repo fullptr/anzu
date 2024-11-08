@@ -1518,11 +1518,18 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type
     const auto dst_wrapped = push_expr(com, ct, *node.type);
     node.token.assert(dst_wrapped.is<type_type>(), "expected a type, got {}", dst_wrapped);
     const auto dst_type = inner_type(dst_wrapped);
+
     using tf = type_fundamental;
     std::visit(overloaded{
         [&](tf src, tf dst) {
             if (src == tf::i64_type && dst == tf::u64_type) {
                 push_value(code(com), op::i64_to_u64);
+            }
+            else if (src == tf::f64_type && dst == tf::u64_type) {
+                push_value(code(com), op::f64_to_u64);
+            }
+            else if (src == tf::char_type && dst == tf::i64_type) {
+                push_value(code(com), op::char_to_i64);
             }
             else {
                 node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
