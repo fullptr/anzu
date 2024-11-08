@@ -54,6 +54,7 @@ auto lexer::match(std::string_view expected) -> bool
 
 auto identifier_type(std::string_view token) -> token_type
 {
+    if (token == "as")       return token_type::kw_as;
     if (token == "arena")    return token_type::kw_arena;
     if (token == "assert")   return token_type::kw_assert;
     if (token == "bool")     return token_type::kw_bool;

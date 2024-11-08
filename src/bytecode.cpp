@@ -141,7 +141,11 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
         } break;
         case op::memcpy: {
             const auto size = read_at<std::uint64_t>(&ptr);
-            std::print("POP: {}\n", size);
+            std::print("MEMCPY: {}\n", size);
+        } break;
+        case op::memcmp: {
+            const auto size = read_at<std::uint64_t>(&ptr);
+            std::print("MEMCMP: {}\n", size);
         } break;
         case op::jump: {
             const auto jump = read_at<std::uint64_t>(&ptr);
@@ -180,9 +184,21 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto data = &rom[index];
             std::print("ASSERT: msg={}\n", std::string_view{data, size});
         } break;
-        case op::char_to_i64: {
-            std::print("CHAR_TO_I64\n");
-        } break;
+        
+        case op::null_to_i64: { std::print("NULL_TO_I64\n"); } break;
+        case op::bool_to_i64: { std::print("BOOL_TO_I64\n"); } break;
+        case op::char_to_i64: { std::print("CHAR_TO_I64\n"); } break;
+        case op::i32_to_i64: { std::print("I32_TO_I64\n"); } break;
+        case op::u64_to_i64: { std::print("U64_TO_I64\n"); } break;
+        case op::f64_to_i64: { std::print("F64_TO_I64\n"); } break;
+
+        case op::null_to_u64: { std::print("NULL_TO_U64\n"); } break;
+        case op::bool_to_u64: { std::print("BOOL_TO_U64\n"); } break;
+        case op::char_to_u64: { std::print("CHAR_TO_U64\n"); } break;
+        case op::i32_to_u64: { std::print("I32_TO_U64\n"); } break;
+        case op::i64_to_u64: { std::print("I64_TO_U64\n"); } break;
+        case op::f64_to_u64: { std::print("F64_TO_U64\n"); } break;
+        
         case op::char_eq: { std::print("CHAR_EQ\n"); } break;
         case op::char_ne: { std::print("CHAR_NE\n"); } break;
         case op::i32_add: { std::print("I32_ADD\n"); } break;

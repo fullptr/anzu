@@ -58,6 +58,7 @@ enum class op : std::uint8_t
     push,
     pop,
     memcpy,
+    memcmp,
     jump,
     jump_if_true,
     jump_if_false,
@@ -67,7 +68,19 @@ enum class op : std::uint8_t
     ret,
     assert,
 
+    null_to_i64,
+    bool_to_i64,
     char_to_i64,
+    i32_to_i64,
+    u64_to_i64,
+    f64_to_i64,
+
+    null_to_u64,
+    bool_to_u64,
+    char_to_u64,
+    i32_to_u64,
+    i64_to_u64,
+    f64_to_u64,
 
     char_eq,
     char_ne,

@@ -715,6 +715,17 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
+    // Types can compare to null, since null is also its own type, allows for T == null
+    if ((lhs.is<type_type>() && rhs == null_type()) || (rhs.is<type_type>() && lhs == null_type())) {
+        const auto lhs_inner = lhs.is<type_type>() ? inner_type(lhs) : null_type();
+        const auto rhs_inner = rhs.is<type_type>() ? inner_type(rhs) : null_type();
+        switch (node.token.type) {
+            case tt::equal_equal: return type_name{type_ct_bool{lhs_inner == rhs_inner}};
+            case tt::bang_equal:  return type_name{type_ct_bool{lhs_inner != rhs_inner}};
+        }
+        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    }
+
     // Pointers can compare to null
     if ((lhs.is<type_ptr>() && rhs == null_type()) || (rhs.is<type_ptr>() && lhs == null_type())) {
         push_ptr(*node.lhs);
@@ -1383,61 +1394,6 @@ auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) ->
 auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a @intrinsic function call");
-    if (node.name == "size_of") {
-        node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
-        const auto type = type_of_expr(com, *node.args[0]);
-        if (type.is<type_type>()) { // can call sizeof on a type directly
-            push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
-        } else {
-            push_value(code(com), op::push_u64, com.types.size_of(type));
-        }
-        return u64_type();
-    }
-    if (node.name == "type_of") {
-        node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
-        return type_type{type_of_expr(com, *node.args[0])};
-    }
-    if (node.name == "type_name_of") {
-        node.token.assert_eq(node.args.size(), 1, "@type_name_of only accepts one argument");
-        const auto str = std::format("{}", type_of_expr(com, *node.args[0]));
-        std::print("@type_name_of == {}\n", str);
-        push_value(code(com), op::push_string_literal, insert_into_rom(com, str), str.size());
-        return string_literal_type();
-    }
-    if (node.name == "copy") {
-        node.token.assert_eq(node.args.size(), 2, "@copy requires two spans");
-        const auto lhs = push_expr(com, ct, *node.args[0]);
-        node.token.assert(lhs.is<type_span>(), "@copy bad first arg of type '{}'", lhs);
-        node.token.assert(!inner_type(lhs).is_const, "@copy cannot write through a const span");
-        const auto rhs = push_expr(com, ct, *node.args[1]);
-        node.token.assert(rhs.is<type_span>(), "@copy bad second arg of type '{}'", rhs);
-        node.token.assert_eq(lhs, rhs, "@copy args must be of the same span type");
-        push_value(code(com), op::memcpy, com.types.size_of(inner_type(lhs)));
-        return null_type();
-    }
-    if (node.name == "char_to_i64") {
-        node.token.assert_eq(node.args.size(), 1, "@char_to_i64 only accepts one argument");
-        const auto type = push_expr(com, ct, *node.args[0]);
-        node.token.assert_eq(type, char_type(), "@char_to_i64 bad first arg of type '{}'", type);
-        push_value(code(com), op::char_to_i64);
-        return i64_type();
-    }
-    if (node.name == "import") {
-        node.token.assert(com.current_function.size() == 1, "can only import modules at the top level");
-        node.token.assert_eq(node.args.size(), 1, "@module only accepts one argument");
-        node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
-        const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
-        load_module(com, node.token, filepath);
-        return type_module{filepath};
-    }
-    if (node.name == "fn_ptr") {
-        node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");
-        const auto type = type_of_expr(com, *node.args[0]);
-        node.token.assert(type.is<type_function>(), "can only convert functions to function pointers");
-        const auto& info = type.as<type_function>();
-        push_value(code(com), op::push_function_ptr, info.id);
-        return type_function_ptr{.param_types=info.param_types, .return_type=info.return_type};
-    }
     if (node.name == "len") {
         node.token.assert_eq(node.args.size(), 1, "@len only accepts one argument");
         const auto type = type_of_expr(com, *node.args[0]);
@@ -1471,7 +1427,118 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         }
         return u64_type();
     }
+    if (node.name == "size_of") {
+        node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        if (type.is<type_type>()) { // can call sizeof on a type directly
+            push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
+        } else {
+            push_value(code(com), op::push_u64, com.types.size_of(type));
+        }
+        return u64_type();
+    }
+    if (node.name == "type_of") {
+        node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
+        return type_type{type_of_expr(com, *node.args[0])};
+    }
+    if (node.name == "type_name_of") {
+        node.token.assert_eq(node.args.size(), 1, "@type_name_of only accepts one argument");
+        const auto str = std::format("{}", type_of_expr(com, *node.args[0]));
+        std::print("@type_name_of == {}\n", str);
+        push_value(code(com), op::push_string_literal, insert_into_rom(com, str), str.size());
+        return string_literal_type();
+    }
+    if (node.name == "copy") {
+        node.token.assert_eq(node.args.size(), 2, "@copy requires two spans");
+        const auto lhs = push_expr(com, ct, *node.args[0]);
+        node.token.assert(lhs.is<type_span>(), "@copy bad first arg of type '{}'", lhs);
+        node.token.assert(!inner_type(lhs).is_const, "@copy cannot write through a const span");
+        const auto rhs = push_expr(com, ct, *node.args[1]);
+        node.token.assert(rhs.is<type_span>(), "@copy bad second arg of type '{}'", rhs);
+        node.token.assert_eq(lhs, rhs, "@copy args must be of the same span type");
+        push_value(code(com), op::memcpy, com.types.size_of(inner_type(lhs)));
+        return null_type();
+    }
+    if (node.name == "compare") {
+        node.token.assert_eq(node.args.size(), 2, "@compare requires two arguments");
+        const auto lhs = push_expr(com, ct, *node.args[0]);
+        node.token.assert(lhs.is<type_ptr>(), "@compare bad first arg of type '{}'", lhs);
+        const auto rhs = push_expr(com, ct, *node.args[1]);
+        node.token.assert(rhs.is<type_ptr>(), "@compare bad second arg of type '{}'", rhs);
+        node.token.assert_eq(rhs.remove_ptr().remove_const(),
+                             lhs.remove_ptr().remove_const(),
+                             "@copy args must be of the same type");
+        push_value(code(com), op::memcmp, com.types.size_of(lhs.remove_ptr()));
+        return bool_type();
+    }
+    if (node.name == "import") {
+        node.token.assert(com.current_function.size() == 1, "can only import modules at the top level");
+        node.token.assert_eq(node.args.size(), 1, "@module only accepts one argument");
+        node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
+        const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
+        load_module(com, node.token, filepath);
+        return type_module{filepath};
+    }
+    if (node.name == "fn_ptr") {
+        node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        node.token.assert(type.is<type_function>(), "can only convert functions to function pointers");
+        const auto& info = type.as<type_function>();
+        push_value(code(com), op::push_function_ptr, info.id);
+        return type_function_ptr{.param_types=info.param_types, .return_type=info.return_type};
+    }
+    if (node.name == "is_fundamental") {
+        node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        node.token.assert(type.is<type_type>(), "@is_fundamental expects a type");
+        return type_ct_bool(inner_type(type).is<type_fundamental>());
+    }
     node.token.error("no intrisic function named @{} exists", node.name);
+}
+
+auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type_name
+{
+    node.token.assert(ct == compile_type::val, "cannot take the address of an 'as' statement");
+    const auto src_type = push_expr(com, ct, *node.expr);
+    const auto dst_wrapped = push_expr(com, ct, *node.type);
+    node.token.assert(dst_wrapped.is<type_type>(), "expected a type, got {}", dst_wrapped);
+    const auto dst_type = inner_type(dst_wrapped);
+
+    using tf = type_fundamental;
+    std::visit(overloaded{
+        [&](tf src, tf dst) {
+            if (src == dst) { /* noop */ }
+            else if (dst == tf::i64_type) {
+                switch (src) {
+                    case tf::null_type: { push_value(code(com), op::null_to_i64); } break;
+                    case tf::bool_type: { push_value(code(com), op::bool_to_i64); } break;
+                    case tf::char_type: { push_value(code(com), op::char_to_i64); } break;
+                    case tf::i32_type:  { push_value(code(com), op::i32_to_i64);  } break;
+                    case tf::i64_type:  { /* noop */ } break;
+                    case tf::u64_type:  { push_value(code(com), op::u64_to_i64);  } break;
+                    case tf::f64_type:  { push_value(code(com), op::f64_to_i64);  } break;
+                }
+            }
+            else if (dst == tf::u64_type) {
+                switch (src) {
+                    case tf::null_type: { push_value(code(com), op::null_to_u64); } break;
+                    case tf::bool_type: { push_value(code(com), op::bool_to_u64); } break;
+                    case tf::char_type: { push_value(code(com), op::char_to_u64); } break;
+                    case tf::i32_type:  { push_value(code(com), op::i32_to_u64);  } break;
+                    case tf::i64_type:  { push_value(code(com), op::i64_to_u64);  } break;
+                    case tf::u64_type:  { /* noop */ } break;
+                    case tf::f64_type:  { push_value(code(com), op::f64_to_u64);  } break;
+                }
+            }
+            else {
+                node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
+            }
+        },
+        [&](const auto& src, const auto& dst) {
+            node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
+        }
+    }, src_type, dst_type);
+    return dst_type;
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)

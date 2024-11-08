@@ -343,9 +343,9 @@ struct pair!(T)
 {
     var f := pair!(i64)(1, 2);
     var g := pair!(f64)(12.3, 45.6);
-print("HERE I AM\n");
+    print("HERE I AM\n");
     f.print_struct!(u64)(70u);
-print("THERE I AM\n");
+    print("THERE I AM\n");
     g.print_struct!(u64)(70u);
 }
 

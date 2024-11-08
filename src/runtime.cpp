@@ -158,6 +158,13 @@ auto execute_program(bytecode_context& ctx) -> void
                 std::memcpy(dst_data, src_data, src_count * type_size);
                 ctx.stack.push(std::byte{0}); // returns null;
             } break;
+            case op::memcmp: {
+                const auto type_size = read_advance<std::uint64_t>(ctx); 
+                const auto rhs_data = ctx.stack.pop<std::byte*>();
+                const auto lhs_data = ctx.stack.pop<std::byte*>();
+                const bool equal = std::memcmp(lhs_data, rhs_data, type_size) == 0;
+                ctx.stack.push(equal); // returns null;
+            } break;
             case op::arena_new: {
                 const auto arena = new memory_arena;
                 arena->next = 0;
@@ -271,9 +278,54 @@ auto execute_program(bytecode_context& ctx) -> void
                 }
             } break;
 
+            case op::null_to_i64: {
+                const auto value = ctx.stack.pop<std::byte>();
+                ctx.stack.push(std::int64_t{0});
+            } break;
+            case op::bool_to_i64: {
+                const auto value = ctx.stack.pop<bool>();
+                ctx.stack.push(static_cast<std::int64_t>(value));
+            } break;
             case op::char_to_i64: {
                 const auto value = ctx.stack.pop<char>();
-                ctx.stack.push(std::int64_t{value});
+                ctx.stack.push(static_cast<std::int64_t>(value));
+            } break;
+            case op::i32_to_i64: {
+                const auto value = ctx.stack.pop<std::int32_t>();
+                ctx.stack.push(static_cast<std::int64_t>(value));
+            } break;
+            case op::u64_to_i64: {
+                const auto value = ctx.stack.pop<std::uint64_t>();
+                ctx.stack.push(static_cast<std::int64_t>(value));
+            } break;
+            case op::f64_to_i64: {
+                const auto value = ctx.stack.pop<double>();
+                ctx.stack.push(static_cast<std::int64_t>(value));
+            } break;
+
+            case op::null_to_u64: {
+                const auto value = ctx.stack.pop<std::byte>();
+                ctx.stack.push(std::uint64_t{0});
+            } break;
+            case op::bool_to_u64: {
+                const auto value = ctx.stack.pop<bool>();
+                ctx.stack.push(static_cast<std::uint64_t>(value));
+            } break;
+            case op::char_to_u64: {
+                const auto value = ctx.stack.pop<char>();
+                ctx.stack.push(static_cast<std::uint64_t>(value));
+            } break;
+            case op::i32_to_u64: {
+                const auto value = ctx.stack.pop<std::int32_t>();
+                ctx.stack.push(static_cast<std::uint64_t>(value));
+            } break;
+            case op::i64_to_u64: {
+                const auto value = ctx.stack.pop<std::int64_t>();
+                ctx.stack.push(static_cast<std::uint64_t>(value));
+            } break;
+            case op::f64_to_u64: {
+                const auto value = ctx.stack.pop<double>();
+                ctx.stack.push(static_cast<std::uint64_t>(value));
             } break;
 
             case op::char_eq: { binary_op<char, std::equal_to>(ctx); } break;

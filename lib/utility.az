@@ -9,3 +9,9 @@ fn safe_minus(lhs: u64, rhs: u64) -> u64
     assert lhs >= rhs;
     return lhs - rhs;
 }
+
+fn hash!(T)(value: T&) -> u64
+{
+    if @is_fundamental(T) { return value@ as u64; }
+    else                  { return value.hash(); }
+}

@@ -196,6 +196,14 @@ struct node_intrinsic_expr
     anzu::token   token;
 };
 
+struct node_as_expr
+{
+    node_expr_ptr expr;
+    node_expr_ptr type;
+
+    anzu::token   token;
+};
+
 struct node_expr : std::variant<
     node_literal_i32_expr,
     node_literal_i64_expr,
@@ -221,7 +229,8 @@ struct node_expr : std::variant<
     node_subscript_expr,
     node_new_expr,
     node_ternary_expr,
-    node_intrinsic_expr>
+    node_intrinsic_expr,
+    node_as_expr>
 {
 };
 

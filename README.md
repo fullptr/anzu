@@ -105,14 +105,17 @@ An interpreted programming language written in C++. This started out as a stack-
 
 * All the common arithmetic, comparison and logical operators.
 * Builtin functions.
-* Intrinsic func:
-    * These are special functions for accessing compiler internals or to perform operations that require specialised op codes in the runtime to be efficient. They are prefixed with a `@`.
+* Intrinsic functions.
+    * These are special functions for accessing compiler internals or to perform operations that require specialised op codes in the runtime to be efficient. They are prefixed with a `@`. They can also accept types as arguments.
+    * `@len(obj)` behaves differently depending on the object. If it's an array or span, returns the number of elements. If it's an arena, is returns the number of bytes allocated. If it's a struct that has a `.len() -> u64` member function, it calls that. Otherwise it's a compiler error.
     * `@size_of(x)` returns the size in bytes of the type of object `x`. `x` can also be itself a type.
     * `@type_of(x)` returns the type of `x`. Can be used anywhere a type is expected.
     * `@type_name_of(x)` returns a string representation of the type of `x`.
     * `@copy(dst, src)` takes two spans of the same type and copies the contents of one into the other. The size of `dst` must be big enough to fit `src`, otherwise it's a runtime error. This exists because it can efficiently memcpy the data rather than looping over the elements.
-    * `@char_to_i64(c)` takes a char and converts its value to an i64. This is always a safe conversion, and will likely be removed for a more general form of casting in the future.
-    * `@import(name)` for importing and using other modules (more info below). This can only be used in the global scope and the module itself is only compiled when the module object is assigned to a variable name in a declaration.
+    * `@compare(lhs, rhs)` takes two pointers of the same type and compares them bytewise via memcmp. 
+    * `@import(name)` for importing and using other modules (more info below). This can only be used in the global scope.
+    * `@fn_ptr(func)` takes the name of a function an explicitly converts it to a function pointer.
+    * `@is_fundamental(type)` returns `true` if the given type of one of the builtin types.
 
 * Memory arenas for allocating dynamic memory:
     ```py
@@ -167,7 +170,7 @@ Runtime  -- runtime.hpp   : Functionality to run a program
 ```
 
 # Next Features
+* Hash Maps
 * Generators
-* Template Type Deductions
 * Pattern Matching
 * Variants

@@ -1,2 +1,4 @@
-let x : i64[] = null;
-print("{}\n", @len(x));
+let util := @import("lib/utility.az");
+let x := 14u;
+let hash := util.hash(x&);
+print("{}\n", hash);
