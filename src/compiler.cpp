@@ -1394,6 +1394,39 @@ auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) ->
 auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) -> type_name
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a @intrinsic function call");
+    if (node.name == "len") {
+        node.token.assert_eq(node.args.size(), 1, "@len only accepts one argument");
+        const auto type = type_of_expr(com, *node.args[0]);
+        if (auto info = type.get_if<type_array>()) {
+            push_value(code(com), op::push_u64, info->count);
+        }
+        else if (type.is<type_span>()) {
+            push_expr(com, compile_type::ptr, *node.args[0]); // pointer to the span
+            push_value(code(com), op::span_ptr_to_len);
+        }
+        else if (type.is<type_arena>()) {
+            const auto type = push_expr(com, compile_type::ptr, *node.args[0]);
+            push_value(code(com), op::load, com.types.size_of(u64_type())); // load the arena
+            push_value(code(com), op::arena_size);
+            return u64_type();
+        }
+        else if (auto info = type.get_if<type_struct>()) {
+            const auto name = function_name{.module=info->module, .struct_name=*info, .name="len"};
+            const auto it = com.functions_by_name.find(name);
+            node.token.assert(it != com.functions_by_name.end(), "cannot call @len on an object of type {}", type);
+
+            const auto& func = com.functions[it->second];
+            node.token.assert_eq(func.params.size(), 1, "@len must only take one argument");
+            node.token.assert_eq(func.params[0], type.add_ptr(), "@len must only take a pointer to the object");
+            node.token.assert_eq(func.return_type, u64_type(), "@len must return a u64");
+            push_expr(com, compile_type::ptr, *node.args[0]);
+            push_value(code(com), op::call_static, func.id, sizeof(std::byte*));
+        }
+        else {
+            node.token.error("cannot call 'len' on an object of type {}", type);
+        }
+        return u64_type();
+    }
     if (node.name == "size_of") {
         node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
         const auto type = type_of_expr(com, *node.args[0]);
@@ -1454,38 +1487,11 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         push_value(code(com), op::push_function_ptr, info.id);
         return type_function_ptr{.param_types=info.param_types, .return_type=info.return_type};
     }
-    if (node.name == "len") {
-        node.token.assert_eq(node.args.size(), 1, "@len only accepts one argument");
+    if (node.name == "is_fundamental") {
+        node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
         const auto type = type_of_expr(com, *node.args[0]);
-        if (auto info = type.get_if<type_array>()) {
-            push_value(code(com), op::push_u64, info->count);
-        }
-        else if (type.is<type_span>()) {
-            push_expr(com, compile_type::ptr, *node.args[0]); // pointer to the span
-            push_value(code(com), op::span_ptr_to_len);
-        }
-        else if (type.is<type_arena>()) {
-            const auto type = push_expr(com, compile_type::ptr, *node.args[0]);
-            push_value(code(com), op::load, com.types.size_of(u64_type())); // load the arena
-            push_value(code(com), op::arena_size);
-            return u64_type();
-        }
-        else if (auto info = type.get_if<type_struct>()) {
-            const auto name = function_name{.module=info->module, .struct_name=*info, .name="len"};
-            const auto it = com.functions_by_name.find(name);
-            node.token.assert(it != com.functions_by_name.end(), "cannot call @len on an object of type {}", type);
-
-            const auto& func = com.functions[it->second];
-            node.token.assert_eq(func.params.size(), 1, "@len must only take one argument");
-            node.token.assert_eq(func.params[0], type.add_ptr(), "@len must only take a pointer to the object");
-            node.token.assert_eq(func.return_type, u64_type(), "@len must return a u64");
-            push_expr(com, compile_type::ptr, *node.args[0]);
-            push_value(code(com), op::call_static, func.id, sizeof(std::byte*));
-        }
-        else {
-            node.token.error("cannot call 'len' on an object of type {}", type);
-        }
-        return u64_type();
+        node.token.assert(type.is<type_type>(), "@is_fundamental expects a type");
+        return type_ct_bool(inner_type(type).is<type_fundamental>());
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
@@ -1501,10 +1507,7 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type
     using tf = type_fundamental;
     std::visit(overloaded{
         [&](tf src, tf dst) {
-            if (src == dst) {
-                // noop
-            }
-
+            if (src == dst) { /* noop */ }
             else if (dst == tf::i64_type) {
                 switch (src) {
                     case tf::null_type: { push_value(code(com), op::null_to_i64); } break;
@@ -1516,7 +1519,6 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type
                     case tf::f64_type:  { push_value(code(com), op::f64_to_i64);  } break;
                 }
             }
-
             else if (dst == tf::u64_type) {
                 switch (src) {
                     case tf::null_type: { push_value(code(com), op::null_to_u64); } break;
@@ -1528,7 +1530,6 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type
                     case tf::f64_type:  { push_value(code(com), op::f64_to_u64);  } break;
                 }
             }
-
             else {
                 node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
             }

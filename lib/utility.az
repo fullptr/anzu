@@ -12,11 +12,6 @@ fn safe_minus(lhs: u64, rhs: u64) -> u64
 
 fn hash!(T)(value: T&) -> u64
 {
-    if T == u64       { return value@; }
-    else if T == i64  { return value@ as u64; }
-    else if T == f64  { return value@ as u64; }
-    else if T == char { return value@ as u64; }
-    else if T == bool { return value ? 1u : 0u; }
-    else if T == null { return 0u; }
-    else              { return value.hash(); }
+    if @is_fundamental(T) { return value@ as u64; }
+    else                  { return value.hash(); }
 }
