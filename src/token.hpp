@@ -30,6 +30,7 @@ enum class token_type
     identifier,
     int32,
     int64,
+    kw_as,
     kw_arena,
     kw_assert,
     kw_bool,

@@ -42,6 +42,7 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::identifier:          return "identifier";
         case token_type::int32:               return "int32";
         case token_type::int64:               return "int64";
+        case token_type::kw_as:               return "as";
         case token_type::kw_arena:            return "arena";
         case token_type::kw_assert:           return "assert";
         case token_type::kw_bool:             return "bool";
