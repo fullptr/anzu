@@ -68,20 +68,18 @@ enum class op : std::uint8_t
     ret,
     assert,
 
-    null_to_i64, // TODO
-    bool_to_i64, // TODO
+    null_to_i64,
+    bool_to_i64,
     char_to_i64,
-    i32_to_i64,  // TODO
-    //i64_to_i64,  // NOOP
-    u64_to_i64, // NOOP
-    f64_to_i64, // NOOP
+    i32_to_i64,
+    u64_to_i64,
+    f64_to_i64,
 
-    null_to_u64, // TODO
+    null_to_u64,
     bool_to_u64,
     char_to_u64,
-    i32_to_u64,  // TODO
+    i32_to_u64,
     i64_to_u64,
-    //u64_to_u64, // NOOP
     f64_to_u64,
 
     char_eq,
