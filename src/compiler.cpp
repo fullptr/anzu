@@ -1505,44 +1505,28 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type
                 // noop
             }
 
-            // to i64
-            else if (src == tf::null_type && dst == tf::i64_type) {
-                push_value(code(com), op::null_to_i64);
-            }
-            else if (src == tf::bool_type && dst == tf::i64_type) {
-                push_value(code(com), op::bool_to_i64);
-            }
-            else if (src == tf::char_type && dst == tf::i64_type) {
-                push_value(code(com), op::char_to_i64);
-            }
-            else if (src == tf::i32_type && dst == tf::i64_type) {
-                push_value(code(com), op::i32_to_i64);
-            }
-            else if (src == tf::u64_type && dst == tf::i64_type) {
-                push_value(code(com), op::u64_to_i64);
-            }
-            else if (src == tf::f64_type && dst == tf::i64_type) {
-                push_value(code(com), op::f64_to_i64);
+            else if (dst == tf::i64_type) {
+                switch (src) {
+                    case tf::null_type: { push_value(code(com), op::null_to_i64); } break;
+                    case tf::bool_type: { push_value(code(com), op::bool_to_i64); } break;
+                    case tf::char_type: { push_value(code(com), op::char_to_i64); } break;
+                    case tf::i32_type:  { push_value(code(com), op::i32_to_i64);  } break;
+                    case tf::i64_type:  { /* noop */ } break;
+                    case tf::u64_type:  { push_value(code(com), op::u64_to_i64);  } break;
+                    case tf::f64_type:  { push_value(code(com), op::f64_to_i64);  } break;
+                }
             }
 
-            // to u64
-            else if (src == tf::null_type && dst == tf::u64_type) {
-                push_value(code(com), op::null_to_u64);
-            }
-            else if (src == tf::bool_type && dst == tf::u64_type) {
-                push_value(code(com), op::bool_to_u64);
-            }
-            else if (src == tf::char_type && dst == tf::u64_type) {
-                push_value(code(com), op::char_to_u64);
-            }
-            else if (src == tf::i32_type && dst == tf::u64_type) {
-                push_value(code(com), op::i32_to_u64);
-            }
-            else if (src == tf::i64_type && dst == tf::u64_type) {
-                push_value(code(com), op::i64_to_u64);
-            }
-            else if (src == tf::f64_type && dst == tf::u64_type) {
-                push_value(code(com), op::f64_to_u64);
+            else if (dst == tf::u64_type) {
+                switch (src) {
+                    case tf::null_type: { push_value(code(com), op::null_to_u64); } break;
+                    case tf::bool_type: { push_value(code(com), op::bool_to_u64); } break;
+                    case tf::char_type: { push_value(code(com), op::char_to_u64); } break;
+                    case tf::i32_type:  { push_value(code(com), op::i32_to_u64);  } break;
+                    case tf::i64_type:  { push_value(code(com), op::i64_to_u64);  } break;
+                    case tf::u64_type:  { /* noop */ } break;
+                    case tf::f64_type:  { push_value(code(com), op::f64_to_u64);  } break;
+                }
             }
 
             else {
