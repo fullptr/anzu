@@ -414,7 +414,7 @@ auto get_rule(token_type tt) -> const parse_rule*
 
 auto parse_expression(tokenstream& tokens) -> node_expr_ptr
 {
-    return parse_precedence(tokens, precedence::ternary);
+    return parse_precedence(tokens, precedence::as);
 }
 
 auto parse_identifier(tokenstream& tokens) -> std::string
