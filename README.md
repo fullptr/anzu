@@ -170,7 +170,7 @@ Runtime  -- runtime.hpp   : Functionality to run a program
 ```
 
 # Next Features
+* Hash Maps
 * Generators
-* Template Type Deductions
 * Pattern Matching
 * Variants
