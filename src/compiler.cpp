@@ -1511,6 +1511,11 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     node.token.error("no intrisic function named @{} exists", node.name);
 }
 
+auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> type_name
+{
+    return null_type();
+}
+
 void push_stmt(compiler& com, const node_sequence_stmt& node)
 {
     variables(com).new_scope();

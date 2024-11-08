@@ -27,7 +27,7 @@ struct map!(Key, Value)
     {
         let hash := util.hash(key);
         assert(self.has(key));
-        
+
         return self._data[hash].value&;
     }
 

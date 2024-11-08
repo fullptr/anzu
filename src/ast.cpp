@@ -158,6 +158,13 @@ auto print_node(const node_expr& root, int indent) -> void
             for (const auto& arg : node.args) {
                 print_node(*arg, indent + 1);
             }
+        },
+        [&](const node_as_expr& node) {
+            std::print("{}As:\n", spaces);
+            std::print("{}- Expr:\n", spaces);
+            print_node(*node.expr, indent + 1);
+            std::print("{}- Type:\n", spaces);
+            print_node(*node.type, indent + 1);
         }
     }, root);
 }

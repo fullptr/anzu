@@ -1,11 +1,1 @@
-struct foo
-{
-    x: i64;
-    y: f64;
-}
-
-let f := foo(10, 1.0);
-var g := foo(10, 2.0);
-g.y = 1.0;
-
-print("{}\n", @compare(f&, g&));
+let x := 10 as u64;
