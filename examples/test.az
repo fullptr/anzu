@@ -1,4 +1,1 @@
-let util := @import("lib/utility.az");
-let x := 14u;
-let hash := util.hash(x&);
-print("{}\n", hash);
+let i := @import;

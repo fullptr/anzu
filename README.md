@@ -44,7 +44,7 @@ An interpreted programming language written in C++. This started out as a stack-
 
 * `if` statements.
 
-    ```rs
+    ```
     if <condition> {
         ...
     } else if <condition> {
@@ -55,7 +55,7 @@ An interpreted programming language written in C++. This started out as a stack-
     ```
 
 * basic `loop` loops (with `break` and `continue`):
-    ```rs
+    ```
     loop {
         ...
     }
@@ -63,7 +63,7 @@ An interpreted programming language written in C++. This started out as a stack-
 
 * `while` loops:
 
-    ```rs
+    ```
     while <condition> {
         ...
     }
@@ -71,7 +71,7 @@ An interpreted programming language written in C++. This started out as a stack-
 
 * `for` loops (for arrays only for now):
 
-    ```rs
+    ```
     for <name> in <array> {
         <body>
     }
@@ -79,7 +79,7 @@ An interpreted programming language written in C++. This started out as a stack-
 
 * `fn` function statements:
 
-    ```rs
+    ```
     fn factorial(i: u64) -> u64 {
         if (i == 0u) {
             return 1u; 
@@ -88,7 +88,7 @@ An interpreted programming language written in C++. This started out as a stack-
     }
     ```
 * `struct` statements and member functions:
-    ```cpp
+    ```
     struct vec2
     {
         x: f64;
@@ -104,9 +104,16 @@ An interpreted programming language written in C++. This started out as a stack-
     * If the first arg is not a pointer to the type, it is classed as a "static" method and only callable from the type.
 
 * All the common arithmetic, comparison and logical operators.
-* Builtin functions.
-* Intrinsic functions.
-    * These are special functions for accessing compiler internals or to perform operations that require specialised op codes in the runtime to be efficient. They are prefixed with a `@`. They can also accept types as arguments.
+
+* Type casting with `as`.
+    Currently only `x as i64` and `x as u64` is supported where `x` is a fundamental type.
+
+* Builtin functions
+    This is a somewhat rubbish attempt at implementing C functions. I will probably remove this and reimplement from scratch when I figure out how.
+
+* Intrinsic "functions"
+    These are operators for accessing compiler internals or to perform operations that require specialised op codes in the runtime to be efficient. They are prefixed with a `@`.
+    They are more flexible than functions; some accept types as arguments and you can call some of them in places where functions can't, eg `@type_of` can be called anywhere a type is expected. You cannot take the address of an intrinsic or assign them to variables.
     * `@len(obj)` behaves differently depending on the object. If it's an array or span, returns the number of elements. If it's an arena, is returns the number of bytes allocated. If it's a struct that has a `.len() -> u64` member function, it calls that. Otherwise it's a compiler error.
     * `@size_of(x)` returns the size in bytes of the type of object `x`. `x` can also be itself a type.
     * `@type_of(x)` returns the type of `x`. Can be used anywhere a type is expected.
@@ -115,18 +122,19 @@ An interpreted programming language written in C++. This started out as a stack-
     * `@compare(lhs, rhs)` takes two pointers of the same type and compares them bytewise via memcmp. 
     * `@import(name)` for importing and using other modules (more info below). This can only be used in the global scope.
     * `@fn_ptr(func)` takes the name of a function an explicitly converts it to a function pointer.
-    * `@is_fundamental(type)` returns `true` if the given type of one of the builtin types.
+    * `@is_fundamental(type)` returns `true` (compile time bool) if the given type of one of the builtin types.
+    There's no reason why these couldn't be keywords (like how `sizeof` is a keyword in C++); there's no real criteria for what should be a keyword, but some of these seem too niche to be classed as its own language feature (`type_name_of` feels wrong being a keyword for example) and for others I just like this style more (`@import` feels better to me that just a plain `import`)
 
-* Memory arenas for allocating dynamic memory:
-    ```py
+* Memory arenas for allocating dynamic memory
+    ```
     arena a;
     let ptr := new(a) false; # returns a pointer to a bool allocated in the arena
     let arr := new(a, 100) 0u; # returns a span to a f64[100] array allocated in the arena
     ```
     Arenas are lexically scoped and deallocate all created objects when it goes out of scope. If a function needs to allocate objects that will outlive the function call, then a pointer to an arena should be passed into the function which it can use for allocations. Therefore pointers obtained from an arena must not outlive the arena itself. (Future challenge: static analysis to ensure this is the case).
 
-* Templates Functions:
-    ```py
+* Templates functions
+    ```
     fn foo!(T)(x: T, y: T) -> T { ... }
 
     let x := foo!(i64)(2, 3);
@@ -135,7 +143,7 @@ An interpreted programming language written in C++. This started out as a stack-
     * Member functions can also be templated.
 
 * Modules
-    ```py
+    ```
     let vec := @import("lib/vector.az");
     var my_vec := vec.vector!(u64).create(alloc&);
     ```
