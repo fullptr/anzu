@@ -95,9 +95,6 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         [](const type_module&) {
             return std::size_t{0}; 
         },
-        [](const type_ct_bool&) {
-            return std::size_t{0}; 
-        },
         [](const type_placeholder&) {
             return std::size_t{0}; 
         }

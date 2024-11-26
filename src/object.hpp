@@ -162,14 +162,6 @@ struct type_module
     auto operator==(const type_module&) const -> bool = default;
 };
 
-struct type_ct_bool
-{
-    bool value;
-
-    auto to_hash() const { return hash(value); }
-    auto operator==(const type_ct_bool&) const -> bool = default;
-};
-
 // Only used during template argument type deduction
 struct type_placeholder
 {
@@ -195,7 +187,6 @@ auto to_string(const type_function& type) -> std::string;
 auto to_string(const type_function_template& type) -> std::string;
 auto to_string(const type_struct_template& type) -> std::string;
 auto to_string(const type_module& type) -> std::string;
-auto to_string(const type_ct_bool& type) -> std::string;
 auto to_string(const type_placeholder& type) -> std::string;
 
 struct type_name : public std::variant<
@@ -214,7 +205,6 @@ struct type_name : public std::variant<
     type_function_template,
     type_struct_template,
     type_module,
-    type_ct_bool,
     type_placeholder>
 {
     using variant::variant;

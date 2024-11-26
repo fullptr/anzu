@@ -274,12 +274,6 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
 
     push_expr(com, compile_type::val, expr);
 
-    // Let compile time bools convert to runtime bools
-    if (expected == bool_type() && actual.is<type_ct_bool>()) {
-        push_value(code(com), op::push_bool, actual.as<type_ct_bool>().value);
-        return;
-    }
-
     // Let functions convert to function ptrs
     if (auto func = actual.get_if<type_function>(); func && func->to_pointer() == expected) {
         push_value(code(com), op::push_function_ptr, func->id); // push the id
@@ -726,8 +720,8 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     // Allow for comparisons of types
     if (lhs.is<type_type>() && rhs.is<type_type>()) {
         switch (node.token.type) {
-            case tt::equal_equal: return { type_name{type_ct_bool{inner_type(lhs) == inner_type(rhs)}}, std::nullopt };
-            case tt::bang_equal:  return { type_name{type_ct_bool{inner_type(lhs) != inner_type(rhs)}}, std::nullopt };
+            case tt::equal_equal: return { bool_type(), {inner_type(lhs) == inner_type(rhs)} };
+            case tt::bang_equal:  return { bool_type(), {inner_type(lhs) != inner_type(rhs)} };
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
@@ -737,8 +731,8 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         const auto lhs_inner = lhs.is<type_type>() ? inner_type(lhs) : null_type();
         const auto rhs_inner = rhs.is<type_type>() ? inner_type(rhs) : null_type();
         switch (node.token.type) {
-            case tt::equal_equal: return { type_name{type_ct_bool{lhs_inner == rhs_inner}}, std::nullopt };
-            case tt::bang_equal:  return { type_name{type_ct_bool{lhs_inner != rhs_inner}}, std::nullopt };
+            case tt::equal_equal: return { bool_type(), {lhs_inner == rhs_inner} };
+            case tt::bang_equal:  return { bool_type(), {lhs_inner != rhs_inner} };
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
@@ -1512,7 +1506,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
         const auto type = type_of_expr(com, *node.args[0]);
         node.token.assert(type.is<type_type>(), "@is_fundamental expects a type");
-        return { type_ct_bool(inner_type(type).is<type_fundamental>()), std::nullopt };
+        return { bool_type(), {inner_type(type).is<type_fundamental>()} };
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
@@ -1654,18 +1648,22 @@ void push_stmt(compiler& com, const node_for_stmt& node)
 
 void push_stmt(compiler& com, const node_if_stmt& node)
 {
-    const auto type = type_of_expr(com, *node.condition);
-    if (auto info = type.get_if<type_ct_bool>()) {
-        if (info->value) {
+    const auto program_size = code(com).size();
+
+    const auto [cond_type, cond_value] = push_expr(com, compile_type::val, *node.condition);
+    node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
+    
+    if (cond_value.has_value()) {
+        code(com).resize(program_size); // Remove the code to push the value at runtime
+        node.token.assert(std::holds_alternative<bool>(*cond_value), "value of condition should hold a bool, but doesn't!");
+        if (std::get<bool>(*cond_value)) {
             push_stmt(com, *node.body);
         } else if (node.else_body) {
             push_stmt(com, *node.else_body);
         }
         return;
     }
-
-    const auto cond_type = push_expr(com, compile_type::val, *node.condition).type;
-    node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
+    
     push_value(code(com), op::jump_if_false);
     const auto jump_pos = push_value(code(com), std::uint64_t{0});
     push_stmt(com, *node.body);
