@@ -1,10 +1,6 @@
-fn foo!(T)() {
-    if T == i64 {
-        print("i64!\n");
-    } else {
-        print("not i64!\n");
-    }
-}
 
-foo!(i64);
-foo!(u64);
+if true {
+    print("i64!\n");
+} else {
+    print("not i64!\n");
+}
