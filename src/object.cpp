@@ -71,6 +71,7 @@ auto to_string(type_fundamental t) -> std::string
         case type_fundamental::i64_type:     return "i64";
         case type_fundamental::u64_type:     return "u64";
         case type_fundamental::f64_type:     return "f64";
+        case type_fundamental::module_type:  return "module";
         default: return "UNKNOWN FUNDAMENTAL";
     }
 }
@@ -167,11 +168,6 @@ auto to_string(const type_struct_template& type) -> std::string
     return std::format("<struct_template: <{}>.{}>", type.module.string(), type.name);
 }
 
-auto to_string(const type_module& type) -> std::string
-{
-    return std::format("module");
-}
-
 auto to_string(const type_placeholder& type) -> std::string
 {
     return std::format("<placeholder: {}>", type.name);
@@ -210,6 +206,11 @@ auto u64_type() -> type_name
 auto f64_type() -> type_name
 {
     return {type_fundamental::f64_type};
+}
+
+auto module_type() -> type_name
+{
+    return {type_fundamental::module_type};
 }
 
 auto arena_type() -> type_name

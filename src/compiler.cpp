@@ -1227,7 +1227,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
     const auto [type, value] = type_of_expr(com, *node.expr);
 
     // If the expression is a module, allow for accessing global variables, functions and structs
-    if (auto info = type.get_if<type_module>()) {
+    if (auto info = type.get_if<type_fundamental>(); info && *info == type_fundamental::module_type) {
         node.token.assert(value.has_value(), "the value of module objects must be known at compile time");
         node.token.assert(
             std::holds_alternative<std::filesystem::path>(*value),
@@ -1507,7 +1507,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
         const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
         load_module(com, node.token, filepath);
-        return { type_module{}, filepath }; // TODO: value can contain the filepath
+        return { module_type(), filepath };
     }
     if (node.name == "fn_ptr") {
         node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");

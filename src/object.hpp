@@ -42,6 +42,7 @@ enum class type_fundamental : std::uint8_t
     i64_type,
     u64_type,
     f64_type,
+    module_type,
 };
 
 struct type_struct
@@ -165,12 +166,6 @@ struct type_struct_template
     auto operator==(const type_struct_template&) const -> bool = default;
 };
 
-struct type_module
-{
-    auto to_hash() const { return hash(0); }
-    auto operator==(const type_module&) const -> bool = default;
-};
-
 // Only used during template argument type deduction
 struct type_placeholder
 {
@@ -195,7 +190,6 @@ auto to_string(const type_type& type) -> std::string;
 auto to_string(const type_function& type) -> std::string;
 auto to_string(const type_function_template& type) -> std::string;
 auto to_string(const type_struct_template& type) -> std::string;
-auto to_string(const type_module& type) -> std::string;
 auto to_string(const type_placeholder& type) -> std::string;
 
 struct type_name : public std::variant<
@@ -213,7 +207,6 @@ struct type_name : public std::variant<
     type_function,
     type_function_template,
     type_struct_template,
-    type_module,
     type_placeholder>
 {
     using variant::variant;
@@ -257,6 +250,7 @@ auto i32_type() -> type_name;
 auto i64_type() -> type_name;
 auto u64_type() -> type_name;
 auto f64_type() -> type_name;
+auto module_type() -> type_name;
 auto arena_type() -> type_name;
 auto string_literal_type() -> type_name;
 
