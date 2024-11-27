@@ -23,7 +23,7 @@ static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 struct type_name;
 
 using const_value = std::variant<
-    std::monostate,       // null
+    std::monostate,       // null, no value
     bool,                 // bool
     char,                 // char
     std::int32_t,         // i32

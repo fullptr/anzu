@@ -34,7 +34,7 @@ auto variable_manager::declare(
     const std::string& name,
     const type_name& type,
     std::size_t size,
-    const std::optional<const_value>& value
+    const const_value& value
 ) -> bool
 {
     auto& scope = d_scopes.back();
@@ -43,7 +43,7 @@ auto variable_manager::declare(
     }
 
     // Only store the compile time value (if it exists) for const values
-    scope.variables.emplace_back(module, name, type, scope.next, size, type.is_const ? value : std::nullopt);
+    scope.variables.emplace_back(module, name, type, scope.next, size, type.is_const ? value : const_value{});
     scope.next += size;
     return true;
 }

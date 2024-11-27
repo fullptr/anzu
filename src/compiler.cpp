@@ -22,8 +22,8 @@ namespace {
 
 struct expr_result
 {
-    type_name                  type;
-    std::optional<const_value> value;
+    type_name   type;
+    const_value value = {};
 };
 
 // Returns the current function
@@ -107,7 +107,7 @@ void declare_var(
     const token& tok,
     const std::string& name,
     const type_name& type,
-    const std::optional<const_value>& value = std::nullopt
+    const const_value& value = const_value{}
 )
 {
     if (!current(com).variables.declare(curr_module(com), name, type, com.types.size_of(type), value)) {
@@ -120,14 +120,14 @@ auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path&
     if (in_function(com)) {
         if (const auto var = variables(com).find(module, name); var.has_value()) {
             push_value(code(com), op::push_ptr_local, var->location);
-            return { var->type, std::nullopt };
+            return {var->type};
         }
     }
 
     const auto var = globals(com).find(module, name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
     push_value(code(com), op::push_ptr_global, var->location);
-    return { var->type, std::nullopt };
+    return {var->type};
 }
 
 auto push_var_val(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> expr_result
@@ -666,7 +666,7 @@ auto push_expr(compiler& com, compile_type ct, const node_literal_null_expr& nod
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a null literal");
     push_value(code(com), op::push_null);
-    return { null_type(), std::nullopt };
+    return { null_type() };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_string_expr& node) -> expr_result
@@ -677,7 +677,7 @@ auto push_expr(compiler& com, compile_type ct, const node_literal_string_expr& n
     str = string_replace(str, "\\r", "\r");
     str = string_replace(str, "\\t", "\t");
     push_value(code(com), insert_into_rom(com, str), str.size());
-    return { string_literal_type(), std::nullopt }; // TODO: Maybe support string literals at compile time?
+    return { string_literal_type() }; // TODO: Maybe support string literals at compile time?
 }
 
 // TODO: collapse compile-time values if possible
@@ -689,12 +689,12 @@ auto push_expr(compiler& com, compile_type ct, const node_unary_op_expr& node) -
 
     switch (node.token.type) {
         case tt::minus: {
-            if (type == i32_type()) { push_value(code(com), op::i32_neg); return { type, std::nullopt }; }
-            if (type == i64_type()) { push_value(code(com), op::i64_neg); return { type, std::nullopt }; }
-            if (type == f64_type()) { push_value(code(com), op::f64_neg); return { type, std::nullopt }; }
+            if (type == i32_type()) { push_value(code(com), op::i32_neg); return { type }; }
+            if (type == i64_type()) { push_value(code(com), op::i64_neg); return { type }; }
+            if (type == f64_type()) { push_value(code(com), op::f64_neg); return { type }; }
         } break;
         case tt::bang: {
-            if (type == bool_type()) { push_value(code(com), op::bool_not); return { type, std::nullopt }; }
+            if (type == bool_type()) { push_value(code(com), op::bool_not); return { type }; }
         } break;
     }
     node.token.error("could not find op '{}{}'", node.token.type, type);
@@ -745,8 +745,8 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         push_ptr(*node.lhs);
         push_ptr(*node.rhs); 
         switch (node.token.type) {
-            case tt::equal_equal: { push_value(code(com), op::u64_eq); return { bool_type(), std::nullopt }; }
-            case tt::bang_equal:  { push_value(code(com), op::u64_ne); return { bool_type(), std::nullopt }; }
+            case tt::equal_equal: { push_value(code(com), op::u64_eq); return { bool_type() }; }
+            case tt::bang_equal:  { push_value(code(com), op::u64_ne); return { bool_type() }; }
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
@@ -756,73 +756,73 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 
     if (type.is<type_ptr>()) {
         switch (node.token.type) {
-            case tt::equal_equal: { push(); push_value(code(com), op::u64_eq); return { bool_type(), std::nullopt }; }
-            case tt::bang_equal:  { push(); push_value(code(com), op::u64_ne); return { bool_type(), std::nullopt }; }
+            case tt::equal_equal: { push(); push_value(code(com), op::u64_eq); return { bool_type() }; }
+            case tt::bang_equal:  { push(); push_value(code(com), op::u64_ne); return { bool_type() }; }
         }
     }
     else if (type == char_type()) {
         switch (node.token.type) {
-            case tt::equal_equal: { push(); push_value(code(com), op::char_eq); return { bool_type(), std::nullopt }; }
-            case tt::bang_equal:  { push(); push_value(code(com), op::char_ne); return { bool_type(), std::nullopt }; }
+            case tt::equal_equal: { push(); push_value(code(com), op::char_eq); return { bool_type() }; }
+            case tt::bang_equal:  { push(); push_value(code(com), op::char_ne); return { bool_type() }; }
         }
     }
     else if (type == i32_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push(); push_value(code(com), op::i32_add); return { type, std::nullopt };       }
-            case tt::minus:         { push(); push_value(code(com), op::i32_sub); return { type, std::nullopt };       }
-            case tt::star:          { push(); push_value(code(com), op::i32_mul); return { type, std::nullopt };       }
-            case tt::slash:         { push(); push_value(code(com), op::i32_div); return { type, std::nullopt };       }
-            case tt::percent:       { push(); push_value(code(com), op::i32_mod); return { type, std::nullopt };       }
-            case tt::equal_equal:   { push(); push_value(code(com), op::i32_eq); return { bool_type(), std::nullopt }; }
-            case tt::bang_equal:    { push(); push_value(code(com), op::i32_ne); return { bool_type(), std::nullopt }; }
-            case tt::less:          { push(); push_value(code(com), op::i32_lt); return { bool_type(), std::nullopt }; }
-            case tt::less_equal:    { push(); push_value(code(com), op::i32_le); return { bool_type(), std::nullopt }; }
-            case tt::greater:       { push(); push_value(code(com), op::i32_gt); return { bool_type(), std::nullopt }; }
-            case tt::greater_equal: { push(); push_value(code(com), op::i32_ge); return { bool_type(), std::nullopt }; }
+            case tt::plus:          { push(); push_value(code(com), op::i32_add); return { type };       }
+            case tt::minus:         { push(); push_value(code(com), op::i32_sub); return { type };       }
+            case tt::star:          { push(); push_value(code(com), op::i32_mul); return { type };       }
+            case tt::slash:         { push(); push_value(code(com), op::i32_div); return { type };       }
+            case tt::percent:       { push(); push_value(code(com), op::i32_mod); return { type };       }
+            case tt::equal_equal:   { push(); push_value(code(com), op::i32_eq); return { bool_type() }; }
+            case tt::bang_equal:    { push(); push_value(code(com), op::i32_ne); return { bool_type() }; }
+            case tt::less:          { push(); push_value(code(com), op::i32_lt); return { bool_type() }; }
+            case tt::less_equal:    { push(); push_value(code(com), op::i32_le); return { bool_type() }; }
+            case tt::greater:       { push(); push_value(code(com), op::i32_gt); return { bool_type() }; }
+            case tt::greater_equal: { push(); push_value(code(com), op::i32_ge); return { bool_type() }; }
         }
     }
     else if (type == i64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push(); push_value(code(com), op::i64_add); return { type, std::nullopt };       }
-            case tt::minus:         { push(); push_value(code(com), op::i64_sub); return { type, std::nullopt };       }
-            case tt::star:          { push(); push_value(code(com), op::i64_mul); return { type, std::nullopt };       }
-            case tt::slash:         { push(); push_value(code(com), op::i64_div); return { type, std::nullopt };       }
-            case tt::percent:       { push(); push_value(code(com), op::i64_mod); return { type, std::nullopt };       }
-            case tt::equal_equal:   { push(); push_value(code(com), op::i64_eq); return { bool_type(), std::nullopt }; }
-            case tt::bang_equal:    { push(); push_value(code(com), op::i64_ne); return { bool_type(), std::nullopt }; }
-            case tt::less:          { push(); push_value(code(com), op::i64_lt); return { bool_type(), std::nullopt }; }
-            case tt::less_equal:    { push(); push_value(code(com), op::i64_le); return { bool_type(), std::nullopt }; }
-            case tt::greater:       { push(); push_value(code(com), op::i64_gt); return { bool_type(), std::nullopt }; }
-            case tt::greater_equal: { push(); push_value(code(com), op::i64_ge); return { bool_type(), std::nullopt }; }
+            case tt::plus:          { push(); push_value(code(com), op::i64_add); return { type };       }
+            case tt::minus:         { push(); push_value(code(com), op::i64_sub); return { type };       }
+            case tt::star:          { push(); push_value(code(com), op::i64_mul); return { type };       }
+            case tt::slash:         { push(); push_value(code(com), op::i64_div); return { type };       }
+            case tt::percent:       { push(); push_value(code(com), op::i64_mod); return { type };       }
+            case tt::equal_equal:   { push(); push_value(code(com), op::i64_eq); return { bool_type() }; }
+            case tt::bang_equal:    { push(); push_value(code(com), op::i64_ne); return { bool_type() }; }
+            case tt::less:          { push(); push_value(code(com), op::i64_lt); return { bool_type() }; }
+            case tt::less_equal:    { push(); push_value(code(com), op::i64_le); return { bool_type() }; }
+            case tt::greater:       { push(); push_value(code(com), op::i64_gt); return { bool_type() }; }
+            case tt::greater_equal: { push(); push_value(code(com), op::i64_ge); return { bool_type() }; }
         }
     }
     else if (type == u64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push(); push_value(code(com), op::u64_add); return { type, std::nullopt };       }
-            case tt::minus:         { push(); push_value(code(com), op::u64_sub); return { type, std::nullopt };       }
-            case tt::star:          { push(); push_value(code(com), op::u64_mul); return { type, std::nullopt };       }
-            case tt::slash:         { push(); push_value(code(com), op::u64_div); return { type, std::nullopt };       }
-            case tt::percent:       { push(); push_value(code(com), op::u64_mod); return { type, std::nullopt };       }
-            case tt::equal_equal:   { push(); push_value(code(com), op::u64_eq); return { bool_type(), std::nullopt }; }
-            case tt::bang_equal:    { push(); push_value(code(com), op::u64_ne); return { bool_type(), std::nullopt }; }
-            case tt::less:          { push(); push_value(code(com), op::u64_lt); return { bool_type(), std::nullopt }; }
-            case tt::less_equal:    { push(); push_value(code(com), op::u64_le); return { bool_type(), std::nullopt }; }
-            case tt::greater:       { push(); push_value(code(com), op::u64_gt); return { bool_type(), std::nullopt }; }
-            case tt::greater_equal: { push(); push_value(code(com), op::u64_ge); return { bool_type(), std::nullopt }; }
+            case tt::plus:          { push(); push_value(code(com), op::u64_add); return { type };       }
+            case tt::minus:         { push(); push_value(code(com), op::u64_sub); return { type };       }
+            case tt::star:          { push(); push_value(code(com), op::u64_mul); return { type };       }
+            case tt::slash:         { push(); push_value(code(com), op::u64_div); return { type };       }
+            case tt::percent:       { push(); push_value(code(com), op::u64_mod); return { type };       }
+            case tt::equal_equal:   { push(); push_value(code(com), op::u64_eq); return { bool_type() }; }
+            case tt::bang_equal:    { push(); push_value(code(com), op::u64_ne); return { bool_type() }; }
+            case tt::less:          { push(); push_value(code(com), op::u64_lt); return { bool_type() }; }
+            case tt::less_equal:    { push(); push_value(code(com), op::u64_le); return { bool_type() }; }
+            case tt::greater:       { push(); push_value(code(com), op::u64_gt); return { bool_type() }; }
+            case tt::greater_equal: { push(); push_value(code(com), op::u64_ge); return { bool_type() }; }
         }
     }
     else if (type == f64_type()) {
         switch (node.token.type) {
-            case tt::plus:          { push(); push_value(code(com), op::f64_add); return { type, std::nullopt };       }
-            case tt::minus:         { push(); push_value(code(com), op::f64_sub); return { type, std::nullopt };       }
-            case tt::star:          { push(); push_value(code(com), op::f64_mul); return { type, std::nullopt };       }
-            case tt::slash:         { push(); push_value(code(com), op::f64_div); return { type, std::nullopt };       }
-            case tt::equal_equal:   { push(); push_value(code(com), op::f64_eq); return { bool_type(), std::nullopt }; }
-            case tt::bang_equal:    { push(); push_value(code(com), op::f64_ne); return { bool_type(), std::nullopt }; }
-            case tt::less:          { push(); push_value(code(com), op::f64_lt); return { bool_type(), std::nullopt }; }
-            case tt::less_equal:    { push(); push_value(code(com), op::f64_le); return { bool_type(), std::nullopt }; }
-            case tt::greater:       { push(); push_value(code(com), op::f64_gt); return { bool_type(), std::nullopt }; }
-            case tt::greater_equal: { push(); push_value(code(com), op::f64_ge); return { bool_type(), std::nullopt }; }
+            case tt::plus:          { push(); push_value(code(com), op::f64_add); return { type };       }
+            case tt::minus:         { push(); push_value(code(com), op::f64_sub); return { type };       }
+            case tt::star:          { push(); push_value(code(com), op::f64_mul); return { type };       }
+            case tt::slash:         { push(); push_value(code(com), op::f64_div); return { type };       }
+            case tt::equal_equal:   { push(); push_value(code(com), op::f64_eq); return { bool_type() }; }
+            case tt::bang_equal:    { push(); push_value(code(com), op::f64_ne); return { bool_type() }; }
+            case tt::less:          { push(); push_value(code(com), op::f64_lt); return { bool_type() }; }
+            case tt::less_equal:    { push(); push_value(code(com), op::f64_le); return { bool_type() }; }
+            case tt::greater:       { push(); push_value(code(com), op::f64_gt); return { bool_type() }; }
+            case tt::greater_equal: { push(); push_value(code(com), op::f64_ge); return { bool_type() }; }
         }
     }
     else if (type == bool_type()) {
@@ -837,7 +837,7 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
                 write_value(code(com), jump_pos, code(com).size());
                 push_value(code(com), op::push_bool, false);
                 write_value(code(com), jump_pos2, code(com).size());
-                return { type, std::nullopt };
+                return { type };
             }
             case tt::bar_bar: {
                 push_expr(com, compile_type::val, *node.lhs);
@@ -849,10 +849,10 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
                 write_value(code(com), jump_pos, code(com).size());
                 push_value(code(com), op::push_bool, true);
                 write_value(code(com), jump_pos2, code(com).size());
-                return { type, std::nullopt };
+                return { type };
             }
-            case tt::equal_equal: { push(); push_value(code(com), op::bool_eq); return { type, std::nullopt }; }
-            case tt::bang_equal:  { push(); push_value(code(com), op::bool_ne); return { type, std::nullopt }; }
+            case tt::equal_equal: { push(); push_value(code(com), op::bool_eq); return { type }; }
+            case tt::bang_equal:  { push(); push_value(code(com), op::bool_ne); return { type }; }
         }
     }
 
@@ -870,7 +870,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         } else {
             push_args_typechecked(com, node.token, node.args, constructor_params(com, *info->type_val));
         }
-        return { *info->type_val, std::nullopt };
+        return { *info->type_val };
     }
     else if (auto info = type.get_if<type_struct_template>()) {
         const auto& ast = com.struct_templates[*info];
@@ -883,18 +883,18 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
             compile_struct_template(com, node.token, name, ast);
         }
         push_args_typechecked(com, node.token, node.args, constructor_params(com, name));
-        return { name, std::nullopt };
+        return { name };
     }
     else if (auto info = type.get_if<type_function_ptr>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
         push_expr(com, compile_type::val, *node.expr);
         push_value(code(com), op::call_ptr, args_size);
-        return { *info->return_type, std::nullopt };
+        return { *info->return_type };
     }
     else if (auto info = type.get_if<type_function>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
         push_value(code(com), op::call_static, info->id, args_size);
-        return { *info->return_type, std::nullopt };
+        return { *info->return_type };
     }
     else if (auto info = type.get_if<type_function_template>()) {
         const auto& ast = com.function_templates[*info];
@@ -907,12 +907,12 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         
         const auto args_size = push_args_typechecked(com, node.token, node.args, func.param_types);
         push_value(code(com), op::call_static, func.id, args_size);
-        return { *func.return_type, std::nullopt };
+        return { *func.return_type };
     }
     else if (auto info = type.get_if<type_builtin>()) { // builtin call
         push_args_typechecked(com, node.token, node.args, info->args);
         push_value(code(com), op::call_builtin, info->id);
-        return { *info->return_type, std::nullopt };
+        return { *info->return_type };
     }
     else if (auto info = type.get_if<type_bound_method>()) { // member function call
         // cannot use push_copy_typechecked because the types mismatch, but the bound method
@@ -921,7 +921,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         auto args_size = com.types.size_of(info->param_types[0]);
         args_size += push_args_typechecked(com, node.token, node.args, info->param_types | std::views::drop(1));
         push_value(code(com), op::call_static, info->id, args_size);
-        return { *info->return_type, std::nullopt };
+        return { *info->return_type };
     }
     else if (auto info = type.get_if<type_bound_method_template>()) { // member function call
         const auto& ast = com.function_templates[type_function_template{info->module, info->struct_name, info->name}];
@@ -942,7 +942,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         auto args_size = com.types.size_of(func.param_types[0]);
         args_size += push_args_typechecked(com, node.token, node.args, func.param_types | std::views::drop(1));
         push_value(code(com), op::call_static, func.id, args_size);
-        return { *func.return_type, std::nullopt };
+        return { *func.return_type };
     }
 
     node.token.error("unable to call non-callable type {}", type);
@@ -955,12 +955,12 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
 
     if (auto info = type.get_if<type_function_template>()) {
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
-        return { fetch_function(com, node.token, name), std::nullopt };
+        return { fetch_function(com, node.token, name) };
     }
     else if (auto info = type.get_if<type_bound_method_template>()) {
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
         const auto name = function_name{info->module, info->struct_name, info->name, templates};
-        return { fetch_function(com, node.token, name).to_bound_method(), std::nullopt };
+        return { fetch_function(com, node.token, name).to_bound_method() };
     }
     else if (auto info = type.get_if<type_struct_template>()) {
         const auto name = type_struct{info->name, info->module, templates};
@@ -972,7 +972,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         }
 
         node.token.assert(com.types.contains(name), "could not find struct {}", type_name{name});
-        return { type_type{type_name{name}}, std::nullopt };
+        return { type_type{type_name{name}} };
     }
     node.token.error("object of type {} can not be called with template parameters", type);
 }
@@ -988,7 +988,7 @@ auto push_expr(compiler& com, compile_type ct, const node_array_expr& node) -> e
         const auto element_type = push_expr(com, compile_type::val, *element).type;
         node.token.assert_eq(element_type, inner_type, "array has mismatching element types");
     }
-    return { inner_type.add_array(node.elements.size()), std::nullopt };
+    return { inner_type.add_array(node.elements.size()) };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_repeat_array_expr& node) -> expr_result
@@ -1001,7 +1001,7 @@ auto push_expr(compiler& com, compile_type ct, const node_repeat_array_expr& nod
     for (std::size_t i = 0; i != node.size; ++i) {
         push_expr(com, compile_type::val, *node.value);
     }
-    return { inner_type.add_array(node.size), std::nullopt };
+    return { inner_type.add_array(node.size) };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> expr_result
@@ -1012,17 +1012,17 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
             curr_struct(com) != no_struct,
             "Tried to use a bare '&', but this only makes sense for member functions"
         );
-        return { type_type{type_name{curr_struct(com)}.add_ptr()}, std::nullopt };
+        return { type_type{type_name{curr_struct(com)}.add_ptr()} };
     }
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
-        return { type_type{inner_type(type).add_ptr()}, std::nullopt };
+        return { type_type{inner_type(type).add_ptr()} };
     }
     if (com.types.size_of(type) == 0) {
         node.token.error("cannot take address of a type of size 0 (type={})", type);
     }
     push_expr(com, compile_type::ptr, *node.expr);
-    return { type.add_ptr(), std::nullopt };
+    return { type.add_ptr() };
 }
 
 auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> expr_result
@@ -1034,7 +1034,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
 
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
-        return { type_type{inner_type(type).add_span()}, std::nullopt };
+        return { type_type{inner_type(type).add_span()} };
     }
 
     node.token.assert(
@@ -1068,15 +1068,15 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
 
     if (type.is<type_array>()) {
         if (type.is_const) {
-            return { type.remove_array().add_const().add_span(), std::nullopt };
+            return { type.remove_array().add_const().add_span() };
         }
-        return { type.remove_array().add_span(), std::nullopt };
+        return { type.remove_array().add_span() };
     }
     else {  // is span
         if (type.is_const) {
-            return { type.remove_span().add_const().add_span(), std::nullopt };
+            return { type.remove_span().add_const().add_span() };
         }
-        return { type, std::nullopt };
+        return { type };
     }
 }
 
@@ -1089,7 +1089,7 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
         inner.param_types.push_back(resolve_type(com, node.token, param));
     }
     inner.return_type = resolve_type(com, node.token, node.return_type);
-    return { type_type{type}, std::nullopt };
+    return { type_type{type} };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> expr_result
@@ -1099,12 +1099,12 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> e
             curr_struct(com) != no_struct,
             "Tried to use a bare 'const', but this only makes sense for member functions"
         );
-        return { type_type{type_name{curr_struct(com)}.add_const()}, std::nullopt };
+        return { type_type{type_name{curr_struct(com)}.add_const()} };
     }
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a const type-expression");
-        return { type_type{inner_type(type).add_const()}, std::nullopt };
+        return { type_type{inner_type(type).add_const()} };
     }
 
     const auto [t, v] = push_expr(com, ct, *node.expr);
@@ -1125,7 +1125,7 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> exp
         node.token.assert(orig.is<type_span>(), "original must be a span");
         node.token.assert_eq(orig.remove_span(), type, "original array and new array type mismatch");
         push_value(code(com), op::arena_realloc_array, type_size);
-        return { type.add_span(), std::nullopt };
+        return { type.add_span() };
     }
     else if (node.count) { // we are allocating a span
         const auto count = push_expr(com, compile_type::val, *node.count).type;
@@ -1133,13 +1133,13 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> exp
         const auto arena = push_expr(com, compile_type::val, *node.arena).type;
         const auto arena_stripped = auto_deref_pointer(com, arena); // can pass by value or pointer
         push_value(code(com), op::arena_alloc_array, type_size);
-        return { type.add_span(), std::nullopt };
+        return { type.add_span() };
     }
     else {
         const auto arena = push_expr(com, compile_type::val, *node.arena).type;
         const auto arena_stripped = auto_deref_pointer(com, arena); // can pass by value or pointer
         push_value(code(com), op::arena_alloc, type_size);
-        return { type.add_ptr(), std::nullopt };
+        return { type.add_ptr() };
     }
 }
 
@@ -1164,55 +1164,55 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function");
         const auto& func = com.functions[it->second];
-        return { type_function{func.id, func.params, func.return_type}, std::nullopt };
+        return { type_function{func.id, func.params, func.return_type} };
     }
 
     // It might be a function template
     if (com.function_templates.contains(fname.as_template())) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-        return { type_function_template{ .module = curr_module(com), .struct_name=no_struct, .name=node.name }, std::nullopt };
+        return { type_function_template{ .module = curr_module(com), .struct_name=no_struct, .name=node.name } };
     }
 
     // It might be a struct
     const auto sname = type_struct{node.name, curr_module(com)};
     if (com.types.contains(sname)) {
-        return { type_type{type_name{sname}}, std::nullopt };
+        return { type_type{type_name{sname}} };
     }
 
     // It might be a struct template
     const auto stemp = type_struct_template{curr_module(com), node.name};
     if (com.struct_templates.contains(stemp)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-        return { type_struct_template{ .module=curr_module(com), .name=node.name }, std::nullopt };
+        return { type_struct_template{ .module=curr_module(com), .name=node.name } };
     }
 
     // It might be a fundamental type
     if (const auto t = get_builtin_type(node.name); t.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        return { type_type{*t}, std::nullopt };
+        return { type_type{*t} };
     }
 
     // It might be one of the current functions template aliases
     const auto& map1 = current(com).templates;
     if (auto it = map1.find(node.name); it != map1.end()) {
-        return { type_type{it->second}, std::nullopt };
+        return { type_type{it->second} };
     }
 
     // It might be one of the current structs template aliases
     const auto map2 = com.types.templates_of(curr_struct(com));
     if (auto it = map2.find(node.name); it != map2.end()) {
-        return { type_type{it->second}, std::nullopt };
+        return { type_type{it->second} };
     }
 
     // It might be a tempalte placeholder for a type the needs to be deduced
     if (!com.current_placeholders.empty() && com.current_placeholders.back().contains(node.name)) {
-        return { type_type{type_name{type_placeholder{node.name}}}, std::nullopt };
+        return { type_type{type_name{type_placeholder{node.name}}} };
     }
 
     // The name might be a builtin (no module, struct or templates, so just the name);
     if (auto func = get_builtin(node.name)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
-        return { type_builtin{func->name, func->id, func->args, func->return_type}, std::nullopt };
+        return { type_builtin{func->name, func->id, func->args, func->return_type} };
     }
 
     // Otherwise, it must be a variable
@@ -1228,39 +1228,38 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
 
     // If the expression is a module, allow for accessing global variables, functions and structs
     if (auto info = type.get_if<type_fundamental>(); info && *info == type_fundamental::module_type) {
-        node.token.assert(value.has_value(), "the value of module objects must be known at compile time");
         node.token.assert(
-            std::holds_alternative<std::filesystem::path>(*value),
+            std::holds_alternative<std::filesystem::path>(value),
             "module object should contain a path, but doesn't!"
         );
-        const auto& filepath = std::get<std::filesystem::path>(*value);
+        const auto& filepath = std::get<std::filesystem::path>(value);
 
         // It might be a function
         const auto fname = function_name{filepath, no_struct, node.name};
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
-            return { type_function{func.id, func.params, func.return_type }, std::nullopt };
+            return { type_function{func.id, func.params, func.return_type } };
         }
 
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return { type_function_template{ filepath, no_struct, node.name }, std::nullopt };
+            return { type_function_template{ filepath, no_struct, node.name } };
         }
 
         // It might be a struct
         const auto sname = type_struct{ node.name, filepath };
         if (com.types.contains(sname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct");
-            return { type_type{type_name{sname}}, std::nullopt };
+            return { type_type{type_name{sname}} };
         }
 
         // It might be a struct template
         const auto skey = type_struct_template{filepath, node.name};
         if (com.struct_templates.contains(skey)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-            return { type_struct_template{ filepath, node.name }, std::nullopt };
+            return { type_struct_template{ filepath, node.name } };
         }
 
         // Otherwise, it must be a variable
@@ -1278,13 +1277,13 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
-            return { type_function{func.id, func.params, func.return_type}, std::nullopt };   
+            return { type_function{func.id, func.params, func.return_type} };   
         }
 
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return { type_function_template{fname.module, struct_info, node.name}, std::nullopt };
+            return { type_function_template{fname.module, struct_info, node.name} };
         }
 
         node.token.error("can only access member functions from structs");
@@ -1310,7 +1309,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         if (stripped.is_const && !actual.remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
-        return { type_bound_method{info.id, info.params, info.return_type}, std::nullopt };
+        return { type_bound_method{info.id, info.params, info.return_type} };
     }
 
     // It might be a member function template
@@ -1333,7 +1332,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
             node.token.error("cannot bind a const variable to a non-const member function");
         }
         
-        return { type_bound_method_template{ .module = struct_name.module, .struct_name=struct_name, .name=node.name }, std::nullopt };
+        return { type_bound_method_template{ .module = struct_name.module, .struct_name=struct_name, .name=node.name } };
     }
 
     // Otherwise, it's a data member
@@ -1346,7 +1345,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
     }
     
     if (stripped.is_const) field_type.is_const = true; // propagate const to fields
-    return { field_type, std::nullopt };
+    return { field_type };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> expr_result
@@ -1356,7 +1355,7 @@ auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> e
     if (ct == compile_type::val) {
         push_value(code(com), op::load, com.types.size_of(type.remove_ptr()));
     }
-    return { type.remove_ptr(), std::nullopt };
+    return { type.remove_ptr() };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) -> expr_result
@@ -1364,7 +1363,7 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
         if (auto index = std::get_if<node_literal_u64_expr>(&*node.index)) {
-            return { type_type{inner_type(type).add_array(index->value)}, std::nullopt };
+            return { type_type{inner_type(type).add_array(index->value)} };
         }
         node.token.error("index must be a u64 literal when delcaring an array type");
     }
@@ -1391,9 +1390,9 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
     push_value(code(com), opcode, com.types.size_of(inner));
 
     if (is_array && stripped.is_const) {
-        return { inner.add_const(), std::nullopt }; // propagate const to elements
+        return { inner.add_const() }; // propagate const to elements
     }
-    return { inner, std::nullopt };
+    return { inner };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) -> expr_result
@@ -1415,7 +1414,7 @@ auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) ->
     push_expr(com, ct, *node.false_case);
     write_value(code(com), jump_pos, in_else_pos); // Jump into the else block if false
     write_value(code(com), else_pos, code(com).size()); // Jump past the end if false
-    return { type, std::nullopt };
+    return { type };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) -> expr_result
@@ -1431,13 +1430,13 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         else if (type.is<type_span>()) {
             push_expr(com, compile_type::ptr, *node.args[0]); // pointer to the span
             push_value(code(com), op::span_ptr_to_len);
-            return { u64_type(), std::nullopt };
+            return { u64_type() };
         }
         else if (type.is<type_arena>()) {
             const auto type = push_expr(com, compile_type::ptr, *node.args[0]).type;
             push_value(code(com), op::load, com.types.size_of(u64_type())); // load the arena
             push_value(code(com), op::arena_size);
-            return { u64_type(), std::nullopt };
+            return { u64_type() };
         }
         else if (auto info = type.get_if<type_struct>()) {
             const auto name = function_name{.module=info->module, .struct_name=*info, .name="len"};
@@ -1450,12 +1449,12 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
             node.token.assert_eq(func.return_type, u64_type(), "@len must return a u64");
             push_expr(com, compile_type::ptr, *node.args[0]);
             push_value(code(com), op::call_static, func.id, sizeof(std::byte*));
-            return { u64_type(), std::nullopt };
+            return { u64_type() };
         }
         else {
             node.token.error("cannot call 'len' on an object of type {}", type);
         }
-        return { u64_type(), std::nullopt };
+        return { u64_type() };
     }
     if (node.name == "size_of") {
         node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
@@ -1465,18 +1464,18 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         } else {
             push_value(code(com), op::push_u64, com.types.size_of(type));
         }
-        return { u64_type(), std::nullopt }; // TODO: can return as a compile-time value
+        return { u64_type() }; // TODO: can return as a compile-time value
     }
     if (node.name == "type_of") {
         node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
-        return { type_type{type_of_expr(com, *node.args[0]).type}, std::nullopt };
+        return { type_type{type_of_expr(com, *node.args[0]).type} };
     }
     if (node.name == "type_name_of") {
         node.token.assert_eq(node.args.size(), 1, "@type_name_of only accepts one argument");
         const auto str = std::format("{}", type_of_expr(com, *node.args[0]).type);
         std::print("@type_name_of == {}\n", str);
         push_value(code(com), op::push_string_literal, insert_into_rom(com, str), str.size());
-        return { string_literal_type(), std::nullopt };
+        return { string_literal_type() };
     }
     if (node.name == "copy") {
         node.token.assert_eq(node.args.size(), 2, "@copy requires two spans");
@@ -1487,7 +1486,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert(rhs.is<type_span>(), "@copy bad second arg of type '{}'", rhs);
         node.token.assert_eq(lhs, rhs, "@copy args must be of the same span type");
         push_value(code(com), op::memcpy, com.types.size_of(inner_type(lhs)));
-        return { null_type(), std::nullopt };
+        return { null_type() };
     }
     if (node.name == "compare") {
         node.token.assert_eq(node.args.size(), 2, "@compare requires two arguments");
@@ -1499,7 +1498,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
                              lhs.remove_ptr().remove_const(),
                              "@copy args must be of the same type");
         push_value(code(com), op::memcmp, com.types.size_of(lhs.remove_ptr()));
-        return { bool_type(), std::nullopt };
+        return { bool_type() };
     }
     if (node.name == "import") {
         node.token.assert(com.current_function.size() == 1, "can only import modules at the top level");
@@ -1515,7 +1514,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert(type.is<type_function>(), "can only convert functions to function pointers");
         const auto& info = type.as<type_function>();
         push_value(code(com), op::push_function_ptr, info.id);
-        return { type_function_ptr{.param_types=info.param_types, .return_type=info.return_type}, std::nullopt };
+        return { type_function_ptr{.param_types=info.param_types, .return_type=info.return_type} };
     }
     if (node.name == "is_fundamental") {
         node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
@@ -1568,7 +1567,7 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> expr
             node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
         }
     }, src_type, dst_type);
-    return { dst_type, std::nullopt };
+    return { dst_type };
 }
 
 void push_stmt(compiler& com, const node_sequence_stmt& node)
@@ -1668,16 +1667,16 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     const auto [cond_type, cond_value] = push_expr(com, compile_type::val, *node.condition);
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
     
-    if (cond_value.has_value()) {
+    if (std::holds_alternative<bool>(cond_value)) {
         code(com).resize(program_size); // Remove the code to push the value at runtime
-        node.token.assert(std::holds_alternative<bool>(*cond_value), "value of condition should hold a bool, but doesn't!");
-        if (std::get<bool>(*cond_value)) {
+        if (std::get<bool>(cond_value)) {
             push_stmt(com, *node.body);
         } else if (node.else_body) {
             push_stmt(com, *node.else_body);
         }
         return;
     }
+    node.token.assert(std::holds_alternative<std::monostate>(cond_value), "compiler error: condition has a value when it shouldn't");
     
     push_value(code(com), op::jump_if_false);
     const auto jump_pos = push_value(code(com), std::uint64_t{0});

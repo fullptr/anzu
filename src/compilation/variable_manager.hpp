@@ -18,12 +18,12 @@ class compiler;
 
 struct variable
 {
-    std::filesystem::path      module;
-    std::string                name;
-    type_name                  type;
-    std::size_t                location;
-    std::size_t                size;
-    std::optional<const_value> value;
+    std::filesystem::path module;
+    std::string           name;
+    type_name             type;
+    std::size_t           location;
+    std::size_t           size;
+    const_value           value;
 };
 
 struct simple_scope
@@ -59,7 +59,7 @@ public:
         const std::string& name,
         const type_name& type,
         std::size_t size,
-        const std::optional<const_value>& value
+        const const_value& value
     ) -> bool;
 
     auto find(const std::filesystem::path& module, const std::string& name) const -> std::optional<variable>;
