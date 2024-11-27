@@ -1362,10 +1362,10 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
 {
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
-        if (auto index = std::get_if<node_literal_u64_expr>(&*node.index)) {
-            return { type_type{inner_type(type).add_array(index->value)} };
-        }
-        node.token.error("index must be a u64 literal when delcaring an array type");
+        const auto [index_type, index_value] = type_of_expr(com, *node.index);
+        node.token.assert(index_type == u64_type(), "index must be a u64, got '{}'", index_type);
+        node.token.assert(std::holds_alternative<std::uint64_t>(index_value), "array size must be known at compile time");
+        return { type_type{inner_type(type).add_array(std::get<std::uint64_t>(index_value))} };
     }
 
     const auto stripped = strip_pointers(type);
