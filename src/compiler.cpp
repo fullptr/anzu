@@ -115,34 +115,40 @@ void declare_var(
     }
 }
 
-auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> type_name
+auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> expr_result
 {
     if (in_function(com)) {
         if (const auto var = variables(com).find(module, name); var.has_value()) {
             push_value(code(com), op::push_ptr_local, var->location);
-            return var->type;
+            return { var->type, std::nullopt };
         }
     }
 
     const auto var = globals(com).find(module, name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
     push_value(code(com), op::push_ptr_global, var->location);
-    return var->type;
+    return { var->type, std::nullopt };
 }
 
-auto push_var_val(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> type_name
+auto push_var_val(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> expr_result
 {
     if (in_function(com)) {
         if (const auto var = variables(com).find(module, name); var.has_value()) {
-            push_value(code(com), op::push_val_local, var->location, com.types.size_of(var->type));
-            return var->type;
+            const auto size = com.types.size_of(var->type);
+            if (size > 0) {
+                push_value(code(com), op::push_val_local, var->location, size);
+            }
+            return { var->type, var->value };
         }
     }
 
     const auto var = globals(com).find(module, name);
     tok.assert(var.has_value(), "could not find variable '{}'\n", name);
-    push_value(code(com), op::push_val_global, var->location, com.types.size_of(var->type));
-    return var->type;
+    const auto size = com.types.size_of(var->type);
+    if (size > 0) {
+        push_value(code(com), op::push_val_global, var->location, size);
+    }
+    return { var->type, var->value };
 }
 
 // Given a type and a field name, push the offset of the fields position relative to its
@@ -1211,9 +1217,9 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
 
     // Otherwise, it must be a variable
     if (ct == compile_type::ptr) {
-        return { push_var_addr(com, node.token, curr_module(com), node.name), std::nullopt };
+        return push_var_addr(com, node.token, curr_module(com), node.name);
     }
-    return { push_var_val(com, node.token, curr_module(com), node.name), std::nullopt };
+    return push_var_val(com, node.token, curr_module(com), node.name);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> expr_result
@@ -1259,9 +1265,9 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
 
         // Otherwise, it must be a variable
         if (ct == compile_type::ptr) {
-            return { push_var_addr(com, node.token, filepath, node.name), std::nullopt };
+            return push_var_addr(com, node.token, filepath, node.name);
         }
-        return { push_var_val(com, node.token, filepath, node.name), std::nullopt };
+        return push_var_val(com, node.token, filepath, node.name);
     }
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
@@ -1645,7 +1651,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         // idx = idx + 1;
         push_var_val(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::push_u64, std::uint64_t{1}, op::u64_add);
-        const auto x = push_var_addr(com, node.token, curr_module(com), "$idx");
+        push_var_addr(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::save, com.types.size_of(u64_type()));
 
         // main body
@@ -1737,7 +1743,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     node.token.assert(!type.is<type_arena>(), "cannot create copies of arenas");
 
     push_copy_typechecked(com, *node.expr, type, node.token);
-    declare_var(com, node.token, node.name, type);
+    declare_var(com, node.token, node.name, type, expr_value);
 }
 
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
