@@ -1,5 +1,6 @@
 
-if true {
+let x := true;
+if x {
     print("i64!\n");
 } else {
     print("not i64!\n");
