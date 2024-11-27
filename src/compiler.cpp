@@ -20,16 +20,6 @@
 namespace anzu {
 namespace {
 
-using const_value = std::variant<
-    std::monostate, // null
-    bool,           // bool
-    char,           // char
-    std::int32_t,   // i32
-    std::int64_t,   // i64
-    std::uint64_t,  // u64
-    double          // f64
->;
-
 struct expr_result
 {
     type_name                  type;
@@ -112,9 +102,15 @@ auto resolve_types(compiler& com, const token& tok, const std::vector<node_expr_
 }
 
 // Registers the given name in the current scope
-void declare_var(compiler& com, const token& tok, const std::string& name, const type_name& type)
+void declare_var(
+    compiler& com,
+    const token& tok,
+    const std::string& name,
+    const type_name& type,
+    const std::optional<const_value>& value = std::nullopt
+)
 {
-    if (!current(com).variables.declare(curr_module(com), name, type, com.types.size_of(type))) {
+    if (!current(com).variables.declare(curr_module(com), name, type, com.types.size_of(type), value)) {
         tok.error("name already in use: '{}'", name);
     }
 }
@@ -553,6 +549,7 @@ auto load_module(compiler& com, const token& tok, const std::string& filepath) -
     }
     com.current_module.pop_back();
     com.modules.emplace(filepath);
+    std::print("    - Completed {}\n", filepath);
 }
 
 auto fetch_function(compiler& com, const token& tok, const function_name& name) -> type_function
@@ -1221,13 +1218,19 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> expr_result
 {
-    const auto type = type_of_expr(com, *node.expr).type;
+    const auto [type, value] = type_of_expr(com, *node.expr);
 
     // If the expression is a module, allow for accessing global variables, functions and structs
     if (auto info = type.get_if<type_module>()) {
+        node.token.assert(value.has_value(), "the value of module objects must be known at compile time");
+        node.token.assert(
+            std::holds_alternative<std::filesystem::path>(*value),
+            "module object should contain a path, but doesn't!"
+        );
+        const auto& filepath = std::get<std::filesystem::path>(*value);
 
         // It might be a function
-        const auto fname = function_name{info->filepath, no_struct, node.name};
+        const auto fname = function_name{filepath, no_struct, node.name};
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
@@ -1237,28 +1240,28 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return { type_function_template{ info->filepath, no_struct, node.name }, std::nullopt };
+            return { type_function_template{ filepath, no_struct, node.name }, std::nullopt };
         }
 
         // It might be a struct
-        const auto sname = type_struct{ node.name, info->filepath };
+        const auto sname = type_struct{ node.name, filepath };
         if (com.types.contains(sname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct");
             return { type_type{type_name{sname}}, std::nullopt };
         }
 
         // It might be a struct template
-        const auto skey = type_struct_template{info->filepath, node.name};
+        const auto skey = type_struct_template{filepath, node.name};
         if (com.struct_templates.contains(skey)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-            return { type_struct_template{ info->filepath, node.name }, std::nullopt };
+            return { type_struct_template{ filepath, node.name }, std::nullopt };
         }
 
         // Otherwise, it must be a variable
         if (ct == compile_type::ptr) {
-            return { push_var_addr(com, node.token, info->filepath, node.name), std::nullopt };
+            return { push_var_addr(com, node.token, filepath, node.name), std::nullopt };
         }
-        return { push_var_val(com, node.token, info->filepath, node.name), std::nullopt };
+        return { push_var_val(com, node.token, filepath, node.name), std::nullopt };
     }
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
@@ -1498,7 +1501,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert(std::holds_alternative<node_literal_string_expr>(*node.args[0]), "@module requires a string literal");
         const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
         load_module(com, node.token, filepath);
-        return { type_module{filepath}, std::nullopt }; // TODO: value can contain the filepath
+        return { type_module{}, filepath }; // TODO: value can contain the filepath
     }
     if (node.name == "fn_ptr") {
         node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");
@@ -1726,8 +1729,9 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
+    const auto [expr_type, expr_value] = type_of_expr(com, *node.expr);
     auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
-                                   : type_of_expr(com, *node.expr).type;
+                                   : expr_type;
     type.is_const = node.add_const;
 
     node.token.assert(!type.is<type_arena>(), "cannot create copies of arenas");

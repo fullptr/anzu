@@ -169,7 +169,7 @@ auto to_string(const type_struct_template& type) -> std::string
 
 auto to_string(const type_module& type) -> std::string
 {
-    return std::format("<module: {}>", type.filepath.string());
+    return std::format("module");
 }
 
 auto to_string(const type_placeholder& type) -> std::string

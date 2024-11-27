@@ -22,6 +22,17 @@ static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 
 struct type_name;
 
+using const_value = std::variant<
+    std::monostate,       // null
+    bool,                 // bool
+    char,                 // char
+    std::int32_t,         // i32
+    std::int64_t,         // i64
+    std::uint64_t,        // u64
+    double,               // f64
+    std::filesystem::path // module
+>;
+
 enum class type_fundamental : std::uint8_t
 {
     null_type,
@@ -156,9 +167,7 @@ struct type_struct_template
 
 struct type_module
 {
-    std::filesystem::path filepath;
-
-    auto to_hash() const { return hash(filepath); }
+    auto to_hash() const { return hash(0); }
     auto operator==(const type_module&) const -> bool = default;
 };
 
