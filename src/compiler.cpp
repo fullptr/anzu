@@ -74,7 +74,7 @@ enum class compile_type { val, ptr };
 
 auto push_expr(compiler& com, compile_type ct, const node_expr& node) -> expr_result;
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
-auto type_of_expr(compiler& com, const node_expr& node) -> type_name;
+auto type_of_expr(compiler& com, const node_expr& node) -> expr_result;
 
 auto get_builtin_type(const std::string& name) -> std::optional<type_name>
 {
@@ -93,7 +93,7 @@ auto get_builtin_type(const std::string& name) -> std::optional<type_name>
 // Otherwise program is ill-formed.
 auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) -> type_name
 {
-    const auto type_expr_type = type_of_expr(com, *expr);
+    const auto type_expr_type = type_of_expr(com, *expr).type;
     
     // null is also their own types
     if (type_expr_type == null_type()) {
@@ -182,14 +182,14 @@ auto constructor_params(const compiler& com, const type_name& type) -> std::vect
 
 // Gets the type of the expression by compiling it, then removes the added
 // op codes to leave the program unchanged before returning the type.
-auto type_of_expr(compiler& com, const node_expr& node) -> type_name
+auto type_of_expr(compiler& com, const node_expr& node) -> expr_result
 {
     const auto program_size = code(com).size();
-    const auto type = push_expr(com, compile_type::val, node).type;
+    const auto [type, value] = push_expr(com, compile_type::val, node);
     if (com.types.size_of(type) > 0) {
         code(com).resize(program_size);
     }
-    return type;
+    return {type, value};
 }
 
 // Fetches the given literal from read only memory, or adds it if it is not there, and
@@ -253,7 +253,7 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     // Remove top-level const since we are making a copy, ie- you should be able to pass a
     // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
     // for a 'u64 const&' is fine)
-    const auto actual = type_of_expr(com, expr).remove_const();
+    const auto actual = type_of_expr(com, expr).type.remove_const();
     const auto expected = expected_raw.remove_const();
 
     // Nothing to do for size 0 types
@@ -390,7 +390,7 @@ auto deduce_template_params(
     auto name_map = template_map{};
     for (const auto& [param, arg] : std::views::zip(sig_params, args)) {
         const auto param_type = resolve_type(com, tok, param);
-        const auto arg_type = type_of_expr(com, *arg);
+        const auto arg_type = type_of_expr(com, *arg).type;
         match_placeholders(name_map, tok, arg_type, param_type);
     }
     com.current_placeholders.pop_back();
@@ -682,7 +682,7 @@ auto push_expr(compiler& com, compile_type ct, const node_unary_op_expr& node) -
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a unary op");
     using tt = token_type;
-    const auto [type, value] = push_expr(com, compile_type::val, *node.expr);
+    const auto type = push_expr(com, compile_type::val, *node.expr).type;
 
     switch (node.token.type) {
         case tt::minus: {
@@ -701,8 +701,8 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a binary op");
     using tt = token_type;
-    auto lhs = type_of_expr(com, *node.lhs);
-    auto rhs = type_of_expr(com, *node.rhs);
+    auto lhs = type_of_expr(com, *node.lhs).type;
+    auto rhs = type_of_expr(com, *node.rhs).type;
 
     const auto push = [&] {
         push_expr(com, compile_type::val, *node.lhs);
@@ -710,7 +710,7 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     };
 
     const auto push_ptr = [&] (const node_expr& expr) {
-        if (type_of_expr(com, expr) == null_type()) {
+        if (type_of_expr(com, expr).type == null_type()) {
             push_value(code(com), op::push_u64, std::size_t{0});
         } else {
             push_expr(com, compile_type::val, expr);
@@ -859,7 +859,7 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> expr_result
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a call expression");
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).type;
 
     if (auto info = type.get_if<type_type>()) { // constructor
         if (node.args.empty()) { // default constructor
@@ -948,7 +948,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
 auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -> expr_result
 {
     const auto templates = resolve_types(com, node.token, node.templates);
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).type;
 
     if (auto info = type.get_if<type_function_template>()) {
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
@@ -993,7 +993,7 @@ auto push_expr(compiler& com, compile_type ct, const node_repeat_array_expr& nod
     node.token.assert(ct == compile_type::val, "cannot take the address of a repeat array expression");
     node.token.assert(node.size != 0, "cannot have empty array literals");
 
-    const auto inner_type = type_of_expr(com, *node.value);
+    const auto inner_type = type_of_expr(com, *node.value).type;
     node.token.assert(!inner_type.is<type_type>(), "invalid use of type expressions");
     for (std::size_t i = 0; i != node.size; ++i) {
         push_expr(com, compile_type::val, *node.value);
@@ -1005,10 +1005,13 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of an addrof expression");
     if (!node.expr) {
-        node.token.assert(curr_struct(com) != no_struct, "TODO: add message");
+        node.token.assert(
+            curr_struct(com) != no_struct,
+            "Tried to use a bare '&', but this only makes sense for member functions"
+        );
         return { type_type{type_name{curr_struct(com)}.add_ptr()}, std::nullopt };
     }
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
         return { type_type{inner_type(type).add_ptr()}, std::nullopt };
     }
@@ -1026,7 +1029,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
         node.token.error("a span must either have both bounds set, or neither");
     }
 
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
         return { type_type{inner_type(type).add_span()}, std::nullopt };
     }
@@ -1089,10 +1092,13 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
 auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> expr_result
 {
     if (!node.expr) {
-        node.token.assert(curr_struct(com) != no_struct, "TODO: add message");
+        node.token.assert(
+            curr_struct(com) != no_struct,
+            "Tried to use a bare 'const', but this only makes sense for member functions"
+        );
         return { type_type{type_name{curr_struct(com)}.add_const()}, std::nullopt };
     }
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a const type-expression");
         return { type_type{inner_type(type).add_const()}, std::nullopt };
@@ -1215,7 +1221,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
 
 auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> expr_result
 {
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).type;
 
     // If the expression is a module, allow for accessing global variables, functions and structs
     if (auto info = type.get_if<type_module>()) {
@@ -1346,7 +1352,7 @@ auto push_expr(compiler& com, compile_type ct, const node_deref_expr& node) -> e
 
 auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) -> expr_result
 {
-    const auto type = type_of_expr(com, *node.expr);
+    const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
         if (auto index = std::get_if<node_literal_u64_expr>(&*node.index)) {
             return { type_type{inner_type(type).add_array(index->value)}, std::nullopt };
@@ -1385,8 +1391,8 @@ auto push_expr(compiler& com, compile_type ct, const node_ternary_expr& node) ->
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a ternary expression");
 
-    const auto type = type_of_expr(com, *node.true_case);
-    node.token.assert_eq(type_of_expr(com, *node.false_case), type, "mismatched types in ternary");
+    const auto type = type_of_expr(com, *node.true_case).type;
+    node.token.assert_eq(type_of_expr(com, *node.false_case).type, type, "mismatched types in ternary");
 
     const auto cond_type = push_expr(com, compile_type::val, *node.condition).type;
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
@@ -1408,7 +1414,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     node.token.assert(ct == compile_type::val, "cannot take the address of a @intrinsic function call");
     if (node.name == "len") {
         node.token.assert_eq(node.args.size(), 1, "@len only accepts one argument");
-        const auto type = type_of_expr(com, *node.args[0]);
+        const auto type = type_of_expr(com, *node.args[0]).type;
         if (auto info = type.get_if<type_array>()) {
             push_value(code(com), op::push_u64, info->count);
             return { u64_type(), info->count };
@@ -1444,7 +1450,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     }
     if (node.name == "size_of") {
         node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
-        const auto type = type_of_expr(com, *node.args[0]);
+        const auto type = type_of_expr(com, *node.args[0]).type;
         if (type.is<type_type>()) { // can call sizeof on a type directly
             push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
         } else {
@@ -1454,11 +1460,11 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     }
     if (node.name == "type_of") {
         node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
-        return { type_type{type_of_expr(com, *node.args[0])}, std::nullopt };
+        return { type_type{type_of_expr(com, *node.args[0]).type}, std::nullopt };
     }
     if (node.name == "type_name_of") {
         node.token.assert_eq(node.args.size(), 1, "@type_name_of only accepts one argument");
-        const auto str = std::format("{}", type_of_expr(com, *node.args[0]));
+        const auto str = std::format("{}", type_of_expr(com, *node.args[0]).type);
         std::print("@type_name_of == {}\n", str);
         push_value(code(com), op::push_string_literal, insert_into_rom(com, str), str.size());
         return { string_literal_type(), std::nullopt };
@@ -1496,7 +1502,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     }
     if (node.name == "fn_ptr") {
         node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");
-        const auto type = type_of_expr(com, *node.args[0]);
+        const auto type = type_of_expr(com, *node.args[0]).type;
         node.token.assert(type.is<type_function>(), "can only convert functions to function pointers");
         const auto& info = type.as<type_function>();
         push_value(code(com), op::push_function_ptr, info.id);
@@ -1504,7 +1510,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     }
     if (node.name == "is_fundamental") {
         node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
-        const auto type = type_of_expr(com, *node.args[0]);
+        const auto type = type_of_expr(com, *node.args[0]).type;
         node.token.assert(type.is<type_type>(), "@is_fundamental expects a type");
         return { bool_type(), {inner_type(type).is<type_fundamental>()} };
     }
@@ -1721,7 +1727,7 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
 {
     auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
-                                   : type_of_expr(com, *node.expr);
+                                   : type_of_expr(com, *node.expr).type;
     type.is_const = node.add_const;
 
     node.token.assert(!type.is<type_arena>(), "cannot create copies of arenas");
@@ -1739,7 +1745,7 @@ auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
 
 void push_stmt(compiler& com, const node_assignment_stmt& node)
 {
-    const auto lhs_type = type_of_expr(com, *node.position);
+    const auto lhs_type = type_of_expr(com, *node.position).type;
     node.token.assert(!lhs_type.is_const, "cannot assign to a const variable");
     push_copy_typechecked(com, *node.expr, lhs_type, node.token);
     const auto lhs = push_expr(com, compile_type::ptr, *node.position).type;
