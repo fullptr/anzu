@@ -666,7 +666,7 @@ auto push_expr(compiler& com, compile_type ct, const node_literal_null_expr& nod
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a null literal");
     push_value(code(com), op::push_null);
-    return { null_type() };
+    return { null_type(), {null_tag{}} };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_string_expr& node) -> expr_result

@@ -21,9 +21,11 @@ namespace anzu {
 static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 
 struct type_name;
+struct null_tag{};
 
 using const_value = std::variant<
-    std::monostate,       // null, no value
+    std::monostate,       // no value
+    null_tag,             // null
     bool,                 // bool
     char,                 // char
     std::int32_t,         // i32
