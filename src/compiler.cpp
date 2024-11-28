@@ -75,6 +75,7 @@ auto get_builtin_type(const std::string& name) -> std::optional<type_name>
     if (name == "i64")     return type_name(type_fundamental::i64_type);
     if (name == "u64")     return type_name(type_fundamental::u64_type);
     if (name == "f64")     return type_name(type_fundamental::f64_type);
+    if (name == "module")  return type_name(type_fundamental::module_type);
     if (name == "arena")   return type_name(type_arena{});
     return {};
 }

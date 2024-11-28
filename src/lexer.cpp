@@ -73,12 +73,14 @@ auto identifier_type(std::string_view token) -> token_type
     if (token == "in")       return token_type::kw_in;
     if (token == "let")      return token_type::kw_let;
     if (token == "loop")     return token_type::kw_loop;
+    if (token == "module")   return token_type::kw_module;
     if (token == "new")      return token_type::kw_new;
     if (token == "null")     return token_type::kw_null;
     if (token == "print")    return token_type::kw_print;
     if (token == "return")   return token_type::kw_return;
     if (token == "struct")   return token_type::kw_struct;
     if (token == "true")     return token_type::kw_true;
+    if (token == "type")     return token_type::kw_type;
     if (token == "u64")      return token_type::kw_u64;
     if (token == "var")      return token_type::kw_var;
     if (token == "while")    return token_type::kw_while;
