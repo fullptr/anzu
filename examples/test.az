@@ -1,1 +1,8 @@
-let i := @import;
+let io := @import("lib/io.az");
+
+fn foo(m: module)
+{
+    m.bar();
+}
+
+foo(io);

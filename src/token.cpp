@@ -61,12 +61,14 @@ auto to_string(token_type tt) -> std::string_view
         case token_type::kw_in:               return "in";
         case token_type::kw_let:              return "let";
         case token_type::kw_loop:             return "loop";
+        case token_type::kw_module:           return "module";
         case token_type::kw_new:              return "new";
         case token_type::kw_null:             return "null";
         case token_type::kw_print:            return "print";
         case token_type::kw_return:           return "return";
         case token_type::kw_struct:           return "struct";
         case token_type::kw_true:             return "true";
+        case token_type::kw_type:             return "type";
         case token_type::kw_u64:              return "u64";
         case token_type::kw_var:              return "var";
         case token_type::kw_while:            return "while";

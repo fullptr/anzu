@@ -30,14 +30,20 @@ void variable_manager::new_loop_scope()
 }
 
 auto variable_manager::declare(
-    const std::filesystem::path& module, const std::string& name, const type_name& type, std::size_t size
+    const std::filesystem::path& module,
+    const std::string& name,
+    const type_name& type,
+    std::size_t size,
+    const const_value& value
 ) -> bool
 {
     auto& scope = d_scopes.back();
     for (const auto& var : scope.variables) {
         if (var.name == name && var.module == module) return false;
     }
-    scope.variables.emplace_back(module, name, type, scope.next, size);
+
+    // Only store the compile time value (if it exists) for const values
+    scope.variables.emplace_back(module, name, type, scope.next, size, type.is_const ? value : const_value{});
     scope.next += size;
     return true;
 }

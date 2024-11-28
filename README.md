@@ -117,14 +117,18 @@ Further, for member functions, the type does not need to be explictly typed, you
 * `==` and `!=` implemented for all builtin types.
 * `||` and `&&` are implemented for `bool`, and short circuit.
 
-### Compile Time Bools
-A fairly half baked feature with some potential. Currently only implemented to enable comparing types, a useful feature for templates. For example, if `T` is the template type, checking if it is an `i64` is as simple as `T == i64`.
+### Compile Time Values
+If a variable is declared with `let` (making it const), and is assigned a "simple value", then the compiler knows the value of this const at compile time and can make various optimisations. This currently has limited uses but my goal is to expand this by adding further optimisations and relaxing what "simple value" is (currently just literal ints, bools and floats, as well as comparisons of types, more on that below).
 
-Further, if the condition for an `if` statement is a compile time bool, only the true branch gets compiled and the condition doesn't exist at runtime. Equivalent to C++ `if constexpr` expressions.
+For example, if `T` is the template type, checking if it is an `i64` is as simple as `T == i64`. This results in a bool that the compiler knows the value of at compile time.
 
-It feels like `true` and `false` themselves should be compile time bools, but then expressions like `let x := true` would make the type of `x` be a compile time true, so you would need to write `let x : bool = true`. Taking things further, all literals of all fundamentals could be compile time too, but the complexity of the implementation would be massive.
+If the condition for an `if` statement is a compile time known bool, only the true branch gets compiled and the condition doesn't exist at runtime. Equivalent to C++ `if constexpr` expressions.
 
-These are an exapmle of a "size zero" type, more on that below.
+The size of an array needs to be a compile time value, which currently can only be specified with a literal directly or with a const variable defined with a literal.
+
+In the future I want to make it possible for compile time values to be constructed through binary operations and allow for compile time user types. Function calls are currently a boundary that compile time values cannot propagate through, but I would like to change this in the future, maybe replacing the current method of templating with a design that looks similar to Zig.
+
+The `module` is somewhat special in that its values *must* be known at compile time, otherwise they are useless. This means that if you `@import` a module and assign it with `var`, it won't be usable, and if you declare a function with a parameter of type `module`, you can call the function by passing a module, but you cannot access anything on it.
 
 ### Safe Type Conversions
 There are various safe conversions between some types that can implicitly happen in variables declarations and function calls:
@@ -238,6 +242,7 @@ Runtime  -- runtime.hpp   : Functionality to run a program
 ```
 
 # Next Features
+* More compile time optimisations with constant values
 * Hash Maps
 * Generators
 * Pattern Matching

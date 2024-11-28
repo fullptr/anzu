@@ -41,9 +41,10 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
                 case type_fundamental::u64_type:
                 case type_fundamental::f64_type:
                     return 8;
+                case type_fundamental::module_type:
+                    return 0;
                 default:
-                    panic("unknown fundamental type");
-                return 0;
+                    return 0;
             }
         },
         [&](const type_struct& t) -> std::size_t {
@@ -91,12 +92,6 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         },
         [](const type_struct_template&) {
             return std::size_t{0};
-        },
-        [](const type_module&) {
-            return std::size_t{0}; 
-        },
-        [](const type_ct_bool&) {
-            return std::size_t{0}; 
         },
         [](const type_placeholder&) {
             return std::size_t{0}; 

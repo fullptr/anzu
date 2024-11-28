@@ -21,6 +21,28 @@ namespace anzu {
 static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 
 struct type_name;
+struct null_tag{};
+
+struct const_value : public std::variant<
+    std::monostate,       // no value
+    null_tag,             // null
+    bool,                 // bool
+    char,                 // char
+    std::int32_t,         // i32
+    std::int64_t,         // i64
+    std::uint64_t,        // u64
+    double,               // f64
+    std::filesystem::path // module
+>
+{
+    using variant::variant;
+    const_value(const const_value&) = default;
+
+    template <typename T> auto is()     const -> bool     { return std::holds_alternative<T>(*this); }
+    template <typename T> auto as()     const -> const T& { return std::get<T>(*this); }
+    template <typename T> auto get_if() const -> const T* { return std::get_if<T>(this); }
+    auto has_value()                    const -> bool     { return !is<std::monostate>(); }
+};
 
 enum class type_fundamental : std::uint8_t
 {
@@ -31,6 +53,7 @@ enum class type_fundamental : std::uint8_t
     i64_type,
     u64_type,
     f64_type,
+    module_type,
 };
 
 struct type_struct
@@ -154,22 +177,6 @@ struct type_struct_template
     auto operator==(const type_struct_template&) const -> bool = default;
 };
 
-struct type_module
-{
-    std::filesystem::path filepath;
-
-    auto to_hash() const { return hash(filepath); }
-    auto operator==(const type_module&) const -> bool = default;
-};
-
-struct type_ct_bool
-{
-    bool value;
-
-    auto to_hash() const { return hash(value); }
-    auto operator==(const type_ct_bool&) const -> bool = default;
-};
-
 // Only used during template argument type deduction
 struct type_placeholder
 {
@@ -194,8 +201,6 @@ auto to_string(const type_type& type) -> std::string;
 auto to_string(const type_function& type) -> std::string;
 auto to_string(const type_function_template& type) -> std::string;
 auto to_string(const type_struct_template& type) -> std::string;
-auto to_string(const type_module& type) -> std::string;
-auto to_string(const type_ct_bool& type) -> std::string;
 auto to_string(const type_placeholder& type) -> std::string;
 
 struct type_name : public std::variant<
@@ -213,8 +218,6 @@ struct type_name : public std::variant<
     type_function,
     type_function_template,
     type_struct_template,
-    type_module,
-    type_ct_bool,
     type_placeholder>
 {
     using variant::variant;
@@ -258,6 +261,7 @@ auto i32_type() -> type_name;
 auto i64_type() -> type_name;
 auto u64_type() -> type_name;
 auto f64_type() -> type_name;
+auto module_type() -> type_name;
 auto arena_type() -> type_name;
 auto string_literal_type() -> type_name;
 

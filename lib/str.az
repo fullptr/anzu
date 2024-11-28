@@ -120,7 +120,7 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
 
 fn to_i64(c: char) -> i64
 {
-    let x := @char_to_i64(c);
+    let x := c as i64;
     if 47 < x && x < 58 {
         return x - 48;
     }
