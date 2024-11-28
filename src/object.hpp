@@ -24,15 +24,16 @@ struct type_name;
 struct null_tag{};
 
 struct const_value : public std::variant<
-    std::monostate,       // no value
-    null_tag,             // null
-    bool,                 // bool
-    char,                 // char
-    std::int32_t,         // i32
-    std::int64_t,         // i64
-    std::uint64_t,        // u64
-    double,               // f64
-    std::filesystem::path // module
+    std::monostate,        // no value
+    null_tag,              // null
+    bool,                  // bool
+    char,                  // char
+    std::int32_t,          // i32
+    std::int64_t,          // i64
+    std::uint64_t,         // u64
+    double,                // f64
+    std::filesystem::path, // module
+    value_ptr<type_name>   // type
 >
 {
     using variant::variant;

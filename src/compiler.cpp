@@ -974,7 +974,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         }
 
         node.token.assert(com.types.contains(name), "could not find struct {}", type_name{name});
-        return { type_type{type_name{name}} };
+        return { type_type{type_name{name}}, {type_name{name}} };
     }
     node.token.error("object of type {} can not be called with template parameters", type);
 }
@@ -1014,11 +1014,11 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
             curr_struct(com) != no_struct,
             "Tried to use a bare '&', but this only makes sense for member functions"
         );
-        return { type_type{type_name{curr_struct(com)}.add_ptr()} };
+        return { type_type{type_name{curr_struct(com)}.add_ptr()}, {type_name{curr_struct(com)}.add_ptr()} };
     }
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
-        return { type_type{inner_type(type).add_ptr()} };
+        return { type_type{inner_type(type).add_ptr()}, {inner_type(type).add_ptr()} };
     }
     if (com.types.size_of(type) == 0) {
         node.token.error("cannot take address of a type of size 0 (type={})", type);
@@ -1036,7 +1036,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
 
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
-        return { type_type{inner_type(type).add_span()} };
+        return { type_type{inner_type(type).add_span()}, {inner_type(type).add_span()} };
     }
 
     node.token.assert(
@@ -1091,7 +1091,7 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
         inner.param_types.push_back(resolve_type(com, node.token, param));
     }
     inner.return_type = resolve_type(com, node.token, node.return_type);
-    return { type_type{type} };
+    return { type_type{type}, {type} };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> expr_result
@@ -1101,12 +1101,12 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> e
             curr_struct(com) != no_struct,
             "Tried to use a bare 'const', but this only makes sense for member functions"
         );
-        return { type_type{type_name{curr_struct(com)}.add_const()} };
+        return { type_type{type_name{curr_struct(com)}.add_const()}, {type_name{curr_struct(com)}.add_const()} };
     }
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a const type-expression");
-        return { type_type{inner_type(type).add_const()} };
+        return { type_type{inner_type(type).add_const()}, {inner_type(type).add_const()} };
     }
 
     const auto [t, v] = push_expr(com, ct, *node.expr);
@@ -1178,7 +1178,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     // It might be a struct
     const auto sname = type_struct{node.name, curr_module(com)};
     if (com.types.contains(sname)) {
-        return { type_type{type_name{sname}} };
+        return { type_type{type_name{sname}}, {type_name{sname}} };
     }
 
     // It might be a struct template
@@ -1191,24 +1191,24 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     // It might be a fundamental type
     if (const auto t = get_builtin_type(node.name); t.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
-        return { type_type{*t} };
+        return { type_type{*t}, {*t} };
     }
 
     // It might be one of the current functions template aliases
     const auto& map1 = current(com).templates;
     if (auto it = map1.find(node.name); it != map1.end()) {
-        return { type_type{it->second} };
+        return { type_type{it->second}, {it->second} };
     }
 
     // It might be one of the current structs template aliases
     const auto map2 = com.types.templates_of(curr_struct(com));
     if (auto it = map2.find(node.name); it != map2.end()) {
-        return { type_type{it->second} };
+        return { type_type{it->second}, {it->second} };
     }
 
     // It might be a tempalte placeholder for a type the needs to be deduced
     if (!com.current_placeholders.empty() && com.current_placeholders.back().contains(node.name)) {
-        return { type_type{type_name{type_placeholder{node.name}}} };
+        return { type_type{type_name{type_placeholder{node.name}}}, {type_name{type_placeholder{node.name}}} };
     }
 
     // The name might be a builtin (no module, struct or templates, so just the name);
@@ -1254,7 +1254,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         const auto sname = type_struct{ node.name, filepath };
         if (com.types.contains(sname)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct");
-            return { type_type{type_name{sname}} };
+            return { type_type{type_name{sname}}, {type_name{sname}} };
         }
 
         // It might be a struct template
@@ -1367,7 +1367,7 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         const auto [index_type, index_value] = type_of_expr(com, *node.index);
         node.token.assert(index_type == u64_type(), "index must be a u64, got '{}'", index_type);
         node.token.assert(index_value.is<std::uint64_t>(), "array size must be known at compile time");
-        return { type_type{inner_type(type).add_array(index_value.as<std::uint64_t>())} };
+        return { type_type{inner_type(type).add_array(index_value.as<std::uint64_t>())}, {inner_type(type).add_array(index_value.as<std::uint64_t>())} };
     }
 
     const auto stripped = strip_pointers(type);
@@ -1470,7 +1470,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     }
     if (node.name == "type_of") {
         node.token.assert_eq(node.args.size(), 1, "@type_of only accepts one argument");
-        return { type_type{type_of_expr(com, *node.args[0]).type} };
+        return { type_type{type_of_expr(com, *node.args[0]).type}, {type_of_expr(com, *node.args[0]).type} };
     }
     if (node.name == "type_name_of") {
         node.token.assert_eq(node.args.size(), 1, "@type_name_of only accepts one argument");
