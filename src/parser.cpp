@@ -386,6 +386,8 @@ static const auto rules = std::unordered_map<token_type, parse_rule>
     {token_type::ampersand_ampersand, {nullptr,             parse_binary,    precedence::logical_and}},
     {token_type::bar_bar,             {nullptr,             parse_binary,    precedence::logical_or}},
     {token_type::identifier,          {parse_name,          nullptr,         precedence::none}},
+    {token_type::kw_module,           {parse_name,          nullptr,         precedence::none}},
+    {token_type::kw_type,             {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_i32,              {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_i64,              {parse_name,          nullptr,         precedence::none}},
     {token_type::kw_f64,              {parse_name,          nullptr,         precedence::none}},

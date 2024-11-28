@@ -1230,11 +1230,11 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
 
     // If the expression is a module, allow for accessing global variables, functions and structs
     if (auto info = type.get_if<type_fundamental>(); info && *info == type_fundamental::module_type) {
+        node.token.assert(value.has_value(), "value of module must be known at compile time to use");
         node.token.assert(
-            std::holds_alternative<std::filesystem::path>(value),
-            "module object should contain a path, but doesn't!"
+            value.is<std::filesystem::path>(), "module object should contain a path, but doesn't!"
         );
-        const auto& filepath = std::get<std::filesystem::path>(value);
+        const auto& filepath = value.as<std::filesystem::path>();
 
         // It might be a function
         const auto fname = function_name{filepath, no_struct, node.name};
@@ -1366,8 +1366,8 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
     if (type.is<type_type>()) {
         const auto [index_type, index_value] = type_of_expr(com, *node.index);
         node.token.assert(index_type == u64_type(), "index must be a u64, got '{}'", index_type);
-        node.token.assert(std::holds_alternative<std::uint64_t>(index_value), "array size must be known at compile time");
-        return { type_type{inner_type(type).add_array(std::get<std::uint64_t>(index_value))} };
+        node.token.assert(index_value.is<std::uint64_t>(), "array size must be known at compile time");
+        return { type_type{inner_type(type).add_array(index_value.as<std::uint64_t>())} };
     }
 
     const auto stripped = strip_pointers(type);
@@ -1669,16 +1669,16 @@ void push_stmt(compiler& com, const node_if_stmt& node)
     const auto [cond_type, cond_value] = push_expr(com, compile_type::val, *node.condition);
     node.token.assert_eq(cond_type, bool_type(), "if-stmt invalid condition");
     
-    if (std::holds_alternative<bool>(cond_value)) {
+    if (cond_value.is<bool>()) {
         code(com).resize(program_size); // Remove the code to push the value at runtime
-        if (std::get<bool>(cond_value)) {
+        if (cond_value.as<bool>()) {
             push_stmt(com, *node.body);
         } else if (node.else_body) {
             push_stmt(com, *node.else_body);
         }
         return;
     }
-    node.token.assert(std::holds_alternative<std::monostate>(cond_value), "compiler error: condition has a value when it shouldn't");
+    node.token.assert(!cond_value.has_value(), "compiler error: condition has a non-bool value when it shouldn't");
     
     push_value(code(com), op::jump_if_false);
     const auto jump_pos = push_value(code(com), std::uint64_t{0});

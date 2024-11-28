@@ -1,3 +1,8 @@
+let io := @import("lib/io.az");
 
-let size := 3u;
-let x : i64[size] = [1, 2, 3];
+fn foo(m: module)
+{
+    m.bar();
+}
+
+foo(io);

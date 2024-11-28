@@ -23,7 +23,7 @@ static_assert(std::is_same_v<std::uint64_t, std::size_t>);
 struct type_name;
 struct null_tag{};
 
-using const_value = std::variant<
+struct const_value : public std::variant<
     std::monostate,       // no value
     null_tag,             // null
     bool,                 // bool
@@ -33,7 +33,16 @@ using const_value = std::variant<
     std::uint64_t,        // u64
     double,               // f64
     std::filesystem::path // module
->;
+>
+{
+    using variant::variant;
+    const_value(const const_value&) = default;
+
+    template <typename T> auto is()     const -> bool     { return std::holds_alternative<T>(*this); }
+    template <typename T> auto as()     const -> const T& { return std::get<T>(*this); }
+    template <typename T> auto get_if() const -> const T* { return std::get_if<T>(this); }
+    auto has_value()                    const -> bool     { return !is<std::monostate>(); }
+};
 
 enum class type_fundamental : std::uint8_t
 {
