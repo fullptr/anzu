@@ -92,7 +92,7 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
     }
     
     tok.assert(type_expr_type.is<type_type>(), "expected type expression, got {}", type_expr_type);
-    return inner_type(type_expr_type);
+    return *type_expr_type.as<type_type>().type_val;
 }
 
 auto resolve_types(compiler& com, const token& tok, const std::vector<node_expr_ptr>& exprs)
@@ -725,16 +725,16 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
     // Allow for comparisons of types
     if (lhs.is<type_type>() && rhs.is<type_type>()) {
         switch (node.token.type) {
-            case tt::equal_equal: return { bool_type(), {inner_type(lhs) == inner_type(rhs)} };
-            case tt::bang_equal:  return { bool_type(), {inner_type(lhs) != inner_type(rhs)} };
+            case tt::equal_equal: return { bool_type(), {*lhs.as<type_type>().type_val == *rhs.as<type_type>().type_val} };
+            case tt::bang_equal:  return { bool_type(), {*lhs.as<type_type>().type_val != *rhs.as<type_type>().type_val} };
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
     // Types can compare to null, since null is also its own type, allows for T == null
     if ((lhs.is<type_type>() && rhs == null_type()) || (rhs.is<type_type>() && lhs == null_type())) {
-        const auto lhs_inner = lhs.is<type_type>() ? inner_type(lhs) : null_type();
-        const auto rhs_inner = rhs.is<type_type>() ? inner_type(rhs) : null_type();
+        const auto lhs_inner = lhs.is<type_type>() ? *lhs.as<type_type>().type_val : null_type();
+        const auto rhs_inner = rhs.is<type_type>() ? *rhs.as<type_type>().type_val : null_type();
         switch (node.token.type) {
             case tt::equal_equal: return { bool_type(), {lhs_inner == rhs_inner} };
             case tt::bang_equal:  return { bool_type(), {lhs_inner != rhs_inner} };
@@ -1018,7 +1018,7 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
     }
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
-        return { type_type{inner_type(type).add_ptr()}, {inner_type(type).add_ptr()} };
+        return { type_type{type.as<type_type>().type_val->add_ptr()}, {type.as<type_type>().type_val->add_ptr()} };
     }
     if (com.types.size_of(type) == 0) {
         node.token.error("cannot take address of a type of size 0 (type={})", type);
@@ -1036,7 +1036,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
 
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
-        return { type_type{inner_type(type).add_span()}, {inner_type(type).add_span()} };
+        return { type_type{type.as<type_type>().type_val->add_span()}, {type.as<type_type>().type_val->add_span()} };
     }
 
     node.token.assert(
