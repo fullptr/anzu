@@ -77,6 +77,7 @@ auto get_builtin_type(const std::string& name) -> std::optional<type_name>
     if (name == "f64")     return type_name(type_fundamental::f64_type);
     if (name == "module")  return type_name(type_fundamental::module_type);
     if (name == "arena")   return type_name(type_arena{});
+    if (name == "type")    return type_name(type_type{});
     return {};
 }
 
@@ -730,8 +731,14 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         const auto l = *lhs_value.as<value_ptr<type_name>>();
         const auto r = *rhs_value.as<value_ptr<type_name>>();
         switch (node.token.type) {
-            case tt::equal_equal: return { bool_type(), {l == r} };
-            case tt::bang_equal:  return { bool_type(), {l != r} };
+            case tt::equal_equal: {
+                push_value(code(com), op::push_bool, l == r);
+                return { bool_type(), {l == r} };
+            } break;
+            case tt::bang_equal: {
+                push_value(code(com), op::push_bool, l != r);
+                return { bool_type(), {l != r} };
+            } break;
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
@@ -741,8 +748,14 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         const auto lhs_inner = lhs_value.is<value_ptr<type_name>>() ? *lhs_value.as<value_ptr<type_name>>() : null_type();
         const auto rhs_inner = rhs_value.is<value_ptr<type_name>>() ? *rhs_value.as<value_ptr<type_name>>() : null_type();
         switch (node.token.type) {
-            case tt::equal_equal: return { bool_type(), {lhs_inner == rhs_inner} };
-            case tt::bang_equal:  return { bool_type(), {lhs_inner != rhs_inner} };
+            case tt::equal_equal: {
+                push_value(code(com), op::push_bool, lhs_inner == rhs_inner);
+                return { bool_type(), {lhs_inner == rhs_inner} };
+            } break;
+            case tt::bang_equal: {
+                push_value(code(com), op::push_bool, lhs_inner != rhs_inner);
+                return { bool_type(), {lhs_inner != rhs_inner} };
+            } break;
         }
         node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
