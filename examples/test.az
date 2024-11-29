@@ -1,3 +1,6 @@
-print("{}\n", @type_name_of(5));
-print("{}\n", @type_name_of(i64));
-print("{}\n", @type_of(i64) == type);
+
+if 2 == 2 {
+    print("A\n");
+} else {
+    print("B\n");
+}
