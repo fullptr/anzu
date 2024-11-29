@@ -149,7 +149,7 @@ auto to_string(const type_arena& type) -> std::string
 
 auto to_string(const type_type& type) -> std::string
 {
-    return std::format("<type: {}>", *type.type_val);
+    return std::format("type");
 }
 
 auto to_string(const type_function& type) -> std::string

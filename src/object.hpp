@@ -140,9 +140,7 @@ struct type_arena
 
 struct type_type
 {
-    value_ptr<type_name> type_val;
-
-    auto to_hash() const { return hash(type_val); }
+    auto to_hash() const { return hash(0); }
     auto operator==(const type_type&) const -> bool = default;
 };
 
