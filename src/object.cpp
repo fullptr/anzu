@@ -245,19 +245,4 @@ auto type_name::remove_span() const -> type_name
     return *as<type_span>().inner_type;
 }
 
-auto inner_type(const type_name& t) -> type_name
-{
-    if (auto type = t.get_if<type_array>()) {
-        return *type->inner_type;
-    }
-    if (auto type = t.get_if<type_span>()) {
-        return *type->inner_type; 
-    }
-    if (auto type = t.get_if<type_type>()) {
-        return *type->type_val; 
-    }
-    panic("tried to get the inner type of an invalid type category, "
-          "can only get the inner type for arrays, spans and type values, type={}", t);
-}
-
 }

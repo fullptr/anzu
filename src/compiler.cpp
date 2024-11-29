@@ -1044,6 +1044,11 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
         "can only span arrays and other spans, not {}", type
     );
 
+    const auto type_size = [&] {
+        if (type.is<type_array>()) return com.types.size_of(*type.as<type_array>().inner_type);
+        return com.types.size_of(*type.as<type_span>().inner_type);
+    }();
+
     push_expr(com, compile_type::ptr, *node.expr);
 
     // If we are a span, we want the address that it holds rather than its own address,
@@ -1058,7 +1063,7 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
         node.token.assert_eq(lower_bound_type, u64_type(), "subspan lower bound must be u64");
         const auto upper_bound_type = push_expr(com, compile_type::val, *node.upper_bound).type;
         node.token.assert_eq(upper_bound_type, u64_type(), "subspan upper bound must be u64");
-        push_value(code(com), op::push_subspan, com.types.size_of(inner_type(type)));
+        push_value(code(com), op::push_subspan, type_size);
     } else if (type.is<type_span>()) {
         // Push the span pointer, offset to the size, and load the size
         push_expr(com, compile_type::ptr, *node.expr);
@@ -1385,7 +1390,11 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
     }
 
     // Offset pointer by (index * size)
-    const auto inner = inner_type(stripped);
+    const auto inner = [&] {
+        if (is_array) return *stripped.as<type_array>().inner_type;
+        return *stripped.as<type_span>().inner_type;
+    }();
+    
     const auto index = push_expr(com, compile_type::val, *node.index).type;
     node.token.assert_eq(index, u64_type(), "subscript argument must be u64, got {}", index);
     const auto opcode = ct == compile_type::val ? op::nth_element_val : op::nth_element_ptr;
@@ -1487,7 +1496,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         const auto rhs = push_expr(com, ct, *node.args[1]).type;
         node.token.assert(rhs.is<type_span>(), "@copy bad second arg of type '{}'", rhs);
         node.token.assert_eq(lhs, rhs, "@copy args must be of the same span type");
-        push_value(code(com), op::memcpy, com.types.size_of(inner_type(lhs)));
+        push_value(code(com), op::memcpy, com.types.size_of(*lhs.as<type_span>().inner_type));
         return { null_type() };
     }
     if (node.name == "compare") {
@@ -1522,7 +1531,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
         const auto type = type_of_expr(com, *node.args[0]).type;
         node.token.assert(type.is<type_type>(), "@is_fundamental expects a type");
-        return { bool_type(), {inner_type(type).is<type_fundamental>()} };
+        return { bool_type(), {type.as<type_type>().type_val->is<type_fundamental>()} };
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
@@ -1533,7 +1542,7 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> expr
     const auto src_type = push_expr(com, ct, *node.expr).type;
     const auto dst_wrapped = push_expr(com, ct, *node.type).type;
     node.token.assert(dst_wrapped.is<type_type>(), "expected a type, got {}", dst_wrapped);
-    const auto dst_type = inner_type(dst_wrapped);
+    const auto dst_type = *dst_wrapped.as<type_type>().type_val;
 
     using tf = type_fundamental;
     std::visit(overloaded{
@@ -1626,7 +1635,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
     // Declare the span ptr and size as two separate variables
     const auto iter_type = push_expr(com, compile_type::val, *node.iter).type;
     node.token.assert(iter_type.is<type_span>(), "can only iterate spans, got {}", iter_type);
-    const auto inner = inner_type(iter_type);
+    const auto inner = *iter_type.as<type_span>().inner_type;
     declare_var(com, node.token, "$iter", inner.add_ptr());
     declare_var(com, node.token, "$size", u64_type());
 
