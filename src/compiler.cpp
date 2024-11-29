@@ -93,8 +93,8 @@ auto resolve_type(compiler& com, const token& tok, const node_expr_ptr& expr) ->
     }
     
     tok.assert(type.is<type_type>(), "expected type expression, got {}", type);
-    tok.assert(value.is<value_ptr<type_name>>(), "type needs to be known at compile time");
-    return *value.as<value_ptr<type_name>>();
+    tok.assert(value.is<type_name>(), "type needs to be known at compile time");
+    return value.as<type_name>();
 }
 
 auto resolve_types(compiler& com, const token& tok, const std::vector<node_expr_ptr>& exprs)
@@ -726,10 +726,10 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 
     // Allow for comparisons of types
     if (lhs.is<type_type>() && rhs.is<type_type>()) {
-        node.token.assert(lhs_value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        node.token.assert(rhs_value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        const auto l = *lhs_value.as<value_ptr<type_name>>();
-        const auto r = *rhs_value.as<value_ptr<type_name>>();
+        node.token.assert(lhs_value.is<type_name>(), "value of type must be known at compile time");
+        node.token.assert(rhs_value.is<type_name>(), "value of type must be known at compile time");
+        const auto l = lhs_value.as<type_name>();
+        const auto r = rhs_value.as<type_name>();
         switch (node.token.type) {
             case tt::equal_equal: {
                 push_value(code(com), op::push_bool, l == r);
@@ -745,8 +745,8 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
 
     // Types can compare to null, since null is also its own type, allows for T == null
     if ((lhs.is<type_type>() && rhs == null_type()) || (rhs.is<type_type>() && lhs == null_type())) {
-        const auto lhs_inner = lhs_value.is<value_ptr<type_name>>() ? *lhs_value.as<value_ptr<type_name>>() : null_type();
-        const auto rhs_inner = rhs_value.is<value_ptr<type_name>>() ? *rhs_value.as<value_ptr<type_name>>() : null_type();
+        const auto lhs_inner = lhs_value.is<type_name>() ? lhs_value.as<type_name>() : null_type();
+        const auto rhs_inner = rhs_value.is<type_name>() ? rhs_value.as<type_name>() : null_type();
         switch (node.token.type) {
             case tt::equal_equal: {
                 push_value(code(com), op::push_bool, lhs_inner == rhs_inner);
@@ -885,8 +885,8 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
     const auto [type, value] = type_of_expr(com, *node.expr);
 
     if (auto info = type.get_if<type_type>()) { // constructor
-        node.token.assert(value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        const auto inner = *value.as<value_ptr<type_name>>();
+        node.token.assert(value.is<type_name>(), "value of type must be known at compile time");
+        const auto inner = value.as<type_name>();
         if (node.args.empty()) { // default constructor
             push_value(code(com), op::push, com.types.size_of(inner));
         } else {
@@ -1038,8 +1038,8 @@ auto push_expr(compiler& com, compile_type ct, const node_addrof_expr& node) -> 
     }
     const auto [type, value] = type_of_expr(com, *node.expr);
     if (type.is<type_type>()) {
-        node.token.assert(value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        return { type_type{}, {value.as<value_ptr<type_name>>()->add_ptr()} };
+        node.token.assert(value.is<type_name>(), "value of type must be known at compile time");
+        return { type_type{}, {value.as<type_name>().add_ptr()} };
     }
     if (com.types.size_of(type) == 0) {
         node.token.error("cannot take address of a type of size 0 (type={})", type);
@@ -1057,8 +1057,8 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
 
     const auto [type, value] = type_of_expr(com, *node.expr);
     if (type.is<type_type>()) {
-        node.token.assert(value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        return { type_type{}, {value.as<value_ptr<type_name>>()->add_span()} };
+        node.token.assert(value.is<type_name>(), "value of type must be known at compile time");
+        return { type_type{}, {value.as<type_name>().add_span()} };
     }
 
     node.token.assert(
@@ -1112,8 +1112,8 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
 auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr& node) -> expr_result
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr type expression");
-    auto type = make_value<type_name>();
-    auto& inner = type->emplace<type_function_ptr>();
+    auto type = type_name{};
+    auto& inner = type.emplace<type_function_ptr>();
     for (const auto& param : node.params) {
         inner.param_types.push_back(resolve_type(com, node.token, param));
     }
@@ -1134,8 +1134,8 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> e
     const auto [type, value] = type_of_expr(com, *node.expr);
     if (type.is<type_type>()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a const type-expression");
-        node.token.assert(value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        return { type_type{}, {value.as<value_ptr<type_name>>()->add_const()} };
+        node.token.assert(value.is<type_name>(), "value of type must be known at compile time");
+        return { type_type{}, {value.as<type_name>().add_const()} };
     }
 
     const auto [t, v] = push_expr(com, ct, *node.expr);
@@ -1302,10 +1302,10 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
     if (type.is<type_type>()) {
-        node.token.assert(value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        const auto& actual = value.as<value_ptr<type_name>>();
-        if (actual->is<type_struct>()) {
-            const auto struct_info = actual->as<type_struct>();
+        node.token.assert(value.is<type_name>(), "value of type must be known at compile time");
+        const auto& actual = value.as<type_name>();
+        if (actual.is<type_struct>()) {
+            const auto struct_info = actual.as<type_struct>();
             
             const auto fname = function_name{struct_info.module, struct_info, node.name};
             if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
@@ -1400,8 +1400,8 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         const auto [index_type, index_value] = type_of_expr(com, *node.index);
         node.token.assert(index_type == u64_type(), "index must be a u64, got '{}'", index_type);
         node.token.assert(index_value.is<std::uint64_t>(), "array size must be known at compile time");
-        node.token.assert(value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        return { type_type{}, {value.as<value_ptr<type_name>>()->add_array(index_value.as<std::uint64_t>())}};
+        node.token.assert(value.is<type_name>(), "value of type must be known at compile time");
+        return { type_type{}, {value.as<type_name>().add_array(index_value.as<std::uint64_t>())}};
     }
 
     const auto stripped = strip_pointers(type);
@@ -1500,8 +1500,8 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
         const auto [type, value] = type_of_expr(com, *node.args[0]);
         if (type.is<type_type>()) { // can call sizeof on a type directly
-            node.token.assert(value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-            push_value(code(com), op::push_u64, com.types.size_of(*value.as<value_ptr<type_name>>()));
+            node.token.assert(value.is<type_name>(), "value of type must be known at compile time");
+            push_value(code(com), op::push_u64, com.types.size_of(value.as<type_name>()));
         } else {
             push_value(code(com), op::push_u64, com.types.size_of(type));
         }
@@ -1561,8 +1561,8 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
         const auto [type, value] = type_of_expr(com, *node.args[0]);
         node.token.assert(type.is<type_type>(), "@is_fundamental expects a type");
-        node.token.assert(value.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-        return { bool_type(), {value.as<value_ptr<type_name>>()->is<type_fundamental>()} };
+        node.token.assert(value.is<type_name>(), "value of type must be known at compile time");
+        return { bool_type(), {value.as<type_name>().is<type_fundamental>()} };
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
@@ -1573,8 +1573,8 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> expr
     const auto src_type = push_expr(com, ct, *node.expr).type;
     const auto [dst_wrapped, dst_val] = push_expr(com, ct, *node.type);
     node.token.assert(dst_wrapped.is<type_type>(), "expected a type, got {}", dst_wrapped);
-    node.token.assert(dst_val.is<value_ptr<type_name>>(), "value of type must be known at compile time");
-    const auto dst_type = *dst_val.as<value_ptr<type_name>>();
+    node.token.assert(dst_val.is<type_name>(), "value of type must be known at compile time");
+    const auto dst_type = dst_val.as<type_name>();
 
     using tf = type_fundamental;
     std::visit(overloaded{
