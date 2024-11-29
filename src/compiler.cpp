@@ -1106,7 +1106,7 @@ auto push_expr(compiler& com, compile_type ct, const node_const_expr& node) -> e
     const auto type = type_of_expr(com, *node.expr).type;
     if (type.is<type_type>()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a const type-expression");
-        return { type_type{inner_type(type).add_const()}, {inner_type(type).add_const()} };
+        return { type_type{type.as<type_type>().type_val->add_const()}, {type.as<type_type>().type_val->add_const()}};
     }
 
     const auto [t, v] = push_expr(com, ct, *node.expr);
@@ -1272,8 +1272,8 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
     }
     
     // If the expression is a type, allow for accessing the functions (only makes sense on structs)
-    if (type.is<type_type>() && inner_type(type).is<type_struct>()) {
-        const auto struct_info = std::get<type_struct>(inner_type(type));
+    if (type.is<type_type>() && type.as<type_type>().type_val->is<type_struct>()) {
+        const auto struct_info = type.as<type_type>().type_val->as<type_struct>();
          
         const auto fname = function_name{struct_info.module, struct_info, node.name};
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
@@ -1367,7 +1367,7 @@ auto push_expr(compiler& com, compile_type ct, const node_subscript_expr& node) 
         const auto [index_type, index_value] = type_of_expr(com, *node.index);
         node.token.assert(index_type == u64_type(), "index must be a u64, got '{}'", index_type);
         node.token.assert(index_value.is<std::uint64_t>(), "array size must be known at compile time");
-        return { type_type{inner_type(type).add_array(index_value.as<std::uint64_t>())}, {inner_type(type).add_array(index_value.as<std::uint64_t>())} };
+        return { type_type{type.as<type_type>().type_val->add_array(index_value.as<std::uint64_t>())}, {type.as<type_type>().type_val->add_array(index_value.as<std::uint64_t>())}};
     }
 
     const auto stripped = strip_pointers(type);
@@ -1462,7 +1462,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 1, "@size_of only accepts one argument");
         const auto type = type_of_expr(com, *node.args[0]).type;
         if (type.is<type_type>()) { // can call sizeof on a type directly
-            push_value(code(com), op::push_u64, com.types.size_of(inner_type(type)));
+            push_value(code(com), op::push_u64, com.types.size_of(*type.as<type_type>().type_val));
         } else {
             push_value(code(com), op::push_u64, com.types.size_of(type));
         }
@@ -1483,7 +1483,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         node.token.assert_eq(node.args.size(), 2, "@copy requires two spans");
         const auto lhs = push_expr(com, ct, *node.args[0]).type;
         node.token.assert(lhs.is<type_span>(), "@copy bad first arg of type '{}'", lhs);
-        node.token.assert(!inner_type(lhs).is_const, "@copy cannot write through a const span");
+        node.token.assert(!lhs.as<type_span>().inner_type->is_const, "@copy cannot write through a const span");
         const auto rhs = push_expr(com, ct, *node.args[1]).type;
         node.token.assert(rhs.is<type_span>(), "@copy bad second arg of type '{}'", rhs);
         node.token.assert_eq(lhs, rhs, "@copy args must be of the same span type");
