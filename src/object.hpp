@@ -24,15 +24,16 @@ struct type_name;
 struct null_tag{};
 
 struct const_value : public std::variant<
-    std::monostate,       // no value
-    null_tag,             // null
-    bool,                 // bool
-    char,                 // char
-    std::int32_t,         // i32
-    std::int64_t,         // i64
-    std::uint64_t,        // u64
-    double,               // f64
-    std::filesystem::path // module
+    std::monostate,        // no value
+    null_tag,              // null
+    bool,                  // bool
+    char,                  // char
+    std::int32_t,          // i32
+    std::int64_t,          // i64
+    std::uint64_t,         // u64
+    double,                // f64
+    std::filesystem::path, // module
+    value_ptr<type_name>   // type
 >
 {
     using variant::variant;
@@ -139,9 +140,7 @@ struct type_arena
 
 struct type_type
 {
-    value_ptr<type_name> type_val;
-
-    auto to_hash() const { return hash(type_val); }
+    auto to_hash() const { return hash(0); }
     auto operator==(const type_type&) const -> bool = default;
 };
 
@@ -264,10 +263,6 @@ auto f64_type() -> type_name;
 auto module_type() -> type_name;
 auto arena_type() -> type_name;
 auto string_literal_type() -> type_name;
-
-// Extracts the single inner type of the given t. Undefined if the given t is not a compound
-// type with a single subtype.
-auto inner_type(const type_name& t) -> type_name;
 
 }
 

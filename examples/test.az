@@ -1,8 +1,6 @@
-let io := @import("lib/io.az");
 
-fn foo(m: module)
-{
-    m.bar();
+if 2 == 2 {
+    print("A\n");
+} else {
+    print("B\n");
 }
-
-foo(io);

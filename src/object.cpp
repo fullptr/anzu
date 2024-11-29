@@ -149,7 +149,7 @@ auto to_string(const type_arena& type) -> std::string
 
 auto to_string(const type_type& type) -> std::string
 {
-    return std::format("<type: {}>", *type.type_val);
+    return std::format("type");
 }
 
 auto to_string(const type_function& type) -> std::string
@@ -243,21 +243,6 @@ auto type_name::remove_span() const -> type_name
 {
     panic_if(!is<type_span>(), "Tried to strip span from non-span type {}", *this);
     return *as<type_span>().inner_type;
-}
-
-auto inner_type(const type_name& t) -> type_name
-{
-    if (auto type = t.get_if<type_array>()) {
-        return *type->inner_type;
-    }
-    if (auto type = t.get_if<type_span>()) {
-        return *type->inner_type; 
-    }
-    if (auto type = t.get_if<type_type>()) {
-        return *type->type_val; 
-    }
-    panic("tried to get the inner type of an invalid type category, "
-          "can only get the inner type for arrays, spans and type values, type={}", t);
 }
 
 }
