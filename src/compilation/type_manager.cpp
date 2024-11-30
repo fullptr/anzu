@@ -29,23 +29,35 @@ auto type_manager::contains(const type_struct& type) const -> bool
 auto type_manager::size_of(const type_name& type) const -> std::size_t
 {
     return std::visit(overloaded{
-        [](type_fundamental t) -> std::size_t {
-            switch (t) {
-                case type_fundamental::null_type:
-                case type_fundamental::bool_type:
-                case type_fundamental::char_type:
-                    return 1;
-                case type_fundamental::i32_type:
-                    return 4;
-                case type_fundamental::i64_type:
-                case type_fundamental::u64_type:
-                case type_fundamental::f64_type:
-                    return 8;
-                case type_fundamental::module_type:
-                    return 0;
-                default:
-                    return 0;
-            }
+        [](type_null) {
+            return std::size_t{1};
+        },
+        [](type_bool) {
+            return std::size_t{1};
+        },
+        [](type_char) {
+            return std::size_t{1};
+        },
+        [](type_i32) {
+            return std::size_t{4};
+        },
+        [](type_i64) {
+            return std::size_t{8};
+        },
+        [](type_u64) {
+            return std::size_t{8};
+        },
+        [](type_f64) {
+            return std::size_t{8};
+        },
+        [](type_arena) {
+            return sizeof(std::byte*); // the runtime will store the arena separately
+        },
+        [](type_module) {
+            return std::size_t{0};
+        },
+        [](type_type) {
+            return std::size_t{0};
         },
         [&](const type_struct& t) -> std::size_t {
             if (!d_classes.contains(t)) {
@@ -75,14 +87,8 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         [](const type_bound_method_template&) {
             return sizeof(std::byte*); // pointer to the object, first arg to the function
         },
-        [](const type_arena& arena) {
-            return sizeof(std::byte*); // the runtime will store the arena separately
-        },
         [](const type_builtin&) {
             return std::size_t{0};
-        },
-        [](const type_type&) {
-            return std::size_t{0}; 
         },
         [](const type_function&) {
             return std::size_t{0};

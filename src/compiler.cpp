@@ -68,14 +68,14 @@ auto type_of_expr(compiler& com, const node_expr& node) -> expr_result;
 
 auto get_builtin_type(const std::string& name) -> std::optional<type_name>
 {
-    if (name == "null")   return type_name(type_fundamental::null_type);
-    if (name == "bool")   return type_name(type_fundamental::bool_type);
-    if (name == "char")   return type_name(type_fundamental::char_type);
-    if (name == "i32")    return type_name(type_fundamental::i32_type);
-    if (name == "i64")    return type_name(type_fundamental::i64_type);
-    if (name == "u64")    return type_name(type_fundamental::u64_type);
-    if (name == "f64")    return type_name(type_fundamental::f64_type);
-    if (name == "module") return type_name(type_fundamental::module_type);
+    if (name == "null")   return type_name(type_null{});
+    if (name == "bool")   return type_name(type_bool{});
+    if (name == "char")   return type_name(type_char{});
+    if (name == "i32")    return type_name(type_i32{});
+    if (name == "i64")    return type_name(type_i64{});
+    if (name == "u64")    return type_name(type_u64{});
+    if (name == "f64")    return type_name(type_f64{});
+    if (name == "module") return type_name(type_module{});
     if (name == "arena")  return type_name(type_arena{});
     if (name == "type")   return type_name(type_type{});
     return {};
@@ -86,6 +86,13 @@ auto get_type_value(const token& tok, const expr_result& result) -> type_name
     tok.assert(result.type.is<type_type>(), "expected type expression, got {}", result.type);
     tok.assert(result.value.is<type_name>(), "value of type needs to be known at compile time");
     return result.value.as<type_name>();
+}
+
+auto get_module_value(const token& tok, const expr_result& result) -> std::filesystem::path
+{
+    tok.assert(result.type.is<type_module>(), "expected module expression, got {}", result.type);
+    tok.assert(result.value.is<std::filesystem::path>(), "value of module needs to be known at compile time");
+    return result.value.as<std::filesystem::path>();
 }
 
 auto get_u64_value(const token& tok, const expr_result& result) -> std::uint64_t
@@ -712,7 +719,7 @@ auto push_expr(compiler& com, compile_type ct, const node_unary_op_expr& node) -
             if (type == bool_type()) { push_value(code(com), op::bool_not); return { type }; }
         } break;
     }
-    node.token.error("could not find op '{}{}'", node.token.type, type);
+    node.token.error("[1] could not find op '{}{}'", node.token.type, type);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) -> expr_result
@@ -750,7 +757,7 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
                 return { bool_type(), {l != r} };
             } break;
         }
-        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+        node.token.error("[2] could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
     // Types can compare to null, since null is also its own type, allows for T == null
@@ -767,7 +774,7 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
                 return { bool_type(), {lhs_inner != rhs_inner} };
             } break;
         }
-        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+        node.token.error("[3] could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
     // Pointers can compare to null
@@ -778,10 +785,10 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
             case tt::equal_equal: { push_value(code(com), op::u64_eq); return { bool_type() }; }
             case tt::bang_equal:  { push_value(code(com), op::u64_ne); return { bool_type() }; }
         }
-        node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+        node.token.error("[4] could not find op '{} {} {}'", lhs, node.token.type, rhs);
     }
 
-    if (lhs != rhs) node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    if (lhs != rhs) node.token.error("[5] could not find op '{} {} {}'", lhs, node.token.type, rhs);
     const auto& type = lhs;
 
     if (type.is<type_ptr>()) {
@@ -886,7 +893,7 @@ auto push_expr(compiler& com, compile_type ct, const node_binary_op_expr& node) 
         }
     }
 
-    node.token.error("could not find op '{} {} {}'", lhs, node.token.type, rhs);
+    node.token.error("[6] could not find op '{} {} {}'", lhs, node.token.type, rhs);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> expr_result
@@ -1267,12 +1274,8 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
     const auto [type, value] = type_of_expr(com, *node.expr);
 
     // If the expression is a module, allow for accessing global variables, functions and structs
-    if (auto info = type.get_if<type_fundamental>(); info && *info == type_fundamental::module_type) {
-        node.token.assert(value.has_value(), "value of module must be known at compile time to use");
-        node.token.assert(
-            value.is<std::filesystem::path>(), "module object should contain a path, but doesn't!"
-        );
-        const auto& filepath = value.as<std::filesystem::path>();
+    if (auto info = type.get_if<type_module>()) {
+        const auto filepath = get_module_value(node.token, {type, value});
 
         // It might be a function
         const auto fname = function_name{filepath, no_struct, node.name};
@@ -1567,8 +1570,20 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     if (node.name == "is_fundamental") {
         node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
         const auto result = type_of_expr(com, *node.args[0]);
-        const auto typeval = get_type_value(node.token, result);
-        return { bool_type(), {typeval.is<type_fundamental>()} };
+        const auto type = get_type_value(node.token, result);
+
+        const auto is_fundamental = std::visit(overloaded{
+            [&](type_null) { return true;  },
+            [&](type_bool) { return true;  },
+            [&](type_char) { return true;  },
+            [&](type_i32)  { return true;  },
+            [&](type_i64)  { return true;  },
+            [&](type_u64)  { return true;  },
+            [&](type_f64)  { return true;  },
+            [&](auto&&)    { return false; }
+        }, type);
+
+        return { bool_type(), {is_fundamental} };
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
@@ -1577,43 +1592,29 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> expr
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of an 'as' statement");
     const auto src_type = push_expr(com, ct, *node.expr).type;
-    const auto [dst_wrapped, dst_val] = push_expr(com, ct, *node.type);
-    const auto dst_type = get_type_value(node.token, {dst_wrapped, dst_val});
+    const auto result = push_expr(com, ct, *node.type);
+    const auto dst_type = get_type_value(node.token, result);
 
-    using tf = type_fundamental;
     std::visit(overloaded{
-        [&](tf src, tf dst) {
-            if (src == dst) { /* noop */ }
-            else if (dst == tf::i64_type) {
-                switch (src) {
-                    case tf::null_type: { push_value(code(com), op::null_to_i64); } break;
-                    case tf::bool_type: { push_value(code(com), op::bool_to_i64); } break;
-                    case tf::char_type: { push_value(code(com), op::char_to_i64); } break;
-                    case tf::i32_type:  { push_value(code(com), op::i32_to_i64);  } break;
-                    case tf::i64_type:  { /* noop */ } break;
-                    case tf::u64_type:  { push_value(code(com), op::u64_to_i64);  } break;
-                    case tf::f64_type:  { push_value(code(com), op::f64_to_i64);  } break;
-                }
-            }
-            else if (dst == tf::u64_type) {
-                switch (src) {
-                    case tf::null_type: { push_value(code(com), op::null_to_u64); } break;
-                    case tf::bool_type: { push_value(code(com), op::bool_to_u64); } break;
-                    case tf::char_type: { push_value(code(com), op::char_to_u64); } break;
-                    case tf::i32_type:  { push_value(code(com), op::i32_to_u64);  } break;
-                    case tf::i64_type:  { push_value(code(com), op::i64_to_u64);  } break;
-                    case tf::u64_type:  { /* noop */ } break;
-                    case tf::f64_type:  { push_value(code(com), op::f64_to_u64);  } break;
-                }
-            }
-            else {
-                node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
-            }
-        },
+        [&](type_null, type_i64) { push_value(code(com), op::null_to_i64); },
+        [&](type_bool, type_i64) { push_value(code(com), op::bool_to_i64); },
+        [&](type_char, type_i64) { push_value(code(com), op::char_to_i64); },
+        [&](type_i32,  type_i64) { push_value(code(com), op::i32_to_i64);  },
+        [&](type_u64,  type_i64) { push_value(code(com), op::u64_to_i64);  },
+        [&](type_f64,  type_i64) { push_value(code(com), op::f64_to_i64);  },
+
+        [&](type_null, type_u64) { push_value(code(com), op::null_to_u64); },
+        [&](type_bool, type_u64) { push_value(code(com), op::bool_to_u64); },
+        [&](type_char, type_u64) { push_value(code(com), op::char_to_u64); },
+        [&](type_i32,  type_u64) { push_value(code(com), op::i32_to_u64);  },
+        [&](type_i64,  type_u64) { push_value(code(com), op::i64_to_u64);  },
+        [&](type_f64,  type_u64) { push_value(code(com), op::f64_to_u64);  },
+
         [&](const auto& src, const auto& dst) {
             node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
         }
     }, src_type, dst_type);
+
     return { dst_type };
 }
 
