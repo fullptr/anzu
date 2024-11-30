@@ -198,54 +198,9 @@ auto to_string(const type_placeholder& type) -> std::string
     return std::format("<placeholder: {}>", type.name);
 }
 
-auto null_type() -> type_name
-{
-    return type_null{};
-}
-
-auto bool_type() -> type_name
-{
-    return type_bool{};
-}
-
-auto char_type() -> type_name
-{
-    return type_char{};
-}
-
-auto i32_type() -> type_name
-{
-    return type_i32{};
-}
-
-auto i64_type() -> type_name
-{
-    return type_i64{};
-}
-
-auto u64_type() -> type_name
-{
-    return type_u64{};
-}
-
-auto f64_type() -> type_name
-{
-    return type_f64{};
-}
-
-auto module_type() -> type_name
-{
-    return type_module{};
-}
-
-auto arena_type() -> type_name
-{
-    return type_arena{};
-}
-
 auto string_literal_type() -> type_name
 {
-    return char_type().add_const().add_span();
+    return type_name{type_char{}}.add_const().add_span();
 }
 
 auto type_name::add_array(std::size_t size) const -> type_name

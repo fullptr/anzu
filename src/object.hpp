@@ -283,15 +283,6 @@ struct type_name : public std::variant<
 // Used for resolving template types. In the future could also be used for type aliases
 using template_map = std::unordered_map<std::string, type_name>;
 
-auto null_type() -> type_name;
-auto bool_type() -> type_name;
-auto char_type() -> type_name;
-auto i32_type() -> type_name;
-auto i64_type() -> type_name;
-auto u64_type() -> type_name;
-auto f64_type() -> type_name;
-auto module_type() -> type_name;
-auto arena_type() -> type_name;
 auto string_literal_type() -> type_name;
 
 struct null_tag{};
