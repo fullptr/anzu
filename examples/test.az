@@ -1,6 +1,11 @@
 
-if 2 == 2 {
-    print("A\n");
-} else {
-    print("B\n");
+struct vec3
+{
+    fn length(self: vec3 const&) -> f64
+    {
+        return sqrt(4.0);
+    }
 }
+
+let v := vec3();
+print("{}\n", v.length());

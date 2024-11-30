@@ -178,6 +178,7 @@ struct vec3
         let x_squared := square(self.x);
         let y_squared := square(self.y);
         let z_squared := square(self.z);
+        return 0.0;
         return sqrt(x_squared + y_squared + z_squared);
     }
 }

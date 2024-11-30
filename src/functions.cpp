@@ -92,7 +92,7 @@ auto construct_builtin_array() -> std::vector<builtin>
 
     auto b = std::vector<builtin>{};
 
-    b.push_back(builtin{"sqrt", b.size(), builtin_sqrt, {type_f64{}, type_f64{}}});
+    b.push_back(builtin{"sqrt", b.size(), builtin_sqrt, {type_f64{}}, type_f64{}});
 
     b.push_back(builtin{"fopen", b.size(), builtin_fopen, {char_span, char_span}, {type_u64{}}});
     b.push_back(builtin{"fclose", b.size(), builtin_fclose, {type_u64{}}, {type_null{}}});

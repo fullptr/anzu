@@ -285,11 +285,8 @@ using template_map = std::unordered_map<std::string, type_name>;
 
 auto string_literal_type() -> type_name;
 
-struct null_tag{};
-
 struct const_value : public std::variant<
-    std::monostate,        // no value
-    null_tag,              // null
+    std::monostate,        // no value, null
     bool,                  // bool
     char,                  // char
     std::int32_t,          // i32

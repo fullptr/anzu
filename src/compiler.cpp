@@ -696,7 +696,7 @@ auto push_expr(compiler& com, compile_type ct, const node_literal_null_expr& nod
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a null literal");
     push_value(code(com), op::push_null);
-    return { type_null{}, null_tag{} };
+    return { type_null{} };
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_string_expr& node) -> expr_result
@@ -1106,9 +1106,9 @@ auto push_expr(compiler& com,compile_type ct, const node_span_expr& node) -> exp
     // next push the size to make up the second half of the span
     if (node.lower_bound && node.upper_bound) {
         const auto lower_bound_type = push_expr(com, compile_type::val, *node.lower_bound).type;
-        node.token.assert(lower_bound_type.is<type_i64>(), "subspan lower bound must be u64");
+        node.token.assert(lower_bound_type.is<type_u64>(), "subspan lower bound must be u64");
         const auto upper_bound_type = push_expr(com, compile_type::val, *node.upper_bound).type;
-        node.token.assert(upper_bound_type.is<type_i64>(), "subspan upper bound must be u64");
+        node.token.assert(upper_bound_type.is<type_u64>(), "subspan upper bound must be u64");
         push_value(code(com), op::push_subspan, type_size);
     } else if (type.is<type_span>()) {
         // Push the span pointer, offset to the size, and load the size
