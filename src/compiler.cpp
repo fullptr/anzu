@@ -1604,6 +1604,8 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> expr
     const auto dst_type = get_type_value(node.token, result);
 
     std::visit(overloaded{
+        [&] <class T> (const T&, const T&) {}, // noop
+
         [&](type_null, type_i64) { push_value(code(com), op::null_to_i64); },
         [&](type_bool, type_i64) { push_value(code(com), op::bool_to_i64); },
         [&](type_char, type_i64) { push_value(code(com), op::char_to_i64); },
@@ -1618,7 +1620,7 @@ auto push_expr(compiler& com, compile_type ct, const node_as_expr& node) -> expr
         [&](type_i64,  type_u64) { push_value(code(com), op::i64_to_u64);  },
         [&](type_f64,  type_u64) { push_value(code(com), op::f64_to_u64);  },
 
-        [&](const auto& src, const auto& dst) {
+        [&](const auto&, const auto&) {
             node.token.error("cannot convert expression of type '{}' to '{}'", src_type, dst_type);
         }
     }, src_type, dst_type);
