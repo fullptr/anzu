@@ -87,17 +87,17 @@ auto builtin_fread(bytecode_context& ctx) -> void
 
 auto construct_builtin_array() -> std::vector<builtin>
 {
-    const auto char_span = char_type().add_const().add_span();
-    const auto char_ptr = char_type().add_const().add_ptr();
+    const auto char_span = type_name{type_char{}}.add_const().add_span();
+    const auto char_ptr = type_name{type_char{}}.add_const().add_ptr();
 
     auto b = std::vector<builtin>{};
 
-    b.push_back(builtin{"sqrt", b.size(), builtin_sqrt, {f64_type()}, f64_type()});
+    b.push_back(builtin{"sqrt", b.size(), builtin_sqrt, {type_f64{}}, type_f64{}});
 
-    b.push_back(builtin{"fopen", b.size(), builtin_fopen, {char_span, char_span}, u64_type()});
-    b.push_back(builtin{"fclose", b.size(), builtin_fclose, {u64_type()}, null_type()});
-    b.push_back(builtin{"fputs", b.size(), builtin_fputs, {u64_type(), char_span}, null_type()});
-    b.push_back(builtin{"fread", b.size(), builtin_fread, {u64_type(), arena_type().add_ptr()}, char_span});
+    b.push_back(builtin{"fopen", b.size(), builtin_fopen, {char_span, char_span}, {type_u64{}}});
+    b.push_back(builtin{"fclose", b.size(), builtin_fclose, {type_u64{}}, {type_null{}}});
+    b.push_back(builtin{"fputs", b.size(), builtin_fputs, {type_u64{}, char_span}, type_null{}});
+    b.push_back(builtin{"fread", b.size(), builtin_fread, {type_u64{}, type_name{type_arena{}}.add_ptr()}, char_span});
 
     return b;
 }

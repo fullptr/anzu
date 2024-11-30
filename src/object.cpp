@@ -61,19 +61,54 @@ auto to_string(const type_name& type) -> std::string
     return type.is_const ? std::format("{} const", string_inner) : string_inner;
 }
 
-auto to_string(type_fundamental t) -> std::string
+auto to_string(const type_null&) -> std::string
 {
-    switch (t) {
-        case type_fundamental::null_type:    return "null";
-        case type_fundamental::bool_type:    return "bool";
-        case type_fundamental::char_type:    return "char";
-        case type_fundamental::i32_type:     return "i32";
-        case type_fundamental::i64_type:     return "i64";
-        case type_fundamental::u64_type:     return "u64";
-        case type_fundamental::f64_type:     return "f64";
-        case type_fundamental::module_type:  return "module";
-        default: return "UNKNOWN FUNDAMENTAL";
-    }
+    return "null";
+}
+
+auto to_string(const type_bool&) -> std::string
+{
+    return "bool";
+}
+
+auto to_string(const type_char&) -> std::string
+{
+    return "char";
+}
+
+auto to_string(const type_i32&) -> std::string
+{
+    return "i32";
+}
+
+auto to_string(const type_i64&) -> std::string
+{
+    return "i64";
+}
+
+auto to_string(const type_u64&) -> std::string
+{
+    return "u64";
+}
+
+auto to_string(const type_f64&) -> std::string
+{
+    return "f64";
+}
+
+auto to_string(const type_type&) -> std::string
+{
+    return "type";
+}
+
+auto to_string(const type_arena&) -> std::string
+{
+    return "arena";
+}
+
+auto to_string(const type_module&) -> std::string
+{
+    return "module";
 }
 
 auto to_string(const type_struct& type) -> std::string
@@ -142,16 +177,6 @@ auto to_string(const type_bound_method_template& type) -> std::string
     );
 }
 
-auto to_string(const type_arena& type) -> std::string
-{
-    return std::string{"<arena>"};
-}
-
-auto to_string(const type_type& type) -> std::string
-{
-    return std::format("type");
-}
-
 auto to_string(const type_function& type) -> std::string
 {
     const auto function_ptr_type = type_function_ptr{type.param_types, type.return_type};
@@ -173,54 +198,9 @@ auto to_string(const type_placeholder& type) -> std::string
     return std::format("<placeholder: {}>", type.name);
 }
 
-auto null_type() -> type_name
-{
-    return {type_fundamental::null_type};
-}
-
-auto bool_type() -> type_name
-{
-    return {type_fundamental::bool_type};
-}
-
-auto char_type() -> type_name
-{
-    return {type_fundamental::char_type};
-}
-
-auto i32_type() -> type_name
-{
-    return {type_fundamental::i32_type};
-}
-
-auto i64_type() -> type_name
-{
-    return {type_fundamental::i64_type};
-}
-
-auto u64_type() -> type_name
-{
-    return {type_fundamental::u64_type};
-}
-
-auto f64_type() -> type_name
-{
-    return {type_fundamental::f64_type};
-}
-
-auto module_type() -> type_name
-{
-    return {type_fundamental::module_type};
-}
-
-auto arena_type() -> type_name
-{
-    return {type_arena{}};
-}
-
 auto string_literal_type() -> type_name
 {
-    return char_type().add_const().add_span();
+    return type_name{type_char{}}.add_const().add_span();
 }
 
 auto type_name::add_array(std::size_t size) const -> type_name

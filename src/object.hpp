@@ -19,42 +19,67 @@ namespace anzu {
 // Want these to be equivalent since we want uints available in the runtime but we also want
 // to use it as indexes into C++ vectors which use size_t.
 static_assert(std::is_same_v<std::uint64_t, std::size_t>);
-
 struct type_name;
-struct null_tag{};
 
-struct const_value : public std::variant<
-    std::monostate,        // no value
-    null_tag,              // null
-    bool,                  // bool
-    char,                  // char
-    std::int32_t,          // i32
-    std::int64_t,          // i64
-    std::uint64_t,         // u64
-    double,                // f64
-    std::filesystem::path, // module
-    value_ptr<type_name>   // type
->
+struct type_null
 {
-    using variant::variant;
-    const_value(const const_value&) = default;
-
-    template <typename T> auto is()     const -> bool     { return std::holds_alternative<T>(*this); }
-    template <typename T> auto as()     const -> const T& { return std::get<T>(*this); }
-    template <typename T> auto get_if() const -> const T* { return std::get_if<T>(this); }
-    auto has_value()                    const -> bool     { return !is<std::monostate>(); }
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_null&) const -> bool = default;
 };
 
-enum class type_fundamental : std::uint8_t
+struct type_bool
 {
-    null_type,
-    bool_type,
-    char_type,
-    i32_type,
-    i64_type,
-    u64_type,
-    f64_type,
-    module_type,
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_bool&) const -> bool = default;
+};
+
+struct type_char
+{
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_char&) const -> bool = default;
+};
+
+struct type_i32
+{
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_i32&) const -> bool = default;
+};
+
+struct type_i64
+{
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_i64&) const -> bool = default;
+};
+
+struct type_u64
+{
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_u64&) const -> bool = default;
+};
+
+struct type_f64
+{
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_f64&) const -> bool = default;
+};
+
+struct type_type
+{
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_type&) const -> bool = default;
+};
+
+struct type_arena
+{
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_arena&) const -> bool = default;
+};
+
+
+struct type_module
+{
+    auto to_hash() const { return hash(0); }
+    auto operator==(const type_module&) const -> bool = default;
 };
 
 struct type_struct
@@ -132,18 +157,6 @@ struct type_bound_method_template
     auto operator==(const type_bound_method_template&) const -> bool = default;
 };
 
-struct type_arena
-{
-    auto to_hash() const { return hash(0); }
-    auto operator==(const type_arena&) const -> bool = default;
-};
-
-struct type_type
-{
-    auto to_hash() const { return hash(0); }
-    auto operator==(const type_type&) const -> bool = default;
-};
-
 struct type_function
 {
     std::size_t            id;
@@ -186,7 +199,17 @@ struct type_placeholder
 };
 
 auto to_string(const type_name& type) -> std::string;
-auto to_string(type_fundamental t) -> std::string;
+
+auto to_string(const type_null&) -> std::string;
+auto to_string(const type_bool&) -> std::string;
+auto to_string(const type_char&) -> std::string;
+auto to_string(const type_i32&) -> std::string;
+auto to_string(const type_i64&) -> std::string;
+auto to_string(const type_u64&) -> std::string;
+auto to_string(const type_f64&) -> std::string;
+auto to_string(const type_module&) -> std::string;
+auto to_string(const type_type&) -> std::string;
+auto to_string(const type_arena&) -> std::string;
 auto to_string(const type_array& type) -> std::string;
 auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
@@ -195,25 +218,32 @@ auto to_string(const type_function_ptr& type) -> std::string;
 auto to_string(const type_builtin& type) -> std::string;
 auto to_string(const type_bound_method& type) -> std::string;
 auto to_string(const type_bound_method_template& type) -> std::string;
-auto to_string(const type_arena& type) -> std::string;
-auto to_string(const type_type& type) -> std::string;
 auto to_string(const type_function& type) -> std::string;
 auto to_string(const type_function_template& type) -> std::string;
 auto to_string(const type_struct_template& type) -> std::string;
 auto to_string(const type_placeholder& type) -> std::string;
 
 struct type_name : public std::variant<
-    type_fundamental,
-    type_struct,
+    type_null,
+    type_bool,
+    type_char,
+    type_i32,
+    type_i64,
+    type_u64,
+    type_f64,
+    type_type,
+    type_arena,
+    type_module,
+
     type_array,
+    type_struct,
     type_ptr,
     type_span,
-    type_arena,
+
     type_function_ptr,
     type_bound_method,
     type_bound_method_template,
     type_builtin,
-    type_type,
     type_function,
     type_function_template,
     type_struct_template,
@@ -253,16 +283,29 @@ struct type_name : public std::variant<
 // Used for resolving template types. In the future could also be used for type aliases
 using template_map = std::unordered_map<std::string, type_name>;
 
-auto null_type() -> type_name;
-auto bool_type() -> type_name;
-auto char_type() -> type_name;
-auto i32_type() -> type_name;
-auto i64_type() -> type_name;
-auto u64_type() -> type_name;
-auto f64_type() -> type_name;
-auto module_type() -> type_name;
-auto arena_type() -> type_name;
 auto string_literal_type() -> type_name;
+
+struct const_value : public std::variant<
+    std::monostate,        // no value, null
+    bool,                  // bool
+    char,                  // char
+    std::int32_t,          // i32
+    std::int64_t,          // i64
+    std::uint64_t,         // u64
+    double,                // f64
+    std::filesystem::path, // module
+    type_name              // type
+>
+{
+    using variant::variant;
+    const_value(const const_value&) = default;
+
+    template <typename T> auto is()     const -> bool     { return std::holds_alternative<T>(*this); }
+    template <typename T> auto as()     const -> const T& { return std::get<T>(*this); }
+    template <typename T> auto get_if() const -> const T* { return std::get_if<T>(this); }
+    auto has_value()                    const -> bool     { return !is<std::monostate>(); }
+};
+
 
 }
 
