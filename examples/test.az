@@ -10,7 +10,7 @@ util.swap(x&, y&);
 print("{} {}\n", x, y);
 
 var arr := [6,3,9,1,6,2,1];
-util.quick_sort(arr[], 0u, @len(arr) - 1u);
+util.quick_sort(arr[]);
 
 for x in arr[] {
     print("{}\n", x@);
