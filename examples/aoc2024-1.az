@@ -1,0 +1,61 @@
+let io := @import("lib/io.az");
+let vec := @import("lib/vector.az");
+let str := @import("lib/str.az");
+
+fn qs_partition(arr: i64[], low: u64, high: u64) -> u64
+{
+    let p := arr[low];
+    var i := low;
+    var j := high;
+
+    while i < j {
+        while arr[i] <= p && i <= high - 1u {
+            i = i + 1u;
+        }
+        while j > low && arr[j] > p {
+            print("1- j={} low={}\n", j, low);
+            if j > 10000u { @terminate(); }
+            j = j - 1u;
+            print("2- j={} low={} cond={}\n", j, low, j > low);
+        }
+        if (i < j) {
+            swap(arr[i]&, arr[j]&);
+        }
+    }
+
+    swap(arr[low]&, arr[j]&);
+    return j;
+}
+
+fn partial_sort(arr: T[], low: u64, high: u64)
+{
+    if (low >= high) return;
+    let pi := qs_partition(arr, low, high);
+    partial_sort(arr, low, pi - 1u);
+    partial_sort(arr, pi + 1u, high);
+}
+
+fn sort(arr: T[])
+{
+    partial_sort(arr, 0u, @len(arr) - 1u);
+}
+
+arena a;
+let file := io.read_file("examples/aoc2024-1-input.txt", a&);
+var l := vec.vector!(i64).create(a&);
+var r := vec.vector!(i64).create(a&);
+
+print("1\n");
+var lines := str.tokenizer.create(file, "\r\n");
+while lines.valid() {
+    let line := lines.advance();
+
+    var splitter := str.tokenizer.create(line, "   ");
+    l.push(str.str_to_i64(splitter.advance()));
+    r.push(str.str_to_i64(splitter.advance()));
+    assert !splitter.valid();
+}
+
+print("2 {} {}\n", l.size(), r.size());
+
+sort(r.to_span());
