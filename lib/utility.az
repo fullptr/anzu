@@ -45,16 +45,15 @@ fn qs_partition!(T)(arr: T[], low: u64, high: u64) -> u64
     return j;
 }
 
-fn qs_impl!(T)(arr: T[], low: u64, high: u64)
+fn partial_sort!(T)(arr: T[], low: u64, high: u64)
 {
-    if (low < high) {
-        let pi := qs_partition!(T)(arr, low, high);
-        qs_impl!(T)(arr, low, pi - 1u);
-        qs_impl!(T)(arr, pi + 1u, high);
-    }
+    if (low >= high) return;
+    let pi := qs_partition!(T)(arr, low, high);
+    partial_sort!(T)(arr, low, pi - 1u);
+    partial_sort!(T)(arr, pi + 1u, high);
 }
 
-fn quick_sort!(T)(arr: T[])
+fn sort!(T)(arr: T[])
 {
-    qs_impl!(T)(arr, 0u, @len(arr) - 1u);
+    partial_sort!(T)(arr, 0u, @len(arr) - 1u);
 }
