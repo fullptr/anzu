@@ -1,2 +1,17 @@
+let util := @import("lib/utility.az");
 
-5 as i64;
+var x := 10;
+var y := 12;
+
+print("{} {}\n", x, y);
+
+util.swap(x&, y&);
+
+print("{} {}\n", x, y);
+
+var arr := [6,3,9,1,6,2,1];
+util.quick_sort(arr[], 0u, @len(arr) - 1u);
+
+for x in arr[] {
+    print("{}\n", x@);
+}

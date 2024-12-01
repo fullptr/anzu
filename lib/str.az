@@ -31,8 +31,16 @@ struct tokenizer
     _started: bool;
     _finished: bool;
 
-    fn advance(self: &) -> null
+    fn current(self: const&) -> char const[]
     {
+        return self._string[self._start : self._curr];
+    }
+
+    # Returns the current string prior to advancing
+    fn advance(self: &) -> char const[]
+    {
+        let curr := self.current();
+
         if self._started {
             self._start = self._curr + @len(self._delim);
             if self._start > @len(self._string) {
@@ -48,16 +56,13 @@ struct tokenizer
             self._curr = find(self._string, self._delim, self._start);
             self._started = true;
         }
+
+        return curr;
     }
 
     fn valid(self: const&) -> bool
     {
         return !self._finished;
-    }
-
-    fn current(self: const&) -> char const[]
-    {
-        return self._string[self._start : self._curr];
     }
 
     fn create(input: char const[], delim: char const[]) -> tokenizer
@@ -125,4 +130,15 @@ fn to_i64(c: char) -> i64
         return x - 48;
     }
     return -1;
+}
+
+fn str_to_i64(str: char const[]) -> i64
+{
+    var value := 0;
+    for c in str {
+        let char_val := to_i64(c@);
+        if char_val == -1 { return -1; }
+        value = 10 * value + char_val;
+    }
+    return value;
 }

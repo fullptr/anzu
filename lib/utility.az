@@ -15,3 +15,41 @@ fn hash!(T)(value: T&) -> u64
     if @is_fundamental(T) { return value@ as u64; }
     else                  { return value.hash(); }
 }
+
+fn swap!(T)(lhs: T&, rhs: T&)
+{
+    let temp := lhs@;
+    lhs@ = rhs@;
+    rhs@ = temp;
+}
+
+fn qs_partition!(T)(arr: T[], low: u64, high: u64) -> u64
+{
+    let p := arr[low];
+    var i := low;
+    var j := high;
+
+    while i < j {
+        while arr[i] <= p && i <= high - 1u {
+            i = i + 1u;
+        }
+        while arr[j] > p && j >= low + 1u {
+            j = j - 1u;
+        }
+        if (i < j) {
+            swap!(T)(arr[i]&, arr[j]&);
+        }
+    }
+
+    swap!(T)(arr[low]&, arr[j]&);
+    return j;
+}
+
+fn quick_sort!(T)(arr: T[], low: u64, high: u64)
+{
+    if (low < high) {
+        let pi := qs_partition!(T)(arr, low, high);
+        quick_sort!(T)(arr, low, pi - 1u);
+        quick_sort!(T)(arr, pi + 1u, high);
+    }
+}
