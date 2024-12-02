@@ -9,14 +9,12 @@ var l := vec.vector!(i64).create(a&);
 var r := vec.vector!(i64).create(a&);
 var counts := [0; 1000u];
 
-for line in str.split(file, "\r\n")
-{
+for line in str.split(file, "\r\n") {
     var splitter := str.split(line, "   ");
     l.push(str.str_to_i64(splitter.next()));
+    r.push(str.str_to_i64(splitter.next()));
 
-    let right_val := str.str_to_i64(splitter.next());
-    let right_u64 := right_val as u64;
-    r.push(right_val);
+    let right_u64 := r.back() as u64;
     counts[right_u64] = counts[right_u64] + 1;
     assert !splitter.valid();
 }
@@ -27,8 +25,7 @@ util.sort(r.to_span());
 var part1 := 0;
 var part2 := 0;
 
-for curr in util.zip(l.to_span(), r.to_span())
-{
+for curr in util.zip(l.to_span(), r.to_span()) {
     part1 = part1 + util.abs(curr.left@ - curr.right@);
     part2 = part2 + counts[curr.left@ as u64] * curr.left@;
 }
