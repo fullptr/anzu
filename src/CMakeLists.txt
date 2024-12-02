@@ -13,7 +13,6 @@ add_executable(
     ast.cpp
     compiler.cpp
     object.cpp
-    functions.cpp
     bytecode.cpp
     runtime.cpp
     names.cpp

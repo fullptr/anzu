@@ -1,6 +1,5 @@
 #pragma once
 #include "object.hpp"
-#include "functions.hpp"
 #include "token.hpp"
 
 #include <variant>

@@ -3,7 +3,6 @@
 #include "lexer.hpp"
 #include "object.hpp"
 #include "parser.hpp"
-#include "functions.hpp"
 #include "utility/common.hpp"
 #include "utility/memory.hpp"
 
@@ -16,6 +15,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <source_location>
+#include <functional>
 
 namespace anzu {
 namespace {
@@ -955,11 +955,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         push_value(code(com), op::call_static, func.id, args_size);
         return { *func.return_type };
     }
-    else if (auto info = type.get_if<type_builtin>()) { // builtin call
-        push_args_typechecked(com, node.token, node.args, info->args);
-        push_value(code(com), op::call_builtin, info->id);
-        return { *info->return_type };
-    }
     else if (auto info = type.get_if<type_bound_method>()) { // member function call
         // cannot use push_copy_typechecked because the types mismatch, but the bound method
         // type just wraps a pointer to the instance, so this is fine
@@ -1204,11 +1199,9 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> exp
 //  - a function template
 //  - a struct template
 //  - a struct
-//  - a builtin type
 //  - a type alias for the current function template
 //  - a type alias for the current struct template
 //  - a function
-//  - a builtin function
 //  - a placeholder
 //  - a variable
 void push_stmt(compiler& com, const node_function_stmt& stmt);
@@ -1262,12 +1255,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     // It might be a tempalte placeholder for a type the needs to be deduced
     if (!com.current_placeholders.empty() && com.current_placeholders.back().contains(node.name)) {
         return { type_type{}, {type_name{type_placeholder{node.name}}} };
-    }
-
-    // The name might be a builtin (no module, struct or templates, so just the name);
-    if (auto func = get_builtin(node.name)) {
-        node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
-        return { type_builtin{func->name, func->id, func->args, func->return_type} };
     }
 
     // Otherwise, it must be a variable

@@ -1,6 +1,10 @@
 #include "runtime.hpp"
-#include "functions.hpp"
 #include "bytecode.hpp"
+#include "object.hpp"
+
+#include <functional>
+#include <utility>
+#include <format>
 
 namespace anzu {
 namespace {
@@ -264,10 +268,6 @@ auto execute_program(bytecode_context& ctx) -> void
                     .ip = ctx.functions[function_id].code.data(),
                     .base_ptr = ctx.stack.size() - args_size
                 });
-            } break;
-            case op::call_builtin: {
-                const auto id = read_advance<std::uint64_t>(ctx);
-                get_builtin(id)->ptr(ctx);
             } break;
             case op::assert: {
                 const auto index = read_advance<std::uint64_t>(ctx);

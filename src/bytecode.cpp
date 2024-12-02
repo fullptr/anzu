@@ -1,5 +1,4 @@
 #include "bytecode.hpp"
-#include "functions.hpp"
 
 #include <print>
 #include <cstddef>
@@ -171,12 +170,6 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
         case op::call_ptr: {
             const auto args_size = read_at<std::uint64_t>(&ptr);
             std::print("CALL_PTR: args_size={}\n", args_size);
-        } break;
-        case op::call_builtin: {
-            const auto id = read_at<std::uint64_t>(&ptr);
-            const auto& b = get_builtin(id);
-            std::print("CALL_BUILTIN: {}({}) -> {}\n",
-                  b->name, format_comma_separated(b->args), b->return_type);
         } break;
         case op::assert: {
             const auto index = read_at<std::uint64_t>(&ptr);
