@@ -68,6 +68,8 @@ enum class op : std::uint8_t
     ret,
     assert,
 
+    read_file,
+
     null_to_i64,
     bool_to_i64,
     char_to_i64,

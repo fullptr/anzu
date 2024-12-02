@@ -184,6 +184,10 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
             const auto data = &rom[index];
             std::print("ASSERT: msg={}\n", std::string_view{data, size});
         } break;
+
+        case op::read_file: {
+            std::print("READ_FILE\n");
+        } break;
         
         case op::null_to_i64: { std::print("NULL_TO_I64\n"); } break;
         case op::bool_to_i64: { std::print("BOOL_TO_I64\n"); } break;

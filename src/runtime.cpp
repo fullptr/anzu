@@ -278,6 +278,34 @@ auto execute_program(bytecode_context& ctx) -> void
                 }
             } break;
 
+            case op::read_file: {
+                auto arena = ctx.stack.pop<memory_arena*>();
+                const auto filename_size = ctx.stack.pop<std::uint64_t>();
+                const auto filename_data = ctx.stack.pop<char*>();
+                const auto file = std::string{filename_data, filename_size};
+                const auto handle = std::fopen(file.c_str(), "rb");
+
+                std::fseek(handle, 0, SEEK_END);
+                const auto ssize = std::ftell(handle);
+                if (ssize == -1) {
+                    std::print("Error with ftell\n");
+                    std::exit(1);
+                }
+                const auto size = static_cast<std::size_t>(ssize);
+                std::rewind(handle);
+                std::byte* ptr = &arena->data[arena->next];
+                const auto bytes_read = std::fread(ptr, sizeof(std::byte), ssize, handle);
+                if (bytes_read != ssize) {
+                    std::print("Error with fread\n");
+                    std::exit(1);
+                }	
+                arena->next += size;
+
+                std::fclose(handle);
+                ctx.stack.push(ptr);  // push the
+                ctx.stack.push(size); // span
+            } break;
+
             case op::null_to_i64: {
                 const auto value = ctx.stack.pop<std::byte>();
                 ctx.stack.push(std::int64_t{0});
