@@ -66,7 +66,7 @@ auto push_expr(compiler& com, compile_type ct, const node_expr& node) -> expr_re
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
 auto type_of_expr(compiler& com, const node_expr& node) -> expr_result;
 
-auto get_builtin_type(const std::string& name) -> std::optional<type_name>
+auto get_fundamental_type(const std::string& name) -> std::optional<type_name>
 {
     if (name == "null")   return type_name(type_null{});
     if (name == "bool")   return type_name(type_bool{});
@@ -1199,6 +1199,7 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> exp
 //  - a function template
 //  - a struct template
 //  - a struct
+//  - a fundamental type
 //  - a type alias for the current function template
 //  - a type alias for the current struct template
 //  - a function
@@ -1235,7 +1236,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     }
 
     // It might be a fundamental type
-    if (const auto t = get_builtin_type(node.name); t.has_value()) {
+    if (const auto t = get_fundamental_type(node.name); t.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
         return { type_type{}, {*t} };
     }
@@ -1568,14 +1569,17 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         const auto type = get_type_value(node.token, result);
 
         const auto is_fundamental = std::visit(overloaded{
-            [&](type_null) { return true;  },
-            [&](type_bool) { return true;  },
-            [&](type_char) { return true;  },
-            [&](type_i32)  { return true;  },
-            [&](type_i64)  { return true;  },
-            [&](type_u64)  { return true;  },
-            [&](type_f64)  { return true;  },
-            [&](auto&&)    { return false; }
+            [&](type_null)   { return true;  },
+            [&](type_bool)   { return true;  },
+            [&](type_char)   { return true;  },
+            [&](type_i32)    { return true;  },
+            [&](type_i64)    { return true;  },
+            [&](type_u64)    { return true;  },
+            [&](type_f64)    { return true;  },
+            [&](type_arena)  { return true;  },
+            [&](type_module) { return true;  },
+            [&](type_type)   { return true;  },
+            [&](auto&&)      { return false; }
         }, type);
 
         return { type_bool{}, {is_fundamental} };
