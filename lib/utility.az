@@ -49,11 +49,20 @@ fn partial_sort!(T)(arr: T[], low: u64, high: u64)
 {
     if (low >= high) return;
     let pi := qs_partition!(T)(arr, low, high);
-    partial_sort!(T)(arr, low, pi - 1u);
-    partial_sort!(T)(arr, pi + 1u, high);
+    if (pi > 0u) {
+        partial_sort!(T)(arr, low, pi - 1u);
+    }
+    if (pi < @len(arr) - 1u) {
+        partial_sort!(T)(arr, pi + 1u, high);
+    }
 }
 
 fn sort!(T)(arr: T[])
 {
     partial_sort!(T)(arr, 0u, @len(arr) - 1u);
+}
+
+fn abs(x: i64) -> i64
+{
+    return x >= 0 ? x : -x;
 }

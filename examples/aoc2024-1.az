@@ -8,7 +8,6 @@ let file := io.read_file("examples/aoc2024-1-input.txt", a&);
 var l := vec.vector!(i64).create(a&);
 var r := vec.vector!(i64).create(a&);
 
-print("1\n");
 var lines := str.tokenizer.create(file, "\r\n");
 while lines.valid() {
     let line := lines.advance();
@@ -19,8 +18,14 @@ while lines.valid() {
     assert !splitter.valid();
 }
 
-print("2 {} {}\n", l.size(), r.size());
 util.sort(l.to_span());
-print("3\n");
 util.sort(r.to_span());
-print("4\n");
+
+assert l.size() == r.size();
+var idx := 0u;
+var part1 := 0;
+while idx < l.size() {
+    part1 = part1 + util.abs(l.at(idx) - r.at(idx));
+    idx = idx + 1u;
+}
+print("{}\n", part1);
