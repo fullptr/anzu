@@ -75,12 +75,35 @@ while <condition> {
 ```
 
 ### `for` Statements
-Only implemented for spans. `name` is a pointer to the current element in the array.
+For loops are just syntactic sugar for regular loops. The basic syntax for a `for` loop is
 ```
-for <name> in <span> {
-    ...
+for <name> in <obj> {
+    <body>
 }
 ```
+There are two forms this takes:
+* `obj` can be a span. In this case, `name` is a pointer to the current element. This expands to
+    ```
+    var $s := <obj>;
+    var $idx := 0u;
+    loop {
+        if $idx == @len($s) { break; }
+        var <name> := $s[$idx];
+        <body>
+        $idx = $idx + 1u;
+    }
+    ```
+* `obj` can be an "iterable". This is any struct type that has two member functions; `valid` and `next`. Both take no arguments aside from the implicit this pointer. `valid` must return a bool, and `next` can return any type, and the return object is what gets bound to `name`.
+    ```
+    var $x := <obj>;
+    loop {
+        if !$x.valid() { break; }
+        var <name> := $s.next();
+        <body>
+    }
+    ```
+
+The temporary variables are prefixed with `$` in the above examples to make them unspellable (and there inaccessible) in user code.
 
 ### Functions
 Declared with the keyword `fn`.
