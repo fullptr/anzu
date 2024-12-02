@@ -30,6 +30,11 @@ struct vector!(T)
         return self._data[index];
     }
 
+    fn back(self: const&) -> T
+    {
+        return self._data[self._size - 1u];
+    }
+
     fn push(self: &, value: T) -> null
     {
         let cap := self.capacity();
@@ -45,4 +50,9 @@ struct vector!(T)
     {
         return vector!(T)(arr, null, 0u);
     }
+}
+
+fn create!(T)(arr: arena&) -> vector!(T)
+{
+    return vector!(T).create(arr);
 }

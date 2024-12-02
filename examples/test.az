@@ -1,17 +1,26 @@
-let util := @import("lib/utility.az");
+struct range_iter
+{
+    _curr: i64;
+    _max: i64;
 
-var x := 10;
-var y := 12;
+    fn valid(self: const&) -> bool
+    {
+        return self._curr < self._max;
+    }
 
-print("{} {}\n", x, y);
+    fn next(self: &) -> i64
+    {
+        let ret := self._curr;
+        self._curr = self._curr + 1;
+        return ret;
+    }
+}
 
-util.swap(x&, y&);
+fn range(max: i64) -> range_iter
+{
+    return range_iter(0, max);
+}
 
-print("{} {}\n", x, y);
-
-var arr := [6,3,9,1,6,2,1];
-util.sort(arr[]);
-
-for x in arr[] {
-    print("{}\n", x@);
+for x in range(10) {
+    print("{}\n", x);
 }

@@ -95,7 +95,7 @@ struct zip_view!(T, U)
         return zip_pair!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
     }
 
-    fn advance(self: &) -> zip_pair!(T, U)
+    fn next(self: &) -> zip_pair!(T, U)
     {
         let curr := self.current();
         self._curr = self._curr + 1u;

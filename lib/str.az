@@ -37,7 +37,7 @@ struct tokenizer
     }
 
     # Returns the current string prior to advancing
-    fn advance(self: &) -> char const[]
+    fn next(self: &) -> char const[]
     {
         let curr := self.current();
 
@@ -68,7 +68,7 @@ struct tokenizer
     fn create(input: char const[], delim: char const[]) -> tokenizer
     {
         var t := tokenizer(input, delim, 0u, 0u, false, false);
-        t.advance(); # prime the tokenizer at the first word
+        t.next(); # prime the tokenizer at the first word
         return t;
     }
 }
@@ -113,7 +113,7 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
     let size := @len(curr);
     @copy(new_string[idx : idx + size], tok.current());
     idx = idx + size;
-    tok.advance();
+    tok.next();
 
     while tok.valid() {
         @copy(new_string[idx : idx + @len(to)], to);
@@ -123,7 +123,7 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
         let size := @len(curr);
         @copy(new_string[idx : idx + size], tok.current());
         idx = idx + size;
-        tok.advance();
+        tok.next();
     }
 
     return new_string;
