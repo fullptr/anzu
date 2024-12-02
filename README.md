@@ -93,7 +93,7 @@ There are two forms this takes:
         $idx = $idx + 1u;
     }
     ```
-* `obj` can be an "iterable". This is any struct type that has two member functions; `valid` and `next`. Both take no arguments aside from the implicit this pointer. `valid` must return a bool, and `next` can return any type, and the return object is what gets bound to `name`.
+* `obj` can be an "iterator". This is any struct type that has two member functions; `valid` and `next`. Both take no arguments aside from the implicit this pointer. `valid` must return a bool, and `next` can return any type, and the return object is what gets bound to `name`.
     ```
     var $x := <obj>;
     loop {

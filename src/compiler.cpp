@@ -1721,7 +1721,7 @@ void push_for_loop_span(compiler& com, const node_for_stmt& node, const type_spa
 //        <body>
 //    }
 //}
-void push_for_loop_iterable(compiler& com, const node_for_stmt& node, const type_struct& type)
+void push_for_loop_iterator(compiler& com, const node_for_stmt& node, const type_struct& type)
 {
     declare_var(com, node.token, "$iter", type);
 
@@ -1772,7 +1772,7 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         push_for_loop_span(com, node, iter_type.as<type_span>());
     }
     else if (iter_type.is<type_struct>()) {
-        push_for_loop_iterable(com, node, iter_type.as<type_struct>());
+        push_for_loop_iterator(com, node, iter_type.as<type_struct>());
     }
     else {
         node.token.error("cannot iterator over object of type '{}'", iter_type);
