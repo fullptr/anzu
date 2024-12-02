@@ -1,7 +1,7 @@
 let std := @import("lib/std.az");
 
 arena a;
-let file := std.read_file("examples/aoc2024-1-input.txt", a&);
+let file := @read_file("examples/aoc2024-1-input.txt", a&);
 var l := std.vector!(i64).create(a&);
 var r := std.vector!(i64).create(a&);
 var counts := [0; 1000u];

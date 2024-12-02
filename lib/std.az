@@ -1,8 +1,3 @@
-fn read_file(filename: char const[], a: arena&) -> char const[]
-{
-    return @read_file(filename, a);
-}
-
 struct pair!(A, B)
 {
     first: A;

@@ -1,7 +1,7 @@
 let std := @import("lib/std.az");
 
 arena a;
-let input := std.read_file("examples/aoc2023-1-input.txt", a&);
+let input := @read_file("examples/aoc2023-1-input.txt", a&);
 
 let mapping := [
     [ "one"   , "o1e" ],
