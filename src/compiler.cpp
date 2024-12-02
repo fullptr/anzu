@@ -1735,7 +1735,7 @@ void push_for_loop_iterable(compiler& com, const node_for_stmt& node, const type
 
     const auto next_name = function_name{.module=type.module, .struct_name=type, .name="next"};
     const auto next_it = com.functions_by_name.find(next_name);
-    node.token.assert(valid_it != com.functions_by_name.end(), "iterable type requires 'next' function");
+    node.token.assert(next_it != com.functions_by_name.end(), "iterable type requires 'next' function");
     const auto next_fn = com.functions[next_it->second];
     node.token.assert_eq(next_fn.params.size(), 1, "'next' must only take one arg");
 
