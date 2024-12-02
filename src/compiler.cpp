@@ -1731,13 +1731,16 @@ void push_for_loop_iterable(compiler& com, const node_for_stmt& node, const type
     node.token.assert(valid_it != com.functions_by_name.end(), "iterable type requires 'valid' function");
     const auto valid_fn = com.functions[valid_it->second];
     node.token.assert_eq(valid_fn.params.size(), 1, "'valid' must only take one arg");
+    node.token.assert_eq(valid_fn.params[0], type_name{type}.add_const().add_ptr(), "'valid' first arg must be a self pointer to const");
     node.token.assert_eq(valid_fn.return_type, type_name{type_bool{}}, "'valid' must return bool");
 
+    // Fetch and verify the next() function
     const auto next_name = function_name{.module=type.module, .struct_name=type, .name="next"};
     const auto next_it = com.functions_by_name.find(next_name);
     node.token.assert(next_it != com.functions_by_name.end(), "iterable type requires 'next' function");
     const auto next_fn = com.functions[next_it->second];
     node.token.assert_eq(next_fn.params.size(), 1, "'next' must only take one arg");
+    node.token.assert_eq(next_fn.params[0], type_name{type}.add_ptr(), "'next' first arg must be a self pointer");
 
     push_loop(com, [&] {
         // if !obj.valid() { break; }
