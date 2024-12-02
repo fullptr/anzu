@@ -1,47 +1,17 @@
-fn swap(lhs: i64&, rhs: i64&)
-{
-    let temp := lhs@;
-    lhs@ = rhs@;
-    rhs@ = temp;
-}
+let util := @import("lib/utility.az");
 
-fn qs_partition(arr: i64[], low: u64, high: u64) -> u64
-{
-    let p := arr[low];
-    var i := low;
-    var j := high;
+var x := 10;
+var y := 12;
 
-    while i < j {
-        while arr[i] <= p && i <= high - 1u {
-            i = i + 1u;
-        }
-        while arr[j] > p && j >= low + 1u {
-            j = j - 1u;
-        }
-        if (i < j) {
-            swap(arr[i]&, arr[j]&);
-        }
-    }
+print("{} {}\n", x, y);
 
-    swap(arr[low]&, arr[j]&);
-    return j;
-}
+util.swap(x&, y&);
 
-fn partial_sort(arr: i64[], low: u64, high: u64)
-{
-    if (low >= high) return;
+print("{} {}\n", x, y);
 
-    let pi := qs_partition(arr, low, high);
-    if (pi > 0u) {
-        partial_sort(arr, low, pi - 1u);
-    }
-    if (pi < @len(arr) - 1u) {
-        partial_sort(arr, pi + 1u, high);
-    }
-}
+var arr := [6,3,9,1,6,2,1];
+util.sort(arr[]);
 
-var arr := [3, 4, 2, 1, 3, 3];
-partial_sort(arr[], 0u, @len(arr) - 1u);
 for x in arr[] {
     print("{}\n", x@);
 }
