@@ -51,3 +51,8 @@ struct vector!(T)
         return vector!(T)(arr, null, 0u);
     }
 }
+
+fn create!(T)(arr: arena&) -> vector!(T)
+{
+    return vector!(T).create(arr);
+}

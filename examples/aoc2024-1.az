@@ -5,8 +5,8 @@ let util := @import("lib/utility.az");
 
 arena a;
 let file := io.read_file("examples/aoc2024-1-input.txt", a&);
-var l := vec.vector!(i64).create(a&);
-var r := vec.vector!(i64).create(a&);
+var l := vec.create!(i64)(a&);
+var r := vec.create!(i64)(a&);
 var counts := [0; 1000u];
 
 for line in str.split(file, "\r\n") {
@@ -23,7 +23,6 @@ util.sort(r.to_span());
 
 var part1 := 0;
 var part2 := 0;
-
 for curr in util.zip(l.to_span(), r.to_span()) {
     part1 = part1 + util.abs(curr.left@ - curr.right@);
     part2 = part2 + counts[curr.left@ as u64] * curr.left@;
