@@ -1,3 +1,122 @@
+fn read_file(filename: char const[], a: arena&) -> char const[]
+{
+    let f := fopen(filename, "rb");
+    let contents := fread(f, a);
+    fclose(f);
+    return contents;
+}
+
+struct pair!(A, B)
+{
+    first: A;
+    second: B;
+}
+
+fn safe_minus(lhs: u64, rhs: u64) -> u64
+{
+    assert lhs >= rhs;
+    return lhs - rhs;
+}
+
+fn hash!(T)(value: T&) -> u64
+{
+    if @is_fundamental(T) { return value@ as u64; }
+    else                  { return value.hash(); }
+}
+
+fn swap!(T)(lhs: T&, rhs: T&)
+{
+    let temp := lhs@;
+    lhs@ = rhs@;
+    rhs@ = temp;
+}
+
+fn qs_partition!(T)(arr: T[], low: u64, high: u64) -> u64
+{
+    let p := arr[low];
+    var i := low;
+    var j := high;
+
+    while i < j {
+        while arr[i] <= p && i <= high - 1u {
+            i = i + 1u;
+        }
+        while arr[j] > p && j >= low + 1u {
+            j = j - 1u;
+        }
+        if (i < j) {
+            swap!(T)(arr[i]&, arr[j]&);
+        }
+    }
+
+    swap!(T)(arr[low]&, arr[j]&);
+    return j;
+}
+
+fn partial_sort!(T)(arr: T[], low: u64, high: u64)
+{
+    if (low >= high) return;
+    let pi := qs_partition!(T)(arr, low, high);
+    if (pi > 0u) {
+        partial_sort!(T)(arr, low, pi - 1u);
+    }
+    if (pi < @len(arr) - 1u) {
+        partial_sort!(T)(arr, pi + 1u, high);
+    }
+}
+
+fn sort!(T)(arr: T[])
+{
+    partial_sort!(T)(arr, 0u, @len(arr) - 1u);
+}
+
+fn abs(x: i64) -> i64
+{
+    return x >= 0 ? x : -x;
+}
+
+struct zip_pair!(T, U)
+{
+    left:  T&;
+    right: U&;
+    index: u64;
+}
+
+struct zip_view!(T, U)
+{
+    _left:  T[];
+    _right: U[];
+    _curr:  u64;
+
+    fn size(self: const&) -> u64
+    {
+        return @len(self._left) < @len(self._right) ? @len(self._left) : @len(self._right);
+    }
+
+    fn valid(self: const&) -> bool
+    {
+        return self._curr < self.size();
+    }
+
+    fn current(self: const&) -> zip_pair!(T, U)
+    {
+        return zip_pair!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
+    }
+
+    fn next(self: &) -> zip_pair!(T, U)
+    {
+        let curr := self.current();
+        self._curr = self._curr + 1u;
+        return curr;
+    }
+}
+
+fn zip!(T, U)(left: T[], right: U[]) -> zip_view!(T, U)
+{
+    assert @len(left) == @len(right);
+    return zip_view!(T, U)(left, right, 0u);
+}
+
 fn equal(lhs: char const[], rhs: char const[]) -> bool
 {
     if @len(lhs) != @len(rhs) { return false; }
@@ -147,4 +266,82 @@ fn str_to_i64(str: char const[]) -> i64
         value = 10 * value + char_val;
     }
     return value;
+}
+
+struct vector!(T)
+{
+    _arr: arena&;
+    _data: T[];
+    _size: u64;
+
+    fn to_span(self: &) -> T[]
+    {
+        return self._data[0u : self._size];
+    }
+
+    fn capacity(self: &) -> u64
+    {
+        return @len(self._data);
+    }
+
+    fn reserve(self: &, size: u64) -> null
+    {
+        assert(size > self.capacity());
+        self._data = new(self._arr, size, self._data) T();
+    }
+
+    fn size(self: const&) -> u64
+    {
+        return self._size;
+    }
+
+    fn at(self: const&, index: u64) -> T
+    {
+        return self._data[index];
+    }
+
+    fn back(self: const&) -> T
+    {
+        return self._data[self._size - 1u];
+    }
+
+    fn push(self: &, value: T) -> null
+    {
+        let cap := self.capacity();
+        if self._size == cap {
+            let new_cap := cap > 0u ? cap * 2u : 8u;
+            self.reserve(new_cap);
+        }
+        self._data[self._size] = value;
+        self._size = self._size + 1u;
+    }
+
+    fn create(arr: arena&) -> vector!(T)
+    {
+        return vector!(T)(arr, null, 0u);
+    }
+}
+
+struct range_iter!(T)
+{
+    _curr: T;
+    _max: T;
+
+    fn valid(self: const&) -> bool
+    {
+        return self._curr < self._max;
+    }
+
+    fn next(self: &) -> T
+    {
+        let ret := self._curr;
+        self._curr = self._curr + (1 as T);
+        return ret;
+    }
+}
+
+fn range!(T)(max: T) -> range_iter!(T)
+{
+    assert T == i64 || T == u64;
+    return range_iter!(T)(0 as T, max);
 }

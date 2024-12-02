@@ -1,4 +1,6 @@
-let util := @import("lib/utility.az");
+# TODO: Move to std.az when complete
+
+let std := @import("lib/std.az");
 
 struct map_element!(Key, Value)
 {
@@ -19,13 +21,13 @@ struct map!(Key, Value)
 
     fn has(self: const&, key: Key const&) -> bool
     {
-        let hash := util.hash(key);
+        let hash := std.hash(key);
         return hash < self._size && @compare(key, self._data[hash].key&);
     }
 
     fn get(self: &, key: Key&) -> Value&
     {
-        let hash := util.hash(key);
+        let hash := std.hash(key);
         assert(self.has(key));
 
         return self._data[hash].value&;

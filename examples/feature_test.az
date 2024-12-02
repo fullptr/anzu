@@ -1,6 +1,6 @@
 # tests all language features, here is a comment
 # importing a module
-let io := @import("lib/io.az"); # for "read_file"
+let std := @import("lib/std.az");
 
 # declaring immutable variables
 {
@@ -278,7 +278,7 @@ fn get(a: arena&, count: u64) -> u64[]
 }
 
 arena a;
-let contents := io.read_file("examples/example_data.txt", a&);
+let contents := std.read_file("examples/example_data.txt", a&);
 
 print("'{}'\n", contents);
 print("\nsize={}\n", @len(contents));
@@ -349,19 +349,16 @@ struct pair!(T)
     g.print_struct!(u64)(70u);
 }
 
-let util := @import("lib/utility.az");
-
 struct double {
-    x: util.pair!(i64, f64);
-    y: util.pair!(u64, bool);
+    x: std.pair!(i64, f64);
+    y: std.pair!(u64, bool);
 }
 
-let d := double(util.pair!(i64, f64)(1, 2.0), util.pair!(u64, bool)(3u, false));
+let d := double(std.pair!(i64, f64)(1, 2.0), std.pair!(u64, bool)(3u, false));
 print("{} {} {} {}\n", d.x.first, d.x.second, d.y.first, d.y.second);
 
-let vec := @import("lib/vector.az");
 arena v;
-let this_type := vec.vector!(i64);
+let this_type := std.vector!(i64);
 var my_vec := this_type.create(v&);
 my_vec.push(2);
 my_vec.push(3);

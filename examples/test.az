@@ -1,26 +1,27 @@
-struct range_iter
+struct range_iter!(T)
 {
-    _curr: i64;
-    _max: i64;
+    _curr: T;
+    _max: T;
 
     fn valid(self: const&) -> bool
     {
         return self._curr < self._max;
     }
 
-    fn next(self: &) -> i64
+    fn next(self: &) -> T
     {
         let ret := self._curr;
-        self._curr = self._curr + 1;
+        self._curr = self._curr + (1 as T);
         return ret;
     }
 }
 
-fn range(max: i64) -> range_iter
+fn range!(T)(max: T) -> range_iter!(T)
 {
-    return range_iter(0, max);
+    assert T == i64 || T == u64;
+    return range_iter!(T)(0 as T, max);
 }
 
-for x in range(10) {
+for x in range(10u) {
     print("{}\n", x);
 }

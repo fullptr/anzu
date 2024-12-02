@@ -1,8 +1,7 @@
-let io := @import("lib/io.az");
-let str := @import("lib/str.az");
+let std := @import("lib/std.az");
 
 arena a;
-let input := io.read_file("examples/aoc2023-1-input.txt", a&);
+let input := std.read_file("examples/aoc2023-1-input.txt", a&);
 
 let mapping := [
     [ "one"   , "o1e" ],
@@ -21,7 +20,7 @@ fn process_line(line: char const[]) -> i64
     var first := 0;
     var last := 0;
     for c in line {
-        let i := str.to_i64(c@);
+        let i := std.to_i64(c@);
         if i != -1 {
             if first == 0 { first = i; }
             last = i;
@@ -34,13 +33,13 @@ var total_part1 := 0;
 var total_part2 := 0;
 let delim := "\r\n";
 
-var tokens := str.tokenizer.create(input, delim);
+var tokens := std.split(input, delim);
 while tokens.valid() {
     var line := tokens.current();
     total_part1 = total_part1 + process_line(line);
 
     for map in mapping[] {
-        line = str.replace(a&, line, map[0u], map[1u]);
+        line = std.replace(a&, line, map[0u], map[1u]);
     }
     let part2 := process_line(line);
     total_part2 = total_part2 + part2;
