@@ -64,9 +64,10 @@ enum class op : std::uint8_t
     jump_if_false,
     call_static,
     call_ptr,
-    call_builtin,
     ret,
     assert,
+
+    read_file,
 
     null_to_i64,
     bool_to_i64,

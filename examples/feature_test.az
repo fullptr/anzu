@@ -178,7 +178,7 @@ struct vec3
         let x_squared := square(self.x);
         let y_squared := square(self.y);
         let z_squared := square(self.z);
-        return sqrt(x_squared + y_squared + z_squared);
+        return std.sqrt(x_squared + y_squared + z_squared);
     }
 }
 
@@ -278,7 +278,7 @@ fn get(a: arena&, count: u64) -> u64[]
 }
 
 arena a;
-let contents := std.read_file("examples/example_data.txt", a&);
+let contents := @read_file("examples/example_data.txt", a&);
 
 print("'{}'\n", contents);
 print("\nsize={}\n", @len(contents));

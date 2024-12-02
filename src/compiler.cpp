@@ -3,7 +3,6 @@
 #include "lexer.hpp"
 #include "object.hpp"
 #include "parser.hpp"
-#include "functions.hpp"
 #include "utility/common.hpp"
 #include "utility/memory.hpp"
 
@@ -16,6 +15,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <source_location>
+#include <functional>
 
 namespace anzu {
 namespace {
@@ -66,7 +66,7 @@ auto push_expr(compiler& com, compile_type ct, const node_expr& node) -> expr_re
 auto push_stmt(compiler& com, const node_stmt& root) -> void;
 auto type_of_expr(compiler& com, const node_expr& node) -> expr_result;
 
-auto get_builtin_type(const std::string& name) -> std::optional<type_name>
+auto get_fundamental_type(const std::string& name) -> std::optional<type_name>
 {
     if (name == "null")   return type_name(type_null{});
     if (name == "bool")   return type_name(type_bool{});
@@ -955,11 +955,6 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         push_value(code(com), op::call_static, func.id, args_size);
         return { *func.return_type };
     }
-    else if (auto info = type.get_if<type_builtin>()) { // builtin call
-        push_args_typechecked(com, node.token, node.args, info->args);
-        push_value(code(com), op::call_builtin, info->id);
-        return { *info->return_type };
-    }
     else if (auto info = type.get_if<type_bound_method>()) { // member function call
         // cannot use push_copy_typechecked because the types mismatch, but the bound method
         // type just wraps a pointer to the instance, so this is fine
@@ -1204,11 +1199,10 @@ auto push_expr(compiler& com, compile_type ct, const node_new_expr& node) -> exp
 //  - a function template
 //  - a struct template
 //  - a struct
-//  - a builtin type
+//  - a fundamental type
 //  - a type alias for the current function template
 //  - a type alias for the current struct template
 //  - a function
-//  - a builtin function
 //  - a placeholder
 //  - a variable
 void push_stmt(compiler& com, const node_function_stmt& stmt);
@@ -1242,7 +1236,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     }
 
     // It might be a fundamental type
-    if (const auto t = get_builtin_type(node.name); t.has_value()) {
+    if (const auto t = get_fundamental_type(node.name); t.has_value()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a type");
         return { type_type{}, {*t} };
     }
@@ -1262,12 +1256,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     // It might be a tempalte placeholder for a type the needs to be deduced
     if (!com.current_placeholders.empty() && com.current_placeholders.back().contains(node.name)) {
         return { type_type{}, {type_name{type_placeholder{node.name}}} };
-    }
-
-    // The name might be a builtin (no module, struct or templates, so just the name);
-    if (auto func = get_builtin(node.name)) {
-        node.token.assert(ct == compile_type::val, "cannot take the address of a builtin");
-        return { type_builtin{func->name, func->id, func->args, func->return_type} };
     }
 
     // Otherwise, it must be a variable
@@ -1581,17 +1569,33 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         const auto type = get_type_value(node.token, result);
 
         const auto is_fundamental = std::visit(overloaded{
-            [&](type_null) { return true;  },
-            [&](type_bool) { return true;  },
-            [&](type_char) { return true;  },
-            [&](type_i32)  { return true;  },
-            [&](type_i64)  { return true;  },
-            [&](type_u64)  { return true;  },
-            [&](type_f64)  { return true;  },
-            [&](auto&&)    { return false; }
+            [&](type_null)   { return true;  },
+            [&](type_bool)   { return true;  },
+            [&](type_char)   { return true;  },
+            [&](type_i32)    { return true;  },
+            [&](type_i64)    { return true;  },
+            [&](type_u64)    { return true;  },
+            [&](type_f64)    { return true;  },
+            [&](type_arena)  { return true;  },
+            [&](type_module) { return true;  },
+            [&](type_type)   { return true;  },
+            [&](auto&&)      { return false; }
         }, type);
 
         return { type_bool{}, {is_fundamental} };
+    }
+    if (node.name == "read_file") {
+        const auto char_span = type_name{type_char{}}.add_const().add_span();
+        const auto arena_ptr = type_name{type_arena{}}.add_ptr();
+
+        node.token.assert_eq(node.args.size(), 2, "@read_file requires a filename and arena");
+        const auto file_type = push_expr(com, compile_type::val, *node.args[0]).type;
+        node.token.assert_eq(file_type, char_span, "incorrect type for file path");
+        const auto arena_type = push_expr(com, compile_type::val, *node.args[1]).type;
+        node.token.assert_eq(arena_type, arena_ptr, "incorrect type for arena");
+        push_value(code(com), op::load, sizeof(std::byte*)); // load the arena
+        push_value(code(com), op::read_file);
+        return { char_span };
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }

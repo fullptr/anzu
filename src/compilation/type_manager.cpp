@@ -87,9 +87,6 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         [](const type_bound_method_template&) {
             return sizeof(std::byte*); // pointer to the object, first arg to the function
         },
-        [](const type_builtin&) {
-            return std::size_t{0};
-        },
         [](const type_function&) {
             return std::size_t{0};
         },

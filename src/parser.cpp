@@ -1,6 +1,5 @@
 #include "parser.hpp"
 #include "object.hpp"
-#include "functions.hpp"
 #include "lexer.hpp"
 #include "utility/common.hpp"
 
