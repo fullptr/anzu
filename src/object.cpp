@@ -145,17 +145,6 @@ auto to_string(const type_function_ptr& type) -> std::string
     );
 }
 
-auto to_string(const type_builtin& type) -> std::string
-{
-    return std::format(
-        "<builtin: '{} {}({}) -> {}'>",
-        to_string(token_type::kw_function),
-        type.name,
-        format_comma_separated(type.args),
-        to_string_paren(*type.return_type)
-    );
-}
-
 auto to_string(const type_bound_method& type) -> std::string
 {
     return std::format(

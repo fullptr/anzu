@@ -126,17 +126,6 @@ struct type_function_ptr
     auto operator==(const type_function_ptr&) const -> bool = default;
 };
 
-struct type_builtin
-{
-    std::string            name; // for printing only
-    std::size_t            id;
-    std::vector<type_name> args;
-    value_ptr<type_name>   return_type;
-
-    auto to_hash() const { return hash(name, id, args, return_type); }
-    auto operator==(const type_builtin&) const -> bool = default;
-};
-
 struct type_bound_method
 {
     std::size_t            id;
@@ -215,7 +204,6 @@ auto to_string(const type_ptr& type) -> std::string;
 auto to_string(const type_span& type) -> std::string;
 auto to_string(const type_struct& type) -> std::string;
 auto to_string(const type_function_ptr& type) -> std::string;
-auto to_string(const type_builtin& type) -> std::string;
 auto to_string(const type_bound_method& type) -> std::string;
 auto to_string(const type_bound_method_template& type) -> std::string;
 auto to_string(const type_function& type) -> std::string;
@@ -243,7 +231,6 @@ struct type_name : public std::variant<
     type_function_ptr,
     type_bound_method,
     type_bound_method_template,
-    type_builtin,
     type_function,
     type_function_template,
     type_struct_template,
