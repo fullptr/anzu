@@ -16,7 +16,6 @@ for line in str.split(file, "\r\n") {
 
     let right_u64 := r.back() as u64;
     counts[right_u64] = counts[right_u64] + 1;
-    assert !splitter.valid();
 }
 
 util.sort(l.to_span());
