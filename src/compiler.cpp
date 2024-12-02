@@ -1670,19 +1670,16 @@ void push_stmt(compiler& com, const node_while_stmt& node)
 //    var size := <<length of iter>>;
 //    loop {
 //        if idx == size break;
-//        var name := iter[idx]&;
+//        var name := obj[idx]&;
 //        idx = idx + 1u;
 //        <body>
 //    }
 //}
-void push_stmt(compiler& com, const node_for_stmt& node)
+void push_for_loop_span(compiler& com, const node_for_stmt& node, const type_span& iter_type)
 {
-    variables(com).new_scope();
+    const auto inner = *iter_type.inner_type;
 
-    // Declare the span ptr and size as two separate variables
-    const auto iter_type = push_expr(com, compile_type::val, *node.iter).type;
-    node.token.assert(iter_type.is<type_span>(), "can only iterate spans, got {}", iter_type);
-    const auto inner = *iter_type.as<type_span>().inner_type;
+    // Declare the iterable, but here can we destructure the span into a pointer + size
     declare_var(com, node.token, "$iter", inner.add_ptr());
     declare_var(com, node.token, "$size", type_u64{});
 
@@ -1714,7 +1711,70 @@ void push_stmt(compiler& com, const node_for_stmt& node)
         // main body
         push_stmt(com, *node.body);
     });
+}
 
+//{
+//    var obj := <container>;
+//    loop {
+//        if !obj.valid() { break; }
+//        var name := obj.next();
+//        <body>
+//    }
+//}
+void push_for_loop_iterable(compiler& com, const node_for_stmt& node, const type_struct& type)
+{
+    declare_var(com, node.token, "$iter", type);
+
+    // Fetch and verify the valid() function
+    const auto valid_name = function_name{.module=type.module, .struct_name=type, .name="valid"};
+    const auto valid_it = com.functions_by_name.find(valid_name);
+    node.token.assert(valid_it != com.functions_by_name.end(), "iterable type requires 'valid' function");
+    const auto valid_fn = com.functions[valid_it->second];
+    node.token.assert_eq(valid_fn.params.size(), 1, "'valid' must only take one arg");
+    node.token.assert_eq(valid_fn.return_type, type_name{type_bool{}}, "'valid' must return bool");
+
+    const auto next_name = function_name{.module=type.module, .struct_name=type, .name="next"};
+    const auto next_it = com.functions_by_name.find(next_name);
+    node.token.assert(valid_it != com.functions_by_name.end(), "iterable type requires 'next' function");
+    const auto next_fn = com.functions[next_it->second];
+    node.token.assert_eq(next_fn.params.size(), 1, "'next' must only take one arg");
+
+    push_loop(com, [&] {
+        // if !obj.valid() { break; }
+        push_var_addr(com, node.token, curr_module(com), "$iter");
+        push_value(code(com), op::call_static, valid_fn.id, sizeof(std::byte*));
+        push_value(code(com), op::bool_not, op::jump_if_false);
+        const auto jump_pos = push_value(code(com), std::uint64_t{0});
+        push_break(com, node.token);
+        write_value(code(com), jump_pos, code(com).size());
+
+        // var name := obj.next();
+        push_var_addr(com, node.token, curr_module(com), "$iter");
+        push_value(code(com), op::call_static, next_fn.id, sizeof(std::byte*));
+        declare_var(com, node.token, node.name, next_fn.return_type);
+
+        // main body
+        push_stmt(com, *node.body);
+    });
+}
+
+void push_stmt(compiler& com, const node_for_stmt& node)
+{
+    variables(com).new_scope();
+
+    // Declare the span ptr and size as two separate variables
+    const auto iter_type = push_expr(com, compile_type::val, *node.iter).type;
+
+    if (iter_type.is<type_span>()) {
+        push_for_loop_span(com, node, iter_type.as<type_span>());
+    }
+    else if (iter_type.is<type_struct>()) {
+        push_for_loop_iterable(com, node, iter_type.as<type_struct>());
+    }
+    else {
+        node.token.error("cannot iterator over object of type '{}'", iter_type);
+    }
+    
     variables(com).pop_scope(code(com));
 }
 

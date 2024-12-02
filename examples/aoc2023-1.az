@@ -45,7 +45,7 @@ while tokens.valid() {
     let part2 := process_line(line);
     total_part2 = total_part2 + part2;
 
-    tokens.advance();
+    tokens.next();
 }
 
 print("{} {}\n", total_part1, total_part2);
