@@ -170,9 +170,6 @@ These are
 ### Unsafe Type Conversions
 Currently only `x as i64` and `x as u64` is supported where `x` is a fundamental type.
 
-### Builtin Functions
-This is a somewhat rubbish attempt at implementing C functions. I will probably remove this and reimplement from scratch when I figure out how.
-
 ### Intrinsic "Functions"
 These are operators for accessing compiler internals or to perform operations that require specialised op codes in the runtime to be efficient. They are prefixed with a `@`.
 
@@ -187,6 +184,7 @@ They are more flexible than functions; some accept types as arguments and you ca
 * `@import(name)` for importing and using other modules (more info below). This can only be used in the global scope.
 * `@fn_ptr(func)` takes the name of a function an explicitly converts it to a function pointer.
 * `@is_fundamental(type)` returns `true` (compile time bool) if the given type of one of the builtin types.
+* `@read_file(path, arena&)` take a filepath and a pointer to an arena, and loads the contents of the file into the arena, returning a `char const[]`.
 
 There's no reason why these couldn't be keywords (like how `sizeof` is a keyword in C++); there's no real criteria for what should be a keyword, but some of these seem too niche to be classed as its own language feature (`type_name_of` feels wrong being a keyword for example) and for others I just like this style more (`@import` feels better to me that just a plain `import`)
 
