@@ -1,0 +1,38 @@
+let io := @import("lib/io.az");
+let vec := @import("lib/vector.az");
+let str := @import("lib/str.az");
+let util := @import("lib/utility.az");
+
+arena a;
+let file := io.read_file("examples/aoc2024-1-input.txt", a&);
+var l := vec.vector!(i64).create(a&);
+var r := vec.vector!(i64).create(a&);
+var counts := [0; 1000u];
+
+var lines := str.split(file, "\r\n");
+while lines.valid() {
+    let line := lines.advance();
+
+    var splitter := str.split(line, "   ");
+    l.push(str.str_to_i64(splitter.advance()));
+
+    let right_val := str.str_to_i64(splitter.advance());
+    let right_u64 := right_val as u64;
+    r.push(right_val);
+    counts[right_u64] = counts[right_u64] + 1;
+    assert !splitter.valid();
+}
+
+util.sort(l.to_span());
+util.sort(r.to_span());
+
+var part1 := 0;
+var part2 := 0;
+
+var z := util.zip(l.to_span(), r.to_span());
+while z.valid() {
+    let curr := z.advance();
+    part1 = part1 + util.abs(curr.left@ - curr.right@);
+    part2 = part2 + counts[curr.left@ as u64] * curr.left@;
+}
+print("{}\n{}\n", part1, part2);

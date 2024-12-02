@@ -4,7 +4,7 @@ struct vector!(T)
     _data: T[];
     _size: u64;
 
-    fn to_span(self: &) -> T const[]
+    fn to_span(self: &) -> T[]
     {
         return self._data[0u : self._size];
     }
