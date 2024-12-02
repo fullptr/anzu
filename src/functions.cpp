@@ -29,58 +29,33 @@ auto pop_arena(bytecode_context& ctx) -> memory_arena*
     return *ctx.stack.pop<memory_arena**>();
 }
 
-auto builtin_sqrt(bytecode_context& ctx) -> void
-{
-    auto val = ctx.stack.pop<double>();
-    ctx.stack.push(std::sqrt(val));
-}
-
 static_assert(sizeof(std::FILE*) == sizeof(std::uint64_t));
 
-auto builtin_fopen(bytecode_context& ctx) -> void
-{
-    const auto mode = pop_char_span(ctx);
-    const auto file = pop_char_span(ctx);
-    const auto handle = std::fopen(file.c_str(), mode.c_str());
-    ctx.stack.push(handle);
-}
-
-auto builtin_fclose(bytecode_context& ctx) -> void
-{
-    const auto ptr = ctx.stack.pop<std::FILE*>();
-    std::fclose(ptr);
-    ctx.stack.push(std::byte{0}); // returns null
-}
-
-auto builtin_fputs(bytecode_context& ctx) -> void
-{
-    const auto data = pop_char_span(ctx);
-    const auto ptr = ctx.stack.pop<std::FILE*>();
-    std::fputs(data.c_str(), ptr);
-    ctx.stack.push(std::byte{0}); // returns null
-}
-
-auto builtin_fread(bytecode_context& ctx) -> void
+auto builtin_native_read_file(bytecode_context& ctx) -> void
 {
     auto arena = pop_arena(ctx);
-    auto file = ctx.stack.pop<std::FILE*>();
-    std::fseek(file, 0, SEEK_END);
-    const auto ssize = std::ftell(file);
+    const auto file = pop_char_span(ctx);
+    const auto handle = std::fopen(file.c_str(), "rb");
+
+    std::fseek(handle, 0, SEEK_END);
+    const auto ssize = std::ftell(handle);
     if (ssize == -1) {
         std::print("Error with ftell\n");
         std::exit(1);
     }
     const auto size = static_cast<std::size_t>(ssize);
-    std::rewind(file);
+    std::rewind(handle);
     std::byte* ptr = &arena->data[arena->next];
-    const auto bytes_read = std::fread(ptr, sizeof(std::byte), ssize, file);
+    const auto bytes_read = std::fread(ptr, sizeof(std::byte), ssize, handle);
     if (bytes_read != ssize) {
         std::print("Error with fread\n");
-	std::exit(1);
+	    std::exit(1);
     }	
     arena->next += size;
-    ctx.stack.push(ptr); // push the span
-    ctx.stack.push(size);
+
+    std::fclose(handle);
+    ctx.stack.push(ptr);  // push the
+    ctx.stack.push(size); // span
 }
 
 }
@@ -92,13 +67,7 @@ auto construct_builtin_array() -> std::vector<builtin>
 
     auto b = std::vector<builtin>{};
 
-    b.push_back(builtin{"sqrt", b.size(), builtin_sqrt, {type_f64{}}, type_f64{}});
-
-    b.push_back(builtin{"fopen", b.size(), builtin_fopen, {char_span, char_span}, {type_u64{}}});
-    b.push_back(builtin{"fclose", b.size(), builtin_fclose, {type_u64{}}, {type_null{}}});
-    b.push_back(builtin{"fputs", b.size(), builtin_fputs, {type_u64{}, char_span}, type_null{}});
-    b.push_back(builtin{"fread", b.size(), builtin_fread, {type_u64{}, type_name{type_arena{}}.add_ptr()}, char_span});
-
+    b.push_back(builtin{"native_read_file", b.size(), builtin_native_read_file, {char_span, type_name{type_arena{}}.add_ptr()}, char_span});
     return b;
 }
 

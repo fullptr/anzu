@@ -1593,6 +1593,11 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
 
         return { type_bool{}, {is_fundamental} };
     }
+    if (node.name == "read_file") {
+        node.token.assert_eq(node.args.size(), 2, "@read_file requires a filename and arena");
+        const auto file = type_of_expr(com, *node.args[0]).type;
+        return { type_null{} };
+    }
     node.token.error("no intrisic function named @{} exists", node.name);
 }
 
