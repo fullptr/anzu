@@ -66,3 +66,45 @@ fn abs(x: i64) -> i64
 {
     return x >= 0 ? x : -x;
 }
+
+struct zip_pair!(T, U)
+{
+    left:  T&;
+    right: U&;
+    index: u64;
+}
+
+struct zip_view!(T, U)
+{
+    _left:  T[];
+    _right: U[];
+    _curr:  u64;
+
+    fn size(self: const&) -> u64
+    {
+        return @len(self._left) < @len(self._right) ? @len(self._left) : @len(self._right);
+    }
+
+    fn valid(self: const&) -> bool
+    {
+        return self._curr < self.size();
+    }
+
+    fn current(self: const&) -> zip_pair!(T, U)
+    {
+        return zip_pair!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
+    }
+
+    fn advance(self: &) -> zip_pair!(T, U)
+    {
+        let curr := self.current();
+        self._curr = self._curr + 1u;
+        return curr;
+    }
+}
+
+fn zip!(T, U)(left: T[], right: U[]) -> zip_view!(T, U)
+{
+    assert @len(left) == @len(right);
+    return zip_view!(T, U)(left, right, 0u);
+}

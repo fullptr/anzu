@@ -26,13 +26,13 @@ while lines.valid() {
 util.sort(l.to_span());
 util.sort(r.to_span());
 
-assert l.size() == r.size();
-var idx := 0u;
 var part1 := 0;
 var part2 := 0;
-while idx < l.size() {
-    part1 = part1 + util.abs(l.at(idx) - r.at(idx));
-    part2 = part2 + counts[l.at(idx) as u64] * l.at(idx);
-    idx = idx + 1u;
+
+var z := util.zip(l.to_span(), r.to_span());
+while z.valid() {
+    let curr := z.advance();
+    part1 = part1 + util.abs(curr.left@ - curr.right@);
+    part2 = part2 + counts[curr.left@ as u64] * curr.left@;
 }
 print("{}\n{}\n", part1, part2);
