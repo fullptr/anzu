@@ -7,6 +7,7 @@ arena a;
 let file := io.read_file("examples/aoc2024-1-input.txt", a&);
 var l := vec.vector!(i64).create(a&);
 var r := vec.vector!(i64).create(a&);
+var counts := [0; 1000u];
 
 var lines := str.tokenizer.create(file, "\r\n");
 while lines.valid() {
@@ -14,7 +15,11 @@ while lines.valid() {
 
     var splitter := str.tokenizer.create(line, "   ");
     l.push(str.str_to_i64(splitter.advance()));
-    r.push(str.str_to_i64(splitter.advance()));
+
+    let right_val := str.str_to_i64(splitter.advance());
+    let right_u64 := right_val as u64;
+    r.push(right_val);
+    counts[right_u64] = counts[right_u64] + 1;
     assert !splitter.valid();
 }
 
@@ -24,8 +29,10 @@ util.sort(r.to_span());
 assert l.size() == r.size();
 var idx := 0u;
 var part1 := 0;
+var part2 := 0;
 while idx < l.size() {
     part1 = part1 + util.abs(l.at(idx) - r.at(idx));
+    part2 = part2 + counts[l.at(idx) as u64] * l.at(idx);
     idx = idx + 1u;
 }
-print("{}\n", part1);
+print("{}\n{}\n", part1, part2);
