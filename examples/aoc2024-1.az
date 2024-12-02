@@ -1,30 +1,27 @@
-let io := @import("lib/io.az");
-let vec := @import("lib/vector.az");
-let str := @import("lib/str.az");
-let util := @import("lib/utility.az");
+let std := @import("lib/std.az");
 
 arena a;
-let file := io.read_file("examples/aoc2024-1-input.txt", a&);
-var l := vec.create!(i64)(a&);
-var r := vec.create!(i64)(a&);
+let file := std.read_file("examples/aoc2024-1-input.txt", a&);
+var l := std.vector!(i64).create(a&);
+var r := std.vector!(i64).create(a&);
 var counts := [0; 1000u];
 
-for line in str.split(file, "\r\n") {
-    var splitter := str.split(line, "   ");
-    l.push(str.str_to_i64(splitter.next()));
-    r.push(str.str_to_i64(splitter.next()));
+for line in std.split(file, "\r\n") {
+    var splitter := std.split(line, "   ");
+    l.push(std.str_to_i64(splitter.next()));
+    r.push(std.str_to_i64(splitter.next()));
 
     let right_u64 := r.back() as u64;
     counts[right_u64] = counts[right_u64] + 1;
 }
 
-util.sort(l.to_span());
-util.sort(r.to_span());
+std.sort(l.to_span());
+std.sort(r.to_span());
 
 var part1 := 0;
 var part2 := 0;
-for curr in util.zip(l.to_span(), r.to_span()) {
-    part1 = part1 + util.abs(curr.left@ - curr.right@);
+for curr in std.zip(l.to_span(), r.to_span()) {
+    part1 = part1 + std.abs(curr.left@ - curr.right@);
     part2 = part2 + counts[curr.left@ as u64] * curr.left@;
 }
 print("{}\n{}\n", part1, part2);
