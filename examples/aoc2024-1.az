@@ -9,11 +9,11 @@ var l := vec.vector!(i64).create(a&);
 var r := vec.vector!(i64).create(a&);
 var counts := [0; 1000u];
 
-var lines := str.tokenizer.create(file, "\r\n");
+var lines := str.split(file, "\r\n");
 while lines.valid() {
     let line := lines.advance();
 
-    var splitter := str.tokenizer.create(line, "   ");
+    var splitter := str.split(line, "   ");
     l.push(str.str_to_i64(splitter.advance()));
 
     let right_val := str.str_to_i64(splitter.advance());

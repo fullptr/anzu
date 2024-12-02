@@ -73,6 +73,12 @@ struct tokenizer
     }
 }
 
+# Convenience function, less typing needed
+fn split(input: char const[], delim: char const[]) -> tokenizer
+{
+    return tokenizer.create(input, delim);
+}
+
 fn contains(string: char const[], substr: char const[]) -> bool
 {
     return find(string, substr, 0u) != @len(string);
