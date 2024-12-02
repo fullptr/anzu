@@ -1594,9 +1594,17 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         return { type_bool{}, {is_fundamental} };
     }
     if (node.name == "read_file") {
+        const auto char_span = type_name{type_char{}}.add_const().add_span();
+        const auto arena_ptr = type_name{type_arena{}}.add_ptr();
+
         node.token.assert_eq(node.args.size(), 2, "@read_file requires a filename and arena");
-        const auto file = type_of_expr(com, *node.args[0]).type;
-        return { type_null{} };
+        const auto file_type = push_expr(com, compile_type::val, *node.args[0]).type;
+        node.token.assert_eq(file_type, char_span, "incorrect type for file path");
+        const auto arena_type = push_expr(com, compile_type::val, *node.args[1]).type;
+        node.token.assert_eq(arena_type, arena_ptr, "incorrect type for arena");
+        push_value(code(com), op::load, sizeof(std::byte*)); // load the arena
+        push_value(code(com), op::read_file);
+        return { char_span };
     }
     node.token.error("no intrisic function named @{} exists", node.name);
 }

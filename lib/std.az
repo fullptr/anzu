@@ -1,6 +1,6 @@
 fn read_file(filename: char const[], a: arena&) -> char const[]
 {
-    return native_read_file(filename, a);
+    return @read_file(filename, a);
 }
 
 struct pair!(A, B)

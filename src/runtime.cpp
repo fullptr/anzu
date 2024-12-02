@@ -284,7 +284,10 @@ auto execute_program(bytecode_context& ctx) -> void
                 const auto filename_data = ctx.stack.pop<char*>();
                 const auto file = std::string{filename_data, filename_size};
                 const auto handle = std::fopen(file.c_str(), "rb");
-
+                if (!handle) {
+                    std::print("failed to open\n");
+                    std::exit(1);
+                }
                 std::fseek(handle, 0, SEEK_END);
                 const auto ssize = std::ftell(handle);
                 if (ssize == -1) {
