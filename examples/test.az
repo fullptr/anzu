@@ -1,3 +1,6 @@
 let std := @import("lib/std.az");
 
+arena a;
+let file := @read_file("examples/input.txt", a&);
+
 print("{}\n", std.sqrt(20000.0));

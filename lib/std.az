@@ -346,3 +346,38 @@ fn sqrt(value: f64) -> f64
     }
     return z;
 }
+
+struct pairwise_iterator_value!(T)
+{
+    left: T&;
+    right: T&;
+}
+
+struct pairwise_iterator!(T)
+{
+    _elems: T[];
+    _curr: u64;
+
+    fn current(self: const&) -> pairwise_iterator_value!(T)
+    {
+        return pairwise_iterator_value!(T)(self._elems[self._curr]&, self._elems[self._curr + 1u]&);
+    }
+
+    fn valid(self: const&) -> bool
+    {
+        return self._curr + 1u < @len(self._elems);
+    }
+
+    fn next(self: &) -> pairwise_iterator_value!(T)
+    {
+        let curr := self.current();
+        self._curr = self._curr + 1u;
+        return curr;
+    }
+}
+
+fn pairwise!(T)(elems: T[]) -> pairwise_iterator!(T)
+{
+    assert @len(elems) >= 2u;
+    return pairwise_iterator!(T)(elems, 0u);
+}
