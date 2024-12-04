@@ -189,7 +189,7 @@ auto push_field_offset(
         offset += com.types.size_of(field.type);
     }
     
-    tok.error("could not find field '{}' for type '{}'\n", field_name, to_string(type));
+    tok.error("could not find field '{}' for type '{}'\n", field_name, type);
 }
 
 auto constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
@@ -350,7 +350,7 @@ auto build_template_map(
     auto map = template_map{};
     for (const auto& [actual, expected] : std::views::zip(types, names)) {
         const auto [it, success] = map.emplace(expected, actual);
-        if (!success) { tok.error("duplicate template name {}", type_name{expected}); }
+        if (!success) { tok.error("duplicate template name {}", expected); }
     }
     return map;
 }
@@ -426,7 +426,7 @@ auto deduce_template_params(
     deduced_templates.reserve(names.size());
     for (const auto& name : names) {
         const auto it = name_map.find(name);
-        tok.assert(it != name_map.end(), "unable to deduce type of template {}", type_name{name});
+        tok.assert(it != name_map.end(), "unable to deduce type of template {}", name);
         deduced_templates.push_back(it->second);
     }
     return deduced_templates;
@@ -640,7 +640,7 @@ auto compile_struct_template(
     com.current_struct.emplace_back(name);
     com.current_module.emplace_back(name.module);
     const auto success = com.types.add_type(name, map);
-    tok.assert(success, "multiple definitions for struct {} found", to_string(name));
+    tok.assert(success, "multiple definitions for struct {} found", name);
     for (const auto& p : stmt.fields) {
         const auto f = type_field{p.name, resolve_type(com, tok, p.type)};
         com.types.add_field(name, f);
@@ -1041,7 +1041,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
             compile_struct_template(com, node.token, name, ast);
         }
 
-        node.token.assert(com.types.contains(name), "could not find struct {}", type_name{name});
+        node.token.assert(com.types.contains(name), "could not find struct {}", name);
         return { type_type{}, {type_name{name}} };
     }
     node.token.error("object of type {} can not be called with template parameters", type);
@@ -1271,7 +1271,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     }
 
     // It might be one of the current functions template aliases
-    const auto& map1 = current(com).templates;
+    const auto& map1 = current(com).fn_templates;
     const auto map1_key = type_placeholder{{current(com).to_function_template()}, node.name};
     if (auto it = map1.find(map1_key); it != map1.end()) {
         return { type_type{}, {it->second} };
@@ -1865,7 +1865,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     const auto sname = type_struct{ .name=node.name, .module=curr_module(com) };
     com.current_struct.emplace_back(sname);
     const auto success = com.types.add_type(sname);
-    node.token.assert(success, "multiple definitions for struct {} found", to_string(sname));
+    node.token.assert(success, "multiple definitions for struct {} found", sname);
     for (const auto& p : node.fields) {
         const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
         com.types.add_field(sname, f);

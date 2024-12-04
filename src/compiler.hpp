@@ -21,7 +21,7 @@ struct function
     function_name          name;
     std::size_t            id;
     variable_manager       variables;
-    template_map           templates;
+    template_map           fn_templates;
     std::vector<type_name> params;
     type_name              return_type;
     std::vector<std::byte> code;

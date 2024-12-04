@@ -9,11 +9,6 @@
 
 namespace anzu {
 
-auto type_function_template::to_string() const -> std::string
-{
-    return anzu::to_string(*this);
-}
-
 auto type_function::to_pointer() const -> type_name
 {
     return type_function_ptr{ param_types, return_type };
@@ -46,145 +41,137 @@ auto type_name::remove_const() const -> type_name
 
 auto to_string_paren(const type_name& type) -> std::string
 {
-    const auto str = to_string(type);
+    const auto str = std::format("{}", type);
     if (type.is<type_function_ptr>()) {
         return std::format("({})", str);
     }
     return str;
 }
 
-auto to_string(const type_name& type) -> std::string
-{
-    const auto string_inner = std::visit([](const auto& t) {
-        return ::anzu::to_string(t);
-    }, type);
-    return type.is_const ? std::format("{} const", string_inner) : string_inner;
-}
-
-auto to_string(const type_null&) -> std::string
+auto type_null::to_string() const -> std::string
 {
     return "null";
 }
 
-auto to_string(const type_bool&) -> std::string
+auto type_bool::to_string() const -> std::string
 {
     return "bool";
 }
 
-auto to_string(const type_char&) -> std::string
+auto type_char::to_string() const -> std::string
 {
     return "char";
 }
 
-auto to_string(const type_i32&) -> std::string
+auto type_i32::to_string() const -> std::string
 {
     return "i32";
 }
 
-auto to_string(const type_i64&) -> std::string
+auto type_i64::to_string() const -> std::string
 {
     return "i64";
 }
 
-auto to_string(const type_u64&) -> std::string
+auto type_u64::to_string() const -> std::string
 {
     return "u64";
 }
 
-auto to_string(const type_f64&) -> std::string
+auto type_f64::to_string() const -> std::string
 {
     return "f64";
 }
 
-auto to_string(const type_type&) -> std::string
+auto type_type::to_string() const -> std::string
 {
     return "type";
 }
 
-auto to_string(const type_arena&) -> std::string
+auto type_arena::to_string() const -> std::string
 {
     return "arena";
 }
 
-auto to_string(const type_module&) -> std::string
+auto type_module::to_string() const -> std::string
 {
     return "module";
 }
 
-auto to_string(const type_struct& type) -> std::string
+auto type_struct::to_string() const -> std::string
 {
-    if (!type.templates.empty()) {
-        return std::format("<{}>.{}!({})", type.module.string(), type.name, format_comma_separated(type.templates));
+    if (!templates.empty()) {
+        return std::format("<{}>.{}!({})", module.string(), name, format_comma_separated(templates));
     } else {
-        return std::format("<{}>.{}", type.module.string(), type.name);
+        return std::format("<{}>.{}", module.string(), name);
     }
 }
 
-auto to_string(const type_array& type) -> std::string
+auto type_array::to_string() const -> std::string
 {
-    return std::format("{}[{}]", to_string_paren(*type.inner_type), type.count);
+    return std::format("{}[{}]", to_string_paren(*inner_type), count);
 }
 
-auto to_string(const type_ptr& type) -> std::string
+auto type_ptr::to_string() const -> std::string
 {
-    return std::format("{}&", to_string_paren(*type.inner_type));
+    return std::format("{}&", to_string_paren(*inner_type));
 }
 
-auto to_string(const type_span& type) -> std::string
+auto type_span::to_string() const -> std::string
 {
-    return std::format("{}[]", to_string_paren(*type.inner_type));
+    return std::format("{}[]", to_string_paren(*inner_type));
 }
 
-auto to_string(const type_function_ptr& type) -> std::string
+auto type_function_ptr::to_string() const -> std::string
 {
     return std::format(
         "{}({}) -> {}",
-        to_string(token_type::kw_function),
-        format_comma_separated(type.param_types),
-        to_string_paren(*type.return_type)
+        anzu::to_string(token_type::kw_function),
+        format_comma_separated(param_types),
+        to_string_paren(*return_type)
     );
 }
 
-auto to_string(const type_bound_method& type) -> std::string
+auto type_bound_method::to_string() const -> std::string
 {
     return std::format(
         "<bound_method: '{}({}) -> {}'>",
-        to_string(token_type::kw_function),
-        type.id,
-        format_comma_separated(type.param_types),
-        to_string_paren(*type.return_type)
+        anzu::to_string(token_type::kw_function),
+        id,
+        format_comma_separated(param_types),
+        to_string_paren(*return_type)
     );
 }
 
-auto to_string(const type_bound_method_template& type) -> std::string
+auto type_bound_method_template::to_string() const -> std::string
 {
     return std::format(
         "<bound_method_template: <{}>.{}.{}>",
-        type.module.string(),
-        to_string(type.struct_name),
-        type.name
+        module.string(),
+        struct_name,
+        name
     );
 }
 
-auto to_string(const type_function& type) -> std::string
+auto type_function::to_string() const -> std::string
 {
-    const auto function_ptr_type = type_function_ptr{type.param_types, type.return_type};
-    return std::format("<function: id {} {}>", type.id, to_string(function_ptr_type));
+    const auto function_ptr_type = type_function_ptr{param_types, return_type};
+    return std::format("<function: id {} {}>", id, function_ptr_type);
 }
 
-auto to_string(const type_function_template& type) -> std::string
+auto type_function_template::to_string() const -> std::string
 {
-    return std::format("<function_template: <{}>.{}.{}>", type.module.string(), type.struct_name.name, type.name);
+    return std::format("<function_template: <{}>.{}.{}>", module.string(), struct_name.name, name);
 }
 
-auto to_string(const type_struct_template& type) -> std::string
+auto type_struct_template::to_string() const -> std::string
 {
-    return std::format("<struct_template: <{}>.{}>", type.module.string(), type.name);
+    return std::format("<struct_template: <{}>.{}>", module.string(), name);
 }
 
-auto to_string(const type_placeholder& type) -> std::string
+auto type_placeholder::to_string() const -> std::string
 {
-    return std::format("<placeholder: {}::{}>", *type.owner, type.name);
+    return std::format("<placeholder: {}::{}>", *owner, name);
 }
 
 auto string_literal_type() -> type_name
