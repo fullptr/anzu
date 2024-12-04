@@ -45,7 +45,7 @@ struct compiler
     std::vector<type_struct>           current_struct;
     std::vector<std::size_t>           current_function;
 
-    std::vector<std::unordered_set<std::string>> current_placeholders;
+    std::vector<std::unordered_set<type_placeholder>> current_placeholders;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

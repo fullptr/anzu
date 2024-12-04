@@ -1,10 +1,17 @@
-let std := @import("lib/std.az");
 
 
 
-let x := [1, 2, 3, 4];
-let y := ["a", "b", "c", "d"];
 
-for e in std.enumerate(std.zip(x[], y[])) {
-    print("{}: {} {}\n", e.index, e.value.left@, e.value.right@);
+fn qux!(T)(x: T) -> T
+{
+    return T();
 }
+
+fn bar!(T)(x: T) -> T
+{
+    let f := qux(x);
+    return f;
+}
+
+let b := bar(10);
+print("{}\n", b);

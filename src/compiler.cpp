@@ -341,7 +341,7 @@ auto ends_in_return(const node_stmt& node) -> bool
 auto build_template_map(
     compiler& com,
     const token& tok,
-    const std::vector<std::string>& names,
+    const std::vector<type_placeholder>& names,
     const std::vector<type_name>& types
 )
     -> template_map
@@ -399,7 +399,7 @@ void match_placeholders(template_map& map, const token& tok, const type_name& ac
 auto deduce_template_params(
     compiler& com,
     const token& tok,
-    const std::vector<std::string>& names,
+    const std::vector<type_placeholder>& names,
     const std::vector<node_expr_ptr>& sig_params,
     const std::vector<node_expr_ptr>& args
 )
@@ -407,7 +407,7 @@ auto deduce_template_params(
 {
     tok.assert_eq(args.size(), sig_params.size(), "invalid number of args to template function");
 
-    auto placeholders = std::unordered_set<std::string>{};
+    auto placeholders = std::unordered_set<type_placeholder>{};
     for (const auto name : names) placeholders.emplace(name);
     com.current_placeholders.push_back(placeholders);
 
@@ -595,7 +595,12 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
     // If the function doesn't exist, it may still be a template, if it is then compile it
     if (!com.functions_by_name.contains(name) && com.function_templates.contains(key)) {
         const auto& ast = com.function_templates.at(key);
-        const auto map = build_template_map(com, tok, ast.templates, name.templates);
+        const auto names = ast.templates
+                         | std::views::transform([&](const auto& n) {
+                              return type_placeholder{type_name{name.struct_name}, n};
+                         })
+                         | std::ranges::to<std::vector>();
+        const auto map = build_template_map(com, tok, names, name.templates);
         compile_function(com, tok, name, ast.params, ast.return_type, ast.body, map);
     }
 
@@ -623,7 +628,12 @@ auto compile_struct_template(
 )
     -> void
 {
-    const auto map = build_template_map(com, tok, stmt.templates, name.templates);
+    const auto names = stmt.templates
+                     | std::views::transform([&](const auto& n) {
+                          return type_placeholder{type_name{name}, n};
+                     })
+                     | std::ranges::to<std::vector>();
+    const auto map = build_template_map(com, tok, names, name.templates);
     com.current_struct.emplace_back(name);
     com.current_module.emplace_back(name.module);
     const auto success = com.types.add_type(name, map);

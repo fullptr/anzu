@@ -184,7 +184,7 @@ auto to_string(const type_struct_template& type) -> std::string
 
 auto to_string(const type_placeholder& type) -> std::string
 {
-    return std::format("<placeholder: {}>", type.name);
+    return std::format("<placeholder: {}::{}>", *type.owner, type.name);
 }
 
 auto string_literal_type() -> type_name

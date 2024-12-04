@@ -181,9 +181,10 @@ struct type_struct_template
 // Only used during template argument type deduction
 struct type_placeholder
 {
-    std::string name;
+    value_ptr<type_name> owner;
+    std::string          name;
 
-    auto to_hash() const { return hash(name); }
+    auto to_hash() const { return hash(owner, name); }
     auto operator==(const type_placeholder&) const -> bool = default;
 };
 
@@ -269,7 +270,7 @@ struct type_name : public std::variant<
 };
 
 // Used for resolving template types. In the future could also be used for type aliases
-using template_map = std::unordered_map<std::string, type_name>;
+using template_map = std::unordered_map<type_placeholder, type_name>;
 
 auto string_literal_type() -> type_name;
 
