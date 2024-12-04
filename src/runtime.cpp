@@ -170,19 +170,18 @@ auto execute_program(bytecode_context& ctx) -> void
                 ctx.stack.push(equal); // returns null;
             } break;
             case op::arena_new: {
+                memory_arena* arena = nullptr;
                 if (ctx.arena_free_list.empty()) {
                     ctx.arenas.push_back(std::make_unique<memory_arena>());
-                    const auto& arena = ctx.arenas.back();
-                    arena->next = 0;
+                    arena = ctx.arenas.back().get();
                     arena->index = ctx.arenas.size() - 1;
-                    ctx.stack.push(arena.get());
                 } else {
                     const auto index = ctx.arena_free_list.back();
                     ctx.arena_free_list.pop_back();
-                    const auto& arena = ctx.arenas.at(index);
-                    arena->next = 0;
-                    ctx.stack.push(arena.get());
+                    arena = ctx.arenas.at(index).get();
                 }
+                arena->next = 0;
+                ctx.stack.push(arena);
             } break;
             case op::arena_delete: {
                 const auto arena = ctx.stack.pop<memory_arena*>();

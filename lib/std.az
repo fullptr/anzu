@@ -67,14 +67,14 @@ fn abs(x: i64) -> i64
     return x >= 0 ? x : -x;
 }
 
-struct zip_pair!(T, U)
+struct zip_iterator_value!(T, U)
 {
     left:  T&;
     right: U&;
     index: u64;
 }
 
-struct zip_view!(T, U)
+struct zip_iterator!(T, U)
 {
     _left:  T[];
     _right: U[];
@@ -90,12 +90,12 @@ struct zip_view!(T, U)
         return self._curr < self.size();
     }
 
-    fn current(self: const&) -> zip_pair!(T, U)
+    fn current(self: const&) -> zip_iterator_value!(T, U)
     {
-        return zip_pair!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
+        return zip_iterator_value!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
     }
 
-    fn next(self: &) -> zip_pair!(T, U)
+    fn next(self: &) -> zip_iterator_value!(T, U)
     {
         let curr := self.current();
         self._curr = self._curr + 1u;
@@ -103,10 +103,10 @@ struct zip_view!(T, U)
     }
 }
 
-fn zip!(T, U)(left: T[], right: U[]) -> zip_view!(T, U)
+fn zip!(T, U)(left: T[], right: U[]) -> zip_iterator!(T, U)
 {
     assert @len(left) == @len(right);
-    return zip_view!(T, U)(left, right, 0u);
+    return zip_iterator!(T, U)(left, right, 0u);
 }
 
 fn equal(lhs: char const[], rhs: char const[]) -> bool
@@ -380,4 +380,39 @@ fn pairwise!(T)(elems: T[]) -> pairwise_iterator!(T)
 {
     assert @len(elems) >= 2u;
     return pairwise_iterator!(T)(elems, 0u);
+}
+
+struct enumerate_iterator_value!(A)
+{
+    index: u64;
+    value: A;
+}
+
+struct enumerate_iterator!(T)
+{
+    _iter: T;
+    _curr: u64;
+
+    fn valid(self: const&) -> bool
+    {
+        return self._iter.valid();
+    }
+
+    fn next(self: &) -> enumerate_iterator_value!(@type_of(self._iter.next()))
+    {
+        var v := self._iter.next();
+        let Z := enumerate_iterator_value!(@type_of(v));
+
+        var curr := Z();
+        curr.index = self._curr;
+        curr.value = v;
+
+        self._curr = self._curr + 1u;
+        return curr;
+    }
+}
+
+fn enumerate!(T)(iter: T) -> enumerate_iterator!(T)
+{
+    return enumerate_iterator!(T)(iter, 0u);
 }
