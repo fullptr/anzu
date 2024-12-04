@@ -67,48 +67,6 @@ fn abs(x: i64) -> i64
     return x >= 0 ? x : -x;
 }
 
-struct zip_iterator_value!(T, U)
-{
-    left:  T&;
-    right: U&;
-    index: u64;
-}
-
-struct zip_iterator!(T, U)
-{
-    _left:  T[];
-    _right: U[];
-    _curr:  u64;
-
-    fn size(self: const&) -> u64
-    {
-        return @len(self._left) < @len(self._right) ? @len(self._left) : @len(self._right);
-    }
-
-    fn valid(self: const&) -> bool
-    {
-        return self._curr < self.size();
-    }
-
-    fn current(self: const&) -> zip_iterator_value!(T, U)
-    {
-        return zip_iterator_value!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
-    }
-
-    fn next(self: &) -> zip_iterator_value!(T, U)
-    {
-        let curr := self.current();
-        self._curr = self._curr + 1u;
-        return curr;
-    }
-}
-
-fn zip!(T, U)(left: T[], right: U[]) -> zip_iterator!(T, U)
-{
-    assert @len(left) == @len(right);
-    return zip_iterator!(T, U)(left, right, 0u);
-}
-
 fn equal(lhs: char const[], rhs: char const[]) -> bool
 {
     if @len(lhs) != @len(rhs) { return false; }
@@ -133,7 +91,28 @@ fn find(string: char const[], substr: char const[], start: u64) -> u64
     return @len(string);
 }
 
-struct tokenizer
+fn contains(string: char const[], substr: char const[]) -> bool
+{
+    return find(string, substr, 0u) != @len(string);
+}
+
+fn occurrences(string: char const[], substr: char const[]) -> u64
+{
+    var count := 0u;
+    var idx := 0u;
+    while idx < @len(string) {
+        let curr_substr := string[idx : idx + @len(substr)];
+        if equal(substr, curr_substr) {
+            count = count + 1u;
+            idx = idx + @len(substr);
+        } else {
+            idx = idx + 1u;
+        }
+    }
+    return count;
+}
+
+struct split_iterator
 {
     _string: char const[];
     _delim: char const[];
@@ -176,39 +155,18 @@ struct tokenizer
         return !self._finished;
     }
 
-    fn create(input: char const[], delim: char const[]) -> tokenizer
+    fn create(input: char const[], delim: char const[]) -> split_iterator
     {
-        var t := tokenizer(input, delim, 0u, 0u, false, false);
-        t.next(); # prime the tokenizer at the first word
+        var t := split_iterator(input, delim, 0u, 0u, false, false);
+        t.next(); # prime the split_iterator at the first word
         return t;
     }
 }
 
 # Convenience function, less typing needed
-fn split(input: char const[], delim: char const[]) -> tokenizer
+fn split(input: char const[], delim: char const[]) -> split_iterator
 {
-    return tokenizer.create(input, delim);
-}
-
-fn contains(string: char const[], substr: char const[]) -> bool
-{
-    return find(string, substr, 0u) != @len(string);
-}
-
-fn occurrences(string: char const[], substr: char const[]) -> u64
-{
-    var count := 0u;
-    var idx := 0u;
-    while idx < @len(string) {
-        let curr_substr := string[idx : idx + @len(substr)];
-        if equal(substr, curr_substr) {
-            count = count + 1u;
-            idx = idx + @len(substr);
-        } else {
-            idx = idx + 1u;
-        }
-    }
-    return count;
+    return split_iterator.create(input, delim);
 }
 
 fn replace(a: arena&, string: char const[], from: char const[], to: char const[]) -> char const[]
@@ -218,7 +176,7 @@ fn replace(a: arena&, string: char const[], from: char const[], to: char const[]
 
     var new_string := new(a, new_size) ' ';
     var idx := 0u;
-    var tok := tokenizer.create(string, from);
+    var tok := split_iterator.create(string, from);
     assert tok.valid(); # There is always at least one token (it may be the whole string)
     let curr := tok.current();
     let size := @len(curr);
@@ -314,6 +272,15 @@ struct vector!(T)
     }
 }
 
+fn sqrt(value: f64) -> f64
+{
+    var z := 1.0;
+    for _ in range(15) {
+        z = z - (z * z - value) / (2.0 * z);
+    }
+    return z;
+}
+
 struct range_iter!(T)
 {
     _curr: T;
@@ -336,15 +303,6 @@ fn range!(T)(max: T) -> range_iter!(T)
 {
     assert T == i64 || T == u64;
     return range_iter!(T)(0 as T, max);
-}
-
-fn sqrt(value: f64) -> f64
-{
-    var z := 1.0;
-    for _ in range(15) {
-        z = z - (z * z - value) / (2.0 * z);
-    }
-    return z;
 }
 
 struct pairwise_iterator_value!(T)
@@ -415,4 +373,46 @@ struct enumerate_iterator!(T)
 fn enumerate!(T)(iter: T) -> enumerate_iterator!(T)
 {
     return enumerate_iterator!(T)(iter, 0u);
+}
+
+struct zip_iterator_value!(T, U)
+{
+    left:  T&;
+    right: U&;
+    index: u64;
+}
+
+struct zip_iterator!(T, U)
+{
+    _left:  T[];
+    _right: U[];
+    _curr:  u64;
+
+    fn size(self: const&) -> u64
+    {
+        return @len(self._left) < @len(self._right) ? @len(self._left) : @len(self._right);
+    }
+
+    fn valid(self: const&) -> bool
+    {
+        return self._curr < self.size();
+    }
+
+    fn current(self: const&) -> zip_iterator_value!(T, U)
+    {
+        return zip_iterator_value!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
+    }
+
+    fn next(self: &) -> zip_iterator_value!(T, U)
+    {
+        let curr := self.current();
+        self._curr = self._curr + 1u;
+        return curr;
+    }
+}
+
+fn zip!(T, U)(left: T[], right: U[]) -> zip_iterator!(T, U)
+{
+    assert @len(left) == @len(right);
+    return zip_iterator!(T, U)(left, right, 0u);
 }
