@@ -231,6 +231,7 @@ struct type_name : public std::variant<
     type_function_ptr,
     type_bound_method,
     type_bound_method_template,
+    
     type_function,
     type_function_template,
     type_struct_template,

@@ -170,13 +170,22 @@ auto execute_program(bytecode_context& ctx) -> void
                 ctx.stack.push(equal); // returns null;
             } break;
             case op::arena_new: {
-                const auto arena = new memory_arena;
+                memory_arena* arena = nullptr;
+                if (ctx.arena_free_list.empty()) {
+                    ctx.arenas.push_back(std::make_unique<memory_arena>());
+                    arena = ctx.arenas.back().get();
+                    arena->index = ctx.arenas.size() - 1;
+                } else {
+                    const auto index = ctx.arena_free_list.back();
+                    ctx.arena_free_list.pop_back();
+                    arena = ctx.arenas.at(index).get();
+                }
                 arena->next = 0;
                 ctx.stack.push(arena);
             } break;
             case op::arena_delete: {
                 const auto arena = ctx.stack.pop<memory_arena*>();
-                delete arena;
+                ctx.arena_free_list.push_back(arena->index);
             } break;
             case op::arena_alloc: {
                 auto arena = ctx.stack.pop<memory_arena*>();
@@ -463,10 +472,6 @@ auto run(const bytecode_program& prog) -> void
 
     if (ctx.stack.size() > 0) {
         std::print("\n -> Stack Size: {}, bug in the compiler!\n", ctx.stack.size());
-    }
-
-    if (ctx.heap_size != 0) {
-        std::print("\n -> Heap Size: {}, fix your memory leak!\n", ctx.heap_size);
     }
 }
 

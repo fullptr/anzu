@@ -6,6 +6,7 @@
 #include <print>
 #include <cstring>
 #include <memory>
+#include <unordered_set>
 
 #include "bytecode.hpp"
 
@@ -56,6 +57,7 @@ struct memory_arena
 {
     std::array<std::byte, 1024 * 1024 * 64> data; // 64MB;
     std::size_t next = 0;
+    std::size_t index = 0; // position of the arena in the arena vector
 };
 
 struct bytecode_context
@@ -64,8 +66,11 @@ struct bytecode_context
     std::string                    rom;
 
     std::vector<call_frame> frames = {};
-    vm_stack stack                 = {};
-    std::int64_t heap_size         = {};
+    vm_stack                stack  = {};
+
+    std::vector<std::unique_ptr<memory_arena>> arenas          = {};
+    std::vector<std::size_t>                   arena_free_list = {};
+
 };
 
 auto run_program(const bytecode_program& prog) -> void;
