@@ -247,45 +247,20 @@ auto strip_pointers(const type_name& type) -> type_name
     return t;
 }
 
-auto const_convertable_to_inner(const token& tok, const type_name& src, const type_name& dst) {
+auto const_convertable_to(const token& tok, const type_name& src, const type_name& dst) {
     if (src.is_const && !dst.is_const) {
         return false;
     }
 
     return std::visit(overloaded{
         [&](const type_array& l, const type_array& r) {
-            return l.count == r.count && const_convertable_to_inner(tok, *l.inner_type, *r.inner_type);
+            return l.count == r.count && const_convertable_to(tok, *l.inner_type, *r.inner_type);
         },
         [&](const type_ptr& l, const type_ptr& r) {
-            return const_convertable_to_inner(tok, *l.inner_type, *r.inner_type);
+            return const_convertable_to(tok, *l.inner_type, *r.inner_type);
         },
         [&](const type_span& l, const type_span& r) {
-            return const_convertable_to_inner(tok, *l.inner_type, *r.inner_type);
-        },
-        [&](const type_arena& l, const type_arena& r) { return true; },
-        [&] <typename T> (const T& l, const T& r) { return l == r; },
-        [&](const auto& l, const auto& r) {
-            return false;
-        }
-    }, src, dst);
-}
-
-auto const_convertable_to(int id, const token& tok, const type_name& src, const type_name& dst) {
-    if (src.is_const && !dst.is_const) {
-        return false;
-    }
-
-    //std::print("id={} src={} dst={}\n", id, src, dst);
-
-    return std::visit(overloaded{
-        [&](const type_array& l, const type_array& r) {
-            return l.count == r.count && const_convertable_to_inner(tok, *l.inner_type, *r.inner_type);
-        },
-        [&](const type_ptr& l, const type_ptr& r) {
-            return const_convertable_to_inner(tok, *l.inner_type, *r.inner_type);
-        },
-        [&](const type_span& l, const type_span& r) {
-            return const_convertable_to_inner(tok, *l.inner_type, *r.inner_type);
+            return const_convertable_to(tok, *l.inner_type, *r.inner_type);
         },
         [&](const type_arena& l, const type_arena& r) { return true; },
         [&] <typename T> (const T& l, const T& r) { return l == r; },
@@ -333,7 +308,7 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
         tok.error("arenas can not be copied or assigned");
     }
 
-    if (!const_convertable_to(1, tok, actual, expected)) {
+    if (!const_convertable_to(tok, actual, expected)) {
         tok.error("Cannot convert '{}' to '{}'", actual, expected);
     }
 }
@@ -1372,7 +1347,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         const auto actual = info.params[0];
         const auto expected = stripped.add_const().add_ptr().add_const();
         constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
-        node.token.assert(const_convertable_to(2, node.token, actual, expected), message, info.name, stripped);
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped);
         if (stripped.is_const && !actual.remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
@@ -1394,7 +1369,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         com.current_module.pop_back();
         const auto expected = stripped.add_const().add_ptr().add_const();
         constexpr auto message = "tried to access static member function {} through an instance of {}, this can only be accessed directly on the class";
-        node.token.assert(const_convertable_to(3, node.token, actual, expected), message, info.name, stripped);
+        node.token.assert(const_convertable_to(node.token, actual, expected), message, info.name, stripped);
         if (stripped.is_const && !actual.remove_ptr().is_const) {
             node.token.error("cannot bind a const variable to a non-const member function");
         }
