@@ -1,0 +1,60 @@
+struct function_name
+{
+    std::filesystem::path  module;
+    type_struct            struct_name;
+    std::string            name;
+    std::vector<type_name> templates;
+
+    auto as_template() const -> type_function_template;
+    auto to_string() const -> std::string;
+    auto to_hash() const -> std::size_t { return hash(module, struct_name, name, templates); }
+    auto operator==(const function_name&) const -> bool = default;
+};
+
+struct type_function
+{
+    std::size_t            id;
+    std::vector<type_name> param_types;
+    value_ptr<type_name>   return_type;
+
+    auto to_pointer() const -> type_name;
+    auto to_hash() const { return hash(id, param_types, return_type); }
+    auto to_bound_method() -> type_bound_method { return {id, param_types, return_type}; }
+    auto operator==(const type_function&) const -> bool = default;
+};
+
+struct type_function_template
+{
+    std::filesystem::path    module;
+    type_struct              struct_name;
+    std::string              name;
+
+    auto to_hash() const { return hash(module, struct_name, name); }
+    auto to_string() const -> std::string;
+    auto operator==(const type_function_template&) const -> bool = default;
+};
+
+struct function
+{
+    function_name          name;
+    std::size_t            id;
+    variable_manager       variables;
+    template_map           templates;
+    std::vector<type_name> params;
+    type_name              return_type;
+    std::vector<std::byte> code;
+};
+
+
+    std::filesystem::path  module;
+    type_struct            struct_name;
+    std::string            name;
+    std::vector<type_name> templates;
+
+    std::vector<type_name> param_types;
+    value_ptr<type_name>   return_type;
+
+    std::size_t            id;
+    
+    std::vector<std::byte> code;
+    variable_manager       variables;

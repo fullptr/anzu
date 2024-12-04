@@ -25,6 +25,8 @@ struct function
     std::vector<type_name> params;
     type_name              return_type;
     std::vector<std::byte> code;
+
+    auto to_function_template() const -> type_function_template { return {name.module, name.struct_name, name.name}; }
 };
 
 struct compiler
@@ -46,6 +48,7 @@ struct compiler
     std::vector<std::size_t>           current_function;
 
     std::vector<std::unordered_set<type_placeholder>> current_placeholders;
+    std::vector<type_name> current_placeholders_root;
 };
 
 auto compile(const anzu_module& ast) -> bytecode_program;

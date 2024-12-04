@@ -82,12 +82,22 @@ struct type_module
     auto operator==(const type_module&) const -> bool = default;
 };
 
+struct type_struct_template
+{
+    std::filesystem::path module;
+    std::string           name;
+
+    auto to_hash() const { return hash(module, name); }
+    auto operator==(const type_struct_template&) const -> bool = default;
+};
+
 struct type_struct
 {
     std::string            name;
     std::filesystem::path  module;
     std::vector<type_name> templates;
 
+    auto to_struct_template() const -> type_struct_template { return {module, name}; }
     auto to_hash() const { return hash(name, module, templates); }
     auto operator==(const type_struct&) const -> bool = default;
 };
@@ -136,28 +146,6 @@ struct type_bound_method
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
-struct type_bound_method_template
-{
-    std::filesystem::path    module;
-    type_struct              struct_name;
-    std::string              name;
-
-    auto to_hash() const { return hash(module, struct_name, name); }
-    auto operator==(const type_bound_method_template&) const -> bool = default;
-};
-
-struct type_function
-{
-    std::size_t            id;
-    std::vector<type_name> param_types;
-    value_ptr<type_name>   return_type;
-
-    auto to_pointer() const -> type_name;
-    auto to_hash() const { return hash(id, param_types, return_type); }
-    auto to_bound_method() -> type_bound_method { return {id, param_types, return_type}; }
-    auto operator==(const type_function&) const -> bool = default;
-};
-
 struct type_function_template
 {
     std::filesystem::path    module;
@@ -169,13 +157,31 @@ struct type_function_template
     auto operator==(const type_function_template&) const -> bool = default;
 };
 
-struct type_struct_template
+struct type_bound_method_template
 {
-    std::filesystem::path module;
-    std::string           name;
+    std::filesystem::path    module;
+    type_struct              struct_name;
+    std::string              name;
 
-    auto to_hash() const { return hash(module, name); }
-    auto operator==(const type_struct_template&) const -> bool = default;
+    auto to_function_template() const -> type_function_template { return {module, struct_name, name}; }
+    auto to_hash() const { return hash(module, struct_name, name); }
+    auto operator==(const type_bound_method_template&) const -> bool = default;
+};
+
+struct type_function
+{
+    std::filesystem::path  module;
+    type_struct            struct_name;
+    std::string            name;
+    std::size_t            id;
+    std::vector<type_name> param_types;
+    value_ptr<type_name>   return_type;
+
+    auto to_function_template() const -> type_function_template { return {module, struct_name, name}; }
+    auto to_pointer() const -> type_name;
+    auto to_hash() const { return hash(module, struct_name, name, id, param_types, return_type); }
+    auto to_bound_method() -> type_bound_method { return {id, param_types, return_type}; }
+    auto operator==(const type_function&) const -> bool = default;
 };
 
 // Only used during template argument type deduction

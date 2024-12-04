@@ -350,7 +350,7 @@ auto build_template_map(
     auto map = template_map{};
     for (const auto& [actual, expected] : std::views::zip(types, names)) {
         const auto [it, success] = map.emplace(expected, actual);
-        if (!success) { tok.error("duplicate template name {}", expected); }
+        if (!success) { tok.error("duplicate template name {}", type_name{expected}); }
     }
     return map;
 }
@@ -358,7 +358,7 @@ auto build_template_map(
 void match_placeholders(template_map& map, const token& tok, const type_name& actual, const type_name& expected)
 {
     if (auto type = expected.get_if<type_placeholder>()) {
-        const auto [it, success] = map.emplace(type->name, actual);
+        const auto [it, success] = map.emplace(*type, actual);
         tok.assert(success || it->second == actual,
                    "ambiguous template deduction, deduced {} as both {} and {}",
                    type->name, it->second, actual);
@@ -399,6 +399,7 @@ void match_placeholders(template_map& map, const token& tok, const type_name& ac
 auto deduce_template_params(
     compiler& com,
     const token& tok,
+    const type_name& root,
     const std::vector<type_placeholder>& names,
     const std::vector<node_expr_ptr>& sig_params,
     const std::vector<node_expr_ptr>& args
@@ -410,6 +411,7 @@ auto deduce_template_params(
     auto placeholders = std::unordered_set<type_placeholder>{};
     for (const auto name : names) placeholders.emplace(name);
     com.current_placeholders.push_back(placeholders);
+    com.current_placeholders_root.push_back(root);
 
     auto name_map = template_map{};
     for (const auto& [param, arg] : std::views::zip(sig_params, args)) {
@@ -417,13 +419,14 @@ auto deduce_template_params(
         const auto arg_type = type_of_expr(com, *arg).type;
         match_placeholders(name_map, tok, arg_type, param_type);
     }
+    com.current_placeholders_root.pop_back();
     com.current_placeholders.pop_back();
 
     auto deduced_templates = std::vector<type_name>{};
     deduced_templates.reserve(names.size());
     for (const auto& name : names) {
         const auto it = name_map.find(name);
-        tok.assert(it != name_map.end(), "unable to deduce type of template {}", name);
+        tok.assert(it != name_map.end(), "unable to deduce type of template {}", type_name{name});
         deduced_templates.push_back(it->second);
     }
     return deduced_templates;
@@ -597,7 +600,7 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
         const auto& ast = com.function_templates.at(key);
         const auto names = ast.templates
                          | std::views::transform([&](const auto& n) {
-                              return type_placeholder{type_name{name.struct_name}, n};
+                              return type_placeholder{{name.struct_name.to_struct_template()}, n};
                          })
                          | std::ranges::to<std::vector>();
         const auto map = build_template_map(com, tok, names, name.templates);
@@ -606,7 +609,7 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
 
     tok.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
     const auto& fn = com.functions[com.functions_by_name.at(name)];
-    return type_function{ .id = fn.id, .param_types=fn.params, .return_type=fn.return_type };
+    return type_function{ .module=name.module, .struct_name=name.struct_name, .name=name.name, .id = fn.id, .param_types=fn.params, .return_type=fn.return_type };
 }
 
 auto push_args_typechecked(compiler& com, const token& tok, const auto& args, const auto& expected_types) -> std::size_t
@@ -630,7 +633,7 @@ auto compile_struct_template(
 {
     const auto names = stmt.templates
                      | std::views::transform([&](const auto& n) {
-                          return type_placeholder{type_name{name}, n};
+                          return type_placeholder{{name.to_struct_template()}, n};
                      })
                      | std::ranges::to<std::vector>();
     const auto map = build_template_map(com, tok, names, name.templates);
@@ -933,7 +936,12 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         const auto params = ast.fields
                           | std::views::transform(&node_parameter::type)
                           | std::ranges::to<std::vector>();
-        const auto templates = deduce_template_params(com, node.token, ast.templates, params, node.args);
+        const auto placeholders = ast.templates
+                                | std::views::transform([&](const auto& n) {
+                                    return type_placeholder{type_name{*info}, n};
+                                })
+                                | std::ranges::to<std::vector>();
+        const auto templates = deduce_template_params(com, node.token, type_name{*info}, placeholders, params, node.args);
         const auto name = type_struct{info->name, info->module, templates};
         if (!com.types.contains(name)) {
             compile_struct_template(com, node.token, name, ast);
@@ -957,7 +965,12 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         const auto params = ast.params
                           | std::views::transform(&node_parameter::type)
                           | std::ranges::to<std::vector>();
-        const auto templates = deduce_template_params(com, node.token, ast.templates, params, node.args);
+        const auto placeholders = ast.templates
+                                | std::views::transform([&](const auto& n) {
+                                    return type_placeholder{type_name{*info}, n};
+                                })
+                                | std::ranges::to<std::vector>();
+        const auto templates = deduce_template_params(com, node.token, type_name{*info}, placeholders, params, node.args);
         const auto name = function_name{ info->module, info->struct_name, info->name, templates };
         const auto func = fetch_function(com, node.token, name);
         
@@ -982,7 +995,13 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
                               | std::views::transform(&node_parameter::type)
                               | std::ranges::to<std::vector>();
 
-        const auto templates = deduce_template_params(com, node.token, ast.templates, sig_params, node.args);
+        const auto placeholders = ast.templates
+                                | std::views::transform([&](const auto& n) {
+                                    return type_placeholder{type_name{info->to_function_template()}, n};
+                                })
+                                | std::ranges::to<std::vector>();
+
+        const auto templates = deduce_template_params(com, node.token, {info->to_function_template()}, placeholders, sig_params, node.args);
         const auto name = function_name{info->module, info->struct_name, info->name, templates};
         const auto func = fetch_function(com, node.token, name);
 
@@ -1223,7 +1242,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function");
         const auto& func = com.functions[it->second];
-        return { type_function{func.id, func.params, func.return_type} };
+        return { type_function{curr_module(com), no_struct, node.name, func.id, func.params, func.return_type} };
     }
 
     // It might be a function template
@@ -1253,19 +1272,24 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
 
     // It might be one of the current functions template aliases
     const auto& map1 = current(com).templates;
-    if (auto it = map1.find(node.name); it != map1.end()) {
+    const auto map1_key = type_placeholder{{current(com).to_function_template()}, node.name};
+    if (auto it = map1.find(map1_key); it != map1.end()) {
         return { type_type{}, {it->second} };
     }
 
     // It might be one of the current structs template aliases
     const auto map2 = com.types.templates_of(curr_struct(com));
-    if (auto it = map2.find(node.name); it != map2.end()) {
+    const auto map2_key = type_placeholder{{curr_struct(com).to_struct_template()}, node.name};
+    if (auto it = map2.find(map2_key); it != map2.end()) {
         return { type_type{}, {it->second} };
     }
 
-    // It might be a tempalte placeholder for a type the needs to be deduced
-    if (!com.current_placeholders.empty() && com.current_placeholders.back().contains(node.name)) {
-        return { type_type{}, {type_name{type_placeholder{node.name}}} };
+    // It might be a template placeholder for a type the needs to be deduced
+    if (!com.current_placeholders.empty()) {
+        const auto placeholder = type_placeholder{com.current_placeholders_root.back(), node.name};
+        if (com.current_placeholders.back().contains(placeholder)) {
+            return { type_type{}, {type_name{placeholder}} };
+        }
     }
 
     // Otherwise, it must be a variable
@@ -1288,7 +1312,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
-            return { type_function{func.id, func.params, func.return_type } };
+            return { type_function{filepath, no_struct, node.name, func.id, func.params, func.return_type } };
         }
 
         // It might be a function template
@@ -1328,7 +1352,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
             if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
                 node.token.assert(ct == compile_type::val, "cannot take the address of a function");
                 const auto& func = com.functions[it->second];
-                return { type_function{func.id, func.params, func.return_type} };   
+                return { type_function{struct_info.module, struct_info, node.name, func.id, func.params, func.return_type} };   
             }
 
             // It might be a function template
