@@ -1,11 +1,19 @@
 let std := @import("lib/std.az");
 
+fn qux!(T)(x: T) -> T
+{
+    return T();
+}
 
+fn foo!(T)(x: T) -> T
+{
+    return qux(x);
+}
 
 let x := [1, 2, 3, 4];
-let y := ["a", "b", "c", "d"];
 
-var z := std.zip(x[], y[]);
-for e in std.enumerate(z) {
+for e in std.enumerate(std.pairwise(x[])) {
     print("{}: {} {}\n", e.index, e.value.left@, e.value.right@);
 }
+
+foo(10);
