@@ -189,7 +189,7 @@ auto push_field_offset(
         offset += com.types.size_of(field.type);
     }
     
-    tok.error("could not find field '{}' for type '{}'\n", field_name, to_string(type));
+    tok.error("could not find field '{}' for type '{}'\n", field_name, type);
 }
 
 auto constructor_params(const compiler& com, const type_name& type) -> std::vector<type_name>
@@ -627,7 +627,7 @@ auto compile_struct_template(
     com.current_struct.emplace_back(name);
     com.current_module.emplace_back(name.module);
     const auto success = com.types.add_type(name, map);
-    tok.assert(success, "multiple definitions for struct {} found", to_string(name));
+    tok.assert(success, "multiple definitions for struct {} found", name);
     for (const auto& p : stmt.fields) {
         const auto f = type_field{p.name, resolve_type(com, tok, p.type)};
         com.types.add_field(name, f);
@@ -1012,7 +1012,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
             compile_struct_template(com, node.token, name, ast);
         }
 
-        node.token.assert(com.types.contains(name), "could not find struct {}", type_name{name});
+        node.token.assert(com.types.contains(name), "could not find struct {}", name);
         return { type_type{}, {type_name{name}} };
     }
     node.token.error("object of type {} can not be called with template parameters", type);
@@ -1831,7 +1831,7 @@ void push_stmt(compiler& com, const node_struct_stmt& node)
     const auto sname = type_struct{ .name=node.name, .module=curr_module(com) };
     com.current_struct.emplace_back(sname);
     const auto success = com.types.add_type(sname);
-    node.token.assert(success, "multiple definitions for struct {} found", to_string(sname));
+    node.token.assert(success, "multiple definitions for struct {} found", sname);
     for (const auto& p : node.fields) {
         const auto f = type_field{p.name, resolve_type(com, node.token, p.type)};
         com.types.add_field(sname, f);

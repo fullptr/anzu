@@ -24,54 +24,63 @@ struct type_name;
 struct type_null
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_null&) const -> bool = default;
 };
 
 struct type_bool
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_bool&) const -> bool = default;
 };
 
 struct type_char
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_char&) const -> bool = default;
 };
 
 struct type_i32
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_i32&) const -> bool = default;
 };
 
 struct type_i64
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_i64&) const -> bool = default;
 };
 
 struct type_u64
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_u64&) const -> bool = default;
 };
 
 struct type_f64
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_f64&) const -> bool = default;
 };
 
 struct type_type
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_type&) const -> bool = default;
 };
 
 struct type_arena
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_arena&) const -> bool = default;
 };
 
@@ -79,6 +88,7 @@ struct type_arena
 struct type_module
 {
     auto to_hash() const { return hash(0); }
+    auto to_string() const -> std::string;
     auto operator==(const type_module&) const -> bool = default;
 };
 
@@ -89,6 +99,7 @@ struct type_struct
     std::vector<type_name> templates;
 
     auto to_hash() const { return hash(name, module, templates); }
+    auto to_string() const -> std::string;
     auto operator==(const type_struct&) const -> bool = default;
 };
 
@@ -98,6 +109,7 @@ struct type_array
     std::size_t          count;
 
     auto to_hash() const { return hash(inner_type, count); }
+    auto to_string() const -> std::string;
     auto operator==(const type_array&) const -> bool = default;
 };
 
@@ -106,6 +118,7 @@ struct type_ptr
     value_ptr<type_name> inner_type;
 
     auto to_hash() const { return hash(inner_type); }
+    auto to_string() const -> std::string;
     auto operator==(const type_ptr&) const -> bool = default;
 };
 
@@ -114,6 +127,7 @@ struct type_span
     value_ptr<type_name> inner_type;
 
     auto to_hash() const { return hash(inner_type); }
+    auto to_string() const -> std::string;
     auto operator==(const type_span&) const -> bool = default;
 };
 
@@ -123,6 +137,7 @@ struct type_function_ptr
     value_ptr<type_name>   return_type;
 
     auto to_hash() const { return hash(param_types, return_type); }
+    auto to_string() const -> std::string;
     auto operator==(const type_function_ptr&) const -> bool = default;
 };
 
@@ -133,6 +148,7 @@ struct type_bound_method
     value_ptr<type_name>   return_type;
 
     auto to_hash() const { return hash(id, param_types, return_type); }
+    auto to_string() const -> std::string;
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
@@ -143,6 +159,7 @@ struct type_bound_method_template
     std::string              name;
 
     auto to_hash() const { return hash(module, struct_name, name); }
+    auto to_string() const -> std::string;
     auto operator==(const type_bound_method_template&) const -> bool = default;
 };
 
@@ -155,6 +172,7 @@ struct type_function
     auto to_pointer() const -> type_name;
     auto to_hash() const { return hash(id, param_types, return_type); }
     auto to_bound_method() -> type_bound_method { return {id, param_types, return_type}; }
+    auto to_string() const -> std::string;
     auto operator==(const type_function&) const -> bool = default;
 };
 
@@ -175,6 +193,7 @@ struct type_struct_template
     std::string           name;
 
     auto to_hash() const { return hash(module, name); }
+    auto to_string() const -> std::string;
     auto operator==(const type_struct_template&) const -> bool = default;
 };
 
@@ -184,32 +203,9 @@ struct type_placeholder
     std::string name;
 
     auto to_hash() const { return hash(name); }
+    auto to_string() const -> std::string;
     auto operator==(const type_placeholder&) const -> bool = default;
 };
-
-auto to_string(const type_name& type) -> std::string;
-
-auto to_string(const type_null&) -> std::string;
-auto to_string(const type_bool&) -> std::string;
-auto to_string(const type_char&) -> std::string;
-auto to_string(const type_i32&) -> std::string;
-auto to_string(const type_i64&) -> std::string;
-auto to_string(const type_u64&) -> std::string;
-auto to_string(const type_f64&) -> std::string;
-auto to_string(const type_module&) -> std::string;
-auto to_string(const type_type&) -> std::string;
-auto to_string(const type_arena&) -> std::string;
-auto to_string(const type_array& type) -> std::string;
-auto to_string(const type_ptr& type) -> std::string;
-auto to_string(const type_span& type) -> std::string;
-auto to_string(const type_struct& type) -> std::string;
-auto to_string(const type_function_ptr& type) -> std::string;
-auto to_string(const type_bound_method& type) -> std::string;
-auto to_string(const type_bound_method_template& type) -> std::string;
-auto to_string(const type_function& type) -> std::string;
-auto to_string(const type_function_template& type) -> std::string;
-auto to_string(const type_struct_template& type) -> std::string;
-auto to_string(const type_placeholder& type) -> std::string;
 
 struct type_name : public std::variant<
     type_null,
@@ -263,7 +259,7 @@ struct type_name : public std::variant<
     }
 
     auto to_string() const -> std::string {
-        const auto inner = std::visit([](const auto& obj) { return anzu::to_string(obj); }, *this);
+        const auto inner = std::visit([](const auto& obj) { return obj.to_string(); }, *this);
         return std::format("{}{}", inner, is_const ? " const" : "");
     }
 };
