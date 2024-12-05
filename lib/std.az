@@ -400,7 +400,6 @@ struct zip_iterator!(T, U)
 
     fn current(self: const&) -> zip_iterator_value!(T, U)
     {
-        print("{}\n", @type_name_of(self._left[self._curr]));
         return zip_iterator_value!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
     }
 

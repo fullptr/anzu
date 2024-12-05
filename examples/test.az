@@ -1,13 +1,11 @@
+let std := @import("lib/std.az");
 
 
-struct foo!(T)
-{
-    y: T;
+
+let x := [1, 2, 3, 4];
+let y := ["a", "b", "c", "d"];
+
+var z := std.zip(x[], y[]);
+for e in std.enumerate(z) {
+    print("{}: {} {}\n", e.index, e.value.left@, e.value.right@);
 }
-
-struct baz!(T)
-{
-    u: T;
-}
-
-let f := foo(baz(10));

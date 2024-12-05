@@ -1283,7 +1283,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     if (!com.current_placeholders.empty()) {
         const auto placeholder = type_placeholder{com.current_placeholders_root.back(), node.name};
         if (com.current_placeholders.back().contains(placeholder)) {
-            std::print("returning {} for name {}\n", placeholder, node.name);
             return { type_type{}, {type_name{placeholder}} };
         }
     }
