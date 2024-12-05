@@ -272,15 +272,6 @@ struct vector!(T)
     }
 }
 
-fn sqrt(value: f64) -> f64
-{
-    var z := 1.0;
-    for _ in range(15) {
-        z = z - (z * z - value) / (2.0 * z);
-    }
-    return z;
-}
-
 struct range_iter!(T)
 {
     _curr: T;
@@ -303,6 +294,15 @@ fn range!(T)(max: T) -> range_iter!(T)
 {
     assert T == i64 || T == u64;
     return range_iter!(T)(0 as T, max);
+}
+
+fn sqrt(value: f64) -> f64
+{
+    var z := 1.0;
+    for _ in range(15) {
+        z = z - (z * z - value) / (2.0 * z);
+    }
+    return z;
 }
 
 struct pairwise_iterator_value!(T)
@@ -400,6 +400,7 @@ struct zip_iterator!(T, U)
 
     fn current(self: const&) -> zip_iterator_value!(T, U)
     {
+        print("{}\n", @type_name_of(self._left[self._curr]));
         return zip_iterator_value!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
     }
 

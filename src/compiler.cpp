@@ -600,7 +600,8 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
         const auto& ast = com.function_templates.at(key);
         const auto names = ast.templates
                          | std::views::transform([&](const auto& n) {
-                              return type_placeholder{{name.struct_name.to_struct_template()}, n};
+                              const auto type = type_function_template{name.module, name.struct_name, name.name};
+                              return type_placeholder{{type}, n};
                          })
                          | std::ranges::to<std::vector>();
         const auto map = build_template_map(com, tok, names, name.templates);
@@ -941,6 +942,14 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
                                     return type_placeholder{type_name{*info}, n};
                                 })
                                 | std::ranges::to<std::vector>();
+        std::print("deducing placeholders for {} from\n", info->name);
+        for (const auto& param: params) {
+            print_node(*param);
+        }
+        std::print("placeholders:\n");
+        for (const auto& p : placeholders) {
+            std::print("  - {}\n", p);
+        }
         const auto templates = deduce_template_params(com, node.token, type_name{*info}, placeholders, params, node.args);
         const auto name = type_struct{info->name, info->module, templates};
         if (!com.types.contains(name)) {
@@ -1270,6 +1279,15 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
         return { type_type{}, {*t} };
     }
 
+    // It might be a template placeholder for a type the needs to be deduced
+    if (!com.current_placeholders.empty()) {
+        const auto placeholder = type_placeholder{com.current_placeholders_root.back(), node.name};
+        if (com.current_placeholders.back().contains(placeholder)) {
+            std::print("returning {} for name {}\n", placeholder, node.name);
+            return { type_type{}, {type_name{placeholder}} };
+        }
+    }
+
     // It might be one of the current functions template aliases
     const auto& map1 = current(com).fn_templates;
     const auto map1_key = type_placeholder{{current(com).to_function_template()}, node.name};
@@ -1282,14 +1300,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     const auto map2_key = type_placeholder{{curr_struct(com).to_struct_template()}, node.name};
     if (auto it = map2.find(map2_key); it != map2.end()) {
         return { type_type{}, {it->second} };
-    }
-
-    // It might be a template placeholder for a type the needs to be deduced
-    if (!com.current_placeholders.empty()) {
-        const auto placeholder = type_placeholder{com.current_placeholders_root.back(), node.name};
-        if (com.current_placeholders.back().contains(placeholder)) {
-            return { type_type{}, {type_name{placeholder}} };
-        }
     }
 
     // Otherwise, it must be a variable

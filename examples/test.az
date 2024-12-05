@@ -1,17 +1,13 @@
 
 
-
-
-fn qux!(T)(x: T) -> T
+struct foo!(T)
 {
-    return T();
+    y: T;
 }
 
-fn bar!(T)(x: T) -> T
+struct baz!(T)
 {
-    let f := qux(x);
-    return f;
+    u: T;
 }
 
-let b := bar(10);
-print("{}\n", b);
+let f := foo(baz(10));
