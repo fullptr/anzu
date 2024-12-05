@@ -12,8 +12,8 @@ fn foo!(T)(x: T) -> T
 
 let x := [1, 2, 3, 4];
 
-for e in std.enumerate(std.pairwise(x[])) {
-    print("{}: {} {}\n", e.index, e.value.left@, e.value.right@);
-}
+#for e in std.enumerate(std.pairwise(x[])) {
+#    print("{}: {} {}\n", e.index, e.value.left@, e.value.right@);
+#}
 
-foo(10);
+print("{}\n", foo(10));

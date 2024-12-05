@@ -400,7 +400,7 @@ struct zip_iterator!(T, U)
 
     fn current(self: const&) -> zip_iterator_value!(T, U)
     {
-        return zip_iterator_value!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
+        return zip_iterator_value(self._left[self._curr]&, self._right[self._curr]&, self._curr);
     }
 
     fn next(self: &) -> zip_iterator_value!(T, U)
@@ -414,5 +414,5 @@ struct zip_iterator!(T, U)
 fn zip!(T, U)(left: T[], right: U[]) -> zip_iterator!(T, U)
 {
     assert @len(left) == @len(right);
-    return zip_iterator!(T, U)(left, right, 0u);
+    return zip_iterator(left, right, 0u);
 }
