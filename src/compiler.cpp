@@ -1867,7 +1867,12 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     node.token.assert(!type.is<type_arena>(), "cannot create copies of arenas");
 
     push_copy_typechecked(com, *node.expr, type, node.token);
-    declare_var(com, node.token, node.name, type, expr_value);
+    if (node.names.size() == 1) {
+        declare_var(com, node.token, node.names[0], type, expr_value);
+    } else {
+        node.token.assert(type.is<type_struct>(), "can only unpack structs");
+        node.token.assert_eq(node.names.size(), com.types.fields_of(type.as<type_struct>()).size(), "invalid number of args to unpack into");
+    }
 }
 
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void

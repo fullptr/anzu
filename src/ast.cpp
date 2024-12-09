@@ -233,7 +233,11 @@ auto print_node(const node_stmt& root, int indent) -> void
         },
         [&](const node_declaration_stmt& node) {
             std::print("{}Declaration:\n", spaces);
-            std::print("{}- Name: {}\n", spaces, node.name);
+            if (node.names.size() == 1) {
+                std::print("{}- Name: {}\n", spaces, node.names[0]);
+            } else {
+                std::print("{}- Names: {}\n", spaces, format_comma_separated(node.names));
+            }
             if (node.explicit_type) {
                 std::print("{}- ExplicitType:\n", spaces);
                 print_node(*node.explicit_type, indent + 1);

@@ -561,7 +561,14 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
                                   stmt.token.text);
     }
 
-    stmt.name = parse_identifier(tokens);
+    if (tokens.consume_maybe(token_type::left_bracket)) {
+        tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
+            stmt.names.push_back(parse_identifier(tokens));
+        });
+    } else {
+        stmt.names.push_back(parse_identifier(tokens));
+    }
+
     if (tokens.consume_maybe(token_type::colon)) {
         stmt.explicit_type = parse_expression(tokens);
         tokens.consume_only(token_type::equal);
