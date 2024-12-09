@@ -318,7 +318,7 @@ struct pairwise_iterator!(T)
 
     fn current(self: const&) -> pairwise_iterator_value!(T)
     {
-        return pairwise_iterator_value!(T)(self._elems[self._curr]&, self._elems[self._curr + 1u]&);
+        return pairwise_iterator_value(self._elems[self._curr]&, self._elems[self._curr + 1u]&);
     }
 
     fn valid(self: const&) -> bool
@@ -337,7 +337,7 @@ struct pairwise_iterator!(T)
 fn pairwise!(T)(elems: T[]) -> pairwise_iterator!(T)
 {
     assert @len(elems) >= 2u;
-    return pairwise_iterator!(T)(elems, 0u);
+    return pairwise_iterator(elems, 0u);
 }
 
 struct enumerate_iterator_value!(A)
@@ -358,13 +358,7 @@ struct enumerate_iterator!(T)
 
     fn next(self: &) -> enumerate_iterator_value!(@type_of(self._iter.next()))
     {
-        var v := self._iter.next();
-        let Z := enumerate_iterator_value!(@type_of(v));
-
-        var curr := Z();
-        curr.index = self._curr;
-        curr.value = v;
-
+        let curr := enumerate_iterator_value(self._curr, self._iter.next());
         self._curr = self._curr + 1u;
         return curr;
     }
@@ -372,7 +366,7 @@ struct enumerate_iterator!(T)
 
 fn enumerate!(T)(iter: T) -> enumerate_iterator!(T)
 {
-    return enumerate_iterator!(T)(iter, 0u);
+    return enumerate_iterator(iter, 0u);
 }
 
 struct zip_iterator_value!(T, U)
@@ -400,7 +394,7 @@ struct zip_iterator!(T, U)
 
     fn current(self: const&) -> zip_iterator_value!(T, U)
     {
-        return zip_iterator_value!(T, U)(self._left[self._curr]&, self._right[self._curr]&, self._curr);
+        return zip_iterator_value(self._left[self._curr]&, self._right[self._curr]&, self._curr);
     }
 
     fn next(self: &) -> zip_iterator_value!(T, U)
@@ -414,5 +408,5 @@ struct zip_iterator!(T, U)
 fn zip!(T, U)(left: T[], right: U[]) -> zip_iterator!(T, U)
 {
     assert @len(left) == @len(right);
-    return zip_iterator!(T, U)(left, right, 0u);
+    return zip_iterator(left, right, 0u);
 }
