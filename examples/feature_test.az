@@ -367,3 +367,13 @@ print("{}\n", my_vec.size());
 for x in my_vec.to_span() {
     print("{} ", x@);
 }
+print("\n");
+
+# Iterators from the stdlib, nested
+let x := [1, 2, 3];
+let y := ["a", "b", "c"];
+
+for elem in std.enumerate(std.zip(x[], y[])) {
+    print("{}: {} {}\n", elem.index, elem.value.left@, elem.value.right@);
+}
+print("{}\n", @type_name_of(std.enumerate(std.zip(x[], y[]))));

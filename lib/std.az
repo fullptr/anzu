@@ -410,3 +410,31 @@ fn zip!(T, U)(left: T[], right: U[]) -> zip_iterator!(T, U)
     assert @len(left) == @len(right);
     return zip_iterator(left, right, 0u);
 }
+
+struct iterspan_iterator!(T)
+{
+    _iter: T[];
+    _curr: u64;
+
+    fn valid(self: const&) -> bool
+    {
+        return self._curr < @len(self._iter);
+    }
+
+    fn current(self: const&) -> T&
+    {
+        return self._iter[self._curr]&;
+    }
+
+    fn next(self: &) -> T&
+    {
+        let curr := self.current();
+        self._curr = self._curr + 1u;
+        return curr;
+    }
+}
+
+fn iterspan!(T)(elems: T[]) -> iterspan_iterator!(T)
+{
+    return iterspan_iterator(elems, 0u);
+}
