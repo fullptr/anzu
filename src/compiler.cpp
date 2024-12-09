@@ -409,15 +409,15 @@ auto deduce_template_params(
 
     auto placeholders = std::unordered_set<std::string>{};
     for (const auto name : names) placeholders.emplace(name);
-    com.current_placeholders.push_back(placeholders);
 
     auto name_map = template_map{};
     for (const auto& [param, arg] : std::views::zip(sig_params, args)) {
+        com.current_placeholders.push_back(&placeholders);
         const auto param_type = resolve_type(com, tok, param);
+        com.current_placeholders.pop_back();
         const auto arg_type = type_of_expr(com, *arg).type;
         match_placeholders(name_map, tok, arg_type, param_type);
     }
-    com.current_placeholders.pop_back();
 
     auto deduced_templates = std::vector<type_name>{};
     deduced_templates.reserve(names.size());
@@ -1241,6 +1241,11 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
         return { type_type{}, {*t} };
     }
 
+    // It might be a template placeholder for a type the needs to be deduced
+    if (!com.current_placeholders.empty() && com.current_placeholders.back()->contains(node.name)) {
+        return { type_type{}, {type_name{type_placeholder{node.name}}} };
+    }
+
     // It might be one of the current functions template aliases
     const auto& map1 = current(com).templates;
     if (auto it = map1.find(node.name); it != map1.end()) {
@@ -1251,11 +1256,6 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     const auto map2 = com.types.templates_of(curr_struct(com));
     if (auto it = map2.find(node.name); it != map2.end()) {
         return { type_type{}, {it->second} };
-    }
-
-    // It might be a tempalte placeholder for a type the needs to be deduced
-    if (!com.current_placeholders.empty() && com.current_placeholders.back().contains(node.name)) {
-        return { type_type{}, {type_name{type_placeholder{node.name}}} };
     }
 
     // Otherwise, it must be a variable
