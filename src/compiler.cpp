@@ -1871,7 +1871,11 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
         declare_var(com, node.token, node.names[0], type, expr_value);
     } else {
         node.token.assert(type.is<type_struct>(), "can only unpack structs");
-        node.token.assert_eq(node.names.size(), com.types.fields_of(type.as<type_struct>()).size(), "invalid number of args to unpack into");
+        const auto fields = com.types.fields_of(type.as<type_struct>());
+        node.token.assert_eq(node.names.size(), fields.size(), "invalid number of args to unpack into");
+        for (const auto& [name, field] : std::views::zip(node.names, fields)) {
+            declare_var(com, node.token, name, field.type);
+        }
     }
 }
 
