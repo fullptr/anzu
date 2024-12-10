@@ -1874,7 +1874,9 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
         const auto fields = com.types.fields_of(type.as<type_struct>());
         node.token.assert_eq(node.names.size(), fields.size(), "invalid number of args to unpack into");
         for (const auto& [name, field] : std::views::zip(node.names, fields)) {
-            declare_var(com, node.token, name, field.type);
+            auto field_type = field.type;
+            field_type.is_const = node.add_const;
+            declare_var(com, node.token, name, field_type);
         }
     }
 }

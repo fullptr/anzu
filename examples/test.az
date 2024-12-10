@@ -6,4 +6,5 @@ struct foo {
 
 let f := foo(1, 2);
 let [a, b] := f;
+a = 10;
 print("{} {}\n", a, b);
