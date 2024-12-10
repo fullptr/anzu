@@ -654,7 +654,6 @@ auto push_name_pack(
     compiler& com,
     const token& tok,
     const name_pack& np,
-    bool add_const,
     const type_name& type,
     const const_value& expr_value = {}
 ) -> void
@@ -667,7 +666,7 @@ auto push_name_pack(
             tok.assert_eq(np.names.size(), fields.size(), "invalid number of args to unpack struct into");
             for (const auto& [name, field] : std::views::zip(np.names, fields)) {
                 auto field_type = field.type;
-                field_type.is_const = add_const;
+                field_type.is_const = type.is_const;
                 declare_var(com, tok, name, field_type, expr_value);
             }
         }
@@ -675,7 +674,7 @@ auto push_name_pack(
             const auto size = type.as<type_array>().count;
             tok.assert_eq(np.names.size(), size, "invalid number of args to unpack array into");
             auto field_type = *type.as<type_array>().inner_type;
-            field_type.is_const = add_const;
+            field_type.is_const = type.is_const;
             for (const auto& name : np.names) {
                 declare_var(com, tok, name, field_type, expr_value);
             }
@@ -1740,7 +1739,7 @@ void push_for_loop_span(compiler& com, const node_for_stmt& node, const type_spa
         push_var_val(com, node.token, curr_module(com), "$iter");
         push_var_val(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::nth_element_ptr, com.types.size_of(inner));
-        push_name_pack(com, node.token, node.names, false, inner.add_ptr());
+        push_name_pack(com, node.token, node.names, inner.add_ptr());
 
         // idx = idx + 1;
         push_var_val(com, node.token, curr_module(com), "$idx");
@@ -1794,7 +1793,7 @@ void push_for_loop_iterator(compiler& com, const node_for_stmt& node, const type
         // var name := obj.next();
         push_var_addr(com, node.token, curr_module(com), "$iter");
         push_value(code(com), op::call_static, next_fn.id, sizeof(std::byte*));
-        push_name_pack(com, node.token, node.names, false, next_fn.return_type);
+        push_name_pack(com, node.token, node.names, next_fn.return_type);
 
         // main body
         push_stmt(com, *node.body);
@@ -1898,9 +1897,10 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     const auto [expr_type, expr_value] = type_of_expr(com, *node.expr);
     auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
                                    : expr_type;
+    type.is_const = node.add_const;
     node.token.assert(!type.is<type_arena>(), "cannot create copies of arenas");
     push_copy_typechecked(com, *node.expr, type, node.token);
-    push_name_pack(com, node.token, node.names, node.add_const, expr_type, expr_value);
+    push_name_pack(com, node.token, node.names, type, expr_value);
 }
 
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
