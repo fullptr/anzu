@@ -650,6 +650,42 @@ auto compile_struct_template(
     }
 }
 
+auto push_name_pack(
+    compiler& com,
+    const token& tok,
+    const name_pack& np,
+    bool add_const,
+    const type_name& type,
+    const const_value& expr_value = {}
+) -> void
+{
+    if (!np.is_pack) {
+        declare_var(com, tok, np.names[0], type, expr_value);
+    } else {
+        if (type.is<type_struct>()) {
+            const auto fields = com.types.fields_of(type.as<type_struct>());
+            tok.assert_eq(np.names.size(), fields.size(), "invalid number of args to unpack struct into");
+            for (const auto& [name, field] : std::views::zip(np.names, fields)) {
+                auto field_type = field.type;
+                field_type.is_const = add_const;
+                declare_var(com, tok, name, field_type, expr_value);
+            }
+        }
+        else if (type.is<type_array>()) {
+            const auto size = type.as<type_array>().count;
+            tok.assert_eq(np.names.size(), size, "invalid number of args to unpack array into");
+            auto field_type = *type.as<type_array>().inner_type;
+            field_type.is_const = add_const;
+            for (const auto& name : np.names) {
+                declare_var(com, tok, name, field_type, expr_value);
+            }
+        }
+        else {
+            tok.error("objects of type {} cannot be unpacked", type);
+        }
+    }
+}
+
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> expr_result
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a i32 literal");
@@ -1704,7 +1740,7 @@ void push_for_loop_span(compiler& com, const node_for_stmt& node, const type_spa
         push_var_val(com, node.token, curr_module(com), "$iter");
         push_var_val(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::nth_element_ptr, com.types.size_of(inner));
-        declare_var(com, node.token, node.name, inner.add_ptr());
+        push_name_pack(com, node.token, node.names, false, inner.add_ptr());
 
         // idx = idx + 1;
         push_var_val(com, node.token, curr_module(com), "$idx");
@@ -1758,7 +1794,7 @@ void push_for_loop_iterator(compiler& com, const node_for_stmt& node, const type
         // var name := obj.next();
         push_var_addr(com, node.token, curr_module(com), "$iter");
         push_value(code(com), op::call_static, next_fn.id, sizeof(std::byte*));
-        declare_var(com, node.token, node.name, next_fn.return_type);
+        push_name_pack(com, node.token, node.names, false, next_fn.return_type);
 
         // main body
         push_stmt(com, *node.body);
@@ -1855,42 +1891,6 @@ void push_stmt(compiler& com, const node_continue_stmt& node)
     push_value(code(com), op::jump);
     const auto pos = push_value(code(com), std::uint64_t{0}); // filled in later
     variables(com).get_loop_info().continues.push_back(pos);
-}
-
-auto push_name_pack(
-    compiler& com,
-    const token& tok,
-    const name_pack& np,
-    bool add_const,
-    const type_name& type,
-    const const_value& expr_value = {}
-) -> void
-{
-    if (!np.is_pack) {
-        declare_var(com, tok, np.names[0], type, expr_value);
-    } else {
-        if (type.is<type_struct>()) {
-            const auto fields = com.types.fields_of(type.as<type_struct>());
-            tok.assert_eq(np.names.size(), fields.size(), "invalid number of args to unpack struct into");
-            for (const auto& [name, field] : std::views::zip(np.names, fields)) {
-                auto field_type = field.type;
-                field_type.is_const = add_const;
-                declare_var(com, tok, name, field_type);
-            }
-        }
-        else if (type.is<type_array>()) {
-            const auto size = type.as<type_array>().count;
-            tok.assert_eq(np.names.size(), size, "invalid number of args to unpack array into");
-            auto field_type = *type.as<type_array>().inner_type;
-            field_type.is_const = add_const;
-            for (const auto& name : np.names) {
-                declare_var(com, tok, name, field_type);
-            }
-        }
-        else {
-            tok.error("objects of type {} cannot be unpacked", type);
-        }
-    }
 }
 
 auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void

@@ -1,8 +1,6 @@
+let std := @import("lib/std.az");
+let x := [1, 2, 3, 4];
 
-struct foo {
-    x: i64;
+for [idx, value] in std.enumerate(x[]) {
+    
 }
-
-let [a] := foo(10);
-let [b, c] := [1, 2];
-print("{} {} {}\n", a, b, c);

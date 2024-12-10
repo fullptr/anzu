@@ -269,7 +269,7 @@ struct node_while_stmt
 
 struct node_for_stmt
 {
-    std::string name;
+    name_pack     names;
     node_expr_ptr iter;
     node_stmt_ptr body;
 

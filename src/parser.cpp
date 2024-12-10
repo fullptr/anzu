@@ -512,7 +512,7 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_for_stmt>();
 
     stmt.token = tokens.consume_only(token_type::kw_for);
-    stmt.name = parse_identifier(tokens);
+    stmt.names = parse_name_pack(tokens);
     tokens.consume_only(token_type::kw_in);
     stmt.iter = parse_expression(tokens);
     stmt.body = parse_statement(tokens);

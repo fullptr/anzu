@@ -205,7 +205,8 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.body, indent + 1);
         },
         [&](const node_for_stmt& node) {
-            std::print("{}For (name={}):\n", spaces, node.name);
+            std::print("{}For:\n", spaces);
+            print_name_pack(spaces, node.names);
             std::print("{}- Iter:\n", spaces);
             print_node(*node.iter, indent + 1);
             std::print("{}- Body:\n", spaces);
