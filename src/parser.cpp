@@ -562,10 +562,12 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
     }
 
     if (tokens.consume_maybe(token_type::left_bracket)) {
+        stmt.is_unpack = true;
         tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
             stmt.names.push_back(parse_identifier(tokens));
         });
     } else {
+        stmt.is_unpack = false;
         stmt.names.push_back(parse_identifier(tokens));
     }
 

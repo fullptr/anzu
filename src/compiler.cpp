@@ -1867,7 +1867,7 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     node.token.assert(!type.is<type_arena>(), "cannot create copies of arenas");
 
     push_copy_typechecked(com, *node.expr, type, node.token);
-    if (node.names.size() == 1) {
+    if (!node.is_unpack) {
         declare_var(com, node.token, node.names[0], type, expr_value);
     } else {
         if (type.is<type_struct>()) {

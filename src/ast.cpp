@@ -233,11 +233,12 @@ auto print_node(const node_stmt& root, int indent) -> void
         },
         [&](const node_declaration_stmt& node) {
             std::print("{}Declaration:\n", spaces);
-            if (node.names.size() == 1) {
-                std::print("{}- Name: {}\n", spaces, node.names[0]);
-            } else {
+            if (node.is_unpack) {
                 std::print("{}- Names: {}\n", spaces, format_comma_separated(node.names));
+            } else {
+                std::print("{}- Name: {}\n", spaces, node.names[0]);
             }
+            std::print("{}- Unpacked: {}\n", spaces, node.is_unpack);
             if (node.explicit_type) {
                 std::print("{}- ExplicitType:\n", spaces);
                 print_node(*node.explicit_type, indent + 1);

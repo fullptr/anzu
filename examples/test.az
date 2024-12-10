@@ -1,5 +1,7 @@
 
-var x := [1, 2, 3];
-let [a, b, c] := x;
-x[1u] = 10;
-print("{} {} {}\n", a, b, c);
+struct foo {
+    x: i64;
+}
+
+let [a] := foo(10);
+@type_name_of(a);

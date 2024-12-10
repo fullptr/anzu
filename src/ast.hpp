@@ -302,6 +302,7 @@ struct node_continue_stmt
 struct node_declaration_stmt
 {
     std::vector<std::string> names;
+    bool                     is_unpack;
     node_expr_ptr            expr;
     node_expr_ptr            explicit_type;
     bool                     add_const;
