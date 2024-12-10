@@ -5,6 +5,19 @@
 #include <ranges>
 
 namespace anzu {
+namespace {
+
+auto print_name_pack(std::string_view spaces, const name_pack& names) -> void
+{
+    if (names.is_pack) {
+        std::print("{}- Names: {}\n", spaces, format_comma_separated(names.names));
+    } else {
+        std::print("{}- Name: {}\n", spaces, names.names[0]);
+    }
+    std::print("{}- Is Pack: {}\n", spaces, names.is_pack);
+}
+
+}
 
 auto print_node(const node_expr& root, int indent) -> void
 {
@@ -233,12 +246,7 @@ auto print_node(const node_stmt& root, int indent) -> void
         },
         [&](const node_declaration_stmt& node) {
             std::print("{}Declaration:\n", spaces);
-            if (node.is_unpack) {
-                std::print("{}- Names: {}\n", spaces, format_comma_separated(node.names));
-            } else {
-                std::print("{}- Name: {}\n", spaces, node.names[0]);
-            }
-            std::print("{}- Unpacked: {}\n", spaces, node.is_unpack);
+            print_name_pack(spaces, node.names);
             if (node.explicit_type) {
                 std::print("{}- ExplicitType:\n", spaces);
                 print_node(*node.explicit_type, indent + 1);

@@ -4,4 +4,5 @@ struct foo {
 }
 
 let [a] := foo(10);
-@type_name_of(a);
+let [b, c] := [1, 2];
+print("{} {} {}\n", a, b, c);

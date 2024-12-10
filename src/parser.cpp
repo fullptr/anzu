@@ -41,6 +41,21 @@ struct parse_rule
     precedence  prec;
 };
 
+auto parse_name_pack(tokenstream& tokens) -> name_pack
+{
+    name_pack np;
+    if (tokens.consume_maybe(token_type::left_bracket)) {
+        np.is_pack = true;
+        tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
+            np.names.push_back(parse_identifier(tokens));
+        });
+    } else {
+        np.is_pack = false;
+        np.names.push_back(parse_identifier(tokens));
+    }
+    return np;
+}
+
 template <typename Inner>
 auto new_node(const token& tok) -> std::tuple<node_expr_ptr, Inner&>
 {
@@ -561,15 +576,7 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
                                   stmt.token.text);
     }
 
-    if (tokens.consume_maybe(token_type::left_bracket)) {
-        stmt.is_unpack = true;
-        tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
-            stmt.names.push_back(parse_identifier(tokens));
-        });
-    } else {
-        stmt.is_unpack = false;
-        stmt.names.push_back(parse_identifier(tokens));
-    }
+    stmt.names = parse_name_pack(tokens);
 
     if (tokens.consume_maybe(token_type::colon)) {
         stmt.explicit_type = parse_expression(tokens);
