@@ -1,8 +1,5 @@
-let std := @import("lib/std.az");
 
-let x := [1, 2, 3];
-let y := ["a", "b", "c"];
-
-for elem in std.enumerate(std.iterspan(x[])) {
-    print("{}: {}\n", elem.index, elem.value@);
-}
+var x := [1, 2, 3];
+let [a, b, c] := x;
+x[1u] = 10;
+print("{} {} {}\n", a, b, c);

@@ -301,10 +301,10 @@ struct node_continue_stmt
 
 struct node_declaration_stmt
 {
-    std::string   name;
-    node_expr_ptr expr;
-    node_expr_ptr explicit_type;
-    bool          add_const;
+    std::vector<std::string> names;
+    node_expr_ptr            expr;
+    node_expr_ptr            explicit_type;
+    bool                     add_const;
 
     anzu::token token;
 };

@@ -1867,7 +1867,31 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     node.token.assert(!type.is<type_arena>(), "cannot create copies of arenas");
 
     push_copy_typechecked(com, *node.expr, type, node.token);
-    declare_var(com, node.token, node.name, type, expr_value);
+    if (node.names.size() == 1) {
+        declare_var(com, node.token, node.names[0], type, expr_value);
+    } else {
+        if (type.is<type_struct>()) {
+            const auto fields = com.types.fields_of(type.as<type_struct>());
+            node.token.assert_eq(node.names.size(), fields.size(), "invalid number of args to unpack struct into");
+            for (const auto& [name, field] : std::views::zip(node.names, fields)) {
+                auto field_type = field.type;
+                field_type.is_const = node.add_const;
+                declare_var(com, node.token, name, field_type);
+            }
+        }
+        else if (type.is<type_array>()) {
+            const auto size = type.as<type_array>().count;
+            node.token.assert_eq(node.names.size(), size, "invalid number of args to unpack array into");
+            auto field_type = *type.as<type_array>().inner_type;
+            field_type.is_const = node.add_const;
+            for (const auto& name : node.names) {
+                declare_var(com, node.token, name, field_type);
+            }
+        }
+        else {
+            node.token.error("objects of type {} cannot be unpacked", type);
+        }
+    }
 }
 
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void
