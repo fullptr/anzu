@@ -665,7 +665,7 @@ auto push_name_pack(
         [&](const std::vector<name_pack>& names) {
             if (type.is<type_struct>()) {
                 const auto fields = com.types.fields_of(type.as<type_struct>());
-                tok.assert_eq(names.size(), fields.size(), "invalid number of args to unpack struct into {} {}", type, fields.size());
+                tok.assert_eq(names.size(), fields.size(), "invalid number of args to unpack struct {} into", type);
                 for (const auto& [name, field] : std::views::zip(names, fields)) {
                     auto field_type = field.type;
                     field_type.is_const = type.is_const;
@@ -674,7 +674,7 @@ auto push_name_pack(
             }
             else if (type.is<type_array>()) {
                 const auto size = type.as<type_array>().count;
-                tok.assert_eq(names.size(), size, "invalid number of args to unpack array into");
+                tok.assert_eq(names.size(), size, "invalid number of args to unpack array {} into", type);
                 auto field_type = *type.as<type_array>().inner_type;
                 field_type.is_const = type.is_const;
                 for (const auto& name : names) {
