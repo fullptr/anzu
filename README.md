@@ -84,7 +84,7 @@ for <name> in <obj> {
 }
 ```
 There are two forms this takes:
-* `obj` can be a span. In this case, `name` is a pointer to the current element. This expands to
+* `obj` can be a span. In this case, `name` is a copy of the current element. This expands to
     ```
     var $s := <obj>;
     var $idx := 0u;
@@ -93,6 +93,12 @@ There are two forms this takes:
         var <name> := $s[$idx];
         <body>
         $idx = $idx + 1u;
+    }
+    ```
+    If you want to avoid the copy and/or mutate the underlying value, you can instead get a pointer to the current element via
+    ```
+    for <name>& in <obj> {  # Note the & here
+        <body>
     }
     ```
 * `obj` can be an "iterator". This is any struct type that has two member functions; `valid` and `next`. Both take no arguments aside from the implicit this pointer. `valid` must return a bool, and `next` can return any type, and the return object is what gets bound to `name`.
@@ -104,6 +110,15 @@ There are two forms this takes:
         <body>
     }
     ```
+    The `&` syntax is not available for iterator-based for loops, instead it is up to the iterator type itself to return a pointer if a mutable value is required.
+
+For loops can also use unpacking syntax as seen above in declarations:
+```
+for [index, value] in std.enumerate(std.valspan(array[])) {
+    ...
+}
+```
+Here, `enumerate` is an iterator adaptor that acts like Python's enumerate by returning a pair containing an index and a value. `std.valspan` is a bit of a hack to turn a span into an iterator. In the future I would like to make spans and iterators more composable in a natural way. The `&` syntax cannot be used with unpacking since unpacking is syntaxtic sugar over a value.
 
 The temporary variables are prefixed with `$` in the above examples to make them unspellable (and there inaccessible) in user code.
 

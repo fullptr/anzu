@@ -1620,7 +1620,17 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
             [&](auto&&)      { return false; }
         }, type);
 
+        push_value(code(com), op::push_bool, is_fundamental);
         return { type_bool{}, {is_fundamental} };
+    }
+    if (node.name == "is_span") {
+        node.token.assert_eq(node.args.size(), 1, "@is_span only accepts one argument");
+        const auto result = type_of_expr(com, *node.args[0]);
+        const auto type = get_type_value(node.token, result);
+
+        const auto is_span = type.is<type_span>();
+        push_value(code(com), op::push_bool, is_span);
+        return { type_bool{}, {is_span} };
     }
     if (node.name == "read_file") {
         const auto char_span = type_name{type_char{}}.add_const().add_span();
@@ -1712,7 +1722,7 @@ void push_stmt(compiler& com, const node_while_stmt& node)
 //    var size := <<length of iter>>;
 //    loop {
 //        if idx == size break;
-//        var name := obj[idx]&;
+//        var name := obj[idx] or obj[idx]&;
 //        idx = idx + 1u;
 //        <body>
 //    }
@@ -1738,11 +1748,17 @@ void push_for_loop_span(compiler& com, const node_for_stmt& node, const type_spa
         push_break(com, node.token);
         write_value(code(com), jump_pos, code(com).size());
 
-        // var name := iter[idx]&;
+        // var name := iter[idx] or iter[idx]&;
         push_var_val(com, node.token, curr_module(com), "$iter");
         push_var_val(com, node.token, curr_module(com), "$idx");
-        push_value(code(com), op::nth_element_ptr, com.types.size_of(inner));
-        push_name_pack(com, node.token, node.names, inner.add_ptr());
+        if (node.is_ptr) {
+            node.token.assert(std::holds_alternative<std::string>(node.names.names), "span-based for loop cannot take a pointer to an unpacking");
+            push_value(code(com), op::nth_element_ptr, com.types.size_of(inner));
+            push_name_pack(com, node.token, node.names, inner.add_ptr());
+        } else {
+            push_value(code(com), op::nth_element_val, com.types.size_of(inner));
+            push_name_pack(com, node.token, node.names, inner);
+        }
 
         // idx = idx + 1;
         push_var_val(com, node.token, curr_module(com), "$idx");
@@ -1766,6 +1782,8 @@ void push_for_loop_span(compiler& com, const node_for_stmt& node, const type_spa
 void push_for_loop_iterator(compiler& com, const node_for_stmt& node, const type_struct& type)
 {
     declare_var(com, node.token, "$iter", type);
+
+    node.token.assert(!node.is_ptr, "an iterator-based loop cannot have a pointer argument");
 
     // Fetch and verify the valid() function
     const auto valid_name = function_name{.module=type.module, .struct_name=type, .name="valid"};

@@ -1,17 +1,11 @@
 let std := @import("lib/std.az");
 
-struct bar
-{
-    x: i64;
-    y: i64;
+var arr := [[1], [2], [3]];
+
+for [x]& in arr[] {
+    x = 10;
 }
 
-struct foo
-{
-    b: bar;
-    x: f64;
+for x in arr[] {
+    print("{}\n", x[0u]);
 }
-
-let f := foo(bar(2, 3), 1.0);
-let [[r, t], y] := f;
-print("{} {} {}\n", r, t, y);

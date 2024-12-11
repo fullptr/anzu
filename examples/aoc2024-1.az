@@ -20,8 +20,8 @@ std.sort(r.to_span());
 
 var part1 := 0;
 var part2 := 0;
-for curr in std.zip(l.to_span(), r.to_span()) {
-    part1 = part1 + std.abs(curr.left@ - curr.right@);
-    part2 = part2 + counts[curr.left@ as u64] * curr.left@;
+for [left, right] in std.zip(l.to_span(), r.to_span()) {
+    part1 = part1 + std.abs(left - right);
+    part2 = part2 + counts[left as u64] * left;
 }
 print("{}\n{}\n", part1, part2);

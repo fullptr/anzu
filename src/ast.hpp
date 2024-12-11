@@ -269,6 +269,7 @@ struct node_while_stmt
 struct node_for_stmt
 {
     name_pack     names;
+    bool          is_ptr;
     node_expr_ptr iter;
     node_stmt_ptr body;
 
