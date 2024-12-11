@@ -1,3 +1,11 @@
 let std := @import("lib/std.az");
 
-print("{}\n", @is_span(i64[]&));
+let arr := [
+    [1, 2],
+    [2, 3],
+    [3, 4]
+];
+
+for [x, y] in arr[] {
+    print("{} {}\n", x, y);
+}
