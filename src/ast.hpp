@@ -16,8 +16,7 @@ using node_stmt_ptr = std::shared_ptr<node_stmt>;
 
 struct name_pack
 {
-    std::vector<std::string> names;
-    bool                     is_pack;
+    std::variant<std::string, std::vector<name_pack>> names;
 };
 
 struct node_literal_i32_expr

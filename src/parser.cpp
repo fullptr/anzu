@@ -45,13 +45,12 @@ auto parse_name_pack(tokenstream& tokens) -> name_pack
 {
     name_pack np;
     if (tokens.consume_maybe(token_type::left_bracket)) {
-        np.is_pack = true;
+        auto& names = np.names.emplace<std::vector<name_pack>>();
         tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
-            np.names.push_back(parse_identifier(tokens));
+            names.push_back(parse_name_pack(tokens));
         });
     } else {
-        np.is_pack = false;
-        np.names.push_back(parse_identifier(tokens));
+        np.names = parse_identifier(tokens);
     }
     return np;
 }

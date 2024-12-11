@@ -658,31 +658,34 @@ auto push_name_pack(
     const const_value& expr_value = {}
 ) -> void
 {
-    if (!np.is_pack) {
-        declare_var(com, tok, np.names[0], type, expr_value);
-    } else {
-        if (type.is<type_struct>()) {
-            const auto fields = com.types.fields_of(type.as<type_struct>());
-            tok.assert_eq(np.names.size(), fields.size(), "invalid number of args to unpack struct into");
-            for (const auto& [name, field] : std::views::zip(np.names, fields)) {
-                auto field_type = field.type;
+    std::visit(overloaded{
+        [&](const std::string& name) {
+            declare_var(com, tok, name, type, expr_value);
+        },
+        [&](const std::vector<name_pack>& names) {
+            if (type.is<type_struct>()) {
+                const auto fields = com.types.fields_of(type.as<type_struct>());
+                tok.assert_eq(names.size(), fields.size(), "invalid number of args to unpack struct into {} {}", type, fields.size());
+                for (const auto& [name, field] : std::views::zip(names, fields)) {
+                    auto field_type = field.type;
+                    field_type.is_const = type.is_const;
+                    push_name_pack(com, tok, name, field.type);
+                }
+            }
+            else if (type.is<type_array>()) {
+                const auto size = type.as<type_array>().count;
+                tok.assert_eq(names.size(), size, "invalid number of args to unpack array into");
+                auto field_type = *type.as<type_array>().inner_type;
                 field_type.is_const = type.is_const;
-                declare_var(com, tok, name, field_type, expr_value);
+                for (const auto& name : names) {
+                    push_name_pack(com, tok, name, field_type);
+                }
+            }
+            else {
+                tok.error("objects of type {} cannot be unpacked", type);
             }
         }
-        else if (type.is<type_array>()) {
-            const auto size = type.as<type_array>().count;
-            tok.assert_eq(np.names.size(), size, "invalid number of args to unpack array into");
-            auto field_type = *type.as<type_array>().inner_type;
-            field_type.is_const = type.is_const;
-            for (const auto& name : np.names) {
-                declare_var(com, tok, name, field_type, expr_value);
-            }
-        }
-        else {
-            tok.error("objects of type {} cannot be unpacked", type);
-        }
-    }
+    }, np.names);
 }
 
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> expr_result
