@@ -44,6 +44,8 @@ Declare with `:=` operator and either `let` or `var`: `let x := 5` or `var x := 
 * `let` declares a const value and `var` declares a mutable value.
 * Explicit typing can be provided: `let x : i64 = 10`. Safe type conversions can happen here (see more info below).
 * Assign to existing variable with `=` operator: `x = 6`.
+* If the object on the right is a struct or an array, it can be unpacked: `let [a, b] := <object>`.
+* Unpacking can be nested: `let [a, [b, c]] := <object>`.
 
 ### Comments
 Uses the `#` symbol.
