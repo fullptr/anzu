@@ -1741,8 +1741,8 @@ void push_for_loop_span(compiler& com, const node_for_stmt& node, const type_spa
         // var name := iter[idx]&;
         push_var_val(com, node.token, curr_module(com), "$iter");
         push_var_val(com, node.token, curr_module(com), "$idx");
-        push_value(code(com), op::nth_element_ptr, com.types.size_of(inner));
-        push_name_pack(com, node.token, node.names, inner.add_ptr());
+        push_value(code(com), op::nth_element_val, com.types.size_of(inner));
+        push_name_pack(com, node.token, node.names, inner);
 
         // idx = idx + 1;
         push_var_val(com, node.token, curr_module(com), "$idx");

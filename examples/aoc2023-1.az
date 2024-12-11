@@ -20,7 +20,7 @@ fn process_line(line: char const[]) -> i64
     var first := 0;
     var last := 0;
     for c in line {
-        let i := std.to_i64(c@);
+        let i := std.to_i64(c);
         if i != -1 {
             if first == 0 { first = i; }
             last = i;
@@ -47,4 +47,4 @@ while tokens.valid() {
     tokens.next();
 }
 
-print("{} {}\n", total_part1, total_part2);
+print("{}==55029 {}==55686\n", total_part1, total_part2);

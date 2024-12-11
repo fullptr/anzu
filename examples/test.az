@@ -1,17 +1,6 @@
 let std := @import("lib/std.az");
 
-struct bar
-{
-    x: i64;
-    y: i64;
+let x := [1, 2, 3];
+for p in x[] {
+    print("{}\n", p);
 }
-
-struct foo
-{
-    b: bar;
-    x: f64;
-}
-
-let f := foo(bar(2, 3), 1.0);
-let [[r, t], y] := f;
-print("{} {} {}\n", r, t, y);
