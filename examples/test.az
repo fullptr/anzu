@@ -1,11 +1,11 @@
 let std := @import("lib/std.az");
 
-let arr := [
-    [1, 2],
-    [2, 3],
-    [3, 4]
-];
+var arr := [[1], [2], [3]];
 
-for [x, y] in arr[] {
-    print("{} {}\n", x, y);
+for [x]& in arr[] {
+    x = 10;
+}
+
+for x in arr[] {
+    print("{}\n", x[0u]);
 }

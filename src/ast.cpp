@@ -211,6 +211,7 @@ auto print_node(const node_stmt& root, int indent) -> void
         [&](const node_for_stmt& node) {
             std::print("{}For:\n", spaces);
             std::print("{}- Name(s): {}\n", spaces, name_pack_to_string(node.names));
+            std::print("{}- IsPtr: {}\n", spaces, node.is_ptr);
             std::print("{}- Iter:\n", spaces);
             print_node(*node.iter, indent + 1);
             std::print("{}- Body:\n", spaces);

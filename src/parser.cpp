@@ -512,6 +512,7 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
 
     stmt.token = tokens.consume_only(token_type::kw_for);
     stmt.names = parse_name_pack(tokens);
+    stmt.is_ptr = tokens.consume_maybe(token_type::ampersand);
     tokens.consume_only(token_type::kw_in);
     stmt.iter = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
