@@ -650,6 +650,44 @@ auto compile_struct_template(
     }
 }
 
+auto push_name_pack(
+    compiler& com,
+    const token& tok,
+    const name_pack& np,
+    const type_name& type,
+    const const_value& expr_value = {}
+) -> void
+{
+    std::visit(overloaded{
+        [&](const std::string& name) {
+            declare_var(com, tok, name, type, expr_value);
+        },
+        [&](const std::vector<name_pack>& names) {
+            if (type.is<type_struct>()) {
+                const auto fields = com.types.fields_of(type.as<type_struct>());
+                tok.assert_eq(names.size(), fields.size(), "invalid number of args to unpack struct {} into", type);
+                for (const auto& [name, field] : std::views::zip(names, fields)) {
+                    auto field_type = field.type;
+                    field_type.is_const = type.is_const;
+                    push_name_pack(com, tok, name, field.type);
+                }
+            }
+            else if (type.is<type_array>()) {
+                const auto size = type.as<type_array>().count;
+                tok.assert_eq(names.size(), size, "invalid number of args to unpack array {} into", type);
+                auto field_type = *type.as<type_array>().inner_type;
+                field_type.is_const = type.is_const;
+                for (const auto& name : names) {
+                    push_name_pack(com, tok, name, field_type);
+                }
+            }
+            else {
+                tok.error("objects of type {} cannot be unpacked", type);
+            }
+        }
+    }, np.names);
+}
+
 auto push_expr(compiler& com, compile_type ct, const node_literal_i32_expr& node) -> expr_result
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a i32 literal");
@@ -1704,7 +1742,7 @@ void push_for_loop_span(compiler& com, const node_for_stmt& node, const type_spa
         push_var_val(com, node.token, curr_module(com), "$iter");
         push_var_val(com, node.token, curr_module(com), "$idx");
         push_value(code(com), op::nth_element_ptr, com.types.size_of(inner));
-        declare_var(com, node.token, node.name, inner.add_ptr());
+        push_name_pack(com, node.token, node.names, inner.add_ptr());
 
         // idx = idx + 1;
         push_var_val(com, node.token, curr_module(com), "$idx");
@@ -1758,7 +1796,7 @@ void push_for_loop_iterator(compiler& com, const node_for_stmt& node, const type
         // var name := obj.next();
         push_var_addr(com, node.token, curr_module(com), "$iter");
         push_value(code(com), op::call_static, next_fn.id, sizeof(std::byte*));
-        declare_var(com, node.token, node.name, next_fn.return_type);
+        push_name_pack(com, node.token, node.names, next_fn.return_type);
 
         // main body
         push_stmt(com, *node.body);
@@ -1863,35 +1901,9 @@ auto push_stmt(compiler& com, const node_declaration_stmt& node) -> void
     auto type = node.explicit_type ? resolve_type(com, node.token, node.explicit_type)
                                    : expr_type;
     type.is_const = node.add_const;
-
     node.token.assert(!type.is<type_arena>(), "cannot create copies of arenas");
-
     push_copy_typechecked(com, *node.expr, type, node.token);
-    if (node.names.size() == 1) {
-        declare_var(com, node.token, node.names[0], type, expr_value);
-    } else {
-        if (type.is<type_struct>()) {
-            const auto fields = com.types.fields_of(type.as<type_struct>());
-            node.token.assert_eq(node.names.size(), fields.size(), "invalid number of args to unpack struct into");
-            for (const auto& [name, field] : std::views::zip(node.names, fields)) {
-                auto field_type = field.type;
-                field_type.is_const = node.add_const;
-                declare_var(com, node.token, name, field_type);
-            }
-        }
-        else if (type.is<type_array>()) {
-            const auto size = type.as<type_array>().count;
-            node.token.assert_eq(node.names.size(), size, "invalid number of args to unpack array into");
-            auto field_type = *type.as<type_array>().inner_type;
-            field_type.is_const = node.add_const;
-            for (const auto& name : node.names) {
-                declare_var(com, node.token, name, field_type);
-            }
-        }
-        else {
-            node.token.error("objects of type {} cannot be unpacked", type);
-        }
-    }
+    push_name_pack(com, node.token, node.names, type, expr_value);
 }
 
 auto push_stmt(compiler& com, const node_arena_declaration_stmt& node) -> void

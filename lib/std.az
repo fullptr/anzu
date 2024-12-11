@@ -373,7 +373,6 @@ struct zip_iterator_value!(T, U)
 {
     left:  T&;
     right: U&;
-    index: u64;
 }
 
 struct zip_iterator!(T, U)
@@ -394,7 +393,7 @@ struct zip_iterator!(T, U)
 
     fn current(self: const&) -> zip_iterator_value!(T, U)
     {
-        return zip_iterator_value(self._left[self._curr]&, self._right[self._curr]&, self._curr);
+        return zip_iterator_value(self._left[self._curr]&, self._right[self._curr]&);
     }
 
     fn next(self: &) -> zip_iterator_value!(T, U)

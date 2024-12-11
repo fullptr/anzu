@@ -14,6 +14,11 @@ using node_expr_ptr = std::shared_ptr<node_expr>;
 struct node_stmt;
 using node_stmt_ptr = std::shared_ptr<node_stmt>;
 
+struct name_pack
+{
+    std::variant<std::string, std::vector<name_pack>> names;
+};
+
 struct node_literal_i32_expr
 {
     std::int32_t value;
@@ -263,7 +268,7 @@ struct node_while_stmt
 
 struct node_for_stmt
 {
-    std::string name;
+    name_pack     names;
     node_expr_ptr iter;
     node_stmt_ptr body;
 
@@ -301,10 +306,10 @@ struct node_continue_stmt
 
 struct node_declaration_stmt
 {
-    std::vector<std::string> names;
-    node_expr_ptr            expr;
-    node_expr_ptr            explicit_type;
-    bool                     add_const;
+    name_pack     names;
+    node_expr_ptr expr;
+    node_expr_ptr explicit_type;
+    bool          add_const;
 
     anzu::token token;
 };

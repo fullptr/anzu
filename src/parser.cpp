@@ -41,6 +41,20 @@ struct parse_rule
     precedence  prec;
 };
 
+auto parse_name_pack(tokenstream& tokens) -> name_pack
+{
+    name_pack np;
+    if (tokens.consume_maybe(token_type::left_bracket)) {
+        auto& names = np.names.emplace<std::vector<name_pack>>();
+        tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
+            names.push_back(parse_name_pack(tokens));
+        });
+    } else {
+        np.names = parse_identifier(tokens);
+    }
+    return np;
+}
+
 template <typename Inner>
 auto new_node(const token& tok) -> std::tuple<node_expr_ptr, Inner&>
 {
@@ -497,7 +511,7 @@ auto parse_for_stmt(tokenstream& tokens) -> node_stmt_ptr
     auto& stmt = node->emplace<node_for_stmt>();
 
     stmt.token = tokens.consume_only(token_type::kw_for);
-    stmt.name = parse_identifier(tokens);
+    stmt.names = parse_name_pack(tokens);
     tokens.consume_only(token_type::kw_in);
     stmt.iter = parse_expression(tokens);
     stmt.body = parse_statement(tokens);
@@ -561,13 +575,7 @@ auto parse_declaration_stmt(tokenstream& tokens) -> node_stmt_ptr
                                   stmt.token.text);
     }
 
-    if (tokens.consume_maybe(token_type::left_bracket)) {
-        tokens.consume_comma_separated_list(token_type::right_bracket, [&] {
-            stmt.names.push_back(parse_identifier(tokens));
-        });
-    } else {
-        stmt.names.push_back(parse_identifier(tokens));
-    }
+    stmt.names = parse_name_pack(tokens);
 
     if (tokens.consume_maybe(token_type::colon)) {
         stmt.explicit_type = parse_expression(tokens);

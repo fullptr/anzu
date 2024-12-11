@@ -1,5 +1,17 @@
+let std := @import("lib/std.az");
 
-var x := [1, 2, 3];
-let [a, b, c] := x;
-x[1u] = 10;
-print("{} {} {}\n", a, b, c);
+struct bar
+{
+    x: i64;
+    y: i64;
+}
+
+struct foo
+{
+    b: bar;
+    x: f64;
+}
+
+let f := foo(bar(2, 3), 1.0);
+let [[r, t], y] := f;
+print("{} {} {}\n", r, t, y);

@@ -5,6 +5,23 @@
 #include <ranges>
 
 namespace anzu {
+namespace {
+
+auto name_pack_to_string(const name_pack& names) -> std::string
+{
+    return std::visit(overloaded{
+        [&] (const std::string& name) {
+            return name;
+        },
+        [&] (const std::vector<name_pack>& names) {
+            return std::format("[{}]", format_comma_separated(names, [&](const auto& n) {
+                return name_pack_to_string(n);
+            }));
+        }
+    }, names.names);
+}
+
+}
 
 auto print_node(const node_expr& root, int indent) -> void
 {
@@ -192,7 +209,8 @@ auto print_node(const node_stmt& root, int indent) -> void
             print_node(*node.body, indent + 1);
         },
         [&](const node_for_stmt& node) {
-            std::print("{}For (name={}):\n", spaces, node.name);
+            std::print("{}For:\n", spaces);
+            std::print("{}- Name(s): {}\n", spaces, name_pack_to_string(node.names));
             std::print("{}- Iter:\n", spaces);
             print_node(*node.iter, indent + 1);
             std::print("{}- Body:\n", spaces);
@@ -233,11 +251,7 @@ auto print_node(const node_stmt& root, int indent) -> void
         },
         [&](const node_declaration_stmt& node) {
             std::print("{}Declaration:\n", spaces);
-            if (node.names.size() == 1) {
-                std::print("{}- Name: {}\n", spaces, node.names[0]);
-            } else {
-                std::print("{}- Names: {}\n", spaces, format_comma_separated(node.names));
-            }
+            std::print("{}- Name(s): {}\n", spaces, name_pack_to_string(node.names));
             if (node.explicit_type) {
                 std::print("{}- ExplicitType:\n", spaces);
                 print_node(*node.explicit_type, indent + 1);
