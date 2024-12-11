@@ -1,6 +1,3 @@
 let std := @import("lib/std.az");
 
-let x := [1, 2, 3];
-for p in x[] {
-    print("{}\n", p);
-}
+print("{}\n", @is_span(i64[]&));

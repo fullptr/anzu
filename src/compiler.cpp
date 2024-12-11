@@ -1620,7 +1620,17 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
             [&](auto&&)      { return false; }
         }, type);
 
+        push_value(code(com), op::push_bool, is_fundamental);
         return { type_bool{}, {is_fundamental} };
+    }
+    if (node.name == "is_span") {
+        node.token.assert_eq(node.args.size(), 1, "@is_span only accepts one argument");
+        const auto result = type_of_expr(com, *node.args[0]);
+        const auto type = get_type_value(node.token, result);
+
+        const auto is_span = type.is<type_span>();
+        push_value(code(com), op::push_bool, is_span);
+        return { type_bool{}, {is_span} };
     }
     if (node.name == "read_file") {
         const auto char_span = type_name{type_char{}}.add_const().add_span();
