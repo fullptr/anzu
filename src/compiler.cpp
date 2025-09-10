@@ -379,7 +379,7 @@ void match_placeholders(template_map& map, const token& tok, const type_name& ac
         [&](const type_span& a, const type_span& e) {
             match_placeholders(map, tok, *a.inner_type, *e.inner_type);
         },
-        [&](const type_function_ptr& a, const type_function_ptr& e) {
+        [&](const type_function& a, const type_function& e) {
             if (a.param_types.size() == e.param_types.size()) {
                 for (const auto& [a_type, e_type] : std::views::zip(a.param_types, e.param_types)) {
                     match_placeholders(map, tok, a_type, e_type);
@@ -973,9 +973,10 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         push_args_typechecked(com, node.token, node.args, constructor_params(com, name));
         return { name };
     }
-    else if (auto info = type.get_if<type_function_ptr>()) {
+    else if (auto info = type.get_if<type_function>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
-        if (value.is<std::uint64_t>()) {
+        if (value.has_value()) {
+            node.token.assert(value.is<std::uint64_t>(), "const value of a function must be a u64");
             push_value(code(com), op::call_static, value.as<std::uint64_t>(), args_size);
         } else {
             push_expr(com, compile_type::val, *node.expr);
@@ -1039,7 +1040,7 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
         const auto fn = fetch_function(com, node.token, name);
         push_value(code(com), op::push_function_ptr, fn.id);
-        return { type_function_ptr{fn.param_types, fn.return_type}, fn.id };
+        return { type_function{fn.param_types, fn.return_type}, fn.id };
     }
     else if (auto info = type.get_if<type_bound_method_template>()) {
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
@@ -1175,7 +1176,7 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr type expression");
     auto type = type_name{};
-    auto& inner = type.emplace<type_function_ptr>();
+    auto& inner = type.emplace<type_function>();
     for (const auto& param : node.params) {
         inner.param_types.push_back(resolve_type(com, node.token, param));
     }
@@ -1257,7 +1258,7 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
         node.token.assert(ct == compile_type::val, "cannot take the address of a function");
         const auto& func = com.functions[it->second];
         push_value(code(com), op::push_function_ptr, func.id);
-        return { type_function_ptr{func.params, func.return_type}, func.id };
+        return { type_function{func.params, func.return_type}, func.id };
     }
 
     // It might be a function template
@@ -1323,7 +1324,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
             push_value(code(com), op::push_function_ptr, func.id);
-            return { type_function_ptr{func.params, func.return_type}, func.id };
+            return { type_function{func.params, func.return_type}, func.id };
         }
 
         // It might be a function template
@@ -1364,7 +1365,7 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
                 node.token.assert(ct == compile_type::val, "cannot take the address of a function");
                 const auto& func = com.functions[it->second];
                 push_value(code(com), op::push_function_ptr, func.id);
-                return { type_function_ptr{func.params, func.return_type}, func.id };   
+                return { type_function{func.params, func.return_type}, func.id };   
             }
 
             // It might be a function template
@@ -1604,7 +1605,7 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
     if (node.name == "fn_ptr_runtime") {
         node.token.assert_eq(node.args.size(), 1, "@fn_ptr_runtime only accepts one argument");
         const auto [type, value] = type_of_expr(com, *node.args[0]);
-        node.token.assert(type.is<type_function_ptr>(), "fn_ptr_runtime can only be called on functions");
+        node.token.assert(type.is<type_function>(), "fn_ptr_runtime can only be called on functions");
         node.token.assert(value.is<std::uint64_t>(), "function_ptr compile time value must be a u64");
         push_value(code(com), op::push_function_ptr, value.as<std::uint64_t>());
         return { type };

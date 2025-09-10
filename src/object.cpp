@@ -37,7 +37,7 @@ auto type_name::remove_const() const -> type_name
 auto to_string_paren(const type_name& type) -> std::string
 {
     const auto str = type.to_string();
-    if (type.is<type_function_ptr>()) {
+    if (type.is<type_function>()) {
         return std::format("({})", str);
     }
     return str;
@@ -117,7 +117,7 @@ auto type_span::to_string() const -> std::string
     return std::format("{}[]", to_string_paren(*inner_type));
 }
 
-auto type_function_ptr::to_string() const -> std::string
+auto type_function::to_string() const -> std::string
 {
     return std::format(
         "{}({}) -> {}",

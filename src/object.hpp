@@ -131,14 +131,14 @@ struct type_span
     auto operator==(const type_span&) const -> bool = default;
 };
 
-struct type_function_ptr
+struct type_function
 {
     std::vector<type_name> param_types;
     value_ptr<type_name>   return_type;
 
     auto to_hash() const { return hash(param_types, return_type); }
     auto to_string() const -> std::string;
-    auto operator==(const type_function_ptr&) const -> bool = default;
+    auto operator==(const type_function&) const -> bool = default;
 };
 
 struct type_bound_method
@@ -205,18 +205,18 @@ struct type_name : public std::variant<
     type_type,
     type_arena,
     type_module,
-
     type_array,
-    type_struct,
     type_ptr,
     type_span,
 
-    type_function_ptr,
+    type_function,
+    type_struct,
     type_bound_method,
-    type_bound_method_template,
-    
+
     type_function_template,
     type_struct_template,
+    type_bound_method_template,
+    
     type_placeholder>
 {
     using variant::variant;
