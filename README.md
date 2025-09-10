@@ -199,7 +199,6 @@ They are more flexible than functions; some accept types as arguments and you ca
 * `@copy(dst, src)` takes two spans of the same type and copies the contents of one into the other. The size of `dst` must be big enough to fit `src`, otherwise it's a runtime error. This exists because it can efficiently memcpy the data rather than looping over the elements.
 * `@compare(lhs, rhs)` takes two pointers of the same type and compares them bytewise via memcmp. 
 * `@import(name)` for importing and using other modules (more info below). This can only be used in the global scope.
-* `@fn_ptr(func)` takes the name of a function an explicitly converts it to a function pointer.
 * `@is_fundamental(type)` returns `true` (compile time bool) if the given type of one of the builtin types.
 * `@read_file(path, arena&)` take a filepath and a pointer to an arena, and loads the contents of the file into the arena, returning a `char const[]`.
 
@@ -238,8 +237,6 @@ var my_vec := vec.vector!(u64).create(alloc&);
 Many compile time objects are represented in Anzu's type system, but have no runtime information since all their info is contained in their type. This results in types that are not particularly useful, but does have some nice quirks.
 
 For example, if I had `struct foo { x: i64; }`, then `foo` itself is an object of size zero, whose type is `<type: foo>`. A constructor call then, is simply implemented as the call operator on this object which returns an object of type `foo`. This then naturally allows you to create type aliases with the normal variable syntax: `let f := foo` creates a variable `f` of type `<type: foo>`, so calling it is just a constructor call for `foo` as if you had used `foo` directly.
-
-Just like how every struct definition is an object of its own type (for every type `T` there is the type `<type: T>`), the same applies to functions. `let f := func` gives a new name to the function, and `f` is a function type and not a function pointer type. To create a function pointer explicitly from a function, you can either declare the function pointer type in the declaration to make a safe type conversion happen, or use the more convention `@fn_ptr` intrinsic (`let f := @fn_ptr(func)`).
 
 Some more "size zero" types are:
 * Functions

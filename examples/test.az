@@ -1,11 +1,8 @@
-let std := @import("lib/std.az");
+fn foo() 
+{
 
-var arr := [[1], [2], [3]];
-
-for [x]& in arr[] {
-    x = 10;
 }
 
-for x in arr[] {
-    print("{}\n", x[0u]);
-}
+
+var f := foo;
+f();

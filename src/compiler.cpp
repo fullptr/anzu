@@ -277,7 +277,8 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     // Remove top-level const since we are making a copy, ie- you should be able to pass a
     // 'u64 const' for a 'u64', but not a 'u64 const&' for a 'u64&' (though passing a 'u64&'
     // for a 'u64 const&' is fine)
-    const auto actual = type_of_expr(com, expr).type.remove_const();
+    const auto [a_type, a_value] = type_of_expr(com, expr);
+    const auto actual = a_type.remove_const();
     const auto expected = expected_raw.remove_const();
 
     // Nothing to do for size 0 types
@@ -297,12 +298,6 @@ void push_copy_typechecked(compiler& com, const node_expr& expr, const type_name
     }
 
     push_expr(com, compile_type::val, expr);
-
-    // Let functions convert to function ptrs
-    if (auto func = actual.get_if<type_function>(); func && func->to_pointer() == expected) {
-        push_value(code(com), op::push_function_ptr, func->id); // push the id
-        return;
-    }
 
     if (actual.is<type_arena>() || expected.is<type_arena>()) {
         tok.error("arenas can not be copied or assigned");
@@ -384,7 +379,7 @@ void match_placeholders(template_map& map, const token& tok, const type_name& ac
         [&](const type_span& a, const type_span& e) {
             match_placeholders(map, tok, *a.inner_type, *e.inner_type);
         },
-        [&](const type_function_ptr& a, const type_function_ptr& e) {
+        [&](const type_function& a, const type_function& e) {
             if (a.param_types.size() == e.param_types.size()) {
                 for (const auto& [a_type, e_type] : std::views::zip(a.param_types, e.param_types)) {
                     match_placeholders(map, tok, a_type, e_type);
@@ -588,7 +583,16 @@ auto load_module(compiler& com, const token& tok, const std::string& filepath) -
     std::print("    - Completed {}\n", filepath);
 }
 
-auto fetch_function(compiler& com, const token& tok, const function_name& name) -> type_function
+struct function_info
+{
+    std::size_t            id;
+    std::vector<type_name> param_types;
+    value_ptr<type_name>   return_type;
+
+    auto to_bound_method() -> type_bound_method { return {id, param_types, return_type}; }
+};
+
+auto fetch_function(compiler& com, const token& tok, const function_name& name) -> function_info
 {
     const auto key = name.as_template();
 
@@ -601,7 +605,7 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
 
     tok.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
     const auto& fn = com.functions[com.functions_by_name.at(name)];
-    return type_function{ .id = fn.id, .param_types=fn.params, .return_type=fn.return_type };
+    return function_info{ .id = fn.id, .param_types=fn.params, .return_type=fn.return_type };
 }
 
 auto push_args_typechecked(compiler& com, const token& tok, const auto& args, const auto& expected_types) -> std::size_t
@@ -969,15 +973,15 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         push_args_typechecked(com, node.token, node.args, constructor_params(com, name));
         return { name };
     }
-    else if (auto info = type.get_if<type_function_ptr>()) {
-        const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
-        push_expr(com, compile_type::val, *node.expr);
-        push_value(code(com), op::call_ptr, args_size);
-        return { *info->return_type };
-    }
     else if (auto info = type.get_if<type_function>()) {
         const auto args_size = push_args_typechecked(com, node.token, node.args, info->param_types);
-        push_value(code(com), op::call_static, info->id, args_size);
+        if (value.has_value()) {
+            node.token.assert(value.is<std::uint64_t>(), "const value of a function must be a u64");
+            push_value(code(com), op::call_static, value.as<std::uint64_t>(), args_size);
+        } else {
+            push_expr(com, compile_type::val, *node.expr);
+            push_value(code(com), op::call_ptr, args_size);
+        }
         return { *info->return_type };
     }
     else if (auto info = type.get_if<type_function_template>()) {
@@ -1034,7 +1038,9 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
 
     if (auto info = type.get_if<type_function_template>()) {
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
-        return { fetch_function(com, node.token, name) };
+        const auto fn = fetch_function(com, node.token, name);
+        push_value(code(com), op::push_function_ptr, fn.id);
+        return { type_function{fn.param_types, fn.return_type}, fn.id };
     }
     else if (auto info = type.get_if<type_bound_method_template>()) {
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
@@ -1170,7 +1176,7 @@ auto push_expr(compiler& com, compile_type ct, const node_function_ptr_type_expr
 {
     node.token.assert(ct == compile_type::val, "cannot take the address of a function ptr type expression");
     auto type = type_name{};
-    auto& inner = type.emplace<type_function_ptr>();
+    auto& inner = type.emplace<type_function>();
     for (const auto& param : node.params) {
         inner.param_types.push_back(resolve_type(com, node.token, param));
     }
@@ -1251,7 +1257,8 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a function");
         const auto& func = com.functions[it->second];
-        return { type_function{func.id, func.params, func.return_type} };
+        push_value(code(com), op::push_function_ptr, func.id);
+        return { type_function{func.params, func.return_type}, func.id };
     }
 
     // It might be a function template
@@ -1316,13 +1323,14 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function");
             const auto& func = com.functions[it->second];
-            return { type_function{func.id, func.params, func.return_type } };
+            push_value(code(com), op::push_function_ptr, func.id);
+            return { type_function{func.params, func.return_type}, func.id };
         }
 
         // It might be a function template
         if (com.function_templates.contains(fname.as_template())) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a function template");
-            return { type_function_template{ filepath, no_struct, node.name } };
+            return { type_function_template{filepath, no_struct, node.name} };
         }
 
         // It might be a struct
@@ -1356,7 +1364,8 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
             if (const auto it = com.functions_by_name.find(fname); it != com.functions_by_name.end()) {
                 node.token.assert(ct == compile_type::val, "cannot take the address of a function");
                 const auto& func = com.functions[it->second];
-                return { type_function{func.id, func.params, func.return_type} };   
+                push_value(code(com), op::push_function_ptr, func.id);
+                return { type_function{func.params, func.return_type}, func.id };   
             }
 
             // It might be a function template
@@ -1592,14 +1601,6 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         const auto filepath = std::get<node_literal_string_expr>(*node.args[0]).value;
         load_module(com, node.token, filepath);
         return { type_module{}, filepath };
-    }
-    if (node.name == "fn_ptr") {
-        node.token.assert_eq(node.args.size(), 1, "@fn_ptr only accepts one argument");
-        const auto type = type_of_expr(com, *node.args[0]).type;
-        node.token.assert(type.is<type_function>(), "can only convert functions to function pointers");
-        const auto& info = type.as<type_function>();
-        push_value(code(com), op::push_function_ptr, info.id);
-        return { type_function_ptr{.param_types=info.param_types, .return_type=info.return_type} };
     }
     if (node.name == "is_fundamental") {
         node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");

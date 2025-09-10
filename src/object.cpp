@@ -9,11 +9,6 @@
 
 namespace anzu {
 
-auto type_function::to_pointer() const -> type_name
-{
-    return type_function_ptr{ param_types, return_type };
-}
-
 auto type_name::add_ptr() const -> type_name
 {
     return { type_ptr{ .inner_type{*this} } };
@@ -42,7 +37,7 @@ auto type_name::remove_const() const -> type_name
 auto to_string_paren(const type_name& type) -> std::string
 {
     const auto str = type.to_string();
-    if (type.is<type_function_ptr>()) {
+    if (type.is<type_function>()) {
         return std::format("({})", str);
     }
     return str;
@@ -122,7 +117,7 @@ auto type_span::to_string() const -> std::string
     return std::format("{}[]", to_string_paren(*inner_type));
 }
 
-auto type_function_ptr::to_string() const -> std::string
+auto type_function::to_string() const -> std::string
 {
     return std::format(
         "{}({}) -> {}",
@@ -132,6 +127,7 @@ auto type_function_ptr::to_string() const -> std::string
     );
 }
 
+// TODO: Fix this printing
 auto type_bound_method::to_string() const -> std::string
 {
     return std::format(
@@ -151,12 +147,6 @@ auto type_bound_method_template::to_string() const -> std::string
         struct_name,
         name
     );
-}
-
-auto type_function::to_string() const -> std::string
-{
-    const auto function_ptr_type = type_function_ptr{param_types, return_type};
-    return std::format("<function: id {} {}>", id, function_ptr_type);
 }
 
 auto type_function_template::to_string() const -> std::string
