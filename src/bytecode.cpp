@@ -165,7 +165,7 @@ auto print_op(std::string_view rom, const std::byte* start, const std::byte* ptr
         case op::call_static: {
             const auto id = read_at<std::uint64_t>(&ptr);
             const auto args_size = read_at<std::uint64_t>(&ptr);
-            std::print("CALL_PTR: id={} args_size={}\n", id, args_size);
+            std::print("CALL_STATIC: id={} args_size={}\n", id, args_size);
         } break;
         case op::call_ptr: {
             const auto args_size = read_at<std::uint64_t>(&ptr);

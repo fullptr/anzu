@@ -588,7 +588,16 @@ auto load_module(compiler& com, const token& tok, const std::string& filepath) -
     std::print("    - Completed {}\n", filepath);
 }
 
-auto fetch_function(compiler& com, const token& tok, const function_name& name) -> type_function
+struct function_info
+{
+    std::size_t            id;
+    std::vector<type_name> param_types;
+    value_ptr<type_name>   return_type;
+
+    auto to_bound_method() -> type_bound_method { return {id, param_types, return_type}; }
+};
+
+auto fetch_function(compiler& com, const token& tok, const function_name& name) -> function_info
 {
     const auto key = name.as_template();
 
@@ -601,7 +610,7 @@ auto fetch_function(compiler& com, const token& tok, const function_name& name) 
 
     tok.assert(com.functions_by_name.contains(name), "could not find function {}\n", name);
     const auto& fn = com.functions[com.functions_by_name.at(name)];
-    return type_function{ .id = fn.id, .param_types=fn.params, .return_type=fn.return_type };
+    return function_info{ .id = fn.id, .param_types=fn.params, .return_type=fn.return_type };
 }
 
 auto push_args_typechecked(compiler& com, const token& tok, const auto& args, const auto& expected_types) -> std::size_t
@@ -1034,7 +1043,8 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
 
     if (auto info = type.get_if<type_function_template>()) {
         const auto name = function_name{ .module=info->module, .struct_name=info->struct_name, .name=info->name, .templates=templates };
-        return { fetch_function(com, node.token, name) };
+        const auto fn = fetch_function(com, node.token, name);
+        return { type_function_ptr{fn.param_types, fn.return_type}, fn.id };
     }
     else if (auto info = type.get_if<type_bound_method_template>()) {
         push_expr(com, compile_type::val, *node.expr); // push pointer to the instance to bind to
