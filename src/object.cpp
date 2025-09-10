@@ -9,11 +9,6 @@
 
 namespace anzu {
 
-auto type_function::to_pointer() const -> type_name
-{
-    return type_function_ptr{ param_types, return_type };
-}
-
 auto type_name::add_ptr() const -> type_name
 {
     return { type_ptr{ .inner_type{*this} } };
@@ -151,12 +146,6 @@ auto type_bound_method_template::to_string() const -> std::string
         struct_name,
         name
     );
-}
-
-auto type_function::to_string() const -> std::string
-{
-    const auto function_ptr_type = type_function_ptr{param_types, return_type};
-    return std::format("<function: id {} {}>", id, function_ptr_type);
 }
 
 auto type_function_template::to_string() const -> std::string

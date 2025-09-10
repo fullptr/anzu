@@ -1,10 +1,13 @@
-
-fn foo() -> i64
+fn foo(x: i64) -> i64
 {
-    return 1;
+    print("{}\n", x);
+    return x;
 }
 
-let f := @fn_ptr(foo);
+fn bar(f: fn(i64) -> i64, x: i64)
+{
+    f(x);
+}
 
-foo();
-f();
+foo(1);
+bar(foo, 1);
