@@ -127,6 +127,7 @@ auto type_function::to_string() const -> std::string
     );
 }
 
+// TODO: Fix this printing
 auto type_bound_method::to_string() const -> std::string
 {
     return std::format(

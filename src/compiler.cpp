@@ -1602,14 +1602,6 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         load_module(com, node.token, filepath);
         return { type_module{}, filepath };
     }
-    if (node.name == "fn_ptr_runtime") {
-        node.token.assert_eq(node.args.size(), 1, "@fn_ptr_runtime only accepts one argument");
-        const auto [type, value] = type_of_expr(com, *node.args[0]);
-        node.token.assert(type.is<type_function>(), "fn_ptr_runtime can only be called on functions");
-        node.token.assert(value.is<std::uint64_t>(), "function_ptr compile time value must be a u64");
-        push_value(code(com), op::push_function_ptr, value.as<std::uint64_t>());
-        return { type };
-    }
     if (node.name == "is_fundamental") {
         node.token.assert_eq(node.args.size(), 1, "@is_fundamental only accepts one argument");
         const auto result = type_of_expr(com, *node.args[0]);
