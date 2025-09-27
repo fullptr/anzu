@@ -8,8 +8,8 @@ auto delete_arenas_in_scope(std::vector<std::byte>& program, const scope& scope,
 {
     for (const auto& var : scope.variables | std::views::reverse) {
         if (var.type.is<type_arena>()) {
-            const auto op = is_local ? op::push_ptr_local : op::push_ptr_global;
-            push_value(program, op, var.location, op::load, sizeof(std::byte*), op::arena_delete);
+            const auto op = is_local ? op::push_val_local : op::push_val_global;
+            push_value(program, op, var.location, var.size, op::arena_delete);
         }
     }
 }

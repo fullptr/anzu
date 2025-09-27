@@ -50,9 +50,6 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         [](type_f64) {
             return std::size_t{8};
         },
-        [](type_type) {
-            return std::size_t{0};
-        },
         [](type_arena) {
             return sizeof(std::byte*); // the runtime will store the arena separately
         },
@@ -68,10 +65,6 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
         [](const type_span&) {
             return sizeof(std::byte*) + sizeof(std::size_t);
         },
-
-        [](const type_function&) {
-            return sizeof(std::uint64_t);
-        },
         [&](const type_struct& t) -> std::size_t {
             if (!d_classes.contains(t)) {
                 panic("unknown type '{}'", type);
@@ -82,15 +75,23 @@ auto type_manager::size_of(const type_name& type) const -> std::size_t
             }
             return std::max(std::size_t{1}, size); // empty structs take up one byte
         },
-        [](const type_bound_method&) {
-            return sizeof(std::byte*); // pointer to the object, first arg to the function
+        
+        [](const type_function&) {
+            return sizeof(std::uint64_t);
         },
-
         [](const type_function_template&) {
             return std::size_t{0};
         },
-        [](const type_struct_template&) {
+
+        [](const type_type&) {
             return std::size_t{0};
+        },
+        [](const type_type_template&) {
+            return std::size_t{0};
+        },
+
+        [](const type_bound_method&) {
+            return sizeof(std::byte*); // pointer to the object, first arg to the function
         },
         [](const type_bound_method_template&) {
             return sizeof(std::byte*); // pointer to the object, first arg to the function

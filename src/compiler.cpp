@@ -960,7 +960,7 @@ auto push_expr(compiler& com, compile_type ct, const node_call_expr& node) -> ex
         }
         return { inner };
     }
-    else if (auto info = type.get_if<type_struct_template>()) {
+    else if (auto info = type.get_if<type_type_template>()) {
         const auto& ast = com.struct_templates[*info];
         const auto params = ast.fields
                           | std::views::transform(&node_parameter::type)
@@ -1047,9 +1047,9 @@ auto push_expr(compiler& com, compile_type ct, const node_template_expr& node) -
         const auto name = function_name{info->module, info->struct_name, info->name, templates};
         return { fetch_function(com, node.token, name).to_bound_method() };
     }
-    else if (auto info = type.get_if<type_struct_template>()) {
+    else if (auto info = type.get_if<type_type_template>()) {
         const auto name = type_struct{info->name, info->module, templates};
-        const auto key = type_struct_template{info->module, info->name};
+        const auto key = type_type_template{info->module, info->name};
 
         if (!com.types.contains(name) && com.struct_templates.contains(key)) {
             const auto& ast = com.struct_templates.at(key);
@@ -1274,10 +1274,10 @@ auto push_expr(compiler& com, compile_type ct, const node_name_expr& node) -> ex
     }
 
     // It might be a struct template
-    const auto stemp = type_struct_template{curr_module(com), node.name};
+    const auto stemp = type_type_template{curr_module(com), node.name};
     if (com.struct_templates.contains(stemp)) {
         node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-        return { type_struct_template{ .module=curr_module(com), .name=node.name } };
+        return { type_type_template{ .module=curr_module(com), .name=node.name } };
     }
 
     // It might be a fundamental type
@@ -1341,10 +1341,10 @@ auto push_expr(compiler& com, compile_type ct, const node_field_expr& node) -> e
         }
 
         // It might be a struct template
-        const auto skey = type_struct_template{filepath, node.name};
+        const auto skey = type_type_template{filepath, node.name};
         if (com.struct_templates.contains(skey)) {
             node.token.assert(ct == compile_type::val, "cannot take the address of a struct template");
-            return { type_struct_template{ filepath, node.name } };
+            return { type_type_template{ filepath, node.name } };
         }
 
         // Otherwise, it must be a variable
@@ -1879,7 +1879,7 @@ void push_stmt(compiler& com, const node_if_stmt& node)
 void push_stmt(compiler& com, const node_struct_stmt& node)
 {
     if (!node.templates.empty()) {
-        const auto key = type_struct_template{curr_module(com), node.name};
+        const auto key = type_type_template{curr_module(com), node.name};
         const auto [it, success] = com.struct_templates.emplace(key, node);
         node.token.assert(success, "struct template named '<{}>.{}' already defined", curr_module(com).string(), node.name);
         return;
