@@ -152,17 +152,6 @@ struct type_bound_method
     auto operator==(const type_bound_method&) const -> bool = default;
 };
 
-struct type_bound_method_template
-{
-    std::filesystem::path    module;
-    type_struct              struct_name;
-    std::string              name;
-
-    auto to_hash() const { return hash(module, struct_name, name); }
-    auto to_string() const -> std::string;
-    auto operator==(const type_bound_method_template&) const -> bool = default;
-};
-
 struct type_function_template
 {
     std::filesystem::path    module;
@@ -174,14 +163,25 @@ struct type_function_template
     auto operator==(const type_function_template&) const -> bool = default;
 };
 
-struct type_struct_template
+struct type_bound_method_template
+{
+    std::filesystem::path    module;
+    type_struct              struct_name;
+    std::string              name;
+
+    auto to_hash() const { return hash(module, struct_name, name); }
+    auto to_string() const -> std::string;
+    auto operator==(const type_bound_method_template&) const -> bool = default;
+};
+
+struct type_type_template
 {
     std::filesystem::path module;
     std::string           name;
 
     auto to_hash() const { return hash(module, name); }
     auto to_string() const -> std::string;
-    auto operator==(const type_struct_template&) const -> bool = default;
+    auto operator==(const type_type_template&) const -> bool = default;
 };
 
 // Only used during template argument type deduction
@@ -198,25 +198,22 @@ struct type_name : public std::variant<
     type_null,
     type_bool,
     type_char,
-    type_i32,
-    type_i64,
-    type_u64,
-    type_f64,
-    type_type,
-    type_arena,
+    type_i32, 
+    type_i64, 
+    type_u64, 
+    type_f64, 
+    type_struct,
+    type_arena, 
     type_module,
     type_array,
     type_ptr,
     type_span,
-
+    type_type,
+    type_type_template,
     type_function,
-    type_struct,
-    type_bound_method,
-
     type_function_template,
-    type_struct_template,
+    type_bound_method,
     type_bound_method_template,
-    
     type_placeholder>
 {
     using variant::variant;
@@ -274,8 +271,21 @@ struct const_value : public std::variant<
     template <typename T> auto as()     const -> const T& { return std::get<T>(*this); }
     template <typename T> auto get_if() const -> const T* { return std::get_if<T>(this); }
     auto has_value()                    const -> bool     { return !is<std::monostate>(); }
-};
 
+    auto to_string() const -> std::string {
+        return std::visit(overloaded{
+            [](std::monostate) { return std::format("null"); },
+            [](bool b) { return std::format("{}", b ? "true" : "false"); },
+            [](char c) { return std::format("{}", c); },
+            [](std::int32_t i) { return std::format("{}", i); },
+            [](std::int64_t i) { return std::format("{}", i); },
+            [](std::uint64_t i) { return std::format("{}u", i); },
+            [](double d) { return std::format("{}", d); },
+            [](std::filesystem::path fp) { return std::format("<filepath>"); },
+            [](type_name type) { return std::format("{}", type); }
+        }, *this);
+    }
+};
 
 }
 

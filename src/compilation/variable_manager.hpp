@@ -49,7 +49,7 @@ struct scope
 class variable_manager
 {
     std::vector<scope> d_scopes;
-    bool d_local;
+    bool               d_local;
 
 public:
     variable_manager(bool local = true) : d_local{local} {}

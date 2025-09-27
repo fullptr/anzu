@@ -154,7 +154,7 @@ auto type_function_template::to_string() const -> std::string
     return std::format("<function_template: <{}>.{}.{}>", module.string(), struct_name.name, name);
 }
 
-auto type_struct_template::to_string() const -> std::string
+auto type_type_template::to_string() const -> std::string
 {
     return std::format("<struct_template: <{}>.{}>", module.string(), name);
 }

@@ -1,8 +1,7 @@
-fn foo() 
-{
 
+fn main() {
+    arena a;
+    print("here");
 }
 
-
-var f := foo;
-f();
+main();
