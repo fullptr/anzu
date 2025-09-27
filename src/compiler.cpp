@@ -1571,13 +1571,6 @@ auto push_expr(compiler& com, compile_type ct, const node_intrinsic_expr& node) 
         push_value(code(com), op::push_string_literal, insert_into_rom(com, str), str.size());
         return { string_literal_type() };
     }
-    if (node.name == "type_class_of") {
-        node.token.assert_eq(node.args.size(), 1, "@type_class_of only accepts one argument");
-        const auto [type, value] = type_of_expr(com, *node.args[0]);
-        std::print("{}: {}\n", type, value);
-        push_value(code(com), op::push_null);
-        return { type_null{} };
-    }
     if (node.name == "copy") {
         node.token.assert_eq(node.args.size(), 2, "@copy requires two spans");
         const auto lhs = push_expr(com, ct, *node.args[0]).type;
