@@ -271,20 +271,6 @@ struct const_value : public std::variant<
     template <typename T> auto as()     const -> const T& { return std::get<T>(*this); }
     template <typename T> auto get_if() const -> const T* { return std::get_if<T>(this); }
     auto has_value()                    const -> bool     { return !is<std::monostate>(); }
-
-    auto to_string() const -> std::string {
-        return std::visit(overloaded{
-            [](std::monostate) { return std::format("null"); },
-            [](bool b) { return std::format("{}", b ? "true" : "false"); },
-            [](char c) { return std::format("{}", c); },
-            [](std::int32_t i) { return std::format("{}", i); },
-            [](std::int64_t i) { return std::format("{}", i); },
-            [](std::uint64_t i) { return std::format("{}u", i); },
-            [](double d) { return std::format("{}", d); },
-            [](std::filesystem::path fp) { return std::format("<filepath>"); },
-            [](type_name type) { return std::format("{}", type); }
-        }, *this);
-    }
 };
 
 }
