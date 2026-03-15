@@ -135,6 +135,18 @@ void declare_var(
     if (!current(com).variables.declare(curr_module(com), name, type, com.types.size_of(type), value)) {
         tok.error("name already in use: '{}'", name);
     }
+    // Record debug variable info
+    const auto var = current(com).variables.find(curr_module(com), name);
+    if (var.has_value()) {
+        current(com).dbg_vars.push_back(debug_variable{
+            .name      = name,
+            .type_str  = std::format("{}", type),
+            .location  = var->location,
+            .size      = var->size,
+            .is_global = !in_function(com),
+            .live_from = code(com).size(),
+        });
+    }
 }
 
 auto push_var_addr(compiler& com, const token& tok, const std::filesystem::path& module, const std::string& name) -> expr_result
@@ -2008,6 +2020,16 @@ auto push_expr(compiler& com, compile_type ct, const node_expr& expr) -> expr_re
 
 auto push_stmt(compiler& com, const node_stmt& root) -> void
 {
+    // Emit a source location for statements that generate runtime bytecode.
+    // Skip function/struct definitions (they don't emit code in the current function)
+    // and sequences (their children emit their own locations).
+    const bool emit_loc = !std::holds_alternative<node_function_stmt>(root)
+                       && !std::holds_alternative<node_struct_stmt>(root)
+                       && !std::holds_alternative<node_sequence_stmt>(root);
+    if (emit_loc) {
+        const auto line = std::visit([](const auto& n) { return n.token.line; }, root);
+        current(com).source_map.push_back(source_location{code(com).size(), line});
+    }
     std::visit([&](const auto& node) { push_stmt(com, node); }, root);
 }
 
@@ -2034,7 +2056,13 @@ auto compile(const anzu_module& ast) -> bytecode_program
     auto program = bytecode_program{};
     program.rom = com.rom;
     for (const auto& function : com.functions) {
-        program.functions.push_back(bytecode_function{function.name.to_string(), function.id, function.code});
+        program.functions.push_back(bytecode_function{
+            function.name.to_string(),
+            function.id,
+            function.code,
+            function.source_map,
+            function.dbg_vars,
+        });
     }
     return program;
 }

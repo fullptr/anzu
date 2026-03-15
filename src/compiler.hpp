@@ -25,6 +25,8 @@ struct function
     std::vector<type_name> params;
     type_name              return_type;
     std::vector<std::byte> code;
+    std::vector<source_location> source_map;
+    std::vector<debug_variable>  dbg_vars;
 };
 
 struct compiler

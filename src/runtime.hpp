@@ -7,6 +7,8 @@
 #include <cstring>
 #include <memory>
 #include <unordered_set>
+#include <filesystem>
+#include <functional>
 
 #include "bytecode.hpp"
 
@@ -14,9 +16,10 @@ namespace anzu {
 
 struct call_frame
 {
-    std::byte* code = nullptr; // start of the current chunk of bytecode
-    std::byte* ip = nullptr; // instruction pointer
-    std::size_t base_ptr = 0;
+    std::byte*  code        = nullptr; // start of the current chunk of bytecode
+    std::byte*  ip          = nullptr; // instruction pointer
+    std::size_t base_ptr    = 0;
+    std::size_t function_id = 0;       // index into bytecode_context::functions
 };
 
 class vm_stack
@@ -75,5 +78,7 @@ struct bytecode_context
 
 auto run_program(const bytecode_program& prog) -> void;
 auto run_program_debug(const bytecode_program& prog) -> void;
+// Run the program, calling hook(ctx) before each instruction. Used by the debugger.
+auto run_program_with_hook(const bytecode_program& prog, std::function<void(bytecode_context&)> hook) -> void;
 
 }

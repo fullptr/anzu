@@ -1,7 +1,14 @@
 
-fn main() {
-    arena a;
-    print("here");
+var x := 10;
+var p := x&;
+
+@type_name_of(x);
+@type_name_of(p);
+
+{
+    var b := 5;
+    @type_name_of(b);
+    p = b&;
 }
 
-main();
+print("{}\n", p@);

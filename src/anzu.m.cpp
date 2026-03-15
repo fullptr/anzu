@@ -3,6 +3,7 @@
 #include "compiler.hpp"
 #include "bytecode.hpp"
 #include "runtime.hpp"
+#include "debugger.hpp"
 #include "utility/common.hpp"
 #include "utility/memory.hpp"
 
@@ -17,11 +18,12 @@ void print_usage()
     std::print("usage: anzu.exe <program_file> <option>\n\n");
     std::print("The Anzu Programming Language\n\n");
     std::print("options:\n");
-    std::print("    lex      - runs the lexer and prints the tokens for a single file\n");
-    std::print("    parse    - runs the parser and prints the AST for a single file\n");
-    std::print("    com      - runs the compiler and prints the bytecode\n");
-    std::print("    debug    - runs the program and prints each op code executed\n");
-    std::print("    run      - runs the program\n");
+    std::print("    lex         - runs the lexer and prints the tokens for a single file\n");
+    std::print("    parse       - runs the parser and prints the AST for a single file\n");
+    std::print("    com         - runs the compiler and prints the bytecode\n");
+    std::print("    debug       - runs the program and prints each op code executed\n");
+    std::print("    run         - runs the program\n");
+    std::print("    interactive - runs the program in interactive source-level debugger\n");
 }
 
 auto main(const int argc, const char* argv[]) -> int
@@ -67,6 +69,10 @@ auto main(const int argc, const char* argv[]) -> int
     }
     else if (mode == "debug") {
         anzu::run_program_debug(program);
+        return 0;
+    }
+    else if (mode == "interactive") {
+        anzu::run_program_interactive(program, file);
         return 0;
     }
 

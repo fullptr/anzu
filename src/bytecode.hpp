@@ -5,11 +5,31 @@
 
 namespace anzu {
 
+// Maps a bytecode offset within a function to a source line number.
+struct source_location
+{
+    std::size_t offset;  // byte offset from function code start
+    std::size_t line;    // 1-based source line number
+};
+
+// Debug info for a single variable: name, type, stack location, and when it becomes live.
+struct debug_variable
+{
+    std::string name;
+    std::string type_str;
+    std::size_t location;   // byte offset from base_ptr (locals) or from stack[0] (globals)
+    std::size_t size;       // size in bytes
+    bool        is_global;
+    std::size_t live_from;  // bytecode offset when this variable was declared
+};
+
 struct bytecode_function
 {
-    std::string            name;
-    std::size_t            id;
-    std::vector<std::byte> code;
+    std::string                  name;
+    std::size_t                  id;
+    std::vector<std::byte>       code;
+    std::vector<source_location> source_map;  // offset → source line
+    std::vector<debug_variable>  dbg_vars;    // variable debug info
 };
 
 struct bytecode_program

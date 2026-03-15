@@ -15,6 +15,7 @@ add_executable(
     object.cpp
     bytecode.cpp
     runtime.cpp
+    debugger.cpp
     names.cpp
 
     compilation/type_manager.cpp

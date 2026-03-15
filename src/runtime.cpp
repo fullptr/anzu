@@ -50,14 +50,14 @@ auto read_advance(bytecode_context& ctx) -> T
     return ret;
 }
 
-template <bool Debug>
-auto execute_program(bytecode_context& ctx) -> void
+// Hook is called before each instruction with the current context.
+// The no-op default is used for normal execution; specialized hooks for debug modes.
+template <typename Hook>
+auto execute_program(bytecode_context& ctx, Hook hook) -> void
 {
     while (true) {
+        hook(ctx);
         auto& frame = ctx.frames.back();
-        if constexpr (Debug) {
-            print_op(ctx.rom, frame.code, frame.ip);
-        }
         const auto op_code = read_advance<op>(ctx);
         switch (op_code) {
             case op::end_program: return;
@@ -264,18 +264,20 @@ auto execute_program(bytecode_context& ctx) -> void
                 const auto function_id = read_advance<std::uint64_t>(ctx);
                 const auto args_size = read_advance<std::uint64_t>(ctx);
                 ctx.frames.push_back(call_frame{
-                    .code = ctx.functions[function_id].code.data(),
-                    .ip = ctx.functions[function_id].code.data(),
-                    .base_ptr = ctx.stack.size() - args_size
+                    .code        = ctx.functions[function_id].code.data(),
+                    .ip          = ctx.functions[function_id].code.data(),
+                    .base_ptr    = ctx.stack.size() - args_size,
+                    .function_id = function_id,
                 });
             } break;
             case op::call_ptr: {
                 const auto args_size = read_advance<std::uint64_t>(ctx);
                 const auto function_id = ctx.stack.pop<std::uint64_t>();
                 ctx.frames.push_back(call_frame{
-                    .code = ctx.functions[function_id].code.data(),
-                    .ip = ctx.functions[function_id].code.data(),
-                    .base_ptr = ctx.stack.size() - args_size
+                    .code        = ctx.functions[function_id].code.data(),
+                    .ip          = ctx.functions[function_id].code.data(),
+                    .base_ptr    = ctx.stack.size() - args_size,
+                    .function_id = function_id,
                 });
             } break;
             case op::assert: {
@@ -457,19 +459,21 @@ auto execute_program(bytecode_context& ctx) -> void
     }
 }
 
-template <bool Debug>
-auto run(const bytecode_program& prog) -> void
+auto make_context(const bytecode_program& prog) -> bytecode_context
 {
     bytecode_context ctx{prog.functions, prog.rom};
     ctx.frames.reserve(1000);
     ctx.frames.emplace_back(call_frame{
-        .code = ctx.functions.front().code.data(),
-        .ip = ctx.functions.front().code.data(),
-        .base_ptr = 0
+        .code        = ctx.functions.front().code.data(),
+        .ip          = ctx.functions.front().code.data(),
+        .base_ptr    = 0,
+        .function_id = 0,
     });
+    return ctx;
+}
 
-    execute_program<Debug>(ctx);
-
+auto check_stack_empty(const bytecode_context& ctx) -> void
+{
     if (ctx.stack.size() > 0) {
         std::print("\n -> Stack Size: {}, bug in the compiler!\n", ctx.stack.size());
     }
@@ -523,12 +527,26 @@ auto vm_stack::print() const -> void
 
 auto run_program(const bytecode_program& prog) -> void
 {
-    run<false>(prog);
+    auto ctx = make_context(prog);
+    execute_program(ctx, [](bytecode_context&) {});
+    check_stack_empty(ctx);
 }
 
 auto run_program_debug(const bytecode_program& prog) -> void
 {
-    run<true>(prog);
+    auto ctx = make_context(prog);
+    execute_program(ctx, [](bytecode_context& ctx) {
+        auto& frame = ctx.frames.back();
+        print_op(ctx.rom, frame.code, frame.ip);
+    });
+    check_stack_empty(ctx);
+}
+
+auto run_program_with_hook(const bytecode_program& prog, std::function<void(bytecode_context&)> hook) -> void
+{
+    auto ctx = make_context(prog);
+    execute_program(ctx, hook);
+    check_stack_empty(ctx);
 }
 
 }
